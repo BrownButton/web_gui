@@ -3154,6 +3154,11 @@ class ModbusDashboard {
 
             // Name and description
             const nameCol = document.createElement('div');
+            nameCol.className = 'param-name-col';
+            nameCol.onclick = (e) => {
+                e.stopPropagation();
+                nameCol.classList.toggle('expanded');
+            };
             const name = document.createElement('div');
             name.className = 'param-name';
             name.textContent = param.name;
@@ -3162,7 +3167,6 @@ class ModbusDashboard {
                 const desc = document.createElement('div');
                 desc.className = 'param-description';
                 desc.textContent = param.description;
-                desc.title = param.description;
                 nameCol.appendChild(desc);
             }
 
