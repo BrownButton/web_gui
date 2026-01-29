@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modbus RTU/RS-485 Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <nav class="top-navbar">
+        <div class="navbar-left">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <span class="toggle-icon">☰</span>
+            </button>
+            <div class="navbar-logo">
+                <img src="main_logo.jpg" alt="Logo" class="navbar-logo-img">
+            </div>
+            <div class="navbar-title">EC-FAN Controller</div>
+        </div>
+        <div class="navbar-right">
+            <div class="navbar-stats" id="navbarStats">
+                <div class="navbar-stat-item" title="Total Requests">
+                    <span class="navbar-stat-label">REQ</span>
+                    <span class="navbar-stat-value" id="navStatRequests">0</span>
+                </div>
+                <div class="navbar-stat-item" title="Successful Responses">
+                    <span class="navbar-stat-label">OK</span>
+                    <span class="navbar-stat-value" id="navStatSuccess">0</span>
+                </div>
+                <div class="navbar-stat-item" title="Error Count">
+                    <span class="navbar-stat-label">ERR</span>
+                    <span class="navbar-stat-value" id="navStatErrors">0</span>
+                </div>
+                <div class="navbar-stat-item" title="Success Rate">
+                    <span class="navbar-stat-label">RATE</span>
+                    <span class="navbar-stat-value" id="navStatRate">0%</span>
+                </div>
+                <div class="navbar-stat-item" title="Errors per N frames">
+                    <span class="navbar-stat-label">ERR/N</span>
+                    <span class="navbar-stat-value" id="navStatErrorRate">0</span>
+                </div>
+
+                <!-- Detailed Stats Tooltip -->
+                <div class="navbar-stats-tooltip" id="navbarStatsTooltip">
+                    <div class="stats-tooltip-header">Communication Statistics</div>
+                    <div class="stats-tooltip-row">
+                        <span class="stats-tooltip-label">Total Requests:</span>
+                        <span class="stats-tooltip-value" id="tooltipRequests">0</span>
+                    </div>
+                    <div class="stats-tooltip-row">
+                        <span class="stats-tooltip-label">Successful:</span>
+                        <span class="stats-tooltip-value" id="tooltipSuccess">0</span>
+                    </div>
+                    <div class="stats-tooltip-row">
+                        <span class="stats-tooltip-label">Errors:</span>
+                        <span class="stats-tooltip-value" id="tooltipErrors">0</span>
+                    </div>
+                    <div class="stats-tooltip-row">
+                        <span class="stats-tooltip-label">Success Rate:</span>
+                        <span class="stats-tooltip-value" id="tooltipRate">0%</span>
+                    </div>
+                    <div class="stats-tooltip-divider"></div>
+                    <div class="stats-tooltip-row">
+                        <span class="stats-tooltip-label">Error Rate:</span>
+                        <span class="stats-tooltip-value">
+                            <span id="tooltipErrorRate">0</span> errors per <span id="tooltipBaseFrames">1000</span> frames
+                        </span>
+                    </div>
+                    <div class="stats-tooltip-divider"></div>
+                    <div class="stats-tooltip-header" style="font-size: 12px; margin-top: 5px;">Per Device Stats</div>
+                    <div id="deviceStatsContainer" class="device-stats-container">
+                        <p style="color: #6c757d; font-size: 11px;">No device data yet</p>
+                    </div>
+                </div>
+            </div>
+            <div class="navbar-connection">
+                <span id="navbar-status-indicator" class="navbar-status-indicator status-disconnected"></span>
+                <span id="navbar-status-text" class="navbar-status-text">Disconnected</span>
+            </div>
+            <button class="monitor-toggle-btn" id="monitorToggleBtn" title="Communication Monitor">
+                <span class="monitor-toggle-icon">📡</span>
+                <span class="monitor-toggle-text">Monitor</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <nav class="sidebar-menu">
+                <!-- Serial Port Menu Item -->
+                <div class="menu-item-expandable" id="serialPortMenu">
+                    <div class="menu-item-header">
+                        <span class="menu-item-icon">◈</span>
+                        <span class="menu-item-text">Serial Port</span>
+                        <span class="menu-item-arrow">▼</span>
+                    </div>
+                    <div class="menu-item-content">
+                        <div class="sidebar-form-group">
+                            <label for="sidebar-baudRate">Baud Rate</label>
+                            <select id="sidebar-baudRate">
+                                <option value="9600">9600</option>
+                                <option value="19200">19200</option>
+                                <option value="38400">38400</option>
+                                <option value="57600">57600</option>
+                                <option value="115200">115200</option>
+                            </select>
+                        </div>
+                        <div class="sidebar-form-row">
+                            <div class="sidebar-form-group">
+                                <label for="sidebar-parity">Parity</label>
+                                <select id="sidebar-parity">
+                                    <option value="none" selected>None</option>
+                                    <option value="even">Even</option>
+                                    <option value="odd">Odd</option>
+                                </select>
+                            </div>
+                            <div class="sidebar-form-group">
+                                <label for="sidebar-dataBits">Data</label>
+                                <select id="sidebar-dataBits">
+                                    <option value="7">7</option>
+                                    <option value="8" selected>8</option>
+                                </select>
+                            </div>
+                            <div class="sidebar-form-group">
+                                <label for="sidebar-stopBits">Stop</label>
+                                <select id="sidebar-stopBits">
+                                    <option value="1" selected>1</option>
+                                    <option value="2">2</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="sidebar-button-group">
+                            <button id="sidebar-connectBtn" class="btn btn-primary btn-block">Connect</button>
+                            <button id="sidebar-disconnectBtn" class="btn btn-secondary btn-block" disabled>Disconnect</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="menu-item active" data-page="dashboard">
+                    <span class="menu-item-icon">◉</span>
+                    <span class="menu-item-text">Dashboard</span>
+                </div>
+                <div class="menu-item" data-page="modbus">
+                    <span class="menu-item-icon">●</span>
+                    <span class="menu-item-text">Modbus</span>
+                </div>
+                <div class="menu-item" data-page="parameters">
+                    <span class="menu-item-icon">◎</span>
+                    <span class="menu-item-text">Parameters</span>
+                </div>
+                <div class="menu-item" data-page="history">
+                    <span class="menu-item-icon">○</span>
+                    <span class="menu-item-text">History</span>
+                </div>
+                <div class="menu-item" data-page="firmware">
+                    <span class="menu-item-icon">⬇</span>
+                    <span class="menu-item-text">Firmware</span>
+                </div>
+            </nav>
+
+            <!-- Settings Button at Bottom -->
+            <div class="sidebar-footer">
+                <button class="sidebar-settings-btn" id="openSettingsBtn">
+                    <span class="settings-icon">⚙</span>
+                    <span class="settings-text">Settings</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+
+                <!-- Dashboard Page (Product Test) -->
+                <div id="page-dashboard" class="page-content active">
+                    <!-- Dashboard Header -->
+                    <div class="dashboard-header">
+                        <div class="dashboard-title-section">
+                            <h1>Product Test Dashboard</h1>
+                            <p class="dashboard-subtitle">연결된 제품들을 개별 또는 일괄 테스트합니다</p>
+                        </div>
+                        <div class="dashboard-actions">
+                            <div class="view-mode-toggle">
+                                <button class="view-mode-btn active" data-view="card" id="viewModeCard" title="카드형 보기">
+                                    <span>▦</span>
+                                </button>
+                                <button class="view-mode-btn" data-view="list" id="viewModeList" title="목록형 보기">
+                                    <span>☰</span>
+                                </button>
+                            </div>
+                            <button id="addDeviceBtn" class="btn btn-primary">
+                                <span>+</span> Add Device
+                            </button>
+                            <button id="autoAssignIdBtn" class="btn btn-info">
+                                <span>⚡</span> Auto Assign IDs
+                            </button>
+                            <button id="refreshAllBtn" class="btn btn-secondary">
+                                <span>↻</span> Refresh All
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Control Mode Tabs -->
+                    <div class="control-mode-tabs">
+                        <button class="control-mode-tab active" data-mode="batch" id="tabBatchControl">
+                            <span class="tab-icon">⊞</span>
+                            <span class="tab-text">일괄 제어</span>
+                            <span class="tab-badge" id="selectedBadge">0</span>
+                        </button>
+                        <button class="control-mode-tab" data-mode="individual" id="tabIndividualControl">
+                            <span class="tab-icon">◉</span>
+                            <span class="tab-text">개별 제어</span>
+                        </button>
+                    </div>
+
+                    <!-- Batch Control Panel -->
+                    <section class="control-panel batch-control-panel active" id="batchControlPanel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <h3>선택된 축 일괄 제어</h3>
+                                <p class="panel-subtitle">여러 축을 선택하여 동시에 제어합니다</p>
+                            </div>
+                            <div class="selection-controls">
+                                <button id="selectAllDevices" class="btn btn-sm btn-outline">전체 선택</button>
+                                <button id="deselectAllDevices" class="btn btn-sm btn-outline">선택 해제</button>
+                            </div>
+                        </div>
+
+                        <div class="panel-body">
+                            <!-- Selected Devices Preview -->
+                            <div class="selected-devices-preview">
+                                <div class="preview-label">선택된 축</div>
+                                <div class="selected-devices-chips" id="selectedDevicesChips">
+                                    <span class="no-selection">축을 선택해주세요</span>
+                                </div>
+                            </div>
+
+                            <!-- Batch Setpoint Control -->
+                            <div class="setpoint-control-area">
+                                <div class="setpoint-main">
+                                    <div class="setpoint-display">
+                                        <input type="number" id="batchSetpoint" min="0" max="10000" value="0" class="setpoint-input-large">
+                                        <span class="setpoint-unit" id="batchSetpointUnit">RPM</span>
+                                    </div>
+                                    <input type="range" id="batchSetpointSlider" min="0" max="10000" value="0" class="setpoint-slider">
+                                    <div class="quick-presets">
+                                        <button class="preset-btn" data-percent="0">0%</button>
+                                        <button class="preset-btn" data-percent="25">25%</button>
+                                        <button class="preset-btn" data-percent="50">50%</button>
+                                        <button class="preset-btn" data-percent="75">75%</button>
+                                        <button class="preset-btn" data-percent="100">100%</button>
+                                    </div>
+                                </div>
+                                <div class="mode-selector">
+                                    <label>모드</label>
+                                    <div class="mode-toggle">
+                                        <button class="mode-btn active" data-mode="0" id="batchModeRpm">RPM</button>
+                                        <button class="mode-btn" data-mode="1" id="batchModePct">%</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="batch-action-buttons">
+                                <button id="batchApplyBtn" class="action-btn action-btn-primary" disabled>
+                                    <span class="action-icon">▶</span>
+                                    <span class="action-text">선택 축 적용</span>
+                                    <span class="action-count">(<span id="selectedDeviceCount">0</span>개)</span>
+                                </button>
+                                <button id="batchStopBtn" class="action-btn action-btn-danger" disabled>
+                                    <span class="action-icon">■</span>
+                                    <span class="action-text">선택 축 정지</span>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Individual Control Info -->
+                    <section class="control-panel individual-control-panel" id="individualControlPanel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <h3>개별 축 제어</h3>
+                                <p class="panel-subtitle">각 축을 개별적으로 제어합니다</p>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="individual-hint">
+                                <span class="hint-icon">💡</span>
+                                <span>아래 목록에서 각 축의 입력창에 값을 입력하고 Apply 버튼을 눌러 개별 제어하세요</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Device List Section -->
+                    <section class="device-list-section">
+                        <div class="section-header">
+                            <h3>등록된 축 목록</h3>
+                            <span class="device-count-badge" id="totalDeviceCount">0개</span>
+                        </div>
+                        <div class="device-grid" id="deviceGrid">
+                            <!-- Device cards will be dynamically added here -->
+                            <div class="device-placeholder" id="devicePlaceholder">
+                                <div class="placeholder-icon">📦</div>
+                                <p>등록된 축이 없습니다</p>
+                                <p class="placeholder-hint">"Add Device" 버튼을 눌러 테스트할 제품을 등록하세요</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Modbus Page (formerly Dashboard) -->
+                <div id="page-modbus" class="page-content">
+                    <div class="content-grid">
+                        <!-- Left Column -->
+                        <div class="left-column">
+
+                            <!-- Modbus Configuration -->
+                            <section class="card">
+                                <h2>Modbus Configuration</h2>
+                                <div class="modbus-config">
+                                    <div class="form-group">
+                                        <label for="slaveId">Slave ID</label>
+                                        <input type="number" id="slaveId" min="1" max="247" value="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="functionCode">Function Code</label>
+                                        <select id="functionCode">
+                                            <option value="1">01 - Read Coils</option>
+                                            <option value="2">02 - Read Discrete Inputs</option>
+                                            <option value="3" selected>03 - Read Holding Registers</option>
+                                            <option value="4">04 - Read Input Registers</option>
+                                            <option value="5">05 - Write Single Coil</option>
+                                            <option value="6">06 - Write Single Register</option>
+                                            <option value="15">15 - Write Multiple Coils</option>
+                                            <option value="16">16 - Write Multiple Registers</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="startAddress">Start Address</label>
+                                        <input type="number" id="startAddress" min="0" max="65535" value="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="quantity">Quantity</label>
+                                        <input type="number" id="quantity" min="1" max="125" value="10">
+                                    </div>
+                                    <div class="form-group" id="writeValueGroup" style="display: none;">
+                                        <label for="writeValue">Write Value</label>
+                                        <input type="number" id="writeValue" min="0" max="65535" value="0">
+                                    </div>
+                                </div>
+                                <div class="button-group">
+                                    <button id="sendBtn" class="btn btn-success" disabled>Send Request</button>
+                                </div>
+                            </section>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parameters Page -->
+                <div id="page-parameters" class="page-content">
+                    <section class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
+                            <h2 style="margin-bottom: 0;">Parameter List</h2>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <div class="csv-import-group">
+                                    <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+                                    <button id="importCsvBtn" class="btn btn-secondary btn-sm">📥 Import CSV</button>
+                                    <button id="exportCsvBtn" class="btn btn-secondary btn-sm">📤 Export CSV</button>
+                                    <button id="loadDefaultCsvBtn" class="btn btn-info btn-sm">📋 Load Default</button>
+                                </div>
+                                <button id="addParamBtn" class="btn btn-primary btn-sm">+ Add Parameter</button>
+                            </div>
+                        </div>
+                        <div class="param-filter-group" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            <div style="display: flex; gap: 5px;">
+                                <button class="filter-btn active" data-filter="all">All</button>
+                                <button class="filter-btn" data-filter="holding">Holding</button>
+                                <button class="filter-btn" data-filter="input">Input</button>
+                            </div>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="filter-btn" data-implemented="all">All Status</button>
+                                <button class="filter-btn" data-implemented="Y">Implemented</button>
+                                <button class="filter-btn" data-implemented="N">Not Implemented</button>
+                            </div>
+                            <input type="text" id="paramSearchInput" placeholder="Search by name or address..." style="flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;">
+                            <span id="paramCount" style="color: #6c757d; font-size: 13px;">0 parameters</span>
+                        </div>
+                        <div id="paramList" class="param-list">
+                            <p class="placeholder">No parameters defined. Click "Import CSV" or "Load Default" to load parameters.</p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Settings Page (removed, now using modal) -->
+                <div id="page-settings" class="page-content" style="display:none;">
+                    <div class="settings-container">
+                        <!-- Statistics Settings Section -->
+                        <section class="card setting-section" id="setting-statistics" style="display: none;">
+                            <h2>Statistics Settings</h2>
+                            <p style="color: #6c757d; margin-bottom: 20px;">
+                                통계 계산 및 표시 방법을 설정합니다.
+                            </p>
+                            <div class="form-group" style="max-width: 400px;">
+                                <label for="baseFrameCount">기준 프레임 수 (Error Rate 계산)</label>
+                                <input type="number" id="baseFrameCount" min="100" max="10000" value="1000" step="100">
+                                <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                    에러율을 계산할 때 사용할 기준 프레임 수입니다. 예: 1000 프레임당 몇 개의 에러가 발생하는지 계산합니다.
+                                </small>
+                            </div>
+                        </section>
+
+                        <!-- Simulator Settings Section -->
+                        <section class="card setting-section" id="setting-simulator" style="display: none;">
+                            <h2>Virtual Slave Simulator</h2>
+                            <p style="color: #6c757d; margin-bottom: 20px;">
+                                실제 Modbus 장비 없이 테스트할 수 있는 가상 슬레이브 장치입니다.
+                                시뮬레이터를 활성화하면 실제 시리얼 포트 연결 없이 Modbus 통신을 테스트할 수 있습니다.
+                            </p>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                                <div>
+                                    <div class="form-group">
+                                        <label>시뮬레이터 상태</label>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <button id="simToggleBtn" class="btn btn-primary">시뮬레이터 활성화</button>
+                                            <span id="simStatus" style="color: #6c757d;">비활성</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="simSlaveId">가상 Slave ID</label>
+                                        <input type="number" id="simSlaveId" min="1" max="247" value="1">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="simDelay">응답 지연 (ms)</label>
+                                        <input type="number" id="simDelay" min="0" max="1000" value="50" step="10">
+                                    </div>
+
+                                    <button id="simResetBtn" class="btn btn-warning">메모리 초기화</button>
+                                </div>
+
+                                <div>
+                                    <h3 style="font-size: 14px; margin-bottom: 10px; color: #495057;">시뮬레이션 데이터</h3>
+                                    <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 12px;">
+                                        <div style="margin-bottom: 10px;">
+                                            <strong>Holding Registers:</strong><br>
+                                            [0] 온도: <span id="simTemp">--</span><br>
+                                            [1] 습도: <span id="simHumid">--</span><br>
+                                            [2] 압력: <span id="simPress">--</span><br>
+                                            [3] 전압: <span id="simVolt">--</span><br>
+                                            [5] 속도: <span id="simSpeed">--</span> RPM
+                                        </div>
+                                        <div>
+                                            <strong>Coils:</strong><br>
+                                            [0] 시스템 동작: <span id="simCoil0">--</span><br>
+                                            [1] 알람: <span id="simCoil1">--</span><br>
+                                            [2] 준비: <span id="simCoil2">--</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="background: #e7f3ff; padding: 15px; border-radius: 4px; border-left: 4px solid #007bff;">
+                                <strong>사용 방법:</strong>
+                                <ol style="margin: 10px 0 0 20px; color: #495057;">
+                                    <li>시뮬레이터를 활성화합니다</li>
+                                    <li>Dashboard로 돌아가서 "Connect" 대신 가상 연결을 사용합니다</li>
+                                    <li>일반 Modbus 명령을 전송하면 시뮬레이터가 응답합니다</li>
+                                    <li>데이터는 실시간으로 변화하여 실제 장비를 시뮬레이션합니다</li>
+                                </ol>
+                            </div>
+                        </section>
+
+                        <!-- External Tools Section -->
+                        <section class="card setting-section" id="setting-external" style="display: none;">
+                            <h2>외부 시뮬레이터 사용</h2>
+                            <p style="color: #6c757d; margin-bottom: 15px;">
+                                더 정교한 테스트를 위해 외부 Modbus 시뮬레이터를 사용할 수 있습니다:
+                            </p>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 4px;">
+                                <h3 style="font-size: 14px; margin-bottom: 10px;">추천 프로그램:</h3>
+                                <ul style="margin-left: 20px; color: #495057;">
+                                    <li><strong>Modbus Poll / Slave</strong> - 가장 널리 사용되는 상용 프로그램</li>
+                                    <li><strong>pyModSlave</strong> - 무료 Python 기반 시뮬레이터</li>
+                                    <li><strong>com0com + Virtual Serial Port</strong> - 가상 시리얼 포트 쌍 생성</li>
+                                    <li><strong>ModRSsim2</strong> - 무료 Modbus RTU/TCP 시뮬레이터</li>
+                                </ul>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- History Page -->
+                <div id="page-history" class="page-content">
+                    <section class="card">
+                        <h2>History</h2>
+                        <p class="placeholder">History page - Coming soon...</p>
+                    </section>
+                </div>
+
+                <!-- Firmware Page -->
+                <div id="page-firmware" class="page-content">
+                    <div class="firmware-container">
+                        <div class="firmware-header">
+                            <h2>Firmware Download</h2>
+                            <p class="firmware-subtitle">Modbus Function Code 0x66을 사용하여 장치에 펌웨어를 업로드합니다</p>
+                        </div>
+
+                        <!-- File Upload Section -->
+                        <div class="firmware-upload-section">
+                            <div class="firmware-dropzone" id="firmwareDropzone">
+                                <div class="dropzone-content">
+                                    <div class="dropzone-icon">📁</div>
+                                    <div class="dropzone-text">
+                                        <p class="dropzone-main">파일을 여기에 드래그하거나 클릭하여 선택하세요</p>
+                                        <p class="dropzone-sub">지원 형식: .bin, .hex, .fw</p>
+                                    </div>
+                                    <input type="file" id="firmwareFileInput" accept=".bin,.hex,.fw" hidden>
+                                    <button class="btn btn-primary" id="firmwareSelectBtn">파일 선택</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selected File Info -->
+                        <div class="firmware-file-info" id="firmwareFileInfo" style="display: none;">
+                            <div class="file-info-header">
+                                <span class="file-icon">📄</span>
+                                <div class="file-details">
+                                    <span class="file-name" id="firmwareFileName">-</span>
+                                    <span class="file-size" id="firmwareFileSize">-</span>
+                                </div>
+                                <button class="file-remove-btn" id="firmwareRemoveBtn" title="파일 제거">×</button>
+                            </div>
+                        </div>
+
+                        <!-- Device Selection -->
+                        <div class="firmware-device-section">
+                            <h3>대상 장치 선택</h3>
+                            <div class="firmware-device-row">
+                                <div class="firmware-device-list" id="firmwareDeviceList">
+                                    <p class="placeholder">연결된 장치가 없습니다</p>
+                                </div>
+                                <div class="firmware-slave-direct">
+                                    <label for="firmwareSlaveId">Slave ID 직접 입력:</label>
+                                    <input type="number" id="firmwareSlaveId" min="1" max="247" value="1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Protocol Settings -->
+                        <div class="firmware-settings-section">
+                            <h3>프로토콜 설정</h3>
+                            <div class="firmware-settings-grid">
+                                <div class="form-group">
+                                    <label for="fwPacketSize">패킷 크기 (bytes)</label>
+                                    <select id="fwPacketSize">
+                                        <option value="32">32 bytes</option>
+                                        <option value="60" selected>60 bytes (권장)</option>
+                                        <option value="64">64 bytes</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="fwPacketDelay">패킷 간격 (ms)</label>
+                                    <input type="number" id="fwPacketDelay" min="10" max="500" value="50">
+                                </div>
+                                <div class="form-group">
+                                    <label for="fwResponseTimeout">응답 대기 (ms)</label>
+                                    <input type="number" id="fwResponseTimeout" min="100" max="5000" value="1000">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Update Step Indicators -->
+                        <div class="firmware-steps-section" id="firmwareStepsSection">
+                            <h3>업데이트 단계</h3>
+                            <div class="firmware-steps">
+                                <div class="firmware-step" id="fwStep0x90" data-step="0x90">
+                                    <div class="step-indicator">
+                                        <span class="step-number">1</span>
+                                        <span class="step-status-icon"></span>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="step-title">초기화 (0x90)</div>
+                                        <div class="step-desc">Flash Unlock, 파일 크기 전송</div>
+                                    </div>
+                                </div>
+                                <div class="firmware-step" id="fwStep0x91" data-step="0x91">
+                                    <div class="step-indicator">
+                                        <span class="step-number">2</span>
+                                        <span class="step-status-icon"></span>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="step-title">Erase 확인 (0x91)</div>
+                                        <div class="step-desc">Flash Erase 완료 확인 (0x55555555)</div>
+                                    </div>
+                                </div>
+                                <div class="firmware-step" id="fwStep0x03" data-step="0x03">
+                                    <div class="step-indicator">
+                                        <span class="step-number">3</span>
+                                        <span class="step-status-icon"></span>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="step-title">데이터 전송 (0x03)</div>
+                                        <div class="step-desc">펌웨어 데이터 전송</div>
+                                        <div class="step-progress" id="fwDataProgress">
+                                            <div class="step-progress-bar">
+                                                <div class="step-progress-fill" id="fwDataProgressFill"></div>
+                                            </div>
+                                            <span class="step-progress-text" id="fwDataProgressText">0 / 0 bytes</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="firmware-step" id="fwStep0x99" data-step="0x99">
+                                    <div class="step-indicator">
+                                        <span class="step-number">4</span>
+                                        <span class="step-status-icon"></span>
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="step-title">완료 (0x99)</div>
+                                        <div class="step-desc">Flash Lock, 업데이트 완료</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Download Progress -->
+                        <div class="firmware-progress-section" id="firmwareProgressSection" style="display: none;">
+                            <h3>통신 로그</h3>
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="firmwareProgressBar" style="width: 0%"></div>
+                                </div>
+                                <div class="progress-info">
+                                    <span class="progress-percent" id="firmwareProgressPercent">0%</span>
+                                    <span class="progress-status" id="firmwareProgressStatus">준비 중...</span>
+                                </div>
+                            </div>
+                            <div class="progress-log" id="firmwareProgressLog"></div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="firmware-actions">
+                            <button class="btn btn-secondary" id="firmwareVerifyBtn" disabled>파일 검증</button>
+                            <button class="btn btn-primary" id="firmwareDownloadBtn" disabled>다운로드 시작</button>
+                            <button class="btn btn-danger" id="firmwareCancelBtn" style="display: none;">취소</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Slide Panel - Communication Monitor -->
+        <aside class="monitor-panel" id="monitorPanel">
+            <div class="monitor-resize-handle" id="monitorResizeHandle"></div>
+            <div class="monitor-panel-header">
+                <h3>Communication Monitor</h3>
+                <div class="monitor-panel-controls">
+                    <div class="format-toggle">
+                        <button class="format-btn active" data-format="hex">HEX</button>
+                        <button class="format-btn" data-format="dec">DEC</button>
+                    </div>
+                    <button class="monitor-panel-close" id="monitorPanelClose" title="Close">×</button>
+                </div>
+            </div>
+            <div class="monitor-panel-body">
+                <div id="monitorDisplay" class="monitor-container">
+                    <p class="placeholder">Waiting for communication...</p>
+                </div>
+                <!-- Scroll to bottom button -->
+                <button class="monitor-scroll-btn" id="monitorScrollBtn" title="Scroll to bottom">
+                    <span class="scroll-icon">↓</span>
+                    <span class="new-count" id="newMessageCount">0</span>
+                </button>
+            </div>
+            <div class="monitor-panel-footer">
+                <div class="monitor-footer-left">
+                    <label class="auto-scroll-toggle">
+                        <input type="checkbox" id="autoScrollToggle" checked>
+                        <span>Auto Scroll</span>
+                    </label>
+                    <span class="monitor-entry-count" id="monitorEntryCount">0 packets</span>
+                </div>
+                <button id="clearBtn" class="btn btn-warning btn-sm">Clear Monitor</button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Add Parameter Modal -->
+    <div id="addParamModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Parameter</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="paramName">Parameter Name</label>
+                    <input type="text" id="paramName" placeholder="e.g., Temperature">
+                </div>
+                <div class="form-group">
+                    <label for="paramAddress">Address</label>
+                    <input type="number" id="paramAddress" min="0" max="65535" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="paramFunction">Function Code</label>
+                    <select id="paramFunction">
+                        <option value="3">03 - Read Holding Registers</option>
+                        <option value="4">04 - Read Input Registers</option>
+                        <option value="1">01 - Read Coils</option>
+                        <option value="2">02 - Read Discrete Inputs</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelParamBtn" class="btn btn-secondary">Cancel</button>
+                <button id="saveParamBtn" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content settings-modal-content">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <button class="modal-close" id="closeSettingsBtn">&times;</button>
+            </div>
+            <div class="modal-body settings-modal-body">
+                <!-- Settings Sidebar -->
+                <div class="settings-sidebar">
+                    <div class="settings-menu-item active" data-setting="statistics">
+                        <span class="settings-menu-icon">📊</span>
+                        <span class="settings-menu-text">Statistics</span>
+                    </div>
+                    <div class="settings-menu-item" data-setting="autoscan">
+                        <span class="settings-menu-icon">🔍</span>
+                        <span class="settings-menu-text">Auto Scan</span>
+                    </div>
+                    <div class="settings-menu-item" data-setting="simulator">
+                        <span class="settings-menu-icon">🔧</span>
+                        <span class="settings-menu-text">Simulator</span>
+                    </div>
+                </div>
+
+                <!-- Settings Content -->
+                <div class="settings-content">
+                    <!-- Statistics Settings -->
+                    <div class="settings-panel active" id="settings-statistics">
+                        <h4>Statistics Settings</h4>
+                        <p style="color: #6c757d; margin-bottom: 20px; font-size: 13px;">
+                            통계 계산 및 표시 방법을 설정합니다.
+                        </p>
+                        <div class="form-group">
+                            <label for="modal-baseFrameCount">기준 프레임 수 (Error Rate 계산)</label>
+                            <input type="number" id="modal-baseFrameCount" min="100" max="10000" value="1000" step="100">
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                에러율을 계산할 때 사용할 기준 프레임 수입니다. 예: 1000 프레임당 몇 개의 에러가 발생하는지 계산합니다.
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Auto Scan Settings -->
+                    <div class="settings-panel" id="settings-autoscan">
+                        <h4>Auto Scan Settings</h4>
+                        <p style="color: #6c757d; margin-bottom: 20px; font-size: 13px;">
+                            시리얼 포트 연결 시 자동으로 장치를 탐색합니다.
+                        </p>
+
+                        <div class="form-group">
+                            <label>자동 탐색 모드</label>
+                            <div class="toggle-switch-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="autoScanEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span id="autoScanStatus" class="toggle-status">비활성</span>
+                            </div>
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                활성화하면 연결 시 자동으로 Slave ID를 순회하며 장치를 탐색합니다.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>탐색 범위</label>
+                            <div style="display: flex; gap: 15px; align-items: center;">
+                                <div style="flex: 1;">
+                                    <label for="scanRangeStart" style="font-size: 12px; color: #6c757d;">시작 ID</label>
+                                    <input type="number" id="scanRangeStart" min="1" max="247" value="1">
+                                </div>
+                                <span style="padding-top: 20px;">~</span>
+                                <div style="flex: 1;">
+                                    <label for="scanRangeEnd" style="font-size: 12px; color: #6c757d;">종료 ID</label>
+                                    <input type="number" id="scanRangeEnd" min="1" max="247" value="10">
+                                </div>
+                            </div>
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                범위가 넓을수록 탐색 시간이 오래 걸립니다.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="scanTimeout">응답 대기 시간 (ms)</label>
+                            <input type="number" id="scanTimeout" min="50" max="2000" value="200" step="50">
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                각 장치의 응답을 기다리는 최대 시간입니다.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="scanRegister">탐색용 레지스터 주소</label>
+                            <input type="text" id="scanRegister" value="0xD011" placeholder="0xD011">
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                장치 존재 확인에 사용할 레지스터 주소 (기본: Motor Status)
+                            </small>
+                        </div>
+
+                        <div style="margin-top: 20px; display: flex; gap: 10px;">
+                            <button id="manualScanBtn" class="btn btn-primary">
+                                <span>🔍</span> 수동 탐색 시작
+                            </button>
+                            <button id="stopScanBtn" class="btn btn-secondary" disabled>
+                                <span>■</span> 탐색 중지
+                            </button>
+                        </div>
+
+                        <div id="scanProgress" style="display: none; margin-top: 20px;">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="scanProgressBar" style="width: 0%"></div>
+                            </div>
+                            <p id="scanProgressText" style="text-align: center; margin-top: 10px; color: #6c757d; font-size: 13px;"></p>
+                        </div>
+
+                        <div id="scanResults" style="display: none; margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 4px;">
+                            <strong style="display: block; margin-bottom: 10px;">탐색 결과:</strong>
+                            <div id="scanResultsList" style="font-size: 13px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Simulator Settings -->
+                    <div class="settings-panel" id="settings-simulator">
+                        <h4>Virtual Slave Simulator</h4>
+                        <p style="color: #6c757d; margin-bottom: 20px; font-size: 13px;">
+                            실제 Modbus 장비 없이 테스트할 수 있는 가상 슬레이브 장치입니다.
+                        </p>
+
+                        <div class="form-group">
+                            <label>시뮬레이터 상태</label>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <button id="modal-simToggleBtn" class="btn btn-success">Activate</button>
+                                <span id="modal-simStatus" style="color: #6c757d;">비활성</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="modal-simSlaveId">가상 Slave ID</label>
+                            <input type="number" id="modal-simSlaveId" min="1" max="247" value="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="modal-simDelay">응답 지연 (ms)</label>
+                            <input type="number" id="modal-simDelay" min="0" max="1000" value="50" step="10">
+                        </div>
+
+                        <button id="modal-simResetBtn" class="btn btn-warning">메모리 초기화</button>
+
+                        <div style="margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 12px;">
+                            <div style="margin-bottom: 10px;">
+                                <strong>Holding Registers:</strong><br>
+                                [0] 온도: <span id="modal-simTemp">--</span><br>
+                                [1] 습도: <span id="modal-simHumid">--</span><br>
+                                [2] 압력: <span id="modal-simPress">--</span><br>
+                                [3] 전압: <span id="modal-simVolt">--</span><br>
+                                [5] 속도: <span id="modal-simSpeed">--</span> RPM
+                            </div>
+                            <div>
+                                <strong>Coils:</strong><br>
+                                [0] 시스템 동작: <span id="modal-simCoil0">--</span><br>
+                                [1] 알람: <span id="modal-simCoil1">--</span><br>
+                                [2] 준비: <span id="modal-simCoil2">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Device Modal -->
+    <div id="addDeviceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Device</h3>
+                <button class="modal-close" id="closeDeviceModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="deviceName">Device Name</label>
+                    <input type="text" id="deviceName" placeholder="e.g., Motor #1, Fan Unit A">
+                </div>
+                <div class="form-group">
+                    <label for="deviceSlaveId">Slave ID</label>
+                    <input type="number" id="deviceSlaveId" min="0" max="247" value="1">
+                    <small style="color: #6c757d; margin-top: 5px; display: block;">
+                        0 = 미설정 (Auto Assign으로 나중에 할당 가능)
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="deviceOperationMode">Default Operation Mode</label>
+                    <select id="deviceOperationMode">
+                        <option value="0">RPM Mode</option>
+                        <option value="1">% Mode (Modulation)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelDeviceBtn" class="btn btn-secondary">Cancel</button>
+                <button id="saveDeviceBtn" class="btn btn-primary">Add Device</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auto Assign ID Modal -->
+    <div id="autoAssignModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Auto Assign Node IDs</h3>
+                <button class="modal-close" id="closeAutoAssignModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+                    <strong>안내:</strong>
+                    <p style="margin: 10px 0 0 0; color: #856404;">
+                        이 기능은 Slave ID가 0으로 설정된 제품들에게 순차적으로 ID를 할당합니다.<br>
+                        제품은 한 대씩 연결하여 ID를 설정하거나, Broadcast(ID=0)를 사용하여 할당할 수 있습니다.
+                    </p>
+                </div>
+                <div class="form-group">
+                    <label for="startingSlaveId">Starting Slave ID</label>
+                    <input type="number" id="startingSlaveId" min="1" max="247" value="1">
+                </div>
+                <div class="form-group">
+                    <label>할당 방법</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="assignMethod" value="sequential" checked>
+                            <span>순차 할당 (제품 순서대로)</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="assignMethod" value="broadcast">
+                            <span>Broadcast 할당 (한 대씩 연결 필요)</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="autoAssignProgress" style="display: none;">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="assignProgressBar" style="width: 0%"></div>
+                    </div>
+                    <p id="assignProgressText" style="text-align: center; margin-top: 10px; color: #6c757d;"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelAutoAssignBtn" class="btn btn-secondary">Cancel</button>
+                <button id="startAutoAssignBtn" class="btn btn-primary">Start Assignment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="modbus.js"></script>
+    <script src="simulator.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
