@@ -1362,7 +1362,7 @@ select:focus {
 /* Parameter list header */
 .param-list-header {
     display: grid;
-    grid-template-columns: 70px 100px minmax(0, 1fr) 70px 60px;
+    grid-template-columns: 70px 100px minmax(0, 1fr) 60px 80px 50px 60px;
     gap: 12px;
     padding: 10px 12px;
     background: #f8f9fa;
@@ -1378,7 +1378,10 @@ select:focus {
 
 .param-list-header > *:nth-child(1),
 .param-list-header > *:nth-child(2),
-.param-list-header > *:nth-child(4) {
+.param-list-header > *:nth-child(4),
+.param-list-header > *:nth-child(5),
+.param-list-header > *:nth-child(6),
+.param-list-header > *:nth-child(7) {
     text-align: center;
 }
 
@@ -1421,7 +1424,8 @@ select:focus {
 }
 
 #page-parameters {
-    max-width: 900px;
+    width: 60%;
+    max-width: none;
     margin: 0 auto;
     padding: 20px;
 }
@@ -1443,7 +1447,7 @@ select:focus {
 
 .param-item {
     display: grid;
-    grid-template-columns: 70px 100px minmax(0, 1fr) 70px 60px;
+    grid-template-columns: 70px 100px minmax(0, 1fr) 60px 80px 50px 60px;
     gap: 12px;
     padding: 12px;
     margin-bottom: 2px;
@@ -1455,10 +1459,16 @@ select:focus {
 }
 
 .param-item > *:nth-child(1),
-.param-item > *:nth-child(2),
-.param-item > *:nth-child(4),
-.param-item > *:nth-child(5) {
+.param-item > *:nth-child(2) {
     text-align: center;
+}
+
+.param-item > *:nth-child(4),
+.param-item > *:nth-child(5),
+.param-item > *:nth-child(6),
+.param-item > *:nth-child(7) {
+    text-align: center;
+    align-self: center;
 }
 
 .param-item:first-child {
@@ -1473,9 +1483,53 @@ select:focus {
 .param-description {
     color: #6c757d;
     font-size: 12px;
+}
+
+.param-description-text {
+    color: #495057;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.param-name-col.expanded .param-description-text {
+    white-space: normal;
+    overflow: visible;
+    margin-bottom: 6px;
+}
+
+/* Parameter value mapping table */
+.param-value-table {
+    display: none;
+    margin-top: 6px;
+    border-collapse: collapse;
+    font-size: 11px;
+    width: 100%;
+}
+
+.param-name-col.expanded .param-value-table {
+    display: table;
+}
+
+.param-value-table tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.param-value-table td {
+    padding: 4px 8px;
+    border: 1px solid #e0e6ed;
+}
+
+.param-value-cell {
+    font-weight: 600;
+    color: #007bff;
+    text-align: center;
+    width: 50px;
+    background: #e8f4fd;
+}
+
+.param-label-cell {
+    color: #495057;
 }
 
 .param-item:hover {
@@ -1486,14 +1540,31 @@ select:focus {
 .param-name-col {
     min-width: 0;
     overflow: hidden;
-    cursor: pointer;
     padding: 4px 6px;
     margin: -4px -6px;
     border-radius: 4px;
     transition: background 0.2s;
 }
 
-.param-name-col:hover {
+.param-name-col.expandable {
+    cursor: pointer;
+}
+
+.param-name-col.expandable .param-name::before {
+    content: '▶';
+    display: inline-block;
+    font-size: 9px;
+    margin-right: 6px;
+    color: #6c757d;
+    transition: transform 0.2s;
+}
+
+.param-name-col.expandable.expanded .param-name::before {
+    transform: rotate(90deg);
+    color: #007bff;
+}
+
+.param-name-col.expandable:hover {
     background: #f0f4f8;
 }
 
@@ -1505,6 +1576,7 @@ select:focus {
 .param-name-col.expanded .param-description {
     white-space: normal;
     word-break: break-word;
+    overflow: visible;
 }
 
 .param-name {
@@ -1520,6 +1592,12 @@ select:focus {
     color: #6c757d;
     font-size: 12px;
     font-family: 'Consolas', monospace;
+    padding-top: 6px;
+}
+
+.param-unit {
+    color: #6c757d;
+    font-size: 12px;
 }
 
 .param-value {
@@ -1673,6 +1751,130 @@ select:focus {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+}
+
+/* Add Parameter Modal Styles */
+.add-param-modal-content {
+    max-width: 520px;
+}
+
+.add-param-modal-content .modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px 8px 0 0;
+    padding: 20px 24px;
+}
+
+.add-param-modal-content .modal-header h3 {
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.add-param-modal-content .modal-close {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.add-param-modal-content .modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.add-param-modal-body {
+    padding: 24px !important;
+}
+
+.add-param-form-group {
+    margin-bottom: 24px;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.add-param-form-group:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.add-param-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.add-param-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.add-param-icon {
+    font-size: 18px;
+}
+
+.add-param-label label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-bottom: 0;
+}
+
+.add-param-form-group input[type="text"],
+.add-param-form-group input[type="number"],
+.add-param-form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    color: #1e293b;
+    transition: all 0.2s ease;
+}
+
+.add-param-form-group input[type="text"]:focus,
+.add-param-form-group input[type="number"]:focus,
+.add-param-form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    background: white;
+}
+
+.add-param-form-group input::placeholder {
+    color: #94a3b8;
+}
+
+.add-param-hint {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.add-param-modal-content .modal-footer {
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-radius: 0 0 8px 8px;
+}
+
+.add-param-modal-content .modal-footer .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.add-param-modal-content .modal-footer .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.add-param-modal-content .modal-footer .btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 /* Responsive Design */

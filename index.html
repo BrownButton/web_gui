@@ -935,33 +935,45 @@
 
     <!-- Add Parameter Modal -->
     <div id="addParamModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content add-param-modal-content">
             <div class="modal-header">
-                <h3>Add Parameter</h3>
+                <h3>📝 새 파라미터 추가</h3>
                 <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="paramName">Parameter Name</label>
-                    <input type="text" id="paramName" placeholder="e.g., Temperature">
+            <div class="modal-body add-param-modal-body">
+                <div class="add-param-form-group">
+                    <div class="add-param-label">
+                        <span class="add-param-icon">🏷️</span>
+                        <label for="paramName">파라미터 이름</label>
+                    </div>
+                    <input type="text" id="paramName" placeholder="예: Temperature, Pressure, Speed...">
+                    <small class="add-param-hint">모니터링할 파라미터의 이름을 입력하세요</small>
                 </div>
-                <div class="form-group">
-                    <label for="paramAddress">Address</label>
-                    <input type="number" id="paramAddress" min="0" max="65535" value="0">
+                <div class="add-param-form-group">
+                    <div class="add-param-label">
+                        <span class="add-param-icon">📍</span>
+                        <label for="paramAddress">레지스터 주소</label>
+                    </div>
+                    <input type="number" id="paramAddress" min="0" max="65535" value="0" placeholder="0 ~ 65535">
+                    <small class="add-param-hint">Modbus 레지스터 주소 (0 ~ 65535)</small>
                 </div>
-                <div class="form-group">
-                    <label for="paramFunction">Function Code</label>
+                <div class="add-param-form-group">
+                    <div class="add-param-label">
+                        <span class="add-param-icon">⚙️</span>
+                        <label for="paramFunction">Function Code</label>
+                    </div>
                     <select id="paramFunction">
-                        <option value="3">03 - Read Holding Registers</option>
-                        <option value="4">04 - Read Input Registers</option>
-                        <option value="1">01 - Read Coils</option>
-                        <option value="2">02 - Read Discrete Inputs</option>
+                        <option value="3">03 - Read Holding Registers (읽기/쓰기 가능)</option>
+                        <option value="4">04 - Read Input Registers (읽기 전용)</option>
+                        <option value="1">01 - Read Coils (디지털 출력)</option>
+                        <option value="2">02 - Read Discrete Inputs (디지털 입력)</option>
                     </select>
+                    <small class="add-param-hint">데이터를 읽어올 Modbus 함수 코드를 선택하세요</small>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="cancelParamBtn" class="btn btn-secondary">Cancel</button>
-                <button id="saveParamBtn" class="btn btn-primary">Save</button>
+                <button id="cancelParamBtn" class="btn btn-secondary">취소</button>
+                <button id="saveParamBtn" class="btn btn-primary">💾 저장</button>
             </div>
         </div>
     </div>

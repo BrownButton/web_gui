@@ -3130,6 +3130,8 @@ class ModbusDashboard {
             <div>Type</div>
             <div>Address</div>
             <div>Name / Description</div>
+            <div>Unit</div>
+            <div>Value</div>
             <div>Status</div>
             <div>Actions</div>
         `;
@@ -3155,20 +3157,93 @@ class ModbusDashboard {
             // Name and description
             const nameCol = document.createElement('div');
             nameCol.className = 'param-name-col';
-            nameCol.onclick = (e) => {
-                e.stopPropagation();
-                nameCol.classList.toggle('expanded');
-            };
             const name = document.createElement('div');
             name.className = 'param-name';
             name.textContent = param.name;
             nameCol.appendChild(name);
+
+            let hasTable = false;
             if (param.description) {
                 const desc = document.createElement('div');
                 desc.className = 'param-description';
-                desc.textContent = param.description;
+
+                // Check if description contains "설명 | 표데이터" format
+                const separatorPattern = /^(.+?)\s*\|\s*([\d]+:[^,]+(?:,\s*[\d]+:[^,]+)+)$/;
+                const mappingOnlyPattern = /^[\d]+:[^,]+(?:,\s*[\d]+:[^,]+)+$/;
+
+                const separatorMatch = param.description.match(separatorPattern);
+                const hasMappingOnly = mappingOnlyPattern.test(param.description);
+
+                if (separatorMatch || hasMappingOnly) {
+                    hasTable = true;
+                    let textPart = '';
+                    let tablePart = '';
+
+                    if (separatorMatch) {
+                        textPart = separatorMatch[1].trim();
+                        tablePart = separatorMatch[2].trim();
+                    } else {
+                        tablePart = param.description;
+                    }
+
+                    // Add description text if exists
+                    if (textPart) {
+                        const descText = document.createElement('div');
+                        descText.className = 'param-description-text';
+                        descText.textContent = textPart;
+                        desc.appendChild(descText);
+                    }
+
+                    // Parse and create table
+                    const table = document.createElement('table');
+                    table.className = 'param-value-table';
+
+                    const mappings = tablePart.split(/,\s*/);
+                    mappings.forEach(mapping => {
+                        const colonIndex = mapping.indexOf(':');
+                        if (colonIndex > -1) {
+                            const value = mapping.substring(0, colonIndex).trim();
+                            const label = mapping.substring(colonIndex + 1).trim();
+                            const row = document.createElement('tr');
+                            const valueCell = document.createElement('td');
+                            valueCell.className = 'param-value-cell';
+                            valueCell.textContent = value;
+                            const labelCell = document.createElement('td');
+                            labelCell.className = 'param-label-cell';
+                            labelCell.textContent = label;
+                            row.appendChild(valueCell);
+                            row.appendChild(labelCell);
+                            table.appendChild(row);
+                        }
+                    });
+                    desc.appendChild(table);
+                } else {
+                    desc.textContent = param.description;
+                }
                 nameCol.appendChild(desc);
             }
+
+            // 테이블이 있으면 무조건 expandable, 아니면 나중에 오버플로우 체크
+            if (hasTable) {
+                nameCol.classList.add('expandable');
+                nameCol.onclick = (e) => {
+                    e.stopPropagation();
+                    nameCol.classList.toggle('expanded');
+                };
+            } else if (param.description) {
+                // 렌더링 후 오버플로우 체크를 위해 마킹
+                nameCol.dataset.checkOverflow = 'true';
+            }
+
+            // Unit
+            const unitCol = document.createElement('div');
+            unitCol.className = 'param-unit';
+            unitCol.textContent = param.unit || '-';
+
+            // Value
+            const valueCol = document.createElement('div');
+            valueCol.className = 'param-value';
+            valueCol.textContent = param.value !== undefined ? param.value : '-';
 
             // Implemented status
             const statusCol = document.createElement('div');
@@ -3199,10 +3274,31 @@ class ModbusDashboard {
             item.appendChild(typeCol);
             item.appendChild(address);
             item.appendChild(nameCol);
+            item.appendChild(unitCol);
+            item.appendChild(valueCol);
             item.appendChild(statusCol);
             item.appendChild(actions);
 
             paramList.appendChild(item);
+        });
+
+        // 렌더링 후 오버플로우 체크하여 expandable 클래스 추가
+        requestAnimationFrame(() => {
+            paramList.querySelectorAll('.param-name-col[data-check-overflow="true"]').forEach(nameCol => {
+                const desc = nameCol.querySelector('.param-description');
+                const name = nameCol.querySelector('.param-name');
+                // 설명 텍스트가 잘리거나 이름이 잘리는 경우 expandable
+                const isOverflowing = (desc && desc.scrollWidth > desc.clientWidth) ||
+                                      (name && name.scrollWidth > name.clientWidth);
+                if (isOverflowing) {
+                    nameCol.classList.add('expandable');
+                    nameCol.onclick = (e) => {
+                        e.stopPropagation();
+                        nameCol.classList.toggle('expanded');
+                    };
+                }
+                delete nameCol.dataset.checkOverflow;
+            });
         });
     }
 
@@ -3236,6 +3332,7 @@ class ModbusDashboard {
                         name: values[headers.indexOf('name')] || '',
                         implemented: values[headers.indexOf('implemented')] || 'N',
                         description: values[headers.indexOf('description')] || '',
+                        unit: values[headers.indexOf('unit')] || '',
                         value: null,
                         functionCode: values[headers.indexOf('type')] === 'input' ? 4 : 3
                     };

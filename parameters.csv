@@ -9,7 +9,7 @@ holding,0xD00F,Enable/Disable,N,"서보드라이브의 SVON/SVOFF와 같은 기�
 holding,0xD100,Fan address,N,Node ID와 같은 역할
 holding,0xD101,Set value source,N,"Setpoint를 어떤 수단으로 사용할 것인지 설정 (0:AIN1, 1:RS485, 2:AIN2, 3:PWM)"
 holding,0xD102,Preferred running direction,N,"구동 방향 결정 (0:CCW, 1:CW)"
-holding,0xD106,Operating mode,Y,"0: Speed Control, 2: Open-loop control"
+holding,0xD106,Operating mode,Y,"모터 제어 방식을 설정합니다. | 0:Speed Control, 2:Open-loop control"
 holding,0xD112,Motor stop enable,N,"0: set value가 0이더라도 모터 항상 SVON, 1: set value가 0일 경우 모터 SVOFF"
 holding,0xD119,Maximum speed,N,센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)
 holding,0xD11A,Maximum permissible speed,N,최대 속도의 상한치를 설정 (모터 최대 속도)
@@ -28,8 +28,8 @@ holding,0xD14D,Motor temperature power derating start address,N,모터 온도 �
 holding,0xD14E,Motor temperature power derating end address,N,모터 온도 파워 디레이팅 종료 주소
 holding,0xD13B,Maximum coil current,N,전류 제한이 활성화 되면 모터 코일전류(rms값)를 이 파라미터에 설정된 값으로 제한
 holding,0xD145,Speed limit for running monitoring,N,"실행 모니터링 속도제한, 속도 피드백이 이 파라미터에 설정된 속도보다 낮을 경우 오류 해제 (n_Low)"
-holding,0xD149,Transmission speed,N,"0:1200bps, 1:2400bps, 2:4800bps, 3:9600bps, 4:19200bps(default), 5:38400bps, 6:57600bps, 7:115200bps"
-holding,0xD14A,Parity configuration,N,"0:Data8/Even/Stop1(default), 1:Data8/Odd/Stop1, 2:Data8/None/Stop2, 3:Data8/None/Stop1"
+holding,0xD149,Transmission speed,N,"RS-485 통신 속도를 설정합니다. | 0:1200bps, 1:2400bps, 2:4800bps, 3:9600bps, 4:19200bps(default), 5:38400bps, 6:57600bps, 7:115200bps"
+holding,0xD14A,Parity configuration,N,"시리얼 통신의 데이터 비트, 패리티, 스톱 비트를 설정합니다. | 0:Data8/Even/Stop1(default), 1:Data8/Odd/Stop1, 2:Data8/None/Stop2, 3:Data8/None/Stop1"
 holding,0xF150,Shedding function,N,외부 환경에 의해 팬이 얼어 기동이 어려울 경우 이 기능 활성화를 통해 구속 상태를 제거
 holding,0xF151,Max. starting modulation level,N,최대 시작 모듈레이션 레벨
 holding,0xF152,Number of start attempts,N,시작 시도 횟수
