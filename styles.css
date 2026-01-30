@@ -521,6 +521,8 @@ body {
     height: 100%;
     display: flex;
     flex-direction: column;
+    flex: 1;
+    min-height: 0;
 }
 
 h1 {
@@ -1649,7 +1651,8 @@ select:focus {
     display: flex;
     flex-direction: column;
     flex: 1;
-    overflow: hidden;
+    min-height: 0;
+    overflow: visible;
 }
 
 /* Modal */
@@ -2695,7 +2698,10 @@ select:focus {
     background: white;
     border: 1px solid #e0e6ed;
     border-radius: 8px;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
+    min-height: 200px;
 }
 
 .section-header {
@@ -2705,6 +2711,7 @@ select:focus {
     padding: 14px 20px;
     background: #f8f9fa;
     border-bottom: 1px solid #e0e6ed;
+    flex-shrink: 0;
 }
 
 .section-header h3 {
@@ -2724,12 +2731,33 @@ select:focus {
 }
 
 .device-list-section .device-grid {
-    padding: 0;
+    padding: 20px;
+    overflow-y: auto;
 }
 
 .device-list-section .device-placeholder {
     margin: 20px;
     border-radius: 8px;
+}
+
+/* Card View - 카드형일 때 */
+.device-list-section.card-view-mode .device-grid,
+.device-list-section:not(.list-view-mode) .device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    align-content: start;
+    min-height: 200px; /* 카드 최소 높이 보장 */
+    max-height: max(320px, 50vh); /* 최소 320px 또는 50vh 중 큰 값 */
+}
+
+/* List View - 목록형일 때 */
+.device-list-section.list-view-mode .device-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-height: 100px; /* 목록 최소 높이 보장 */
+    max-height: clamp(100px, 45vh, 400px); /* 최소 100px, 최대 400px */
 }
 
 .dashboard-actions {

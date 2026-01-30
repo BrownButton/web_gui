@@ -1,0 +1,118 @@
+type,address,name,implemented,description
+holding,0xD000,Reset,N,"Software Reset, Error Reset, EEPROM to RAM"
+holding,0xD001,Setpoint,Y,"지령 값, 오픈루프 모드이면 % or 속도모드이면 RPM"
+holding,0xD005,Factory setting Control,N,공장 초기값 변경 및 적용 용도
+holding,0xD009,Operating hours counter,N,65535시간까지 카운트 후 고정
+holding,0xD00A,Operating minutes counter,N,0분 to 59분 롤링
+holding,0xD00D,Stored set value,N,"Set Point 설정값이 EEPROM에 저장됨, 급작스러운 전원 공급 중단 및 복구 후 마지막 설정값으로 재시작"
+holding,0xD00F,Enable/Disable,N,"서보드라이브의 SVON/SVOFF와 같은 기능, 0xD16A(Enable/Disable source)의 값에 따라 적절한 Enable state가 결정"
+holding,0xD100,Fan address,N,Node ID와 같은 역할
+holding,0xD101,Set value source,N,"Setpoint를 어떤 수단으로 사용할 것인지 설정 (0:AIN1, 1:RS485, 2:AIN2, 3:PWM)"
+holding,0xD102,Preferred running direction,N,"구동 방향 결정 (0:CCW, 1:CW)"
+holding,0xD106,Operating mode,Y,"모터 제어 방식을 설정합니다. | 0:Speed Control, 2:Open-loop control"
+holding,0xD112,Motor stop enable,N,"0: set value가 0이더라도 모터 항상 SVON, 1: set value가 0일 경우 모터 SVOFF"
+holding,0xD119,Maximum speed,N,센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)
+holding,0xD11A,Maximum permissible speed,N,최대 속도의 상한치를 설정 (모터 최대 속도)
+holding,0xD11F,Ramp-up curve,N,"가/감속도 조정 파라미터, 알람 등 모터 정지조건이 감지되면 감속없이 정지함"
+holding,0xD120,Ramp-down curve,N,감속 곡선 설정
+holding,0xD12A,Point 1 X-coordinate,N,아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용
+holding,0xD12B,Point 1 Y-coordinate,N,아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용
+holding,0xD12C,Point 2 X-coordinate,N,아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용
+holding,0xD12D,Point 2 Y-coordinate,N,아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용
+holding,0xD12F,Limitation Control,N,"0번 비트 set: Power limit 활성화, 1번 비트 set: Current Limit 활성화"
+holding,0xD135,Maximum permissible power,N,허용 가능한 최대 파워 설정
+holding,0xD136,Max. power at derating end,N,모듈과 모터의 온도를 토대로 출력을 디레이팅 하는 기능
+holding,0xD137,Module temperature power derating start,N,모듈 온도 파워 디레이팅 시작점
+holding,0xD138,Module temperature power derating end,N,모듈 온도 파워 디레이팅 종료점
+holding,0xD14D,Motor temperature power derating start address,N,모터 온도 파워 디레이팅 시작 주소
+holding,0xD14E,Motor temperature power derating end address,N,모터 온도 파워 디레이팅 종료 주소
+holding,0xD13B,Maximum coil current,N,전류 제한이 활성화 되면 모터 코일전류(rms값)를 이 파라미터에 설정된 값으로 제한
+holding,0xD145,Speed limit for running monitoring,N,"실행 모니터링 속도제한, 속도 피드백이 이 파라미터에 설정된 속도보다 낮을 경우 오류 해제 (n_Low)"
+holding,0xD149,Transmission speed,N,"RS-485 통신 속도를 설정합니다. | 0:1200bps, 1:2400bps, 2:4800bps, 3:9600bps, 4:19200bps(default), 5:38400bps, 6:57600bps, 7:115200bps"
+holding,0xD14A,Parity configuration,N,"시리얼 통신의 데이터 비트, 패리티, 스톱 비트를 설정합니다. | 0:Data8/Even/Stop1(default), 1:Data8/Odd/Stop1, 2:Data8/None/Stop2, 3:Data8/None/Stop1"
+holding,0xF150,Shedding function,N,외부 환경에 의해 팬이 얼어 기동이 어려울 경우 이 기능 활성화를 통해 구속 상태를 제거
+holding,0xF151,Max. starting modulation level,N,최대 시작 모듈레이션 레벨
+holding,0xF152,Number of start attempts,N,시작 시도 횟수
+holding,0xF153,Relay dropout delay,N,"에러나 경고 감지 시 릴레이 출력 지연시간을 설정하여 단기 이슈일 경우는 무시"
+holding,0xD155,Maximum power,N,최대 파워 설정
+holding,0xD158,Configuration of I/O 1,N,I/O 활성/비활성화 설정 파라미터
+holding,0xD159,Configuration of I/O 2,N,I/O 활성/비활성화 설정 파라미터
+holding,0xD15A,Configuration of I/O 3,N,I/O 활성/비활성화 설정 파라미터
+holding,0xD170,Customer data 0,N,고객 사용 영역
+holding,0xD171,Customer data 1,N,고객 사용 영역
+holding,0xD172,Customer data 2,N,고객 사용 영역
+holding,0xD173,Customer data 3,N,고객 사용 영역
+holding,0xD174,Customer data 4,N,고객 사용 영역
+holding,0xD175,Customer data 5,N,고객 사용 영역
+holding,0xD176,Customer data 6,N,고객 사용 영역
+holding,0xD177,Customer data 7,N,고객 사용 영역
+holding,0xD178,Customer data 8,N,고객 사용 영역
+holding,0xD179,Customer data 9,N,고객 사용 영역
+holding,0xD17A,Customer data 10,N,고객 사용 영역
+holding,0xD17B,Customer data 11,N,고객 사용 영역
+holding,0xD17C,Customer data 12,N,고객 사용 영역
+holding,0xD17D,Customer data 13,N,고객 사용 영역
+holding,0xD17E,Customer data 14,N,고객 사용 영역
+holding,0xD17F,Customer data 15,N,고객 사용 영역
+holding,0xD180,Operating hours counter (back-up),N,0xD009의 사용시간을 저장하는 파라미터
+holding,0xD182,Error indicator,Y,가장 최근 에러의 파라미터 번호를 표시
+holding,0xD184,Error 1,Y,팬에서 발생한 첫 번째 오류 표시
+holding,0xD185,Error time,Y,팬에서 발생한 에러를 최대 13개까지 저장
+holding,0xD186,Error history 1,N,에러 히스토리 1
+holding,0xD187,Error history time 1,N,에러 히스토리 시간 1
+holding,0xD188,Error history 2,N,에러 히스토리 2
+holding,0xD189,Error history time 2,N,에러 히스토리 시간 2
+holding,0xD18A,Error history 3,N,에러 히스토리 3
+holding,0xD18B,Error history time 3,N,에러 히스토리 시간 3
+holding,0xD18C,Error history 4,N,에러 히스토리 4
+holding,0xD18D,Error history time 4,N,에러 히스토리 시간 4
+holding,0xD18E,Error history 5,N,에러 히스토리 5
+holding,0xD18F,Error history time 5,N,에러 히스토리 시간 5
+holding,0xD190,Error history 6,N,에러 히스토리 6
+holding,0xD191,Error history time 6,N,에러 히스토리 시간 6
+holding,0xD192,Error history 7,N,에러 히스토리 7
+holding,0xD193,Error history time 7,N,에러 히스토리 시간 7
+holding,0xD194,Error history 8,N,에러 히스토리 8
+holding,0xD195,Error history time 8,N,에러 히스토리 시간 8
+holding,0xD196,Error history 9,N,에러 히스토리 9
+holding,0xD197,Error history time 9,N,에러 히스토리 시간 9
+holding,0xD198,Error history 10,N,에러 히스토리 10
+holding,0xD199,Error history time 10,N,에러 히스토리 시간 10
+holding,0xD19A,Error history 11,N,에러 히스토리 11
+holding,0xD19B,Error history time 11,N,에러 히스토리 시간 11
+holding,0xD19C,Error history 12,N,에러 히스토리 12
+holding,0xD19D,Error history time 12,N,에러 히스토리 시간 12
+holding,0xD19E,Error history 13,N,에러 히스토리 13
+holding,0xD19F,Error history time 13,N,에러 히스토리 시간 13
+holding,0xD1A2,Serial Number 1,Y,팬 시리얼 번호 데이터
+holding,0xD1A3,Serial Number 2,Y,팬 시리얼 번호 데이터
+holding,0xD1A4,Date of manufacture,N,제조 날짜
+holding,0xD1A5,FAN type 1,Y,ASCII 코드 형태로 표현
+holding,0xD1A6,FAN type 2,Y,ASCII 코드 형태로 표현
+holding,0xD1A7,FAN type 3,Y,ASCII 코드 형태로 표현
+holding,0xD1A8,FAN type 4,Y,ASCII 코드 형태로 표현
+holding,0xD1A9,FAN type 5,Y,ASCII 코드 형태로 표현
+holding,0xD1AA,FAN type 6,Y,ASCII 코드 형태로 표현
+holding,0xD623,Error Mask,Y,마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력
+holding,0xD624,Warning Mask,Y,마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력
+input,0xD000,Identification,N,장치 식별
+input,0xD001,Max. number of bytes,N,최대 바이트 수
+input,0xD002,Bus controller software name,N,Main 부트버전
+input,0xD003,Bus controller software version,N,Main 펌웨어 버전
+input,0xD004,Commutation controller software name,N,Inverter 부트 버전
+input,0xD005,Commutation controller software version,N,Inverter 펌웨어 버전
+input,0xD010,Actual speed (Relative),N,상대 속도
+input,0xD011,Motor status,Y,모터 상태
+input,0xD012,Warning,N,경고
+input,0xD013,DC-link voltage,N,DC 링크 전압
+input,0xD014,DC-link current,N,DC 링크 전류
+input,0xD015,Module temperature,N,IGBT Temperature Sensor 값
+input,0xD016,Motor temperature,N,Motor PTC
+input,0xD017,Electronics temperature,N,제어부 Temperature 값
+input,0xD018,Current direction of rotation,N,현재 회전 방향
+input,0xD01A,Current set value,N,현재 설정값
+input,0xD01C,Enable/Disable input state,N,Enable/Disable 입력 상태
+input,0xD021,Current power (Relative),N,상대 전력
+input,0xD027,Current power [W] (Absolute),N,절대 전력 [W]
+input,0xD02D,Actual speed [RPM] (Absolute),N,절대 속도 [RPM]
+input,0xD03D,Line Voltage,N,라인 전압

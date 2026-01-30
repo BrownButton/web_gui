@@ -4248,6 +4248,7 @@ class ModbusDashboard {
         const viewModeCard = document.getElementById('viewModeCard');
         const viewModeList = document.getElementById('viewModeList');
         const deviceGrid = document.getElementById('deviceGrid');
+        const deviceListSection = deviceGrid ? deviceGrid.closest('.device-list-section') : null;
 
         if (viewModeCard && viewModeList) {
             viewModeCard.classList.toggle('active', this.deviceViewMode === 'card');
@@ -4256,6 +4257,11 @@ class ModbusDashboard {
 
         if (deviceGrid) {
             deviceGrid.classList.toggle('list-view', this.deviceViewMode === 'list');
+        }
+
+        if (deviceListSection) {
+            deviceListSection.classList.toggle('list-view-mode', this.deviceViewMode === 'list');
+            deviceListSection.classList.toggle('card-view-mode', this.deviceViewMode === 'card');
         }
     }
 
