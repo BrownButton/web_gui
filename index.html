@@ -1067,6 +1067,14 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="scanDelay">스캔 간 딜레이 (ms)</label>
+                            <input type="number" id="scanDelay" min="10" max="500" value="50" step="10">
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                다음 장치 스캔 전 대기 시간입니다. 장치가 응답할 시간을 확보합니다.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
                             <label for="scanRegister">탐색용 레지스터 주소</label>
                             <input type="text" id="scanRegister" value="0xD011" placeholder="0xD011">
                             <small style="color: #6c757d; margin-top: 5px; display: block;">
