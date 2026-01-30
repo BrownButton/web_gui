@@ -189,6 +189,16 @@ class ModbusDashboard {
             });
         });
 
+        // Expandable menu items
+        document.querySelectorAll('.menu-item-expandable .menu-item-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const parent = header.closest('.menu-item-expandable');
+                if (parent) {
+                    parent.classList.toggle('expanded');
+                }
+            });
+        });
+
         // Sidebar toggle
         const sidebarToggle = document.getElementById('sidebarToggle');
         if (sidebarToggle) {
@@ -213,7 +223,7 @@ class ModbusDashboard {
 
         // Update page content
         document.querySelectorAll('.page-content').forEach(content => {
-            content.classList.toggle('active', content.id === `${page}Page`);
+            content.classList.toggle('active', content.id === `page-${page}`);
         });
 
         // Initialize chart if switching to chart page

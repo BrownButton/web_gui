@@ -51,6 +51,22 @@ export class DeviceManager {
             addBtn.addEventListener('click', () => this.showAddModal());
         }
 
+        // Modal buttons
+        const saveBtn = document.getElementById('saveDeviceBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveNewDevice());
+        }
+
+        const cancelBtn = document.getElementById('cancelDeviceBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.hideAddModal());
+        }
+
+        const closeBtn = document.getElementById('closeDeviceModalBtn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.hideAddModal());
+        }
+
         // View mode toggle
         document.querySelectorAll('.view-mode-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -298,6 +314,24 @@ export class DeviceManager {
         if (modal) {
             modal.classList.remove('active');
         }
+    }
+
+    /**
+     * Save new device from modal
+     */
+    saveNewDevice() {
+        const nameInput = document.getElementById('deviceName');
+        const slaveIdInput = document.getElementById('deviceSlaveId');
+
+        const name = nameInput?.value.trim() || 'New Device';
+        const slaveId = parseInt(slaveIdInput?.value) || 1;
+
+        this.add(name, slaveId);
+        this.hideAddModal();
+
+        // Clear inputs
+        if (nameInput) nameInput.value = '';
+        if (slaveIdInput) slaveIdInput.value = '1';
     }
 
     /**
