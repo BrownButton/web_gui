@@ -1002,6 +1002,10 @@ class ModbusDashboard {
         this.selectedDevices = new Set();
         this.deviceViewMode = localStorage.getItem('deviceViewMode') || 'card'; // 'card' or 'list'
 
+        // Drag and drop state
+        this.draggedElement = null;
+        this.draggedDeviceId = null;
+
         // Modbus Register Addresses
         this.REGISTERS = {
             SETPOINT: 0xD001,
@@ -4397,8 +4401,9 @@ class ModbusDashboard {
      */
     createDeviceListHeader() {
         const header = document.createElement('div');
-        header.className = 'device-list-header';
+        header.className = 'device-list-header with-drag-handle';
         header.innerHTML = `
+            <span></span>
             <span></span>
             <span>Device Name</span>
             <span>ID</span>
@@ -4418,6 +4423,7 @@ class ModbusDashboard {
         const item = document.createElement('div');
         item.className = 'device-list-item';
         item.dataset.deviceId = device.id;
+        item.draggable = true;
 
         if (this.selectedDevices.has(device.id)) {
             item.classList.add('selected');
@@ -4428,6 +4434,7 @@ class ModbusDashboard {
         const statusClass = device.motorStatus === 1 ? 'running' : (device.motorStatus === 2 ? 'error' : 'stopped');
 
         item.innerHTML = `
+            <span class="drag-handle" title="Drag to reorder">≡</span>
             <input type="checkbox" class="device-checkbox" ${this.selectedDevices.has(device.id) ? 'checked' : ''}>
             <span class="device-name">${device.name}</span>
             <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
@@ -4475,6 +4482,9 @@ class ModbusDashboard {
             this.deleteDevice(device.id);
         });
 
+        // Drag and drop event listeners
+        this.addDragEventListeners(item);
+
         return item;
     }
 
@@ -4485,6 +4495,7 @@ class ModbusDashboard {
         const card = document.createElement('div');
         card.className = 'device-card';
         card.dataset.deviceId = device.id;
+        card.draggable = true;
 
         if (this.selectedDevices.has(device.id)) {
             card.classList.add('selected');
@@ -4497,6 +4508,7 @@ class ModbusDashboard {
         card.innerHTML = `
             <div class="device-card-header">
                 <div class="device-select">
+                    <span class="drag-handle" title="Drag to reorder">≡</span>
                     <input type="checkbox" class="device-checkbox" ${this.selectedDevices.has(device.id) ? 'checked' : ''}>
                     <span class="device-name">${device.name}</span>
                 </div>
@@ -4578,7 +4590,141 @@ class ModbusDashboard {
             });
         });
 
+        // Drag and drop event listeners
+        this.addDragEventListeners(card);
+
         return card;
+    }
+
+    /**
+     * Add drag and drop event listeners to a device element
+     */
+    addDragEventListeners(element) {
+        element.addEventListener('dragstart', (e) => this.handleDragStart(e, element));
+        element.addEventListener('dragend', (e) => this.handleDragEnd(e, element));
+        element.addEventListener('dragover', (e) => this.handleDragOver(e, element));
+        element.addEventListener('dragenter', (e) => this.handleDragEnter(e, element));
+        element.addEventListener('dragleave', (e) => this.handleDragLeave(e, element));
+        element.addEventListener('drop', (e) => this.handleDrop(e, element));
+    }
+
+    /**
+     * Handle drag start
+     */
+    handleDragStart(e, element) {
+        this.draggedElement = element;
+        this.draggedDeviceId = element.dataset.deviceId;
+
+        element.classList.add('dragging');
+
+        const grid = document.getElementById('deviceGrid');
+        if (grid) grid.classList.add('is-dragging');
+
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', element.dataset.deviceId);
+
+        // Create a semi-transparent drag image
+        setTimeout(() => {
+            element.style.opacity = '0.5';
+        }, 0);
+    }
+
+    /**
+     * Handle drag end
+     */
+    handleDragEnd(e, element) {
+        element.classList.remove('dragging');
+        element.style.opacity = '';
+
+        const grid = document.getElementById('deviceGrid');
+        if (grid) grid.classList.remove('is-dragging');
+
+        // Remove drag-over class from all elements
+        document.querySelectorAll('.drag-over').forEach(el => {
+            el.classList.remove('drag-over');
+        });
+
+        this.draggedElement = null;
+        this.draggedDeviceId = null;
+    }
+
+    /**
+     * Handle drag over
+     */
+    handleDragOver(e, element) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    }
+
+    /**
+     * Handle drag enter
+     */
+    handleDragEnter(e, element) {
+        e.preventDefault();
+        if (element !== this.draggedElement) {
+            element.classList.add('drag-over');
+        }
+    }
+
+    /**
+     * Handle drag leave
+     */
+    handleDragLeave(e, element) {
+        // Only remove if we're actually leaving the element
+        const rect = element.getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+
+        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+            element.classList.remove('drag-over');
+        }
+    }
+
+    /**
+     * Handle drop
+     */
+    handleDrop(e, element) {
+        e.preventDefault();
+        element.classList.remove('drag-over');
+
+        if (!this.draggedElement || element === this.draggedElement) {
+            return;
+        }
+
+        const draggedId = this.draggedDeviceId;
+        const targetId = element.dataset.deviceId;
+
+        if (draggedId && targetId) {
+            this.reorderDevices(draggedId, targetId);
+        }
+    }
+
+    /**
+     * Reorder devices in the array
+     */
+    reorderDevices(draggedId, targetId) {
+        // Convert to numbers since dataset.deviceId returns strings
+        const draggedIdNum = parseInt(draggedId, 10);
+        const targetIdNum = parseInt(targetId, 10);
+
+        const draggedIndex = this.devices.findIndex(d => d.id === draggedIdNum);
+        const targetIndex = this.devices.findIndex(d => d.id === targetIdNum);
+
+        if (draggedIndex === -1 || targetIndex === -1) {
+            return;
+        }
+
+        // Remove the dragged item from array
+        const [draggedDevice] = this.devices.splice(draggedIndex, 1);
+
+        // Insert at the new position
+        this.devices.splice(targetIndex, 0, draggedDevice);
+
+        // Save the new order
+        this.saveDevices();
+
+        // Re-render the grid
+        this.renderDeviceGrid();
     }
 
     /**
