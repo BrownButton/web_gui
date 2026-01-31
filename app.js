@@ -1000,7 +1000,7 @@ class ModbusDashboard {
         // Product Test Dashboard
         this.devices = [];
         this.selectedDevices = new Set();
-        this.deviceViewMode = localStorage.getItem('deviceViewMode') || 'card'; // 'card' or 'list'
+        this.deviceViewMode = localStorage.getItem('deviceViewMode') || 'list'; // 'card' or 'list'
 
         // Drag and drop state
         this.draggedElement = null;
@@ -4436,7 +4436,7 @@ class ModbusDashboard {
         item.innerHTML = `
             <span class="drag-handle" title="Drag to reorder">≡</span>
             <input type="checkbox" class="device-checkbox" ${this.selectedDevices.has(device.id) ? 'checked' : ''}>
-            <span class="device-name">${device.name}</span>
+            <span class="device-name" title="Click to edit name">${device.name}</span>
             <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
                 ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
             </span>
@@ -4466,6 +4466,13 @@ class ModbusDashboard {
             this.toggleDeviceSelection(device.id);
         });
 
+        // Device name click to edit
+        const nameSpan = item.querySelector('.device-name');
+        nameSpan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.startEditDeviceName(device.id, nameSpan);
+        });
+
         const applyBtn = item.querySelector('.btn-apply');
         applyBtn.addEventListener('click', () => {
             const input = item.querySelector('.device-controls input');
@@ -4486,6 +4493,55 @@ class ModbusDashboard {
         this.addDragEventListeners(item);
 
         return item;
+    }
+
+    /**
+     * Start editing device name inline
+     */
+    startEditDeviceName(deviceId, nameSpan) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const currentName = device.name;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'device-name-input';
+        input.value = currentName;
+        input.title = 'Press Enter to save, Escape to cancel';
+
+        nameSpan.style.display = 'none';
+        nameSpan.parentNode.insertBefore(input, nameSpan.nextSibling);
+        input.focus();
+        input.select();
+
+        const saveEdit = () => {
+            const newName = input.value.trim();
+            if (newName && newName !== currentName) {
+                device.name = newName;
+                this.saveDevices();
+                nameSpan.textContent = newName;
+                this.showToast(`Device name changed to "${newName}"`, 'success');
+            }
+            input.remove();
+            nameSpan.style.display = '';
+        };
+
+        const cancelEdit = () => {
+            input.remove();
+            nameSpan.style.display = '';
+        };
+
+        input.addEventListener('blur', saveEdit);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                input.blur();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                input.removeEventListener('blur', saveEdit);
+                cancelEdit();
+            }
+        });
     }
 
     /**
@@ -4510,7 +4566,7 @@ class ModbusDashboard {
                 <div class="device-select">
                     <span class="drag-handle" title="Drag to reorder">≡</span>
                     <input type="checkbox" class="device-checkbox" ${this.selectedDevices.has(device.id) ? 'checked' : ''}>
-                    <span class="device-name">${device.name}</span>
+                    <span class="device-name" title="Click to edit name">${device.name}</span>
                 </div>
                 <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
                     ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
@@ -4561,6 +4617,13 @@ class ModbusDashboard {
         const checkbox = card.querySelector('.device-checkbox');
         checkbox.addEventListener('change', () => {
             this.toggleDeviceSelection(device.id);
+        });
+
+        // Device name click to edit
+        const nameSpan = card.querySelector('.device-name');
+        nameSpan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.startEditDeviceName(device.id, nameSpan);
         });
 
         const applyBtn = card.querySelector('.btn-apply');
