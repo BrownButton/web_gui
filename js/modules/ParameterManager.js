@@ -331,7 +331,7 @@ export class ParameterManager {
      */
     async loadDefaultCSV() {
         try {
-            const response = await fetch('data/parameters.csv');
+            const response = await fetch('parameters.csv');
             if (response.ok) {
                 const content = await response.text();
                 this.parseCSV(content);
