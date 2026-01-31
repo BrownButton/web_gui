@@ -25,7 +25,6 @@ export class AutoScanModule {
         this.rangeStart = 1;
         this.rangeEnd = 10;
         this.timeout = 200;
-        this.scanDelay = 50;  // 스캔 간 딜레이 (ms)
         this.register = 0xD011;
         this.autoAdd = true;
     }
@@ -72,13 +71,6 @@ export class AutoScanModule {
         if (timeoutInput) {
             timeoutInput.addEventListener('change', (e) => {
                 this.timeout = parseInt(e.target.value) || 200;
-            });
-        }
-
-        const scanDelayInput = document.getElementById('scanDelay');
-        if (scanDelayInput) {
-            scanDelayInput.addEventListener('change', (e) => {
-                this.scanDelay = parseInt(e.target.value) || 50;
             });
         }
 
@@ -133,9 +125,6 @@ export class AutoScanModule {
             if (this.isCancelled) break;
 
             const found = await this.scanSlaveId(slaveId);
-
-            // 다음 스캔 전 딜레이 (디바이스 응답 시간 확보)
-            await delay(this.scanDelay);
 
             if (found) {
                 this.foundDevices.push(slaveId);
