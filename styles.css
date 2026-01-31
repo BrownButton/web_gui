@@ -278,10 +278,7 @@ body {
 }
 
 .sidebar.collapsed {
-    width: 0;
-    min-width: 0;
-    overflow: hidden;
-    border-right: none;
+    transform: translateX(-100%);
     box-shadow: none;
 }
 
@@ -328,14 +325,27 @@ body {
 .menu-item-content {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease;
+    transition: max-height 0.3s ease, padding 0.3s ease;
     background: #f8f9fa;
+    padding: 0 20px;
+}
+
+.menu-item-content > * {
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .menu-item-expandable.expanded .menu-item-content {
     max-height: 500px;
     padding: 20px;
     border-top: 1px solid #e0e6ed;
+}
+
+.menu-item-expandable.expanded .menu-item-content > * {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.2s ease 0.1s, transform 0.2s ease 0.1s;
 }
 
 .sidebar-form-group {
@@ -2816,6 +2826,12 @@ select:focus {
     gap: 10px;
 }
 
+.section-header .view-mode-toggle {
+    opacity: 1;
+    visibility: visible;
+    margin-right: 0;
+}
+
 .device-count-badge {
     padding: 4px 10px;
     background: #e9ecef;
@@ -3236,6 +3252,48 @@ select:focus {
     font-weight: 500;
 }
 
+/* Mode Toggle Buttons */
+.device-mode-btns {
+    display: flex;
+    gap: 0;
+}
+
+.device-mode-btns .mode-btn {
+    padding: 5px 10px;
+    border: 1px solid #ced4da;
+    background: white;
+    color: #495057;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.device-mode-btns .mode-btn:first-child {
+    border-radius: 4px 0 0 4px;
+}
+
+.device-mode-btns .mode-btn:last-child {
+    border-radius: 0 4px 4px 0;
+    border-left: none;
+}
+
+.device-mode-btns .mode-btn.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.device-mode-btns .mode-btn:hover:not(.active) {
+    background: #f8f9fa;
+}
+
+/* Compact mode buttons for list view */
+.device-mode-btns.compact .mode-btn {
+    padding: 4px 8px;
+    font-size: 10px;
+}
+
 .device-values {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -3274,6 +3332,7 @@ select:focus {
 .device-controls {
     display: flex;
     gap: 10px;
+    align-items: center;
 }
 
 .device-controls input {
@@ -3287,6 +3346,13 @@ select:focus {
 .device-controls input:focus {
     border-color: #007bff;
     outline: none;
+}
+
+.device-controls .input-unit {
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 500;
+    min-width: 35px;
 }
 
 .device-controls .btn {
@@ -3498,12 +3564,12 @@ select:focus {
 }
 
 .view-mode-btn {
-    padding: 8px 12px;
+    padding: 10px 14px;
     border: 1px solid #ced4da;
     background: white;
     color: #495057;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 20px;
     transition: all 0.2s;
 }
 
@@ -3711,6 +3777,13 @@ select:focus {
     border-radius: 4px;
     font-size: 13px;
     text-align: center;
+}
+
+.device-list-item .device-controls .input-unit {
+    font-size: 11px;
+    color: #6c757d;
+    font-weight: 500;
+    min-width: 30px;
 }
 
 .device-list-item .device-controls .btn {
@@ -5365,20 +5438,15 @@ select:focus {
 /* Drag Handle */
 .drag-handle {
     cursor: grab;
-    color: #ced4da;
-    font-size: 13px;
+    color: #adb5bd;
+    font-size: 18px;
     user-select: none;
-    opacity: 0;
-    transition: opacity 0.15s;
-}
-
-.device-card:hover .drag-handle,
-.device-list-item:hover .drag-handle {
     opacity: 1;
+    transition: color 0.15s;
 }
 
 .drag-handle:hover {
-    color: #868e96;
+    color: #495057;
 }
 
 .drag-handle:active {

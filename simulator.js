@@ -53,6 +53,10 @@ class ModbusSimulator {
         this.holdingRegisters[0xD002] = 2500;  // Actual RPM
         this.holdingRegisters[0xD003] = 4500;  // Motor current
         this.holdingRegisters[0xD004] = 2200;  // Voltage
+        // Operating Mode at 0xD106 (0: Speed Control/RPM, 2: Open-loop Control/%)
+        this.holdingRegisters[0xD106] = 0;     // Speed Control mode (RPM)
+        // Maximum Speed at 0xD119
+        this.holdingRegisters[0xD119] = 6000;  // Max speed 6000 RPM
 
         // Simulate some status coils
         this.coils[0] = true;  // System running

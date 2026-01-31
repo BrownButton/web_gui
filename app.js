@@ -1010,7 +1010,8 @@ class ModbusDashboard {
         this.REGISTERS = {
             SETPOINT: 0xD001,
             MOTOR_STATUS: 0xD011,
-            OPERATION_MODE: 0xD106
+            OPERATION_MODE: 0xD106,
+            MAXIMUM_SPEED: 0xD119
         };
 
         // Status codes (placeholder - will be configured later)
@@ -1086,10 +1087,32 @@ class ModbusDashboard {
         // Expandable menu item (Serial Port)
         const serialPortMenu = document.getElementById('serialPortMenu');
         const serialPortHeader = serialPortMenu.querySelector('.menu-item-header');
+        this.serialPortMenuCloseTimer = null;
 
         serialPortHeader.addEventListener('click', () => {
             serialPortMenu.classList.toggle('expanded');
         });
+
+        // Auto close Serial Port menu when connected and mouse leaves
+        serialPortMenu.addEventListener('mouseleave', () => {
+            if (this.isConnected || this.simulatorEnabled) {
+                this.serialPortMenuCloseTimer = setTimeout(() => {
+                    serialPortMenu.classList.remove('expanded');
+                }, 1000);
+            }
+        });
+
+        serialPortMenu.addEventListener('mouseenter', () => {
+            if (this.serialPortMenuCloseTimer) {
+                clearTimeout(this.serialPortMenuCloseTimer);
+                this.serialPortMenuCloseTimer = null;
+            }
+        });
+
+        // Initially open Serial Port menu if not connected
+        if (!this.isConnected && !this.simulatorEnabled) {
+            serialPortMenu.classList.add('expanded');
+        }
 
         // Settings Modal
         this.initSettingsModal();
@@ -2933,6 +2956,7 @@ class ModbusDashboard {
         const sidebarConnectBtn = document.getElementById('sidebar-connectBtn');
         const sidebarDisconnectBtn = document.getElementById('sidebar-disconnectBtn');
         const sendBtn = document.getElementById('sendBtn');
+        const serialPortMenu = document.getElementById('serialPortMenu');
 
         if (connected) {
             navbarStatusIndicator.className = 'navbar-status-indicator status-connected';
@@ -2946,6 +2970,11 @@ class ModbusDashboard {
             sidebarConnectBtn.disabled = false;
             sidebarDisconnectBtn.disabled = true;
             sendBtn.disabled = true;
+
+            // Open Serial Port menu when disconnected
+            if (serialPortMenu) {
+                serialPortMenu.classList.add('expanded');
+            }
         }
     }
 
@@ -4326,6 +4355,7 @@ class ModbusDashboard {
             operationMode: operationMode,
             setpoint: 0,
             motorStatus: 0,
+            maxSpeed: 10000,
             lastUpdate: null,
             online: false
         };
@@ -4335,6 +4365,11 @@ class ModbusDashboard {
         this.renderDeviceGrid();
         this.hideAddDeviceModal();
         this.showToast(`${name} 장치가 추가되었습니다`, 'success');
+
+        // 연결 후 디바이스에서 모드와 최대 속도 읽기
+        if (slaveId !== 0) {
+            this.initializeDeviceMode(device.id);
+        }
     }
 
     /**
@@ -4449,9 +4484,13 @@ class ModbusDashboard {
                     ${device.setpoint}<span class="device-value-unit">${modeText}</span>
                 </div>
             </div>
-            <span class="device-mode">${modeText}</span>
+            <div class="device-mode-btns compact">
+                <button class="mode-btn ${device.operationMode === 0 ? 'active' : ''}" data-mode="0">RPM</button>
+                <button class="mode-btn ${device.operationMode !== 0 ? 'active' : ''}" data-mode="2">%</button>
+            </div>
             <div class="device-controls">
-                <input type="number" placeholder="Setpoint" min="0" max="65535" value="${device.setpoint}">
+                <input type="number" placeholder="${modeText}" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
+                <span class="input-unit">${modeText}</span>
                 <button class="btn btn-success btn-sm btn-apply">Apply</button>
                 <button class="btn btn-secondary btn-sm btn-read">Read</button>
             </div>
@@ -4487,6 +4526,16 @@ class ModbusDashboard {
         const deleteBtn = item.querySelector('.btn-delete');
         deleteBtn.addEventListener('click', () => {
             this.deleteDevice(device.id);
+        });
+
+        // Mode buttons
+        item.querySelectorAll('.device-mode-btns .mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const newMode = parseInt(btn.dataset.mode);
+                if (device.operationMode !== newMode) {
+                    this.changeDeviceMode(device.id, newMode);
+                }
+            });
         });
 
         // Drag and drop event listeners
@@ -4578,7 +4627,10 @@ class ModbusDashboard {
                         <span class="status-indicator ${statusClass}"></span>
                         <span class="status-text">${statusText}</span>
                     </div>
-                    <span class="device-mode">${modeText} Mode</span>
+                    <div class="device-mode-btns">
+                        <button class="mode-btn ${device.operationMode === 0 ? 'active' : ''}" data-mode="0">RPM</button>
+                        <button class="mode-btn ${device.operationMode !== 0 ? 'active' : ''}" data-mode="2">%</button>
+                    </div>
                 </div>
                 <div class="device-values">
                     <div class="device-value-item">
@@ -4595,16 +4647,25 @@ class ModbusDashboard {
                     </div>
                 </div>
                 <div class="device-controls">
-                    <input type="number" placeholder="Setpoint" min="0" max="65535" value="${device.setpoint}">
+                    <input type="number" placeholder="Setpoint (${modeText})" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
+                    <span class="input-unit">${modeText}</span>
                     <button class="btn btn-success btn-apply">Apply</button>
                     <button class="btn btn-secondary btn-read">Read</button>
                 </div>
                 <div class="device-quick-btns">
-                    <button class="quick-btn" data-percent="0">0%</button>
-                    <button class="quick-btn" data-percent="25">25%</button>
-                    <button class="quick-btn" data-percent="50">50%</button>
-                    <button class="quick-btn" data-percent="75">75%</button>
-                    <button class="quick-btn" data-percent="100">100%</button>
+                    ${device.operationMode === 0 ? `
+                    <button class="quick-btn" data-value="0">0</button>
+                    <button class="quick-btn" data-value="${Math.round((device.maxSpeed || 10000) * 0.25)}">${Math.round((device.maxSpeed || 10000) * 0.25)}</button>
+                    <button class="quick-btn" data-value="${Math.round((device.maxSpeed || 10000) * 0.5)}">${Math.round((device.maxSpeed || 10000) * 0.5)}</button>
+                    <button class="quick-btn" data-value="${Math.round((device.maxSpeed || 10000) * 0.75)}">${Math.round((device.maxSpeed || 10000) * 0.75)}</button>
+                    <button class="quick-btn" data-value="${device.maxSpeed || 10000}">${device.maxSpeed || 10000}</button>
+                    ` : `
+                    <button class="quick-btn" data-value="0">0%</button>
+                    <button class="quick-btn" data-value="25">25%</button>
+                    <button class="quick-btn" data-value="50">50%</button>
+                    <button class="quick-btn" data-value="75">75%</button>
+                    <button class="quick-btn" data-value="100">100%</button>
+                    `}
                 </div>
             </div>
             <div class="device-card-footer">
@@ -4642,12 +4703,20 @@ class ModbusDashboard {
             this.deleteDevice(device.id);
         });
 
+        // Mode buttons
+        card.querySelectorAll('.device-mode-btns .mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const newMode = parseInt(btn.dataset.mode);
+                if (device.operationMode !== newMode) {
+                    this.changeDeviceMode(device.id, newMode);
+                }
+            });
+        });
+
         // Quick setpoint buttons for device card
         card.querySelectorAll('.device-quick-btns .quick-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const percent = parseInt(btn.dataset.percent);
-                const maxValue = 10000; // Max setpoint value
-                const value = Math.round((percent / 100) * maxValue);
+                const value = parseInt(btn.dataset.value);
                 const input = card.querySelector('.device-controls input');
                 if (input) input.value = value;
             });
@@ -4950,6 +5019,15 @@ class ModbusDashboard {
             const mode = await this.readRegister(device.slaveId, this.REGISTERS.OPERATION_MODE);
             device.operationMode = mode;
 
+            // If Speed Control mode (RPM), read maximum speed
+            if (mode === 0) {
+                const maxSpeed = await this.readRegister(device.slaveId, this.REGISTERS.MAXIMUM_SPEED);
+                device.maxSpeed = maxSpeed > 0 ? maxSpeed : 10000;
+            } else {
+                // Open-loop mode uses percentage (0-100%)
+                device.maxSpeed = 100;
+            }
+
             device.lastUpdate = Date.now();
             device.online = true;
 
@@ -4960,6 +5038,89 @@ class ModbusDashboard {
         } catch (error) {
             device.online = false;
             this.showToast(`${device.name}: 읽기 실패 - ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Initialize device mode by reading 0xD106 (Operating Mode) and 0xD119 (Maximum Speed)
+     * Called when a new device is added
+     */
+    async initializeDeviceMode(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device || device.slaveId === 0) return;
+
+        try {
+            // Read operation mode (0xD106)
+            // 0: Speed Control (RPM), 2: Open-loop Control (%)
+            const mode = await this.readRegister(device.slaveId, this.REGISTERS.OPERATION_MODE);
+            device.operationMode = mode;
+
+            // If Speed Control mode (RPM), read maximum speed
+            if (mode === 0) {
+                const maxSpeed = await this.readRegister(device.slaveId, this.REGISTERS.MAXIMUM_SPEED);
+                device.maxSpeed = maxSpeed > 0 ? maxSpeed : 10000;
+            } else {
+                // Open-loop mode uses percentage (0-100%)
+                device.maxSpeed = 100;
+            }
+
+            device.lastUpdate = Date.now();
+            device.online = true;
+
+            this.saveDevices();
+            this.renderDeviceGrid();
+
+            const modeText = mode === 0 ? 'Speed Control (RPM)' : 'Open-loop Control (%)';
+            this.showToast(`${device.name}: ${modeText} 모드`, 'info');
+        } catch (error) {
+            console.log(`Failed to initialize device mode for ${device.name}:`, error);
+            // Keep default values
+        }
+    }
+
+    /**
+     * Change device operating mode
+     * @param {number} deviceId - Device ID
+     * @param {number} newMode - 0: Speed Control (RPM), 2: Open-loop Control (%)
+     */
+    async changeDeviceMode(deviceId, newMode) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        if (device.slaveId === 0) {
+            this.showToast('Slave ID가 설정되지 않은 장치입니다', 'warning');
+            this.renderDeviceGrid(); // Reset toggle state
+            return;
+        }
+
+        try {
+            // Write new mode to 0xD106
+            await this.writeRegister(device.slaveId, this.REGISTERS.OPERATION_MODE, newMode);
+            device.operationMode = newMode;
+
+            // Update maxSpeed based on mode
+            if (newMode === 0) {
+                // Speed Control mode - read max speed from device
+                const maxSpeed = await this.readRegister(device.slaveId, this.REGISTERS.MAXIMUM_SPEED);
+                device.maxSpeed = maxSpeed > 0 ? maxSpeed : 10000;
+            } else {
+                // Open-loop mode uses percentage (0-100%)
+                device.maxSpeed = 100;
+            }
+
+            // Reset setpoint to 0 when changing mode
+            device.setpoint = 0;
+            await this.writeRegister(device.slaveId, this.REGISTERS.SETPOINT, 0);
+
+            device.lastUpdate = Date.now();
+            this.saveDevices();
+            this.renderDeviceGrid();
+
+            const modeText = newMode === 0 ? 'Speed Control (RPM)' : 'Open-loop Control (%)';
+            this.showToast(`${device.name}: ${modeText} 모드로 변경`, 'success');
+        } catch (error) {
+            this.showToast(`${device.name}: 모드 변경 실패 - ${error.message}`, 'error');
+            this.renderDeviceGrid(); // Reset toggle state
         }
     }
 
@@ -5704,6 +5865,7 @@ class ModbusDashboard {
             operationMode: 0,
             setpoint: 0,
             motorStatus: 0,
+            maxSpeed: 10000,
             lastUpdate: Date.now(),
             online: true
         };
@@ -5711,6 +5873,9 @@ class ModbusDashboard {
         this.devices.push(device);
         this.saveDevices();
         this.renderDeviceGrid();
+
+        // 연결 후 디바이스에서 모드와 최대 속도 읽기
+        this.initializeDeviceMode(device.id);
 
         // Start auto polling if connection is active and wasn't running (first device added)
         if (!this.autoPollingTimer && (this.simulatorEnabled || this.writer)) {
