@@ -2,22 +2,7 @@
 
 웹 브라우저에서 Modbus RTU/RS-485 통신을 테스트할 수 있는 대시보드 애플리케이션입니다.
 
-## 주요 기능
-
-### 제품 테스트 대시보드
-- 여러 Modbus 슬레이브 장치 동시 관리
-- 일괄 제어 (선택된 장치들 동시 제어)
-- 개별 제어 (장치별 독립 제어)
-- RPM/% 모드 전환
-- 카드/리스트 뷰 모드
-- 자동 ID 할당 기능
-
-### 실시간 차트
-- 4채널 실시간 데이터 모니터링
-- Continuous/Trigger 모드
-- Zoom, Pan, Cursor 지원
-- 마커 및 델타 측정
-- CSV/PNG 내보내기
+## 기능
 
 ### Modbus 프로토콜 지원
 - **읽기 기능**
@@ -32,97 +17,13 @@
   - FC15: Write Multiple Coils
   - FC16: Write Multiple Registers
 
-- **커스텀 기능**
-  - FC66 (0x66): Firmware Update Protocol
-
-### 펌웨어 업데이트
-- 4단계 업데이트 프로세스 (Init → Erase → Data Transfer → Done)
-- .bin, .hex, .fw 파일 지원
-- 진행률 표시 및 로그 출력
-
-### 파라미터 관리
-- CSV 가져오기/내보내기
-- 파라미터 필터링 (Holding/Input Registers)
-- 파라미터 읽기/쓰기
-
-### 통신 모니터
-- 실시간 송수신 로그
-- HEX/DEC 포맷 전환
-- 바이트별 정보 툴팁
-- 가상 스크롤 (대용량 로그 지원)
-
-### 시뮬레이터
-- 가상 Modbus 슬레이브
-- 실제 하드웨어 없이 테스트 가능
-- 펌웨어 업로드 시뮬레이션
-
----
-
-## 프로젝트 구조
-
-### 기존 구조 (Legacy)
-```
-web_gui/
-├── index.html          # 메인 HTML
-├── styles.css          # 스타일시트
-├── app.js              # 메인 애플리케이션 (6,400+ 줄)
-├── modbus.js           # Modbus 프로토콜 라이브러리
-├── simulator.js        # 가상 슬레이브 시뮬레이터
-└── parameters.csv      # 파라미터 정의
-```
-
-### 모듈화된 구조 (ES6 Modules)
-```
-web_gui/
-├── index.html
-├── styles.css
-├── app.js              # (기존 유지 - 호환성)
-├── modbus.js           # (기존 유지 - 호환성)
-├── simulator.js        # (기존 유지 - 호환성)
-│
-├── js/                 # 모듈화된 코드
-│   ├── app.js          # 메인 진입점 (~350줄)
-│   │
-│   ├── core/           # 핵심 인프라
-│   │   ├── EventBus.js       # 이벤트 기반 모듈 통신
-│   │   └── ModbusProtocol.js # Modbus RTU 프로토콜
-│   │
-│   ├── modules/        # 기능별 모듈
-│   │   ├── ChartManager.js        # 실시간 차트
-│   │   ├── CommunicationLayer.js  # 시리얼 통신
-│   │   ├── MonitorModule.js       # 통신 모니터
-│   │   ├── StatisticsManager.js   # 통계 관리
-│   │   ├── SettingsManager.js     # 설정 관리
-│   │   ├── ParameterManager.js    # 파라미터 관리
-│   │   ├── DeviceManager.js       # 장치 관리
-│   │   ├── FirmwareManager.js     # 펌웨어 업데이트
-│   │   └── AutoScanModule.js      # 자동 장치 탐색
-│   │
-│   ├── utils/          # 유틸리티
-│   │   └── helpers.js  # 공통 함수
-│   │
-│   └── simulator.js    # 시뮬레이터 (ES6 모듈)
-│
-└── data/
-    └── parameters.csv  # 파라미터 정의
-```
-
-### 모듈별 책임
-
-| 모듈 | 책임 | 예상 줄 수 |
-|------|------|-----------|
-| `EventBus.js` | 모듈 간 이벤트 기반 통신 | ~130 |
-| `ChartManager.js` | 4채널 실시간 차트, 줌/팬 | ~950 |
-| `CommunicationLayer.js` | Web Serial API, 프레임 송수신 | ~400 |
-| `MonitorModule.js` | 통신 로그 패널, 바이트 툴팁 | ~550 |
-| `DeviceManager.js` | 장치 관리, 자동 폴링 | ~400 |
-| `ParameterManager.js` | 파라미터, CSV 처리 | ~300 |
-| `FirmwareManager.js` | 4단계 펌웨어 업로드 | ~350 |
-| `StatisticsManager.js` | 통신 통계 | ~250 |
-| `SettingsManager.js` | 설정 관리, 모달 | ~280 |
-| `AutoScanModule.js` | 장치 자동 탐색 | ~250 |
-
----
+### 주요 기능
+- Web Serial API를 통한 실시간 시리얼 통신
+- CRC-16 자동 계산 및 검증
+- 실시간 데이터 시각화
+- 통신 로그 모니터링 (송신/수신 프레임 HEX 표시)
+- 통계 정보 (요청 수, 성공률, 에러 수)
+- 다양한 시리얼 포트 설정 지원
 
 ## 시스템 요구사항
 
@@ -136,190 +37,153 @@ web_gui/
 
 ### 하드웨어
 - USB-to-RS485 변환기 (예: CH340, FTDI, CP2102 등)
-- Modbus RTU 슬레이브 장치 (또는 내장 시뮬레이터 사용)
-
----
+- Modbus RTU 슬레이브 장치
 
 ## 사용 방법
 
-### 1. 실행 방법
-
-#### 방법 A: 직접 열기
-1. Chrome 또는 Edge 브라우저에서 `index.html` 파일을 엽니다.
-
-#### 방법 B: 로컬 서버 사용 (권장)
-```bash
-# Python
-python -m http.server 8000
-
-# Node.js
-npx http-server
-
-# 브라우저에서 접속
-http://localhost:8000
+### 1. 파일 구조
+```
+html_claude/
+├── index.html      # 메인 HTML 파일
+├── styles.css      # 스타일시트
+├── modbus.js       # Modbus RTU 프로토콜 라이브러리
+├── app.js          # 애플리케이션 로직
+└── README.md       # 이 파일
 ```
 
-### 2. 스크립트 로딩 옵션
+### 2. 실행 방법
 
-`index.html`에서 두 가지 방식을 선택할 수 있습니다:
+#### 로컬에서 실행
+1. Chrome 또는 Edge 브라우저를 엽니다.
+2. `index.html` 파일을 브라우저로 드래그하거나 직접 엽니다.
+3. 또는 로컬 서버를 사용:
+   ```bash
+   # Python이 설치되어 있다면
+   python -m http.server 8000
 
-**옵션 1: 기존 방식 (기본값)**
-```html
-<script src="modbus.js"></script>
-<script src="simulator.js"></script>
-<script src="app.js"></script>
-```
+   # Node.js의 http-server가 설치되어 있다면
+   npx http-server
+   ```
+4. 브라우저에서 `http://localhost:8000` 접속
 
-**옵션 2: 모듈화된 방식**
-```html
-<script type="module" src="js/app.js"></script>
-```
+### 3. 연결 설정
 
-### 3. 시리얼 포트 연결
-
-1. 좌측 사이드바에서 시리얼 포트 설정:
-   - Baud Rate: 9600, 19200, 115200 등
-   - Data Bits: 8
-   - Parity: None, Even, Odd
-   - Stop Bits: 1, 2
+1. **Serial Port Connection** 섹션에서 시리얼 포트 설정:
+   - Baud Rate: 통신 속도 (일반적으로 9600, 19200, 115200)
+   - Data Bits: 데이터 비트 (일반적으로 8)
+   - Parity: 패리티 비트 (None, Even, Odd)
+   - Stop Bits: 정지 비트 (1 또는 2)
 
 2. **Connect** 버튼 클릭
-3. 브라우저에서 시리얼 포트 선택
+   - 브라우저가 시리얼 포트 선택 창을 표시합니다
+   - USB-to-RS485 변환기를 선택합니다
+   - 연결되면 상태가 "Connected"로 변경됩니다
 
-### 4. 시뮬레이터 사용
+### 4. Modbus 통신 테스트
 
-하드웨어 없이 테스트하려면:
-1. Settings → Simulator 메뉴
-2. **Activate** 버튼 클릭
-3. 가상 슬레이브 ID 설정 (기본: 1)
+1. **Modbus Configuration** 섹션에서 설정:
+   - **Slave ID**: Modbus 슬레이브 주소 (1-247)
+   - **Function Code**: 실행할 Modbus 기능 선택
+   - **Start Address**: 읽기/쓰기 시작 주소
+   - **Quantity**: 읽기/쓰기할 레지스터 또는 코일 수
+   - **Write Value**: 쓰기 작업 시 사용할 값 (쓰기 기능일 때만 표시)
 
----
+2. **Send Request** 버튼 클릭하여 요청 전송
 
-## 페이지별 기능
+3. 결과 확인:
+   - **Response Data**: 읽어온 데이터가 표시됩니다
+   - **Communication Log**: 송수신된 프레임이 HEX 형식으로 표시됩니다
+   - **Statistics**: 통신 통계 정보가 업데이트됩니다
 
-### Dashboard
-- 장치 카드/리스트 뷰
-- 일괄 제어 (선택된 장치들)
-- 개별 Setpoint 조절
-- 자동 폴링
+## 예제 사용 시나리오
 
-### Modbus
-- Function Code 선택
-- 시작 주소, 수량 설정
-- 읽기/쓰기 테스트
+### 예제 1: Holding Register 읽기
+```
+Slave ID: 1
+Function Code: 03 - Read Holding Registers
+Start Address: 0
+Quantity: 10
 
-### Parameters
-- CSV 가져오기/내보내기
-- 필터링 (Type, Implemented)
-- 검색 기능
-
-### Chart
-- 4채널 실시간 그래프
-- Continuous/Trigger 모드
-- Zoom (Scroll), Pan (Drag)
-- 마커 설정 (클릭)
-- CSV/PNG 내보내기
-
-### Firmware
-- 파일 선택 (.bin, .hex, .fw)
-- 4단계 업로드 프로세스
-- 진행률 표시
-
----
-
-## 모듈화 아키텍처
-
-### EventBus 이벤트 목록
-
-```javascript
-// 시리얼 통신
-SERIAL_CONNECTED, SERIAL_DISCONNECTED, SERIAL_ERROR
-
-// Modbus 프레임
-FRAME_SENT, FRAME_RECEIVED, FRAME_ERROR, FRAME_TIMEOUT
-
-// 장치 관리
-DEVICE_ADDED, DEVICE_REMOVED, DEVICE_UPDATED
-DEVICE_SELECTED, DEVICE_DESELECTED
-
-// 자동 스캔
-SCAN_STARTED, SCAN_PROGRESS, SCAN_FOUND, SCAN_COMPLETED
-
-// 통계
-STATS_UPDATED, STATS_RESET
-
-// 펌웨어
-FIRMWARE_STARTED, FIRMWARE_PROGRESS, FIRMWARE_COMPLETE, FIRMWARE_ERROR
-
-// 차트
-CHART_STARTED, CHART_STOPPED, CHART_DATA
-
-// 설정
-SETTINGS_CHANGED, SETTINGS_LOADED
-
-// UI
-PAGE_CHANGED, TOAST_SHOW, MONITOR_TOGGLE
+-> 주소 0부터 9까지 10개의 홀딩 레지스터를 읽습니다
 ```
 
-### 모듈 간 의존성
-
+### 예제 2: Single Register 쓰기
 ```
-EventBus (중앙 이벤트 허브 - 모든 모듈이 참조)
-    │
-    ├── ModbusProtocol (프로토콜 정의)
-    │
-    ├── CommunicationLayer ← ModbusProtocol, Simulator
-    │
-    ├── MonitorModule ← EventBus (이벤트 수신만)
-    ├── StatisticsManager ← EventBus
-    ├── SettingsManager ← EventBus
-    │
-    ├── DeviceManager ← CommunicationLayer
-    ├── ParameterManager ← CommunicationLayer
-    ├── FirmwareManager ← CommunicationLayer, ModbusProtocol
-    ├── AutoScanModule ← CommunicationLayer, DeviceManager
-    │
-    └── ChartManager ← EventBus
+Slave ID: 1
+Function Code: 06 - Write Single Register
+Start Address: 100
+Write Value: 1234
+
+-> 주소 100에 값 1234를 씁니다
 ```
 
----
+### 예제 3: Multiple Registers 쓰기
+```
+Slave ID: 1
+Function Code: 16 - Write Multiple Registers
+Start Address: 0
+Quantity: 5
+Write Value: 100
+
+-> 주소 0부터 4까지 5개의 레지스터에 모두 100을 씁니다
+```
+
+## Communication Log 해석
+
+로그는 다음과 같은 형식으로 표시됩니다:
+
+```
+[시간] TX: 01 03 00 00 00 0A C5 CD
+```
+- **TX**: 전송된 프레임
+- **01**: Slave ID
+- **03**: Function Code (Read Holding Registers)
+- **00 00**: Start Address (0)
+- **00 0A**: Quantity (10)
+- **C5 CD**: CRC-16
+
+```
+[시간] RX: 01 03 14 00 00 00 01 00 02 00 03 00 04 00 05 00 06 00 07 00 08 00 09 XX XX
+```
+- **RX**: 수신된 프레임
+- **01**: Slave ID
+- **03**: Function Code
+- **14**: Byte Count (20 bytes = 10 registers × 2)
+- **00 00 ... 00 09**: 레지스터 값들
+- **XX XX**: CRC-16
 
 ## 문제 해결
 
 ### 포트 연결 실패
-- USB-to-RS485 변환기 연결 확인
-- 장치 관리자에서 COM 포트 인식 확인
-- 다른 프로그램의 포트 사용 여부 확인
+- USB-to-RS485 변환기가 제대로 연결되어 있는지 확인
+- 장치 관리자에서 COM 포트가 인식되는지 확인
+- 다른 프로그램이 포트를 사용 중이지 않은지 확인
 
-### 응답 없음
-- Baud rate, parity, stop bits 설정 확인
-- Slave ID 확인
-- RS485 A/B 배선 확인
-- 슬레이브 장치 전원 확인
+### 응답 없음 (No Response)
+- Baud rate, parity, stop bits 설정이 슬레이브 장치와 일치하는지 확인
+- Slave ID가 올바른지 확인
+- RS485 A/B 배선이 올바른지 확인 (반대로 연결되었을 수 있음)
+- 슬레이브 장치의 전원이 켜져 있는지 확인
 
 ### CRC 에러
-- 배선 문제 또는 전기적 노이즈
-- 케이블 길이 줄이기 또는 차폐 케이블 사용
+- 전기적 노이즈나 배선 문제일 수 있습니다
+- 케이블 길이를 줄이거나 차폐 케이블 사용
 - 종단 저항(120Ω) 연결 확인
 
 ### Exception 응답
+Modbus Exception 코드:
 - **01**: Illegal Function - 지원하지 않는 Function Code
 - **02**: Illegal Data Address - 잘못된 레지스터 주소
 - **03**: Illegal Data Value - 잘못된 데이터 값
 - **04**: Slave Device Failure - 슬레이브 장치 오류
 
----
-
 ## 기술 스택
 
 - **HTML5**: 웹 페이지 구조
-- **CSS3**: 반응형 디자인, Flexbox/Grid 레이아웃
-- **JavaScript (ES6+)**: 클래스, 모듈, async/await
+- **CSS3**: 반응형 디자인 및 스타일링
+- **JavaScript (ES6+)**: 애플리케이션 로직
 - **Web Serial API**: 시리얼 포트 통신
-- **Canvas API**: 실시간 차트 렌더링
-- **LocalStorage**: 설정 및 데이터 저장
-
----
+- **Modbus RTU Protocol**: CRC-16 계산 및 프레임 처리
 
 ## 라이선스
 

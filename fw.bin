@@ -157,10 +157,6 @@
                     <span class="menu-item-icon">⬇</span>
                     <span class="menu-item-text">Firmware</span>
                 </div>
-                <div class="menu-item" data-page="chart">
-                    <span class="menu-item-icon">▣</span>
-                    <span class="menu-item-text">Chart</span>
-                </div>
             </nav>
 
             <!-- Settings Button at Bottom -->
@@ -613,14 +609,7 @@
                                             <div class="step-progress-bar">
                                                 <div class="step-progress-fill" id="fwDataProgressFill"></div>
                                             </div>
-                                            <div class="step-progress-details">
-                                                <span class="step-progress-percent" id="fwDataProgressPercent">0%</span>
-                                                <span class="step-progress-bytes" id="fwDataProgressBytes">0 / 0 bytes</span>
-                                            </div>
-                                            <div class="step-progress-stats">
-                                                <span class="step-progress-packets" id="fwDataProgressPackets">패킷: 0 / 0</span>
-                                                <span class="step-progress-time" id="fwDataProgressTime">남은 시간: --:--</span>
-                                            </div>
+                                            <span class="step-progress-text" id="fwDataProgressText">0 / 0 bytes</span>
                                         </div>
                                     </div>
                                 </div>
@@ -657,240 +646,6 @@
                             <button class="btn btn-secondary" id="firmwareVerifyBtn" disabled>파일 검증</button>
                             <button class="btn btn-primary" id="firmwareDownloadBtn" disabled>다운로드 시작</button>
                             <button class="btn btn-danger" id="firmwareCancelBtn" style="display: none;">취소</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Chart Page -->
-                <div id="page-chart" class="page-content">
-                    <div class="chart-page-container">
-                        <!-- Chart Header -->
-                        <div class="chart-header">
-                            <div class="chart-title-section">
-                                <h1>Real-time Chart</h1>
-                                <p class="chart-subtitle">4채널 실시간 데이터 모니터링</p>
-                            </div>
-                            <div class="chart-header-actions">
-                                <button id="chartExportCsvBtn" class="btn btn-secondary btn-sm" title="Export to CSV">
-                                    <span>📥</span> CSV
-                                </button>
-                                <button id="chartExportPngBtn" class="btn btn-secondary btn-sm" title="Export to PNG">
-                                    <span>🖼</span> PNG
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Mode & Control Panel -->
-                        <div class="chart-control-panel">
-                            <div class="chart-mode-section">
-                                <label class="chart-section-label">Mode</label>
-                                <div class="chart-mode-toggle">
-                                    <button class="chart-mode-btn active" data-mode="continuous" id="chartModeContinuous">
-                                        <span class="mode-icon">▶</span>
-                                        <span>Continuous</span>
-                                    </button>
-                                    <button class="chart-mode-btn" data-mode="trigger" id="chartModeTrigger">
-                                        <span class="mode-icon">⚡</span>
-                                        <span>Trigger</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="chart-action-section">
-                                <button id="chartStartBtn" class="btn btn-success">
-                                    <span>▶</span> Start
-                                </button>
-                                <button id="chartStopBtn" class="btn btn-danger" disabled>
-                                    <span>■</span> Stop
-                                </button>
-                                <button id="chartClearBtn" class="btn btn-warning">
-                                    <span>↺</span> Clear
-                                </button>
-                                <button id="chartPauseBtn" class="btn btn-secondary" disabled>
-                                    <span>⏸</span> Pause
-                                </button>
-                            </div>
-
-                            <div class="chart-settings-section">
-                                <div class="chart-setting-item">
-                                    <label for="chartTimeScale">Time Scale</label>
-                                    <select id="chartTimeScale">
-                                        <option value="1000">1s</option>
-                                        <option value="2000">2s</option>
-                                        <option value="5000" selected>5s</option>
-                                        <option value="10000">10s</option>
-                                        <option value="30000">30s</option>
-                                        <option value="60000">1m</option>
-                                    </select>
-                                </div>
-                                <div class="chart-setting-item">
-                                    <label for="chartSampleRate">Sample Rate</label>
-                                    <select id="chartSampleRate">
-                                        <option value="50">50ms</option>
-                                        <option value="100" selected>100ms</option>
-                                        <option value="200">200ms</option>
-                                        <option value="500">500ms</option>
-                                        <option value="1000">1s</option>
-                                    </select>
-                                </div>
-                                <div class="chart-setting-item">
-                                    <label for="chartBufferSize">Buffer</label>
-                                    <select id="chartBufferSize">
-                                        <option value="500">500 pts</option>
-                                        <option value="1000" selected>1000 pts</option>
-                                        <option value="2000">2000 pts</option>
-                                        <option value="5000">5000 pts</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Trigger Settings (shown only in trigger mode) -->
-                        <div class="chart-trigger-panel" id="chartTriggerPanel" style="display: none;">
-                            <div class="trigger-settings-row">
-                                <div class="trigger-setting-item">
-                                    <label for="triggerChannel">Trigger Channel</label>
-                                    <select id="triggerChannel">
-                                        <option value="0">CH1</option>
-                                        <option value="1">CH2</option>
-                                        <option value="2">CH3</option>
-                                        <option value="3">CH4</option>
-                                    </select>
-                                </div>
-                                <div class="trigger-setting-item">
-                                    <label for="triggerEdge">Edge</label>
-                                    <select id="triggerEdge">
-                                        <option value="rising">Rising ↑</option>
-                                        <option value="falling">Falling ↓</option>
-                                        <option value="both">Both ↕</option>
-                                    </select>
-                                </div>
-                                <div class="trigger-setting-item">
-                                    <label for="triggerLevel">Level</label>
-                                    <input type="number" id="triggerLevel" value="500" min="0" max="65535">
-                                </div>
-                                <div class="trigger-setting-item">
-                                    <label for="triggerPreSamples">Pre-trigger</label>
-                                    <input type="number" id="triggerPreSamples" value="100" min="0" max="500">
-                                </div>
-                                <div class="trigger-setting-item">
-                                    <label for="triggerPostSamples">Post-trigger</label>
-                                    <input type="number" id="triggerPostSamples" value="400" min="100" max="2000">
-                                </div>
-                            </div>
-                            <div class="trigger-status">
-                                <span class="trigger-status-label">Status:</span>
-                                <span class="trigger-status-value" id="triggerStatus">Waiting</span>
-                            </div>
-                        </div>
-
-                        <!-- Channel Configuration -->
-                        <div class="chart-channel-panel">
-                            <div class="channel-config" data-channel="0">
-                                <label class="channel-toggle">
-                                    <input type="checkbox" id="chartCh1Enable" checked>
-                                    <span class="channel-indicator" style="background: #3498db;"></span>
-                                    <span class="channel-name">CH1</span>
-                                </label>
-                                <div class="channel-address">
-                                    <label for="chartCh1Addr">Addr:</label>
-                                    <input type="text" id="chartCh1Addr" value="0xD011" placeholder="0x0000">
-                                </div>
-                                <div class="channel-value">
-                                    <span class="channel-current-label">Value:</span>
-                                    <span class="channel-current-value" id="chartCh1Value">--</span>
-                                </div>
-                            </div>
-                            <div class="channel-config" data-channel="1">
-                                <label class="channel-toggle">
-                                    <input type="checkbox" id="chartCh2Enable" checked>
-                                    <span class="channel-indicator" style="background: #e74c3c;"></span>
-                                    <span class="channel-name">CH2</span>
-                                </label>
-                                <div class="channel-address">
-                                    <label for="chartCh2Addr">Addr:</label>
-                                    <input type="text" id="chartCh2Addr" value="0xD001" placeholder="0x0000">
-                                </div>
-                                <div class="channel-value">
-                                    <span class="channel-current-label">Value:</span>
-                                    <span class="channel-current-value" id="chartCh2Value">--</span>
-                                </div>
-                            </div>
-                            <div class="channel-config" data-channel="2">
-                                <label class="channel-toggle">
-                                    <input type="checkbox" id="chartCh3Enable">
-                                    <span class="channel-indicator" style="background: #2ecc71;"></span>
-                                    <span class="channel-name">CH3</span>
-                                </label>
-                                <div class="channel-address">
-                                    <label for="chartCh3Addr">Addr:</label>
-                                    <input type="text" id="chartCh3Addr" value="0x0000" placeholder="0x0000">
-                                </div>
-                                <div class="channel-value">
-                                    <span class="channel-current-label">Value:</span>
-                                    <span class="channel-current-value" id="chartCh3Value">--</span>
-                                </div>
-                            </div>
-                            <div class="channel-config" data-channel="3">
-                                <label class="channel-toggle">
-                                    <input type="checkbox" id="chartCh4Enable">
-                                    <span class="channel-indicator" style="background: #f39c12;"></span>
-                                    <span class="channel-name">CH4</span>
-                                </label>
-                                <div class="channel-address">
-                                    <label for="chartCh4Addr">Addr:</label>
-                                    <input type="text" id="chartCh4Addr" value="0x0000" placeholder="0x0000">
-                                </div>
-                                <div class="channel-value">
-                                    <span class="channel-current-label">Value:</span>
-                                    <span class="channel-current-value" id="chartCh4Value">--</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Chart Canvas Container -->
-                        <div class="chart-canvas-container" id="chartCanvasContainer">
-                            <canvas id="mainChart"></canvas>
-                            <!-- Cursor Info Overlay -->
-                            <div class="chart-cursor-info" id="chartCursorInfo" style="display: none;">
-                                <div class="cursor-time" id="cursorTime">--</div>
-                                <div class="cursor-values" id="cursorValues"></div>
-                            </div>
-                            <!-- Zoom Controls -->
-                            <div class="chart-zoom-controls">
-                                <button class="zoom-btn" id="chartZoomIn" title="Zoom In">+</button>
-                                <button class="zoom-btn" id="chartZoomOut" title="Zoom Out">−</button>
-                                <button class="zoom-btn" id="chartZoomReset" title="Reset Zoom">↺</button>
-                                <button class="zoom-btn" id="chartAutoScale" title="Auto Scale Y">⬌</button>
-                            </div>
-                            <!-- Chart Instructions -->
-                            <div class="chart-instructions" id="chartInstructions">
-                                <span>Wheel: Zoom Y</span>
-                                <span>Drag: Pan</span>
-                                <span>Double-click: Reset</span>
-                            </div>
-                        </div>
-
-                        <!-- Chart Info Panel -->
-                        <div class="chart-info-panel">
-                            <div class="chart-stats">
-                                <div class="chart-stat-item">
-                                    <span class="stat-label">Samples:</span>
-                                    <span class="stat-value" id="chartSampleCount">0</span>
-                                </div>
-                                <div class="chart-stat-item">
-                                    <span class="stat-label">Time Range:</span>
-                                    <span class="stat-value" id="chartTimeRange">0s</span>
-                                </div>
-                                <div class="chart-stat-item">
-                                    <span class="stat-label">Status:</span>
-                                    <span class="stat-value" id="chartStatus">Stopped</span>
-                                </div>
-                            </div>
-                            <div class="chart-markers" id="chartMarkers">
-                                <span class="markers-label">Markers:</span>
-                                <span class="markers-info" id="markersInfo">No markers set (Click to add)</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -935,45 +690,33 @@
 
     <!-- Add Parameter Modal -->
     <div id="addParamModal" class="modal">
-        <div class="modal-content add-param-modal-content">
+        <div class="modal-content">
             <div class="modal-header">
-                <h3>📝 새 파라미터 추가</h3>
+                <h3>Add Parameter</h3>
                 <button class="modal-close">&times;</button>
             </div>
-            <div class="modal-body add-param-modal-body">
-                <div class="add-param-form-group">
-                    <div class="add-param-label">
-                        <span class="add-param-icon">🏷️</span>
-                        <label for="paramName">파라미터 이름</label>
-                    </div>
-                    <input type="text" id="paramName" placeholder="예: Temperature, Pressure, Speed...">
-                    <small class="add-param-hint">모니터링할 파라미터의 이름을 입력하세요</small>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="paramName">Parameter Name</label>
+                    <input type="text" id="paramName" placeholder="e.g., Temperature">
                 </div>
-                <div class="add-param-form-group">
-                    <div class="add-param-label">
-                        <span class="add-param-icon">📍</span>
-                        <label for="paramAddress">레지스터 주소</label>
-                    </div>
-                    <input type="number" id="paramAddress" min="0" max="65535" value="0" placeholder="0 ~ 65535">
-                    <small class="add-param-hint">Modbus 레지스터 주소 (0 ~ 65535)</small>
+                <div class="form-group">
+                    <label for="paramAddress">Address</label>
+                    <input type="number" id="paramAddress" min="0" max="65535" value="0">
                 </div>
-                <div class="add-param-form-group">
-                    <div class="add-param-label">
-                        <span class="add-param-icon">⚙️</span>
-                        <label for="paramFunction">Function Code</label>
-                    </div>
+                <div class="form-group">
+                    <label for="paramFunction">Function Code</label>
                     <select id="paramFunction">
-                        <option value="3">03 - Read Holding Registers (읽기/쓰기 가능)</option>
-                        <option value="4">04 - Read Input Registers (읽기 전용)</option>
-                        <option value="1">01 - Read Coils (디지털 출력)</option>
-                        <option value="2">02 - Read Discrete Inputs (디지털 입력)</option>
+                        <option value="3">03 - Read Holding Registers</option>
+                        <option value="4">04 - Read Input Registers</option>
+                        <option value="1">01 - Read Coils</option>
+                        <option value="2">02 - Read Discrete Inputs</option>
                     </select>
-                    <small class="add-param-hint">데이터를 읽어올 Modbus 함수 코드를 선택하세요</small>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="cancelParamBtn" class="btn btn-secondary">취소</button>
-                <button id="saveParamBtn" class="btn btn-primary">💾 저장</button>
+                <button id="cancelParamBtn" class="btn btn-secondary">Cancel</button>
+                <button id="saveParamBtn" class="btn btn-primary">Save</button>
             </div>
         </div>
     </div>
