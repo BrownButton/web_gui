@@ -1339,9 +1339,6 @@ select:focus {
 
 /* Parameter Device Selector */
 .param-device-selector {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     padding: 12px 15px;
     margin-bottom: 15px;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -1350,16 +1347,36 @@ select:focus {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.param-device-selector-left {
+.param-device-selector-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    cursor: pointer;
+    transition: margin-bottom 0.3s ease;
 }
 
-.param-device-selector-right {
+.param-device-selector-header:hover {
+    opacity: 0.9;
+}
+
+.param-device-selector.expanded .param-device-selector-header {
+    margin-bottom: 10px;
+}
+
+.param-device-header-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+}
+
+.param-device-toggle-icon {
+    font-size: 10px;
+    color: #6c757d;
+    transition: transform 0.3s ease;
+}
+
+.param-device-selector.collapsed .param-device-toggle-icon {
+    transform: rotate(-90deg);
 }
 
 .param-device-label {
@@ -1368,46 +1385,114 @@ select:focus {
     color: #495057;
 }
 
-.param-device-dropdown {
-    min-width: 200px;
-    padding: 8px 12px;
-    border: 1px solid #ced4da;
-    border-radius: 6px;
+.param-device-selected {
+    font-size: 12px;
+    color: #007bff;
+    background: #e7f1ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.param-device-selected.none {
+    color: #6c757d;
+    background: #e9ecef;
+}
+
+.param-device-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 500px;
+    opacity: 1;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
+    padding-top: 10px;
+}
+
+.param-device-selector.collapsed .param-device-radio-group {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+}
+
+.param-device-placeholder {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    color: #6c757d;
     font-size: 13px;
     background: white;
-    cursor: pointer;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    border: 1px dashed #ced4da;
+    border-radius: 6px;
+    width: 100%;
 }
 
-.param-device-dropdown:hover {
-    border-color: #80bdff;
+.param-device-radio {
+    display: none;
 }
 
-.param-device-dropdown:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
-    outline: none;
-}
-
-.param-device-status {
-    font-size: 12px;
-    color: #6c757d;
-    padding: 4px 10px;
+.param-device-radio-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
     background: white;
-    border-radius: 12px;
-    border: 1px solid #dee2e6;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 13px;
+    color: #495057;
+    flex: 1;
 }
 
-.param-device-status.connected {
-    color: #28a745;
-    background: #d4edda;
-    border-color: #c3e6cb;
+.param-device-radio-label:hover {
+    border-color: #80bdff;
+    background: #f8f9fa;
 }
 
-.param-device-status.no-device {
-    color: #dc3545;
-    background: #f8d7da;
-    border-color: #f5c6cb;
+.param-device-radio:checked + .param-device-radio-label {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #e7f1ff 0%, #d0e4ff 100%);
+    color: #0056b3;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.25), 0 0 0 2px rgba(0, 123, 255, 0.3);
+}
+
+.param-device-radio-label .device-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #adb5bd;
+    transition: background 0.2s;
+}
+
+.param-device-radio:checked + .param-device-radio-label .device-indicator {
+    background: #007bff;
+    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.3);
+}
+
+.param-device-radio-label .device-name {
+    font-weight: 500;
+}
+
+.param-device-radio:checked + .param-device-radio-label .device-name {
+    font-weight: 700;
+}
+
+.param-device-radio-label .device-id {
+    font-size: 11px;
+    color: #6c757d;
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.param-device-radio:checked + .param-device-radio-label .device-id {
+    background: #cce5ff;
+    color: #004085;
 }
 
 /* Parameter List */

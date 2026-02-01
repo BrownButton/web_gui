@@ -1214,12 +1214,42 @@ class ModbusDashboard {
             }
         });
 
-        // Parameter page device selector
-        const paramDeviceSelect = document.getElementById('paramDeviceSelect');
-        if (paramDeviceSelect) {
-            paramDeviceSelect.addEventListener('change', (e) => {
-                this.selectedParamDeviceId = e.target.value === '0' ? null : parseInt(e.target.value);
-                this.updateParamDeviceStatus();
+        // Parameter page device selector (event delegation for radio buttons)
+        const paramDeviceRadioGroup = document.getElementById('paramDeviceRadioGroup');
+        if (paramDeviceRadioGroup) {
+            paramDeviceRadioGroup.addEventListener('change', (e) => {
+                if (e.target.classList.contains('param-device-radio')) {
+                    this.selectedParamDeviceId = parseInt(e.target.value);
+                    this.updateParamDeviceStatus();
+                }
+            });
+        }
+
+        // Parameter page device selector collapse/expand toggle
+        const paramDeviceSelectorHeader = document.getElementById('paramDeviceSelectorHeader');
+        const paramDeviceSelector = document.querySelector('.param-device-selector');
+        if (paramDeviceSelectorHeader && paramDeviceSelector) {
+            // Start expanded
+            paramDeviceSelector.classList.add('expanded');
+            paramDeviceSelectorHeader.addEventListener('click', (e) => {
+                // Don't toggle when clicking the Read All button
+                if (e.target.closest('#paramReadAllBtn')) return;
+                paramDeviceSelector.classList.toggle('collapsed');
+                paramDeviceSelector.classList.toggle('expanded');
+            });
+
+            // Auto-collapse when mouse leaves (only if a device is selected)
+            paramDeviceSelector.addEventListener('mouseleave', () => {
+                if (this.selectedParamDeviceId) {
+                    paramDeviceSelector.classList.add('collapsed');
+                    paramDeviceSelector.classList.remove('expanded');
+                }
+            });
+
+            // Auto-expand when mouse enters
+            paramDeviceSelector.addEventListener('mouseenter', () => {
+                paramDeviceSelector.classList.remove('collapsed');
+                paramDeviceSelector.classList.add('expanded');
             });
         }
 
@@ -3190,34 +3220,45 @@ class ModbusDashboard {
     }
 
     /**
-     * Update parameter page device selector dropdown
+     * Update parameter page device selector with radio buttons
      */
     updateParamDeviceSelector() {
-        const select = document.getElementById('paramDeviceSelect');
-        if (!select) return;
+        const radioGroup = document.getElementById('paramDeviceRadioGroup');
+        if (!radioGroup) return;
 
-        const currentValue = select.value;
+        // Get devices with valid slave IDs
+        const validDevices = this.devices.filter(d => d.slaveId !== 0);
 
-        // Clear existing options except the first one
-        select.innerHTML = '<option value="0">-- Select Device --</option>';
+        if (validDevices.length === 0) {
+            radioGroup.innerHTML = `
+                <div class="param-device-placeholder">
+                    <span>📦</span> Dashboard에서 디바이스를 등록하세요
+                </div>
+            `;
+            this.selectedParamDeviceId = null;
+            this.updateParamDeviceStatus();
+            return;
+        }
 
-        // Add devices with valid slave IDs
-        this.devices
-            .filter(d => d.slaveId !== 0)
-            .forEach(device => {
-                const option = document.createElement('option');
-                option.value = device.slaveId;
-                option.textContent = `${device.name} (ID: ${device.slaveId})`;
-                select.appendChild(option);
-            });
+        // Build radio buttons
+        radioGroup.innerHTML = validDevices.map(device => `
+            <input type="radio"
+                   class="param-device-radio"
+                   name="paramDevice"
+                   id="paramDevice_${device.slaveId}"
+                   value="${device.slaveId}"
+                   ${this.selectedParamDeviceId === device.slaveId ? 'checked' : ''}>
+            <label class="param-device-radio-label" for="paramDevice_${device.slaveId}">
+                <span class="device-indicator"></span>
+                <span class="device-name">${device.name}</span>
+                <span class="device-id">ID: ${device.slaveId}</span>
+            </label>
+        `).join('');
 
-        // Restore previous selection if still valid
-        if (currentValue !== '0') {
-            const stillExists = this.devices.some(d => d.slaveId === parseInt(currentValue));
-            if (stillExists) {
-                select.value = currentValue;
-                this.selectedParamDeviceId = parseInt(currentValue);
-            } else {
+        // Check if previous selection is still valid
+        if (this.selectedParamDeviceId) {
+            const stillExists = validDevices.some(d => d.slaveId === this.selectedParamDeviceId);
+            if (!stillExists) {
                 this.selectedParamDeviceId = null;
             }
         }
@@ -3229,21 +3270,21 @@ class ModbusDashboard {
      * Update parameter page device status display
      */
     updateParamDeviceStatus() {
-        const statusEl = document.getElementById('paramDeviceStatus');
         const readAllBtn = document.getElementById('paramReadAllBtn');
-
-        if (!statusEl) return;
+        const selectedNameEl = document.getElementById('paramDeviceSelectedName');
 
         if (this.selectedParamDeviceId) {
             const device = this.devices.find(d => d.slaveId === this.selectedParamDeviceId);
-            if (device) {
-                statusEl.textContent = `Slave ID: ${device.slaveId}`;
-                statusEl.className = 'param-device-status connected';
-                if (readAllBtn) readAllBtn.disabled = false;
+            if (device && selectedNameEl) {
+                selectedNameEl.textContent = `${device.name} (ID: ${device.slaveId})`;
+                selectedNameEl.classList.remove('none');
             }
+            if (readAllBtn) readAllBtn.disabled = false;
         } else {
-            statusEl.textContent = 'No device selected';
-            statusEl.className = 'param-device-status no-device';
+            if (selectedNameEl) {
+                selectedNameEl.textContent = '선택 안됨';
+                selectedNameEl.classList.add('none');
+            }
             if (readAllBtn) readAllBtn.disabled = true;
         }
     }
