@@ -1002,6 +1002,9 @@ class ModbusDashboard {
         this.selectedDevices = new Set();
         this.deviceViewMode = localStorage.getItem('deviceViewMode') || 'list'; // 'card' or 'list'
 
+        // Parameters page device selection
+        this.selectedParamDeviceId = null;
+
         // Drag and drop state
         this.draggedElement = null;
         this.draggedDeviceId = null;
@@ -1040,6 +1043,7 @@ class ModbusDashboard {
         this.isPolling = false; // Flag to prevent concurrent polling
         this.pollingTimeout = 200; // Response timeout in ms
         this.pendingResponse = null; // Current pending response promise
+        this.paramPollingDelay = 20; // ms between monitoring parameters
 
         // Chart Manager
         this.chartManager = null;
@@ -1049,6 +1053,7 @@ class ModbusDashboard {
         this.initializeUI();
         this.loadParameters();
         this.loadSettings();
+        this.loadPollingSettings();
         this.loadDevices();
         this.initializeChartPage();
     }
@@ -1208,6 +1213,20 @@ class ModbusDashboard {
                 this.hideAddParameterModal();
             }
         });
+
+        // Parameter page device selector
+        const paramDeviceSelect = document.getElementById('paramDeviceSelect');
+        if (paramDeviceSelect) {
+            paramDeviceSelect.addEventListener('change', (e) => {
+                this.selectedParamDeviceId = e.target.value === '0' ? null : parseInt(e.target.value);
+                this.updateParamDeviceStatus();
+            });
+        }
+
+        const paramReadAllBtn = document.getElementById('paramReadAllBtn');
+        if (paramReadAllBtn) {
+            paramReadAllBtn.addEventListener('click', () => this.readAllParameters());
+        }
 
         // Simulator controls
         document.getElementById('simToggleBtn').addEventListener('click', () => this.toggleSimulator());
@@ -1606,6 +1625,62 @@ class ModbusDashboard {
             this.simulator.responseDelay = parseInt(e.target.value);
             document.getElementById('simDelay').value = e.target.value;
         });
+
+        // Polling settings
+        document.getElementById('applyPollingSettings').addEventListener('click', () => {
+            this.applyPollingSettings();
+        });
+    }
+
+    /**
+     * Apply polling settings from modal
+     */
+    applyPollingSettings() {
+        const interval = parseInt(document.getElementById('pollingInterval').value);
+        const timeout = parseInt(document.getElementById('pollingTimeout').value);
+        const paramDelay = parseInt(document.getElementById('paramPollingDelay').value);
+
+        if (interval >= 10 && interval <= 5000) {
+            this.autoPollingInterval = interval;
+        }
+        if (timeout >= 50 && timeout <= 5000) {
+            this.pollingTimeout = timeout;
+        }
+        if (paramDelay >= 0 && paramDelay <= 500) {
+            this.paramPollingDelay = paramDelay;
+        }
+
+        this.savePollingSettings();
+        this.showToast('Polling settings applied', 'success');
+    }
+
+    /**
+     * Save polling settings to localStorage
+     */
+    savePollingSettings() {
+        const settings = {
+            autoPollingInterval: this.autoPollingInterval,
+            pollingTimeout: this.pollingTimeout,
+            paramPollingDelay: this.paramPollingDelay
+        };
+        localStorage.setItem('pollingSettings', JSON.stringify(settings));
+    }
+
+    /**
+     * Load polling settings from localStorage
+     */
+    loadPollingSettings() {
+        const saved = localStorage.getItem('pollingSettings');
+        if (saved) {
+            try {
+                const settings = JSON.parse(saved);
+                if (settings.autoPollingInterval) this.autoPollingInterval = settings.autoPollingInterval;
+                if (settings.pollingTimeout) this.pollingTimeout = settings.pollingTimeout;
+                if (settings.paramPollingDelay !== undefined) this.paramPollingDelay = settings.paramPollingDelay;
+            } catch (e) {
+                console.error('Failed to load polling settings:', e);
+            }
+        }
     }
 
     /**
@@ -1619,6 +1694,11 @@ class ModbusDashboard {
         document.getElementById('modal-baseFrameCount').value = this.baseFrameCount;
         document.getElementById('modal-simSlaveId').value = this.simulator.slaveId;
         document.getElementById('modal-simDelay').value = this.simulator.responseDelay;
+
+        // Sync polling settings
+        document.getElementById('pollingInterval').value = this.autoPollingInterval;
+        document.getElementById('pollingTimeout').value = this.pollingTimeout;
+        document.getElementById('paramPollingDelay').value = this.paramPollingDelay;
 
         // Update simulator button state
         this.updateModalSimulatorDisplay();
@@ -3110,6 +3190,105 @@ class ModbusDashboard {
     }
 
     /**
+     * Update parameter page device selector dropdown
+     */
+    updateParamDeviceSelector() {
+        const select = document.getElementById('paramDeviceSelect');
+        if (!select) return;
+
+        const currentValue = select.value;
+
+        // Clear existing options except the first one
+        select.innerHTML = '<option value="0">-- Select Device --</option>';
+
+        // Add devices with valid slave IDs
+        this.devices
+            .filter(d => d.slaveId !== 0)
+            .forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.slaveId;
+                option.textContent = `${device.name} (ID: ${device.slaveId})`;
+                select.appendChild(option);
+            });
+
+        // Restore previous selection if still valid
+        if (currentValue !== '0') {
+            const stillExists = this.devices.some(d => d.slaveId === parseInt(currentValue));
+            if (stillExists) {
+                select.value = currentValue;
+                this.selectedParamDeviceId = parseInt(currentValue);
+            } else {
+                this.selectedParamDeviceId = null;
+            }
+        }
+
+        this.updateParamDeviceStatus();
+    }
+
+    /**
+     * Update parameter page device status display
+     */
+    updateParamDeviceStatus() {
+        const statusEl = document.getElementById('paramDeviceStatus');
+        const readAllBtn = document.getElementById('paramReadAllBtn');
+
+        if (!statusEl) return;
+
+        if (this.selectedParamDeviceId) {
+            const device = this.devices.find(d => d.slaveId === this.selectedParamDeviceId);
+            if (device) {
+                statusEl.textContent = `Slave ID: ${device.slaveId}`;
+                statusEl.className = 'param-device-status connected';
+                if (readAllBtn) readAllBtn.disabled = false;
+            }
+        } else {
+            statusEl.textContent = 'No device selected';
+            statusEl.className = 'param-device-status no-device';
+            if (readAllBtn) readAllBtn.disabled = true;
+        }
+    }
+
+    /**
+     * Read all parameters for selected device
+     */
+    async readAllParameters() {
+        if (!this.selectedParamDeviceId) {
+            this.showToast('Please select a device first', 'warning');
+            return;
+        }
+
+        if (!this.writer && !this.simulatorEnabled) {
+            this.showToast('Please connect to serial port or enable simulator', 'warning');
+            return;
+        }
+
+        const implementedParams = this.parameters.filter(p => p.implemented === 'Y');
+        if (implementedParams.length === 0) {
+            this.showToast('No implemented parameters to read', 'info');
+            return;
+        }
+
+        this.showToast(`Reading ${implementedParams.length} parameters...`, 'info');
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const param of implementedParams) {
+            try {
+                await this.readParameterByAddress(param);
+                successCount++;
+                // Small delay between reads
+                await new Promise(resolve => setTimeout(resolve, 50));
+            } catch (error) {
+                console.error(`Error reading ${param.name}:`, error);
+                errorCount++;
+            }
+        }
+
+        this.showToast(`Read complete: ${successCount} success, ${errorCount} errors`, successCount > 0 ? 'success' : 'error');
+    }
+
+    /**
      * Render parameter list with filtering
      */
     renderParameters() {
@@ -3603,6 +3782,12 @@ class ModbusDashboard {
             return;
         }
 
+        // Check if device is selected on Parameters page
+        if (!this.selectedParamDeviceId) {
+            this.showToast('디바이스를 먼저 선택하세요', 'warning');
+            return;
+        }
+
         // Parse address (e.g., "0xD001" -> 53249)
         let address = param.address;
         if (typeof address === 'string') {
@@ -3613,7 +3798,8 @@ class ModbusDashboard {
             }
         }
 
-        const slaveId = parseInt(document.getElementById('slaveId')?.value || 1);
+        // Use selected device ID from Parameters page
+        const slaveId = this.selectedParamDeviceId;
         const functionCode = param.type === 'input' ? 4 : 3;
 
         let frame;
@@ -3658,7 +3844,14 @@ class ModbusDashboard {
             return;
         }
 
-        const slaveId = parseInt(document.getElementById('slaveId').value);
+        // Check if device is selected on Parameters page
+        if (!this.selectedParamDeviceId) {
+            this.showToast('디바이스를 먼저 선택하세요', 'warning');
+            return;
+        }
+
+        // Use selected device ID from Parameters page
+        const slaveId = this.selectedParamDeviceId;
         let frame;
 
         switch (param.functionCode) {
@@ -3688,7 +3881,14 @@ class ModbusDashboard {
             return;
         }
 
-        const slaveId = parseInt(document.getElementById('slaveId').value);
+        // Check if device is selected on Parameters page
+        if (!this.selectedParamDeviceId) {
+            this.showToast('디바이스를 먼저 선택하세요', 'warning');
+            return;
+        }
+
+        // Use selected device ID from Parameters page
+        const slaveId = this.selectedParamDeviceId;
         const frame = this.modbus.buildWriteSingleRegister(slaveId, param.address, value);
 
         await this.writer.write(frame);
@@ -4303,6 +4503,8 @@ class ModbusDashboard {
         }
         // Apply view mode after loading devices
         this.applyDeviceViewMode();
+        // Update parameter page device selector
+        this.updateParamDeviceSelector();
     }
 
     /**
@@ -4310,6 +4512,8 @@ class ModbusDashboard {
      */
     saveDevices() {
         localStorage.setItem('modbusDevices', JSON.stringify(this.devices));
+        // Update parameter page device selector
+        this.updateParamDeviceSelector();
     }
 
     /**
@@ -4668,6 +4872,41 @@ class ModbusDashboard {
                     `}
                 </div>
             </div>
+            <div class="device-monitoring-section">
+                <div class="monitoring-header ${device.monitoringExpanded ? 'expanded' : ''}">
+                    <span class="monitoring-toggle-icon">▶</span>
+                    <span class="monitoring-title">Monitoring Parameters</span>
+                    <span class="monitoring-count">(${(device.monitoringParams || []).length})</span>
+                </div>
+                <div class="monitoring-content" style="display: ${device.monitoringExpanded ? 'block' : 'none'};">
+                    <div class="monitoring-params-list">
+                        ${this.renderMonitoringParamsHTML(device.monitoringParams)}
+                    </div>
+                    <div class="monitoring-add-section">
+                        <div class="add-param-tabs">
+                            <button class="add-tab active" data-tab="csv">Parameter List</button>
+                            <button class="add-tab" data-tab="manual">Manual Input</button>
+                        </div>
+                        <div class="add-tab-content active" data-tab="csv">
+                            <select class="param-select">
+                                ${this.generateParameterOptions()}
+                            </select>
+                            <button class="btn btn-primary btn-sm add-param-btn">+ Add</button>
+                        </div>
+                        <div class="add-tab-content" data-tab="manual">
+                            <div class="manual-input-row">
+                                <select class="manual-type">
+                                    <option value="holding">Holding</option>
+                                    <option value="input">Input</option>
+                                </select>
+                                <input type="text" class="manual-address" placeholder="0xD001">
+                                <input type="text" class="manual-name" placeholder="Name">
+                                <button class="btn btn-primary btn-sm add-manual-btn">+ Add</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="device-card-footer">
                 <button class="btn btn-secondary btn-edit">Edit</button>
                 <button class="btn btn-danger btn-delete">Delete</button>
@@ -4724,6 +4963,9 @@ class ModbusDashboard {
 
         // Drag and drop event listeners
         this.addDragEventListeners(card);
+
+        // Monitoring section event listeners
+        this.setupMonitoringEventListeners(card, device.id);
 
         return card;
     }
@@ -5255,6 +5497,11 @@ class ModbusDashboard {
                 device.online = true;
                 this.updateDeviceStats(device.slaveId, true);
                 this.updateDeviceCardStatus(device);
+
+                // Poll monitoring parameters if any
+                if (device.monitoringParams && device.monitoringParams.length > 0) {
+                    await this.pollMonitoringParams(device);
+                }
             } else {
                 device.online = false;
                 this.updateDeviceStats(device.slaveId, false);
@@ -5487,6 +5734,396 @@ class ModbusDashboard {
         }
         return 0;
     }
+
+    // ==================== Monitoring Parameters Methods ====================
+
+    /**
+     * Toggle monitoring section visibility
+     */
+    toggleMonitoringSection(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        device.monitoringExpanded = !device.monitoringExpanded;
+        this.saveDevices();
+
+        const element = document.querySelector(`[data-device-id="${deviceId}"]`);
+        if (!element) return;
+
+        const header = element.querySelector('.monitoring-header');
+        const content = element.querySelector('.monitoring-content');
+
+        if (device.monitoringExpanded) {
+            header.classList.add('expanded');
+            content.style.display = 'block';
+        } else {
+            header.classList.remove('expanded');
+            content.style.display = 'none';
+        }
+    }
+
+    /**
+     * Generate parameter options from parameters list
+     */
+    generateParameterOptions() {
+        const holdingParams = this.parameters.filter(p => p.type === 'holding');
+        const inputParams = this.parameters.filter(p => p.type === 'input');
+
+        let optionsHtml = '<option value="">-- Select Parameter --</option>';
+
+        if (holdingParams.length > 0) {
+            optionsHtml += '<optgroup label="Holding Registers">';
+            holdingParams.forEach(p => {
+                optionsHtml += `<option value="holding:${p.address}">${p.name} (${p.address})</option>`;
+            });
+            optionsHtml += '</optgroup>';
+        }
+
+        if (inputParams.length > 0) {
+            optionsHtml += '<optgroup label="Input Registers">';
+            inputParams.forEach(p => {
+                optionsHtml += `<option value="input:${p.address}">${p.name} (${p.address})</option>`;
+            });
+            optionsHtml += '</optgroup>';
+        }
+
+        return optionsHtml;
+    }
+
+    /**
+     * Parse address string (0xD001 or 53249)
+     */
+    parseMonitoringAddress(addressStr) {
+        if (typeof addressStr === 'number') return addressStr;
+        addressStr = addressStr.toString().trim();
+
+        if (addressStr.toLowerCase().startsWith('0x')) {
+            return parseInt(addressStr, 16);
+        }
+        return parseInt(addressStr, 10);
+    }
+
+    /**
+     * Add monitoring parameter from CSV list
+     */
+    addMonitoringParamFromCSV(deviceId, paramValue) {
+        if (!paramValue) return;
+
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const [type, addressStr] = paramValue.split(':');
+        const address = this.parseMonitoringAddress(addressStr);
+
+        if (!device.monitoringParams) {
+            device.monitoringParams = [];
+        }
+
+        // Check for duplicates
+        if (device.monitoringParams.some(p => p.type === type && p.address === address)) {
+            this.showToast('Parameter already exists', 'warning');
+            return;
+        }
+
+        // Find name from parameters
+        const csvParam = this.parameters.find(p =>
+            p.type === type && this.parseMonitoringAddress(p.address) === address
+        );
+
+        const newParam = {
+            id: 'param_' + Date.now(),
+            type: type,
+            address: address,
+            name: csvParam?.name || `Register ${addressStr}`,
+            value: null,
+            lastRead: null,
+            source: 'csv'
+        };
+
+        device.monitoringParams.push(newParam);
+        this.saveDevices();
+        this.renderMonitoringParams(deviceId);
+        this.showToast(`${newParam.name} added`, 'success');
+    }
+
+    /**
+     * Add monitoring parameter manually
+     */
+    addMonitoringParamManual(deviceId, type, addressStr, name) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const address = this.parseMonitoringAddress(addressStr);
+        if (isNaN(address)) {
+            this.showToast('Invalid address format', 'error');
+            return;
+        }
+
+        if (!device.monitoringParams) {
+            device.monitoringParams = [];
+        }
+
+        // Check for duplicates
+        if (device.monitoringParams.some(p => p.type === type && p.address === address)) {
+            this.showToast('Parameter already exists', 'warning');
+            return;
+        }
+
+        const newParam = {
+            id: 'param_' + Date.now(),
+            type: type,
+            address: address,
+            name: name || `Register 0x${address.toString(16).toUpperCase()}`,
+            value: null,
+            lastRead: null,
+            source: 'manual'
+        };
+
+        device.monitoringParams.push(newParam);
+        this.saveDevices();
+        this.renderMonitoringParams(deviceId);
+        this.showToast(`${newParam.name} added`, 'success');
+    }
+
+    /**
+     * Remove monitoring parameter
+     */
+    removeMonitoringParam(deviceId, paramId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device || !device.monitoringParams) return;
+
+        const paramIndex = device.monitoringParams.findIndex(p => p.id === paramId);
+        if (paramIndex === -1) return;
+
+        const paramName = device.monitoringParams[paramIndex].name;
+        device.monitoringParams.splice(paramIndex, 1);
+
+        this.saveDevices();
+        this.renderMonitoringParams(deviceId);
+        this.showToast(`${paramName} removed`, 'info');
+    }
+
+    /**
+     * Render monitoring parameters list
+     */
+    renderMonitoringParams(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const element = document.querySelector(`[data-device-id="${deviceId}"]`);
+        if (!element) return;
+
+        const listContainer = element.querySelector('.monitoring-params-list');
+        const countBadge = element.querySelector('.monitoring-count');
+
+        if (!listContainer) return;
+
+        const params = device.monitoringParams || [];
+
+        if (countBadge) {
+            countBadge.textContent = `(${params.length})`;
+        }
+
+        if (params.length === 0) {
+            listContainer.innerHTML = `
+                <div class="monitoring-empty">
+                    No monitoring parameters.<br>
+                    Add parameters below.
+                </div>
+            `;
+            return;
+        }
+
+        listContainer.innerHTML = params.map(param => `
+            <div class="monitoring-param-item" data-param-id="${param.id}">
+                <div class="param-info">
+                    <span class="param-name">${param.name}</span>
+                    <span class="param-address">${param.type === 'holding' ? 'H' : 'I'}:0x${param.address.toString(16).toUpperCase()}</span>
+                </div>
+                <div class="param-value ${param.value === null ? 'stale' : ''}" id="param-value-${param.id}">
+                    ${param.value !== null ? param.value : '--'}
+                </div>
+                <button class="param-remove-btn" data-device-id="${deviceId}" data-param-id="${param.id}" title="Remove">×</button>
+            </div>
+        `).join('');
+
+        // Re-attach remove button listeners
+        listContainer.querySelectorAll('.param-remove-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const dId = parseInt(btn.dataset.deviceId);
+                const pId = btn.dataset.paramId;
+                this.removeMonitoringParam(dId, pId);
+            });
+        });
+    }
+
+    /**
+     * Render monitoring parameters HTML (for initial card creation)
+     */
+    renderMonitoringParamsHTML(params) {
+        if (!params || params.length === 0) {
+            return `<div class="monitoring-empty">
+                No monitoring parameters.<br>
+                Add parameters below.
+            </div>`;
+        }
+
+        return params.map(param => `
+            <div class="monitoring-param-item" data-param-id="${param.id}">
+                <div class="param-info">
+                    <span class="param-name">${param.name}</span>
+                    <span class="param-address">${param.type === 'holding' ? 'H' : 'I'}:0x${param.address.toString(16).toUpperCase()}</span>
+                </div>
+                <div class="param-value ${param.value === null ? 'stale' : ''}" id="param-value-${param.id}">
+                    ${param.value !== null ? param.value : '--'}
+                </div>
+                <button class="param-remove-btn" title="Remove">×</button>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * Setup monitoring section event listeners
+     */
+    setupMonitoringEventListeners(card, deviceId) {
+        // Header click - toggle
+        const header = card.querySelector('.monitoring-header');
+        if (header) {
+            header.addEventListener('click', () => this.toggleMonitoringSection(deviceId));
+        }
+
+        // Tab switching
+        const tabs = card.querySelectorAll('.add-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+
+                card.querySelectorAll('.add-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                card.querySelectorAll('.add-tab-content').forEach(c => {
+                    c.classList.toggle('active', c.dataset.tab === tabName);
+                });
+            });
+        });
+
+        // Add from CSV
+        const addCsvBtn = card.querySelector('.add-param-btn');
+        if (addCsvBtn) {
+            addCsvBtn.addEventListener('click', () => {
+                const select = card.querySelector('.param-select');
+                this.addMonitoringParamFromCSV(deviceId, select.value);
+                select.value = '';
+            });
+        }
+
+        // Add manually
+        const addManualBtn = card.querySelector('.add-manual-btn');
+        if (addManualBtn) {
+            addManualBtn.addEventListener('click', () => {
+                const type = card.querySelector('.manual-type').value;
+                const address = card.querySelector('.manual-address').value;
+                const name = card.querySelector('.manual-name').value;
+
+                this.addMonitoringParamManual(deviceId, type, address, name);
+
+                card.querySelector('.manual-address').value = '';
+                card.querySelector('.manual-name').value = '';
+            });
+        }
+
+        // Remove buttons
+        card.querySelectorAll('.param-remove-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const paramItem = btn.closest('.monitoring-param-item');
+                const paramId = paramItem.dataset.paramId;
+                this.removeMonitoringParam(deviceId, paramId);
+            });
+        });
+    }
+
+    /**
+     * Poll monitoring parameters for a device
+     */
+    async pollMonitoringParams(device) {
+        if (!device.monitoringParams || device.monitoringParams.length === 0) return;
+
+        for (const param of device.monitoringParams) {
+            try {
+                let value = null;
+
+                if (param.type === 'input') {
+                    value = await this.readInputRegisterWithTimeout(device.slaveId, param.address);
+                } else {
+                    value = await this.readRegisterWithTimeout(device.slaveId, param.address);
+                }
+
+                if (value !== null) {
+                    param.value = value;
+                    param.lastRead = Date.now();
+                    this.updateMonitoringParamValue(device.id, param.id, value);
+                }
+            } catch (error) {
+                console.warn(`Failed to read param ${param.name} for device ${device.id}:`, error);
+            }
+
+            // Small delay between parameters
+            await this.delay(this.paramPollingDelay);
+        }
+    }
+
+    /**
+     * Read Input Register with timeout (Function Code 4)
+     */
+    async readInputRegisterWithTimeout(slaveId, address) {
+        const frame = this.modbus.buildReadInputRegisters(slaveId, address, 1);
+
+        if (this.simulatorEnabled) {
+            const originalSlaveId = this.simulator.slaveId;
+            this.simulator.slaveId = slaveId;
+            this.stats.requests++;
+            this.updateStatsDisplay();
+
+            const response = await this.simulator.processRequest(frame);
+            this.simulator.slaveId = originalSlaveId;
+
+            if (response && response.length >= 5 && (response[1] & 0x80) === 0) {
+                this.stats.success++;
+                this.updateStatsDisplay();
+                return (response[3] << 8) | response[4];
+            } else {
+                this.stats.errors++;
+                this.updateStatsDisplay();
+                return null;
+            }
+        } else if (this.writer) {
+            return await this.sendAndWaitResponse(frame, slaveId);
+        }
+
+        return null;
+    }
+
+    /**
+     * Update monitoring parameter value in UI
+     */
+    updateMonitoringParamValue(deviceId, paramId, value) {
+        const valueEl = document.getElementById(`param-value-${paramId}`);
+        if (valueEl) {
+            valueEl.textContent = value;
+            valueEl.classList.remove('stale');
+        }
+    }
+
+    /**
+     * Delay utility
+     */
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // ==================== End Monitoring Parameters Methods ====================
 
     /**
      * Show Auto Assign Modal

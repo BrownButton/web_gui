@@ -367,6 +367,20 @@
                 <!-- Parameters Page -->
                 <div id="page-parameters" class="page-content">
                     <section class="card">
+                        <!-- Device Selector -->
+                        <div class="param-device-selector">
+                            <div class="param-device-selector-left">
+                                <span class="param-device-label">Target Device:</span>
+                                <select id="paramDeviceSelect" class="param-device-dropdown">
+                                    <option value="0">-- Select Device --</option>
+                                </select>
+                                <span class="param-device-status" id="paramDeviceStatus">No device selected</span>
+                            </div>
+                            <div class="param-device-selector-right">
+                                <button id="paramReadAllBtn" class="btn btn-success btn-sm" disabled>📖 Read All</button>
+                            </div>
+                        </div>
+
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
                             <h2 style="margin-bottom: 0;">Parameter List</h2>
                             <div style="display: flex; gap: 10px; align-items: center;">
@@ -1002,6 +1016,10 @@
                         <span class="settings-menu-icon">🔧</span>
                         <span class="settings-menu-text">Simulator</span>
                     </div>
+                    <div class="settings-menu-item" data-setting="polling">
+                        <span class="settings-menu-icon">🔄</span>
+                        <span class="settings-menu-text">Polling</span>
+                    </div>
                 </div>
 
                 <!-- Settings Content -->
@@ -1141,6 +1159,51 @@
                                 [2] 준비: <span id="modal-simCoil2">--</span>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Polling Settings -->
+                    <div class="settings-panel" id="settings-polling">
+                        <h4>Polling Settings</h4>
+                        <p style="color: #6c757d; margin-bottom: 20px; font-size: 13px;">
+                            디바이스 모니터링 폴링 속도를 설정합니다.
+                        </p>
+
+                        <div class="form-group">
+                            <label for="pollingInterval">Polling Interval (ms)</label>
+                            <input type="number" id="pollingInterval" min="10" max="5000" value="50" step="10">
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                디바이스 간 폴링 간격입니다. 값이 작을수록 빠르게 업데이트되지만 통신 부하가 증가합니다.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="pollingTimeout">Response Timeout (ms)</label>
+                            <input type="number" id="pollingTimeout" min="50" max="5000" value="200" step="50">
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                각 레지스터 읽기 요청의 응답 대기 시간입니다.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="paramPollingDelay">Parameter Polling Delay (ms)</label>
+                            <input type="number" id="paramPollingDelay" min="0" max="500" value="20" step="5">
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                모니터링 파라미터 간 딜레이입니다. 통신 안정성을 위해 약간의 딜레이를 권장합니다.
+                            </small>
+                        </div>
+
+                        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 4px; font-size: 13px;">
+                            <strong style="color: #007bff;">💡 권장 설정</strong>
+                            <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #495057;">
+                                <li><strong>빠른 응답:</strong> Interval 50ms, Timeout 200ms</li>
+                                <li><strong>안정적 통신:</strong> Interval 200ms, Timeout 500ms</li>
+                                <li><strong>저부하 모드:</strong> Interval 500ms, Timeout 1000ms</li>
+                            </ul>
+                        </div>
+
+                        <button id="applyPollingSettings" class="btn btn-primary" style="margin-top: 20px;">
+                            Apply Settings
+                        </button>
                     </div>
 
                 </div>
