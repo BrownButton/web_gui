@@ -1379,6 +1379,17 @@ select:focus {
     transform: rotate(-90deg);
 }
 
+/* Click mode indicator - shows a pin icon effect */
+.param-device-selector.click-mode .param-device-toggle-icon {
+    color: #007bff;
+}
+
+.param-device-selector.click-mode .param-device-label::after {
+    content: '📌';
+    margin-left: 6px;
+    font-size: 11px;
+}
+
 .param-device-label {
     font-weight: 600;
     font-size: 13px;

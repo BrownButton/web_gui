@@ -1041,6 +1041,8 @@ class ModbusDashboard {
         this.scanRegister = 0xD011;
         this.isScanning = false;
         this.scanAborted = false;
+        this.scanResolve = null;  // Callback for scan response
+        this.scanExpectedSlaveId = null;  // Expected slave ID for scan response
 
         // Auto polling for device status
         this.autoPollingEnabled = true;
@@ -1237,27 +1239,50 @@ class ModbusDashboard {
         const paramDeviceSelectorHeader = document.getElementById('paramDeviceSelectorHeader');
         const paramDeviceSelector = document.querySelector('.param-device-selector');
         if (paramDeviceSelectorHeader && paramDeviceSelector) {
+            // Mode: 'hover' (default) or 'click'
+            let selectorMode = 'hover';
+
             // Start expanded
             paramDeviceSelector.classList.add('expanded');
+
             paramDeviceSelectorHeader.addEventListener('click', (e) => {
                 // Don't toggle when clicking the Read All button
                 if (e.target.closest('#paramReadAllBtn')) return;
-                paramDeviceSelector.classList.toggle('collapsed');
-                paramDeviceSelector.classList.toggle('expanded');
+
+                if (selectorMode === 'hover') {
+                    // Switch to click mode
+                    selectorMode = 'click';
+                    paramDeviceSelector.classList.add('click-mode');
+                } else {
+                    // In click mode, toggle open/close
+                    paramDeviceSelector.classList.toggle('collapsed');
+                    paramDeviceSelector.classList.toggle('expanded');
+                }
             });
 
-            // Auto-collapse when mouse leaves (only if a device is selected)
+            // Auto-collapse when mouse leaves (only in hover mode and if a device is selected)
             paramDeviceSelector.addEventListener('mouseleave', () => {
-                if (this.selectedParamDeviceId) {
+                if (selectorMode === 'hover' && this.selectedParamDeviceId) {
                     paramDeviceSelector.classList.add('collapsed');
                     paramDeviceSelector.classList.remove('expanded');
                 }
             });
 
-            // Auto-expand when mouse enters
+            // Auto-expand when mouse enters (only in hover mode)
             paramDeviceSelector.addEventListener('mouseenter', () => {
-                paramDeviceSelector.classList.remove('collapsed');
-                paramDeviceSelector.classList.add('expanded');
+                if (selectorMode === 'hover') {
+                    paramDeviceSelector.classList.remove('collapsed');
+                    paramDeviceSelector.classList.add('expanded');
+                }
+            });
+
+            // Double-click to switch back to hover mode
+            paramDeviceSelectorHeader.addEventListener('dblclick', (e) => {
+                if (e.target.closest('#paramReadAllBtn')) return;
+                if (selectorMode === 'click') {
+                    selectorMode = 'hover';
+                    paramDeviceSelector.classList.remove('click-mode');
+                }
             });
         }
 
@@ -1910,8 +1935,11 @@ class ModbusDashboard {
 
             if (this.reader) {
                 await this.reader.cancel();
-                this.reader.releaseLock();
-                this.reader = null;
+                // startReading()의 finally 블록에서 이미 releaseLock()이 호출될 수 있으므로 재확인
+                if (this.reader) {
+                    this.reader.releaseLock();
+                    this.reader = null;
+                }
             }
 
             if (this.writer) {
@@ -1980,6 +2008,22 @@ class ModbusDashboard {
             if (this.receiveIndex > 0) {
                 const frame = this.receiveBuffer.slice(0, this.receiveIndex);
                 this.receiveIndex = 0;
+
+                // Check if this is a scan response
+                if (this.scanResolve && frame.length >= 5) {
+                    const responseSlaveId = frame[0];
+                    const functionCode = frame[1];
+
+                    // Check if response matches expected slave ID and is not an error
+                    if (responseSlaveId === this.scanExpectedSlaveId && (functionCode & 0x80) === 0) {
+                        // Valid response - extract register value
+                        const responseValue = (frame[3] << 8) | frame[4];
+                        this.addMonitorEntry('received', frame);
+                        this.updateStats(true);
+                        this.scanResolve(responseValue);
+                        return;
+                    }
+                }
 
                 // Check if this is a response to a pending request
                 if (this.pendingResponse) {
@@ -6573,7 +6617,18 @@ class ModbusDashboard {
      */
     async scanWithTimeout(frame, slaveId) {
         return new Promise(async (resolve) => {
+            // Set up scan response callback
+            this.scanExpectedSlaveId = slaveId;
+            this.scanResolve = (responseValue) => {
+                clearTimeout(timeout);
+                this.scanResolve = null;
+                this.scanExpectedSlaveId = null;
+                resolve(responseValue);
+            };
+
             const timeout = setTimeout(() => {
+                this.scanResolve = null;
+                this.scanExpectedSlaveId = null;
                 resolve(null);
             }, this.scanTimeout);
 
@@ -6582,13 +6637,11 @@ class ModbusDashboard {
                 this.addMonitorEntry('sent', frame, { functionCode: 3, startAddress: this.scanRegister, quantity: 1 });
                 this.stats.requests++;
                 this.updateStatsDisplay();
-
-                // For real implementation, you would need to properly handle the response
-                // This is simplified - real implementation would need response parsing
-                clearTimeout(timeout);
-                resolve(null);
+                // Response will be handled by tryParseFrame which calls scanResolve
             } catch (error) {
                 clearTimeout(timeout);
+                this.scanResolve = null;
+                this.scanExpectedSlaveId = null;
                 resolve(null);
             }
         });
