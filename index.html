@@ -16,7 +16,7 @@
             <div class="navbar-logo">
                 <img src="main_logo.jpg" alt="Logo" class="navbar-logo-img">
             </div>
-            <div class="navbar-title">EC-FAN Controller</div>
+            <div class="navbar-title">EC-FAN Controller 나는 바보다 </div>
         </div>
         <div class="navbar-right">
             <div class="navbar-stats" id="navbarStats">
@@ -148,6 +148,10 @@
                 <div class="menu-item" data-page="parameters">
                     <span class="menu-item-icon">◎</span>
                     <span class="menu-item-text">Parameters</span>
+                </div>
+                <div class="menu-item" data-page="configuration">
+                    <span class="menu-item-icon">⚙</span>
+                    <span class="menu-item-text">Configuration</span>
                 </div>
                 <div class="menu-item" data-page="history">
                     <span class="menu-item-icon">○</span>
@@ -383,6 +387,56 @@
                         </div>
                         <div id="paramList" class="param-list">
                             <p class="placeholder">No parameters defined. Click "Import CSV" or "Load Default" to load parameters.</p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Configuration Page -->
+                <div id="page-configuration" class="page-content">
+                    <section class="card">
+                        <!-- Device Selector -->
+                        <div class="config-device-selector">
+                            <div class="config-device-selector-header">
+                                <div class="config-device-header-left">
+                                    <span class="config-device-toggle-icon" id="configDeviceToggleIcon">▼</span>
+                                    <span class="config-device-label">Target Device:</span>
+                                    <span class="config-device-selected" id="configDeviceSelectedName">선택 안됨</span>
+                                </div>
+                                <div class="config-header-buttons">
+                                    <button id="configReadAllBtn" class="btn btn-success btn-sm" disabled>📖 Read All</button>
+                                    <button id="configWriteAllBtn" class="btn btn-warning btn-sm" disabled>✏️ Write All</button>
+                                </div>
+                            </div>
+                            <div class="config-device-radio-group" id="configDeviceRadioGroup">
+                                <div class="config-device-placeholder">
+                                    <span>📦</span> Dashboard에서 디바이스를 등록하세요
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-shrink: 0;">
+                            <h2 style="margin-bottom: 0;">Configuration</h2>
+                        </div>
+
+                        <!-- Filter Group -->
+                        <div class="config-filter-group" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            <div style="display: flex; gap: 5px;">
+                                <button class="filter-btn active" data-config-filter="all">All</button>
+                                <button class="filter-btn" data-config-filter="holding">Holding</button>
+                                <button class="filter-btn" data-config-filter="input">Input</button>
+                            </div>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="filter-btn" data-config-implemented="all">All Status</button>
+                                <button class="filter-btn" data-config-implemented="Y">Implemented</button>
+                                <button class="filter-btn" data-config-implemented="N">Not Implemented</button>
+                            </div>
+                            <input type="text" id="configSearchInput" placeholder="Search by name or address..." style="flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;">
+                            <span id="configParamCount" style="color: #6c757d; font-size: 13px;">0 parameters</span>
+                        </div>
+
+                        <!-- Parameter Configuration List -->
+                        <div id="configParamList" class="config-param-list">
+                            <p class="placeholder">parameters.csv를 로드 중...</p>
                         </div>
                     </section>
                 </div>

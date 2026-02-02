@@ -1005,6 +1005,12 @@ class ModbusDashboard {
         // Parameters page device selection
         this.selectedParamDeviceId = null;
 
+        // Configuration page
+        this.selectedConfigDeviceId = null;
+        this.configParameters = [];
+        this.configValues = {}; // { address: { current: value, modified: value } }
+        this.configFilter = { type: 'all', implemented: 'all', search: '' };
+
         // Drag and drop state
         this.draggedElement = null;
         this.draggedDeviceId = null;
@@ -1238,27 +1244,25 @@ class ModbusDashboard {
         }
 
         // Parameter page device selector collapse/expand toggle
-        const paramDeviceSelectorHeader = document.getElementById('paramDeviceSelectorHeader');
+        const paramDeviceHeaderLeft = document.querySelector('.param-device-header-left');
         const paramDeviceSelector = document.querySelector('.param-device-selector');
-        if (paramDeviceSelectorHeader && paramDeviceSelector) {
+        if (paramDeviceHeaderLeft && paramDeviceSelector) {
             // Fixed mode: when true, hover doesn't affect open/close
             let isFixedMode = false;
 
             // Start expanded
             paramDeviceSelector.classList.add('expanded');
 
-            // Header click: always toggle open/close
-            paramDeviceSelectorHeader.addEventListener('click', (e) => {
-                // Don't toggle when clicking the Read All button
-                if (e.target.closest('#paramReadAllBtn')) return;
+            // Header left click: always toggle open/close
+            paramDeviceHeaderLeft.addEventListener('click', () => {
                 paramDeviceSelector.classList.toggle('collapsed');
                 paramDeviceSelector.classList.toggle('expanded');
             });
 
-            // Box click (outside header): toggle fixed mode
+            // Box click (outside header-left): toggle fixed mode
             paramDeviceSelector.addEventListener('click', (e) => {
-                // Ignore clicks on header or Read All button
-                if (e.target.closest('.param-device-selector-header')) return;
+                // Ignore clicks on header-left (open/close area) or Read All button
+                if (e.target.closest('.param-device-header-left')) return;
                 if (e.target.closest('#paramReadAllBtn')) return;
 
                 isFixedMode = !isFixedMode;
@@ -1286,6 +1290,9 @@ class ModbusDashboard {
         if (paramReadAllBtn) {
             paramReadAllBtn.addEventListener('click', () => this.readAllParameters());
         }
+
+        // Configuration page initialization
+        this.initConfigurationPage();
 
         // Simulator controls
         document.getElementById('simToggleBtn').addEventListener('click', () => this.toggleSimulator());
@@ -4575,6 +4582,8 @@ class ModbusDashboard {
         this.applyDeviceViewMode();
         // Update parameter page device selector
         this.updateParamDeviceSelector();
+        // Update configuration page device selector
+        this.updateConfigDeviceSelector();
     }
 
     /**
@@ -4584,6 +4593,8 @@ class ModbusDashboard {
         localStorage.setItem('modbusDevices', JSON.stringify(this.devices));
         // Update parameter page device selector
         this.updateParamDeviceSelector();
+        // Update configuration page device selector
+        this.updateConfigDeviceSelector();
     }
 
     /**
@@ -7652,6 +7663,445 @@ class ModbusDashboard {
             };
             checkBuffer();
         });
+    }
+
+    // ==================== Configuration Page Methods ====================
+
+    initConfigurationPage() {
+        // Load parameters.csv
+        this.loadConfigParameters();
+
+        // Device selector event listeners
+        const configDeviceRadioGroup = document.getElementById('configDeviceRadioGroup');
+        if (configDeviceRadioGroup) {
+            configDeviceRadioGroup.addEventListener('change', (e) => {
+                if (e.target.classList.contains('config-device-radio')) {
+                    this.selectedConfigDeviceId = parseInt(e.target.value);
+                    this.updateConfigDeviceStatus();
+                }
+            });
+        }
+
+        // Device selector collapse/expand toggle
+        const configDeviceHeaderLeft = document.querySelector('.config-device-header-left');
+        const configDeviceSelector = document.querySelector('.config-device-selector');
+        if (configDeviceHeaderLeft && configDeviceSelector) {
+            let isFixedMode = false;
+            configDeviceSelector.classList.add('expanded');
+
+            configDeviceHeaderLeft.addEventListener('click', () => {
+                configDeviceSelector.classList.toggle('collapsed');
+                configDeviceSelector.classList.toggle('expanded');
+            });
+
+            configDeviceSelector.addEventListener('click', (e) => {
+                if (e.target.closest('.config-device-header-left')) return;
+                if (e.target.closest('#configReadAllBtn')) return;
+                if (e.target.closest('#configWriteAllBtn')) return;
+
+                isFixedMode = !isFixedMode;
+                configDeviceSelector.classList.toggle('click-mode', isFixedMode);
+            });
+
+            configDeviceSelector.addEventListener('mouseleave', () => {
+                if (!isFixedMode && this.selectedConfigDeviceId) {
+                    configDeviceSelector.classList.add('collapsed');
+                    configDeviceSelector.classList.remove('expanded');
+                }
+            });
+
+            configDeviceSelector.addEventListener('mouseenter', () => {
+                if (!isFixedMode) {
+                    configDeviceSelector.classList.remove('collapsed');
+                    configDeviceSelector.classList.add('expanded');
+                }
+            });
+        }
+
+        // Read All button
+        const configReadAllBtn = document.getElementById('configReadAllBtn');
+        if (configReadAllBtn) {
+            configReadAllBtn.addEventListener('click', () => this.readAllConfigParameters());
+        }
+
+        // Write All button
+        const configWriteAllBtn = document.getElementById('configWriteAllBtn');
+        if (configWriteAllBtn) {
+            configWriteAllBtn.addEventListener('click', () => this.writeAllConfigParameters());
+        }
+
+        // Filter buttons
+        document.querySelectorAll('[data-config-filter]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-config-filter]').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.configFilter.type = e.target.dataset.configFilter;
+                this.renderConfigParameters();
+            });
+        });
+
+        document.querySelectorAll('[data-config-implemented]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('[data-config-implemented]').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.configFilter.implemented = e.target.dataset.configImplemented;
+                this.renderConfigParameters();
+            });
+        });
+
+        // Search input
+        const configSearchInput = document.getElementById('configSearchInput');
+        if (configSearchInput) {
+            configSearchInput.addEventListener('input', (e) => {
+                this.configFilter.search = e.target.value.toLowerCase();
+                this.renderConfigParameters();
+            });
+        }
+    }
+
+    async loadConfigParameters() {
+        try {
+            const response = await fetch('parameters.csv');
+            const csvText = await response.text();
+            this.configParameters = this.parseConfigCSV(csvText);
+            this.renderConfigParameters();
+        } catch (error) {
+            console.error('Failed to load parameters.csv:', error);
+            const configParamList = document.getElementById('configParamList');
+            if (configParamList) {
+                configParamList.innerHTML = '<p class="placeholder">parameters.csv 로드 실패</p>';
+            }
+        }
+    }
+
+    parseConfigCSV(csvText) {
+        const lines = csvText.trim().split('\n');
+        // Skip header line (index 0)
+        const parameters = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            const values = this.parseCSVLine(lines[i]);
+            if (values.length >= 4) {
+                parameters.push({
+                    type: values[0],
+                    address: values[1],
+                    name: values[2],
+                    implemented: values[3],
+                    description: values[4] || ''
+                });
+            }
+        }
+
+        return parameters;
+    }
+
+    parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim());
+
+        return result;
+    }
+
+    getFilteredConfigParameters() {
+        return this.configParameters.filter(param => {
+            // Type filter
+            if (this.configFilter.type !== 'all' && param.type !== this.configFilter.type) {
+                return false;
+            }
+
+            // Implemented filter
+            if (this.configFilter.implemented !== 'all' && param.implemented !== this.configFilter.implemented) {
+                return false;
+            }
+
+            // Search filter
+            if (this.configFilter.search) {
+                const searchLower = this.configFilter.search;
+                const nameMatch = param.name.toLowerCase().includes(searchLower);
+                const addressMatch = param.address.toLowerCase().includes(searchLower);
+                const descMatch = param.description.toLowerCase().includes(searchLower);
+                if (!nameMatch && !addressMatch && !descMatch) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    renderConfigParameters() {
+        const configParamList = document.getElementById('configParamList');
+        if (!configParamList) return;
+
+        const filteredParams = this.getFilteredConfigParameters();
+
+        // Update count
+        const countEl = document.getElementById('configParamCount');
+        if (countEl) {
+            countEl.textContent = `${filteredParams.length} parameters`;
+        }
+
+        if (filteredParams.length === 0) {
+            configParamList.innerHTML = '<p class="placeholder">No parameters match the current filter.</p>';
+            return;
+        }
+
+        let html = `
+            <div class="config-param-header">
+                <div>Type</div>
+                <div>Address</div>
+                <div>Name</div>
+                <div>Value</div>
+                <div>Actions</div>
+            </div>
+        `;
+
+        filteredParams.forEach(param => {
+            const addressNum = parseInt(param.address, 16);
+            const currentValue = this.configValues[addressNum];
+            const valueDisplay = currentValue !== undefined ? currentValue.current : '-';
+            const isReadOnly = param.type === 'input';
+
+            html += `
+                <div class="config-param-item ${param.type}" data-address="${param.address}">
+                    <div>
+                        <span class="config-param-type ${param.type}">${param.type}</span>
+                    </div>
+                    <div class="config-param-address">${param.address}</div>
+                    <div class="config-param-name">
+                        ${param.name}
+                        ${param.description ? `<span class="description">${param.description}</span>` : ''}
+                    </div>
+                    <div class="config-param-value">
+                        ${isReadOnly ?
+                            `<span class="current-value" data-address="${addressNum}">${valueDisplay}</span>` :
+                            `<input type="number" data-address="${addressNum}" value="${valueDisplay !== '-' ? valueDisplay : ''}" placeholder="-">`
+                        }
+                    </div>
+                    <div class="config-param-actions">
+                        <button class="btn btn-sm btn-info" onclick="dashboard.readConfigParameter('${param.address}')" title="Read">📖</button>
+                        ${!isReadOnly ? `<button class="btn btn-sm btn-warning" onclick="dashboard.writeConfigParameter('${param.address}')" title="Write">✏️</button>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+
+        configParamList.innerHTML = html;
+
+        // Add input change listeners
+        configParamList.querySelectorAll('input[data-address]').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const address = parseInt(e.target.dataset.address);
+                const value = parseInt(e.target.value);
+                if (!this.configValues[address]) {
+                    this.configValues[address] = { current: null, modified: null };
+                }
+                this.configValues[address].modified = value;
+                e.target.closest('.config-param-item').classList.add('modified');
+            });
+        });
+    }
+
+    updateConfigDeviceSelector() {
+        const radioGroup = document.getElementById('configDeviceRadioGroup');
+        if (!radioGroup) return;
+
+        if (this.devices.length === 0) {
+            radioGroup.innerHTML = `
+                <div class="config-device-placeholder">
+                    <span>📦</span> Dashboard에서 디바이스를 등록하세요
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        this.devices.forEach(device => {
+            const isSelected = this.selectedConfigDeviceId === device.slaveId;
+            html += `
+                <label style="display: flex;">
+                    <input type="radio" name="configDevice" class="config-device-radio"
+                           value="${device.slaveId}" ${isSelected ? 'checked' : ''}>
+                    <span class="config-device-radio-label">
+                        <span class="device-indicator"></span>
+                        <span class="device-name">${device.name}</span>
+                        <span class="device-id">ID: ${device.slaveId}</span>
+                    </span>
+                </label>
+            `;
+        });
+
+        radioGroup.innerHTML = html;
+    }
+
+    updateConfigDeviceStatus() {
+        const selectedNameEl = document.getElementById('configDeviceSelectedName');
+        const readAllBtn = document.getElementById('configReadAllBtn');
+        const writeAllBtn = document.getElementById('configWriteAllBtn');
+
+        if (this.selectedConfigDeviceId) {
+            const device = this.devices.find(d => d.slaveId === this.selectedConfigDeviceId);
+            if (device) {
+                selectedNameEl.textContent = `${device.name} (ID: ${device.slaveId})`;
+                selectedNameEl.classList.remove('none');
+            }
+            readAllBtn.disabled = false;
+            writeAllBtn.disabled = false;
+        } else {
+            selectedNameEl.textContent = '선택 안됨';
+            selectedNameEl.classList.add('none');
+            readAllBtn.disabled = true;
+            writeAllBtn.disabled = true;
+        }
+    }
+
+    async readConfigParameter(addressHex) {
+        if (!this.selectedConfigDeviceId) {
+            this.showToast('디바이스를 먼저 선택하세요', 'warning');
+            return;
+        }
+
+        const address = parseInt(addressHex, 16);
+        const param = this.configParameters.find(p => p.address === addressHex);
+        if (!param) return;
+
+        try {
+            const functionCode = param.type === 'holding' ? 0x03 : 0x04;
+            const result = await this.readRegister(this.selectedConfigDeviceId, functionCode, address, 1);
+
+            if (result && result.length >= 2) {
+                const value = (result[0] << 8) | result[1];
+
+                if (!this.configValues[address]) {
+                    this.configValues[address] = { current: null, modified: null };
+                }
+                this.configValues[address].current = value;
+
+                // Update UI
+                const valueEl = document.querySelector(`.config-param-item[data-address="${addressHex}"] .current-value`);
+                if (valueEl) {
+                    valueEl.textContent = value;
+                    valueEl.classList.remove('loading');
+                }
+
+                const inputEl = document.querySelector(`.config-param-item[data-address="${addressHex}"] input[data-address]`);
+                if (inputEl && !this.configValues[address].modified) {
+                    inputEl.value = value;
+                }
+
+                this.showToast(`${param.name}: ${value}`, 'success');
+            }
+        } catch (error) {
+            console.error('Read parameter error:', error);
+            this.showToast(`읽기 실패: ${param.name}`, 'error');
+        }
+    }
+
+    async writeConfigParameter(addressHex) {
+        if (!this.selectedConfigDeviceId) {
+            this.showToast('디바이스를 먼저 선택하세요', 'warning');
+            return;
+        }
+
+        const address = parseInt(addressHex, 16);
+        const param = this.configParameters.find(p => p.address === addressHex);
+        if (!param || param.type !== 'holding') {
+            this.showToast('이 파라미터는 쓰기가 불가능합니다', 'warning');
+            return;
+        }
+
+        const inputEl = document.querySelector(`.config-param-item[data-address="${addressHex}"] input[data-address]`);
+        if (!inputEl) return;
+
+        const value = parseInt(inputEl.value);
+        if (isNaN(value)) {
+            this.showToast('유효한 값을 입력하세요', 'warning');
+            return;
+        }
+
+        try {
+            await this.writeRegister(this.selectedConfigDeviceId, address, value);
+
+            if (!this.configValues[address]) {
+                this.configValues[address] = { current: null, modified: null };
+            }
+            this.configValues[address].current = value;
+            this.configValues[address].modified = null;
+
+            inputEl.closest('.config-param-item').classList.remove('modified');
+            inputEl.closest('.config-param-item').classList.add('success');
+            setTimeout(() => {
+                inputEl.closest('.config-param-item').classList.remove('success');
+            }, 2000);
+
+            this.showToast(`${param.name}: ${value} 쓰기 완료`, 'success');
+        } catch (error) {
+            console.error('Write parameter error:', error);
+            inputEl.closest('.config-param-item').classList.add('error');
+            setTimeout(() => {
+                inputEl.closest('.config-param-item').classList.remove('error');
+            }, 2000);
+            this.showToast(`쓰기 실패: ${param.name}`, 'error');
+        }
+    }
+
+    async readAllConfigParameters() {
+        if (!this.selectedConfigDeviceId) {
+            this.showToast('디바이스를 먼저 선택하세요', 'warning');
+            return;
+        }
+
+        const filteredParams = this.getFilteredConfigParameters();
+        this.showToast(`${filteredParams.length}개 파라미터 읽기 시작...`, 'info');
+
+        for (const param of filteredParams) {
+            await this.readConfigParameter(param.address);
+            await new Promise(resolve => setTimeout(resolve, 50)); // Small delay between reads
+        }
+
+        this.showToast('모든 파라미터 읽기 완료', 'success');
+    }
+
+    async writeAllConfigParameters() {
+        if (!this.selectedConfigDeviceId) {
+            this.showToast('디바이스를 먼저 선택하세요', 'warning');
+            return;
+        }
+
+        const modifiedParams = this.getFilteredConfigParameters().filter(param => {
+            const address = parseInt(param.address, 16);
+            return param.type === 'holding' &&
+                   this.configValues[address] &&
+                   this.configValues[address].modified !== null;
+        });
+
+        if (modifiedParams.length === 0) {
+            this.showToast('수정된 파라미터가 없습니다', 'warning');
+            return;
+        }
+
+        this.showToast(`${modifiedParams.length}개 파라미터 쓰기 시작...`, 'info');
+
+        for (const param of modifiedParams) {
+            await this.writeConfigParameter(param.address);
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        this.showToast('모든 수정된 파라미터 쓰기 완료', 'success');
     }
 }
 
