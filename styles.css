@@ -1352,19 +1352,11 @@ select:focus {
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
-    transition: margin-bottom 0.3s ease, background-color 0.2s ease;
-    margin: -12px -15px 0 -15px;
-    padding: 12px 15px;
-    border-radius: 8px 8px 0 0;
+    transition: margin-bottom 0.3s ease;
 }
 
 .param-device-selector-header:hover {
-    background-color: rgba(0, 123, 255, 0.1);
-}
-
-.param-device-selector.collapsed .param-device-selector-header {
-    border-radius: 8px;
-    margin-bottom: -12px;
+    opacity: 0.9;
 }
 
 .param-device-selector.expanded .param-device-selector-header {
@@ -1420,22 +1412,14 @@ select:focus {
     max-height: 500px;
     opacity: 1;
     overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease, background-color 0.2s ease;
-    padding: 10px;
-    margin: 0 -10px -7px -10px;
-    border-radius: 0 0 6px 6px;
-    cursor: pointer;
-}
-
-.param-device-radio-group:hover {
-    background-color: rgba(108, 117, 125, 0.08);
+    transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
+    padding-top: 10px;
 }
 
 .param-device-selector.collapsed .param-device-radio-group {
     max-height: 0;
     opacity: 0;
     padding-top: 0;
-    padding-bottom: 0;
 }
 
 .param-device-placeholder {
