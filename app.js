@@ -1013,6 +1013,7 @@ class ModbusDashboard {
         this.REGISTERS = {
             SETPOINT: 0xD001,
             MOTOR_STATUS: 0xD011,
+            ACTUAL_SPEED: 0xD02D,
             OPERATION_MODE: 0xD106,
             MAXIMUM_SPEED: 0xD119
         };
@@ -1050,7 +1051,8 @@ class ModbusDashboard {
         this.autoPollingTimer = null;
         this.currentPollingIndex = 0;
         this.isPolling = false; // Flag to prevent concurrent polling
-        this.pollingTimeout = 200; // Response timeout in ms
+        this.pollingTimeout = 200; // Response timeout in ms for polling
+        this.commandTimeout = 200; // Response timeout in ms for user commands (write/read)
         this.pendingResponse = null; // Current pending response promise
         this.offlineThreshold = 3; // Number of consecutive failures before marking offline
         this.paramPollingDelay = 20; // ms between monitoring parameters
@@ -1239,49 +1241,43 @@ class ModbusDashboard {
         const paramDeviceSelectorHeader = document.getElementById('paramDeviceSelectorHeader');
         const paramDeviceSelector = document.querySelector('.param-device-selector');
         if (paramDeviceSelectorHeader && paramDeviceSelector) {
-            // Mode: 'hover' (default) or 'click'
-            let selectorMode = 'hover';
+            // Fixed mode: when true, hover doesn't affect open/close
+            let isFixedMode = false;
 
             // Start expanded
             paramDeviceSelector.classList.add('expanded');
 
+            // Header click: always toggle open/close
             paramDeviceSelectorHeader.addEventListener('click', (e) => {
                 // Don't toggle when clicking the Read All button
                 if (e.target.closest('#paramReadAllBtn')) return;
-
-                if (selectorMode === 'hover') {
-                    // Switch to click mode
-                    selectorMode = 'click';
-                    paramDeviceSelector.classList.add('click-mode');
-                } else {
-                    // In click mode, toggle open/close
-                    paramDeviceSelector.classList.toggle('collapsed');
-                    paramDeviceSelector.classList.toggle('expanded');
-                }
+                paramDeviceSelector.classList.toggle('collapsed');
+                paramDeviceSelector.classList.toggle('expanded');
             });
 
-            // Auto-collapse when mouse leaves (only in hover mode and if a device is selected)
+            // Box click (outside header): toggle fixed mode
+            paramDeviceSelector.addEventListener('click', (e) => {
+                // Ignore clicks on header or Read All button
+                if (e.target.closest('.param-device-selector-header')) return;
+                if (e.target.closest('#paramReadAllBtn')) return;
+
+                isFixedMode = !isFixedMode;
+                paramDeviceSelector.classList.toggle('click-mode', isFixedMode);
+            });
+
+            // Auto-collapse when mouse leaves (only if not fixed and a device is selected)
             paramDeviceSelector.addEventListener('mouseleave', () => {
-                if (selectorMode === 'hover' && this.selectedParamDeviceId) {
+                if (!isFixedMode && this.selectedParamDeviceId) {
                     paramDeviceSelector.classList.add('collapsed');
                     paramDeviceSelector.classList.remove('expanded');
                 }
             });
 
-            // Auto-expand when mouse enters (only in hover mode)
+            // Auto-expand when mouse enters (only if not fixed)
             paramDeviceSelector.addEventListener('mouseenter', () => {
-                if (selectorMode === 'hover') {
+                if (!isFixedMode) {
                     paramDeviceSelector.classList.remove('collapsed');
                     paramDeviceSelector.classList.add('expanded');
-                }
-            });
-
-            // Double-click to switch back to hover mode
-            paramDeviceSelectorHeader.addEventListener('dblclick', (e) => {
-                if (e.target.closest('#paramReadAllBtn')) return;
-                if (selectorMode === 'click') {
-                    selectorMode = 'hover';
-                    paramDeviceSelector.classList.remove('click-mode');
                 }
             });
         }
@@ -4459,13 +4455,6 @@ class ModbusDashboard {
             this.applyDeviceViewMode();
         }
 
-        // Control mode tabs
-        const tabBatch = document.getElementById('tabBatchControl');
-        const tabIndividual = document.getElementById('tabIndividualControl');
-        if (tabBatch && tabIndividual) {
-            tabBatch.addEventListener('click', () => this.setControlMode('batch'));
-            tabIndividual.addEventListener('click', () => this.setControlMode('individual'));
-        }
     }
 
     /**
@@ -4477,28 +4466,6 @@ class ModbusDashboard {
         const value = parseInt(slider.value) || 0;
         const percent = ((value - min) / (max - min)) * 100;
         slider.style.background = `linear-gradient(to right, #007bff ${percent}%, #e9ecef ${percent}%)`;
-    }
-
-    /**
-     * Set control mode (batch or individual)
-     */
-    setControlMode(mode) {
-        const tabBatch = document.getElementById('tabBatchControl');
-        const tabIndividual = document.getElementById('tabIndividualControl');
-        const panelBatch = document.getElementById('batchControlPanel');
-        const panelIndividual = document.getElementById('individualControlPanel');
-
-        if (mode === 'batch') {
-            tabBatch?.classList.add('active');
-            tabIndividual?.classList.remove('active');
-            panelBatch?.classList.add('active');
-            panelIndividual?.classList.remove('active');
-        } else {
-            tabBatch?.classList.remove('active');
-            tabIndividual?.classList.add('active');
-            panelBatch?.classList.remove('active');
-            panelIndividual?.classList.add('active');
-        }
     }
 
     /**
@@ -4593,6 +4560,15 @@ class ModbusDashboard {
         const stored = localStorage.getItem('modbusDevices');
         if (stored) {
             this.devices = JSON.parse(stored);
+            // 페이지 로드 시 runtime 상태 초기화 (연결 전이므로 이전 값 제거)
+            this.devices.forEach(device => {
+                device.motorStatus = 0;
+                device.setpoint = 0;
+                device.actualSpeed = 0;
+                device.online = false;
+                device.lastUpdate = null;
+                device.failCount = 0;
+            });
             this.renderDeviceGrid();
         }
         // Apply view mode after loading devices
@@ -4652,6 +4628,7 @@ class ModbusDashboard {
             slaveId: slaveId,
             operationMode: operationMode,
             setpoint: 0,
+            actualSpeed: 0,
             motorStatus: 0,
             maxSpeed: 10000,
             lastUpdate: null,
@@ -4764,7 +4741,7 @@ class ModbusDashboard {
         }
 
         const modeText = device.operationMode === 0 ? 'RPM' : '%';
-        const statusInfo = this.getMotorStatusInfo(device.motorStatus);
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online);
 
         item.innerHTML = `
             <span class="drag-handle" title="Drag to reorder">≡</span>
@@ -4905,7 +4882,7 @@ class ModbusDashboard {
         }
 
         const modeText = device.operationMode === 0 ? 'RPM' : '%';
-        const statusInfo = this.getMotorStatusInfo(device.motorStatus);
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online);
 
         card.innerHTML = `
             <div class="device-card-header">
@@ -4936,10 +4913,10 @@ class ModbusDashboard {
                             ${device.setpoint}<span class="device-value-unit">${modeText}</span>
                         </div>
                     </div>
-                    <div class="device-value-item ${statusInfo.hasError ? 'has-error' : ''}" title="${statusInfo.tooltip}">
-                        <div class="device-value-label">Status</div>
-                        <div class="device-value-number status-value ${statusInfo.class}">
-                            ${statusInfo.text}
+                    <div class="device-value-item">
+                        <div class="device-value-label">Actual</div>
+                        <div class="device-value-number actual-speed-value">
+                            ${device.actualSpeed}<span class="device-value-unit">RPM</span>
                         </div>
                     </div>
                 </div>
@@ -4947,7 +4924,6 @@ class ModbusDashboard {
                     <input type="number" placeholder="Setpoint (${modeText})" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
                     <span class="input-unit">${modeText}</span>
                     <button class="btn btn-success btn-apply">Apply</button>
-                    <button class="btn btn-secondary btn-read">Read</button>
                 </div>
                 <div class="device-quick-btns">
                     ${device.operationMode === 0 ? `
@@ -5025,11 +5001,6 @@ class ModbusDashboard {
             this.applyDeviceSetpoint(device.id, parseInt(input.value));
         });
 
-        const readBtn = card.querySelector('.btn-read');
-        readBtn.addEventListener('click', () => {
-            this.readDeviceStatus(device.id);
-        });
-
         const deleteBtn = card.querySelector('.btn-delete');
         deleteBtn.addEventListener('click', () => {
             this.deleteDevice(device.id);
@@ -5051,6 +5022,8 @@ class ModbusDashboard {
                 const value = parseInt(btn.dataset.value);
                 const input = card.querySelector('.device-controls input');
                 if (input) input.value = value;
+                // 바로 setpoint 적용
+                this.applyDeviceSetpoint(device.id, value);
             });
         });
 
@@ -5293,7 +5266,7 @@ class ModbusDashboard {
         } else {
             rpmBtn.classList.remove('active');
             pctBtn.classList.add('active');
-            unitSpan.textContent = '(%)';
+            unitSpan.textContent = '%';
             slider.max = 100;
         }
     }
@@ -5312,10 +5285,7 @@ class ModbusDashboard {
         }
 
         try {
-            // First set operation mode
-            await this.writeRegister(device.slaveId, this.REGISTERS.OPERATION_MODE, device.operationMode);
-
-            // Then set setpoint
+            // Set setpoint
             await this.writeRegister(device.slaveId, this.REGISTERS.SETPOINT, setpoint);
 
             // Update local state
@@ -5590,6 +5560,14 @@ class ModbusDashboard {
                 device.online = true;
                 device.failCount = 0; // Reset fail count on success
                 this.updateDeviceStats(device.slaveId, true);
+
+                // Read actual speed
+                const actualSpeed = await this.readRegisterWithTimeout(device.slaveId, this.REGISTERS.ACTUAL_SPEED);
+                if (actualSpeed !== null) {
+                    // Handle signed 16-bit value
+                    device.actualSpeed = actualSpeed > 32767 ? actualSpeed - 65536 : actualSpeed;
+                }
+
                 this.updateDeviceCardStatus(device);
 
                 // Poll monitoring parameters if any
@@ -5764,7 +5742,7 @@ class ModbusDashboard {
         // Remove offline class when device comes back online
         element.classList.remove('offline');
 
-        const statusInfo = this.getMotorStatusInfo(device.motorStatus);
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online);
 
         const statusIndicator = element.querySelector('.status-indicator');
         const statusTextEl = element.querySelector('.status-text');
@@ -5793,15 +5771,33 @@ class ModbusDashboard {
                 statusValueEl.className = `device-value-number status-value ${statusInfo.class}`;
                 statusValueEl.textContent = statusInfo.text;
             }
+
+            // Update actual speed value
+            const actualSpeedEl = element.querySelector('.actual-speed-value');
+            if (actualSpeedEl) {
+                actualSpeedEl.innerHTML = `${device.actualSpeed}<span class="device-value-unit">RPM</span>`;
+            }
         }
     }
 
     /**
      * Parse motor status bits and return status info
      * @param {number} status - 16-bit motor status value from D011
+     * @param {boolean} online - Whether the device is online/connected
      * @returns {Object} { text: string, class: string, errors: array, hasError: boolean }
      */
-    getMotorStatusInfo(status) {
+    getMotorStatusInfo(status, online = true) {
+        // Check if device is disconnected
+        if (!online) {
+            return {
+                text: 'Disconnected',
+                class: 'disconnected',
+                errors: [],
+                hasError: false,
+                tooltip: 'Device not connected'
+            };
+        }
+
         const errors = [];
 
         // Check each error bit
@@ -5863,13 +5859,61 @@ class ModbusDashboard {
                 this.updateStats(true);
             }
         } else if (this.writer) {
-            await this.writer.write(frame);
-            this.addMonitorEntry('sent', frame, { functionCode: 6, startAddress: address });
-            this.stats.requests++;
-            this.updateStatsDisplay();
+            // Wait for response with timeout
+            await this.sendWriteAndWaitResponse(frame, slaveId, address);
         } else {
             throw new Error('Not connected');
         }
+    }
+
+    /**
+     * Send write command and wait for response with timeout
+     */
+    async sendWriteAndWaitResponse(frame, slaveId, address) {
+        return new Promise(async (resolve, reject) => {
+            // Set up response handler
+            const responsePromise = new Promise(res => {
+                this.pendingResponse = {
+                    slaveId: slaveId,
+                    resolve: res
+                };
+            });
+
+            const timeoutPromise = new Promise((_, rej) => {
+                setTimeout(() => rej(new Error('Timeout')), this.commandTimeout);
+            });
+
+            try {
+                // Send TX
+                await this.writer.write(frame);
+                this.addMonitorEntry('sent', frame, { functionCode: 6, startAddress: address });
+                this.stats.requests++;
+                this.updateStatsDisplay();
+
+                // Wait for response or timeout
+                const response = await Promise.race([responsePromise, timeoutPromise]);
+
+                this.pendingResponse = null;
+
+                if (response && response.length >= 5 && response[0] === slaveId && (response[1] & 0x80) === 0) {
+                    this.addMonitorEntry('received', response);
+                    this.stats.success++;
+                    this.updateStatsDisplay();
+                    resolve();
+                } else {
+                    this.stats.errors++;
+                    this.updateStatsDisplay();
+                    resolve(); // Still resolve to continue execution
+                }
+            } catch (error) {
+                // Timeout occurred
+                this.pendingResponse = null;
+                this.stats.errors++;
+                this.updateStatsDisplay();
+                this.addMonitorEntry('error', `Slave ${slaveId}: Write response timeout (${this.commandTimeout}ms)`);
+                resolve(); // Still resolve to continue execution
+            }
+        });
     }
 
     /**

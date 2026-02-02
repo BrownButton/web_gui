@@ -1352,11 +1352,19 @@ select:focus {
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
-    transition: margin-bottom 0.3s ease;
+    transition: margin-bottom 0.3s ease, background-color 0.2s ease;
+    margin: -12px -15px 0 -15px;
+    padding: 12px 15px;
+    border-radius: 8px 8px 0 0;
 }
 
 .param-device-selector-header:hover {
-    opacity: 0.9;
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.param-device-selector.collapsed .param-device-selector-header {
+    border-radius: 8px;
+    margin-bottom: -12px;
 }
 
 .param-device-selector.expanded .param-device-selector-header {
@@ -1379,15 +1387,10 @@ select:focus {
     transform: rotate(-90deg);
 }
 
-/* Click mode indicator - shows a pin icon effect */
-.param-device-selector.click-mode .param-device-toggle-icon {
-    color: #007bff;
-}
-
-.param-device-selector.click-mode .param-device-label::after {
-    content: '📌';
-    margin-left: 6px;
-    font-size: 11px;
+/* Click mode indicator - change box color */
+.param-device-selector.click-mode {
+    background: linear-gradient(135deg, #e7f1ff 0%, #d0e4ff 100%);
+    border-color: #007bff;
 }
 
 .param-device-label {
@@ -1417,14 +1420,22 @@ select:focus {
     max-height: 500px;
     opacity: 1;
     overflow: hidden;
-    transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
-    padding-top: 10px;
+    transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.3s ease, background-color 0.2s ease;
+    padding: 10px;
+    margin: 0 -10px -7px -10px;
+    border-radius: 0 0 6px 6px;
+    cursor: pointer;
+}
+
+.param-device-radio-group:hover {
+    background-color: rgba(108, 117, 125, 0.08);
 }
 
 .param-device-selector.collapsed .param-device-radio-group {
     max-height: 0;
     opacity: 0;
     padding-top: 0;
+    padding-bottom: 0;
 }
 
 .param-device-placeholder {
@@ -3401,6 +3412,10 @@ select:focus {
     background: #ffc107;
 }
 
+.status-indicator.disconnected {
+    background: #adb5bd;
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
@@ -3436,6 +3451,8 @@ select:focus {
     font-size: 11px;
     font-weight: 600;
     transition: all 0.2s;
+    min-width: 40px;
+    text-align: center;
 }
 
 .device-mode-btns .mode-btn:first-child {
@@ -3461,6 +3478,7 @@ select:focus {
 .device-mode-btns.compact .mode-btn {
     padding: 4px 8px;
     font-size: 10px;
+    min-width: 36px;
 }
 
 .device-values {
@@ -3519,6 +3537,10 @@ select:focus {
 .status-value.error {
     color: #e53e3e;
     font-weight: 700;
+}
+
+.status-value.disconnected {
+    color: #adb5bd;
 }
 
 .device-controls {
@@ -4151,6 +4173,10 @@ select:focus {
 
 .device-list-item .status-indicator.error {
     background: #ffc107;
+}
+
+.device-list-item .status-indicator.disconnected {
+    background: #adb5bd;
 }
 
 .device-list-item .status-text {
