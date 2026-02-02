@@ -3487,6 +3487,29 @@ select:focus {
     margin-left: 3px;
 }
 
+/* Status value styles */
+.device-value-item.has-error {
+    background: #fff5f5;
+    border: 1px solid #fed7d7;
+}
+
+.status-value {
+    font-size: 14px !important;
+}
+
+.status-value.stopped {
+    color: #6c757d;
+}
+
+.status-value.running {
+    color: #28a745;
+}
+
+.status-value.error {
+    color: #e53e3e;
+    font-weight: 700;
+}
+
 .device-controls {
     display: flex;
     gap: 10px;

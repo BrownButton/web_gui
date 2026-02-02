@@ -1017,13 +1017,20 @@ class ModbusDashboard {
             MAXIMUM_SPEED: 0xD119
         };
 
-        // Status codes (placeholder - will be configured later)
-        this.STATUS_CODES = {
-            0: 'Stopped',
-            1: 'Running',
-            2: 'Error',
-            3: 'Starting',
-            4: 'Stopping'
+        // Motor Status Bit Definitions (D011)
+        // MSB: 0 0 0 UzLow 0 RL_Cal 0 n_Limit
+        // LSB: BLK HLL TFM FB SKF TFE 0 PHA
+        this.MOTOR_STATUS_BITS = {
+            UzLow:   { mask: 0x1000, name: 'DC Undervolt', description: 'DC-link undervoltage' },
+            RL_Cal:  { mask: 0x0400, name: 'Rotor Cal', description: 'Rotor position sensor calibration error' },
+            n_Limit: { mask: 0x0100, name: 'Speed Limit', description: 'Speed limit exceeded' },
+            BLK:     { mask: 0x0080, name: 'Blocked', description: 'Motor blocked' },
+            HLL:     { mask: 0x0040, name: 'Hall Error', description: 'Hall sensor error' },
+            TFM:     { mask: 0x0020, name: 'Motor OT', description: 'Motor overheated' },
+            FB:      { mask: 0x0010, name: 'Fan Bad', description: 'Fan Bad (general error)' },
+            SKF:     { mask: 0x0008, name: 'Comm Error', description: 'Communication error between master and slave controller' },
+            TFE:     { mask: 0x0004, name: 'Stage OT', description: 'Output stage overheated' },
+            PHA:     { mask: 0x0001, name: 'Phase Fail', description: 'Phase failure or line undervoltage' }
         };
 
         // Auto Scan settings
@@ -1043,6 +1050,7 @@ class ModbusDashboard {
         this.isPolling = false; // Flag to prevent concurrent polling
         this.pollingTimeout = 200; // Response timeout in ms
         this.pendingResponse = null; // Current pending response promise
+        this.offlineThreshold = 3; // Number of consecutive failures before marking offline
         this.paramPollingDelay = 20; // ms between monitoring parameters
 
         // Chart Manager
@@ -1947,6 +1955,7 @@ class ModbusDashboard {
         } finally {
             if (this.reader) {
                 this.reader.releaseLock();
+                this.reader = null;
             }
         }
     }
@@ -4602,7 +4611,8 @@ class ModbusDashboard {
             motorStatus: 0,
             maxSpeed: 10000,
             lastUpdate: null,
-            online: false
+            online: false,
+            failCount: 0
         };
 
         this.devices.push(device);
@@ -4710,8 +4720,7 @@ class ModbusDashboard {
         }
 
         const modeText = device.operationMode === 0 ? 'RPM' : '%';
-        const statusText = this.STATUS_CODES[device.motorStatus] || 'Unknown';
-        const statusClass = device.motorStatus === 1 ? 'running' : (device.motorStatus === 2 ? 'error' : 'stopped');
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus);
 
         item.innerHTML = `
             <span class="drag-handle" title="Drag to reorder">≡</span>
@@ -4720,9 +4729,9 @@ class ModbusDashboard {
             <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
                 ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
             </span>
-            <div class="device-status">
-                <span class="status-indicator ${statusClass}"></span>
-                <span class="status-text">${statusText}</span>
+            <div class="device-status" title="${statusInfo.tooltip}">
+                <span class="status-indicator ${statusInfo.class}"></span>
+                <span class="status-text">${statusInfo.text}</span>
             </div>
             <div class="device-value">
                 <div class="device-value-number">
@@ -4852,8 +4861,7 @@ class ModbusDashboard {
         }
 
         const modeText = device.operationMode === 0 ? 'RPM' : '%';
-        const statusText = this.STATUS_CODES[device.motorStatus] || 'Unknown';
-        const statusClass = device.motorStatus === 1 ? 'running' : (device.motorStatus === 2 ? 'error' : 'stopped');
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus);
 
         card.innerHTML = `
             <div class="device-card-header">
@@ -4868,9 +4876,9 @@ class ModbusDashboard {
             </div>
             <div class="device-card-body">
                 <div class="device-status-row">
-                    <div class="device-status">
-                        <span class="status-indicator ${statusClass}"></span>
-                        <span class="status-text">${statusText}</span>
+                    <div class="device-status" title="${statusInfo.tooltip}">
+                        <span class="status-indicator ${statusInfo.class}"></span>
+                        <span class="status-text">${statusInfo.text}</span>
                     </div>
                     <div class="device-mode-btns">
                         <button class="mode-btn ${device.operationMode === 0 ? 'active' : ''}" data-mode="0">RPM</button>
@@ -4884,10 +4892,10 @@ class ModbusDashboard {
                             ${device.setpoint}<span class="device-value-unit">${modeText}</span>
                         </div>
                     </div>
-                    <div class="device-value-item">
+                    <div class="device-value-item ${statusInfo.hasError ? 'has-error' : ''}" title="${statusInfo.tooltip}">
                         <div class="device-value-label">Status</div>
-                        <div class="device-value-number">
-                            ${device.motorStatus}<span class="device-value-unit">code</span>
+                        <div class="device-value-number status-value ${statusInfo.class}">
+                            ${statusInfo.text}
                         </div>
                     </div>
                 </div>
@@ -5536,6 +5544,7 @@ class ModbusDashboard {
                 device.motorStatus = status;
                 device.lastUpdate = Date.now();
                 device.online = true;
+                device.failCount = 0; // Reset fail count on success
                 this.updateDeviceStats(device.slaveId, true);
                 this.updateDeviceCardStatus(device);
 
@@ -5544,14 +5553,22 @@ class ModbusDashboard {
                     await this.pollMonitoringParams(device);
                 }
             } else {
-                device.online = false;
+                device.failCount = (device.failCount || 0) + 1;
                 this.updateDeviceStats(device.slaveId, false);
-                this.updateDeviceCardOffline(device);
+                // Only mark offline after consecutive failures exceed threshold
+                if (device.failCount >= this.offlineThreshold) {
+                    device.online = false;
+                    this.updateDeviceCardOffline(device);
+                }
             }
         } catch (error) {
-            device.online = false;
+            device.failCount = (device.failCount || 0) + 1;
             this.updateDeviceStats(device.slaveId, false);
-            this.updateDeviceCardOffline(device);
+            // Only mark offline after consecutive failures exceed threshold
+            if (device.failCount >= this.offlineThreshold) {
+                device.online = false;
+                this.updateDeviceCardOffline(device);
+            }
         }
 
         this.isPolling = false;
@@ -5700,25 +5717,90 @@ class ModbusDashboard {
         const element = document.querySelector(`.device-card[data-device-id="${device.id}"], .device-list-item[data-device-id="${device.id}"]`);
         if (!element) return;
 
-        const statusText = this.STATUS_CODES[device.motorStatus] || 'Unknown';
-        const statusClass = device.motorStatus === 1 ? 'running' : (device.motorStatus === 2 ? 'error' : 'stopped');
+        // Remove offline class when device comes back online
+        element.classList.remove('offline');
+
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus);
 
         const statusIndicator = element.querySelector('.status-indicator');
         const statusTextEl = element.querySelector('.status-text');
+        const statusContainer = element.querySelector('.device-status');
         // Card view uses .device-value-item:last-child, list view uses .device-value
         const statusValueEl = element.querySelector('.device-value-item:last-child .device-value-number') ||
                               element.querySelector('.device-value .device-value-number');
 
         if (statusIndicator) {
-            statusIndicator.className = `status-indicator ${statusClass}`;
+            statusIndicator.className = `status-indicator ${statusInfo.class}`;
         }
         if (statusTextEl) {
-            statusTextEl.textContent = statusText;
+            statusTextEl.textContent = statusInfo.text;
         }
-        if (statusValueEl && element.classList.contains('device-card')) {
-            // Only update status value in card view (list view shows setpoint)
-            statusValueEl.innerHTML = `${device.motorStatus}<span class="device-value-unit">code</span>`;
+        if (statusContainer) {
+            statusContainer.title = statusInfo.tooltip;
         }
+        // Update status value in card view
+        if (element.classList.contains('device-card')) {
+            const statusValueItem = element.querySelector('.device-value-item:last-child');
+            if (statusValueItem) {
+                statusValueItem.className = `device-value-item ${statusInfo.hasError ? 'has-error' : ''}`;
+                statusValueItem.title = statusInfo.tooltip;
+            }
+            if (statusValueEl) {
+                statusValueEl.className = `device-value-number status-value ${statusInfo.class}`;
+                statusValueEl.textContent = statusInfo.text;
+            }
+        }
+    }
+
+    /**
+     * Parse motor status bits and return status info
+     * @param {number} status - 16-bit motor status value from D011
+     * @returns {Object} { text: string, class: string, errors: array, hasError: boolean }
+     */
+    getMotorStatusInfo(status) {
+        const errors = [];
+
+        // Check each error bit
+        for (const [key, bit] of Object.entries(this.MOTOR_STATUS_BITS)) {
+            if (status & bit.mask) {
+                errors.push({ key, name: bit.name, description: bit.description });
+            }
+        }
+
+        if (errors.length > 0) {
+            // Has errors - show first error name, full list in tooltip
+            const text = errors.length === 1
+                ? errors[0].name
+                : `${errors[0].name} +${errors.length - 1}`;
+            return {
+                text,
+                class: 'error',
+                errors,
+                hasError: true,
+                tooltip: errors.map(e => e.description).join('\n')
+            };
+        }
+
+        // No errors - check if running (status > 0 could mean running)
+        // If status is 0, motor is stopped/idle
+        if (status === 0) {
+            return {
+                text: 'Stopped',
+                class: 'stopped',
+                errors: [],
+                hasError: false,
+                tooltip: 'Motor stopped'
+            };
+        }
+
+        // Non-zero but no error bits - assume running
+        return {
+            text: 'Running',
+            class: 'running',
+            errors: [],
+            hasError: false,
+            tooltip: 'Motor running normally'
+        };
     }
 
     /**
