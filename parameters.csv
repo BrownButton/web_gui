@@ -113,6 +113,7 @@ input,0xD018,Current direction of rotation,N,현재 회전 방향
 input,0xD01A,Current set value,N,현재 설정값
 input,0xD01C,Enable/Disable input state,N,Enable/Disable 입력 상태
 input,0xD021,Current power (Relative),N,상대 전력
-input,0xD027,Current power [W] (Absolute),Y,절대 전력 [W]
 input,0xD02D,Actual speed [RPM] (Absolute),Y,절대 속도 [RPM]
 input,0xD03D,Line Voltage,N,라인 전압
+input,0xD050,Command speed,Y,지령 속도
+input,0xD051,Command torque,Y,지령 토크
