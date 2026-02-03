@@ -2350,7 +2350,8 @@ class ModbusDashboard {
         const monitorDisplay = document.getElementById('monitorDisplay');
         if (!monitorDisplay || monitorDisplay.children.length === 0) return;
 
-        const firstEntry = monitorDisplay.firstChild;
+        const firstEntry = monitorDisplay.firstElementChild;
+        if (!firstEntry || !firstEntry.dataset) return;
         const firstIndex = parseInt(firstEntry.dataset.entryIndex || '0');
 
         if (firstIndex <= 0) return; // No more older entries
@@ -4668,6 +4669,11 @@ class ModbusDashboard {
         if (slaveId !== 0) {
             this.initializeDeviceMode(device.id);
         }
+
+        // Start auto polling if connection is active and wasn't running
+        if (!this.autoPollingTimer && (this.simulatorEnabled || this.writer)) {
+            this.startAutoPolling();
+        }
     }
 
     /**
@@ -5334,8 +5340,8 @@ class ModbusDashboard {
         }
 
         try {
-            // Read motor status
-            const status = await this.readRegister(device.slaveId, this.REGISTERS.MOTOR_STATUS);
+            // Read motor status (Function Code 04 - Input Register)
+            const status = await this.readInputRegisterWithTimeout(device.slaveId, this.REGISTERS.MOTOR_STATUS);
             device.motorStatus = status;
 
             // Read current setpoint
@@ -5514,15 +5520,41 @@ class ModbusDashboard {
      * Start auto polling for device status
      */
     startAutoPolling() {
-        if (this.autoPollingTimer) return;
-        if (this.devices.length === 0) return;
-        if (!this.writer && !this.simulatorEnabled) return;
+        console.log('[AutoPolling] startAutoPolling called', {
+            devices: this.devices.length,
+            writer: !!this.writer,
+            simulatorEnabled: this.simulatorEnabled,
+            autoPollingTimer: this.autoPollingTimer,
+            isPolling: this.isPolling
+        });
+
+        if (this.devices.length === 0) {
+            console.log('[AutoPolling] No devices, returning');
+            return;
+        }
+        if (!this.writer && !this.simulatorEnabled) {
+            console.log('[AutoPolling] No connection, returning');
+            return;
+        }
+
+        // If already active but not currently polling, restart polling
+        if (this.autoPollingTimer && !this.isPolling) {
+            console.log('[AutoPolling] Restarting polling');
+            this.pollNextDeviceSequential();
+            return;
+        }
+
+        if (this.autoPollingTimer) {
+            console.log('[AutoPolling] Already active, returning');
+            return;
+        }
 
         this.currentPollingIndex = 0;
         this.isPolling = false;
 
         // Use sequential polling instead of interval-based
         this.autoPollingTimer = true; // Flag to indicate polling is active
+        console.log('[AutoPolling] Starting new polling');
         this.pollNextDeviceSequential();
     }
 
@@ -5542,7 +5574,13 @@ class ModbusDashboard {
      */
     async pollNextDeviceSequential() {
         // Check if polling should continue
-        if (!this.autoPollingTimer || this.isScanning) {
+        if (!this.autoPollingTimer) {
+            return;
+        }
+
+        // If scanning, wait and retry later
+        if (this.isScanning) {
+            setTimeout(() => this.pollNextDeviceSequential(), 500);
             return;
         }
 
@@ -5573,8 +5611,8 @@ class ModbusDashboard {
         this.currentPollingIndex++;
 
         try {
-            // Read motor status with timeout
-            const status = await this.readRegisterWithTimeout(device.slaveId, this.REGISTERS.MOTOR_STATUS);
+            // Read motor status with timeout (Function Code 04 - Input Register)
+            const status = await this.readInputRegisterWithTimeout(device.slaveId, this.REGISTERS.MOTOR_STATUS);
 
             if (status !== null) {
                 device.motorStatus = status;
@@ -5583,8 +5621,8 @@ class ModbusDashboard {
                 device.failCount = 0; // Reset fail count on success
                 this.updateDeviceStats(device.slaveId, true);
 
-                // Read actual speed
-                const actualSpeed = await this.readRegisterWithTimeout(device.slaveId, this.REGISTERS.ACTUAL_SPEED);
+                // Read actual speed (Function Code 04 - Input Register)
+                const actualSpeed = await this.readInputRegisterWithTimeout(device.slaveId, this.REGISTERS.ACTUAL_SPEED);
                 if (actualSpeed !== null) {
                     // Handle signed 16-bit value
                     device.actualSpeed = actualSpeed > 32767 ? actualSpeed - 65536 : actualSpeed;
@@ -5606,20 +5644,25 @@ class ModbusDashboard {
                 }
             }
         } catch (error) {
+            console.error('Polling error:', error);
             device.failCount = (device.failCount || 0) + 1;
-            this.updateDeviceStats(device.slaveId, false);
-            // Only mark offline after consecutive failures exceed threshold
-            if (device.failCount >= this.offlineThreshold) {
-                device.online = false;
-                this.updateDeviceCardOffline(device);
+            try {
+                this.updateDeviceStats(device.slaveId, false);
+                // Only mark offline after consecutive failures exceed threshold
+                if (device.failCount >= this.offlineThreshold) {
+                    device.online = false;
+                    this.updateDeviceCardOffline(device);
+                }
+            } catch (e) {
+                console.error('Error updating device stats:', e);
             }
-        }
+        } finally {
+            this.isPolling = false;
 
-        this.isPolling = false;
-
-        // Schedule next poll after interval
-        if (this.autoPollingTimer) {
-            setTimeout(() => this.pollNextDeviceSequential(), this.autoPollingInterval);
+            // Schedule next poll after interval
+            if (this.autoPollingTimer) {
+                setTimeout(() => this.pollNextDeviceSequential(), this.autoPollingInterval);
+            }
         }
     }
 
@@ -6628,7 +6671,7 @@ class ModbusDashboard {
         try {
             // Use a low address for scanning that the simulator supports
             const scanAddress = this.simulatorEnabled ? 0 : this.scanRegister;
-            const frame = this.modbus.buildReadHoldingRegisters(slaveId, scanAddress, 1);
+            const frame = this.modbus.buildReadInputRegisters(slaveId, scanAddress, 1);
 
             if (this.simulatorEnabled) {
                 // For simulation, we'll create virtual devices at specific IDs
@@ -6642,7 +6685,7 @@ class ModbusDashboard {
                     this.simulator.slaveId = slaveId;
                     this.simulator.enabled = true;
 
-                    this.addMonitorEntry('sent', frame, { functionCode: 3, startAddress: scanAddress, quantity: 1 });
+                    this.addMonitorEntry('sent', frame, { functionCode: 4, startAddress: scanAddress, quantity: 1 });
                     this.stats.requests++;
                     this.updateStatsDisplay();
 
@@ -6659,7 +6702,7 @@ class ModbusDashboard {
                     }
                 } else {
                     // Show TX for non-responding IDs too (no response expected)
-                    this.addMonitorEntry('sent', frame, { functionCode: 3, startAddress: scanAddress, quantity: 1 });
+                    this.addMonitorEntry('sent', frame, { functionCode: 4, startAddress: scanAddress, quantity: 1 });
                 }
 
                 // No response - wait for timeout simulation
@@ -6700,7 +6743,7 @@ class ModbusDashboard {
 
             try {
                 await this.writer.write(frame);
-                this.addMonitorEntry('sent', frame, { functionCode: 3, startAddress: this.scanRegister, quantity: 1 });
+                this.addMonitorEntry('sent', frame, { functionCode: 4, startAddress: this.scanRegister, quantity: 1 });
                 this.stats.requests++;
                 this.updateStatsDisplay();
                 // Response will be handled by tryParseFrame which calls scanResolve
