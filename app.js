@@ -3552,7 +3552,12 @@ class ModbusDashboard {
             // Value
             const valueCol = document.createElement('div');
             valueCol.className = 'param-value';
-            valueCol.textContent = param.value !== undefined ? param.value : '-';
+            const numValue = Number(param.value);
+            if (param.value !== undefined && param.value !== null && param.value !== '' && !isNaN(numValue)) {
+                valueCol.innerHTML = `<span class="value-dec">${numValue}</span><br><span class="value-hex">0x${numValue.toString(16).toUpperCase().padStart(4, '0')}</span>`;
+            } else {
+                valueCol.textContent = '-';
+            }
 
             // Implemented status
             const statusCol = document.createElement('div');
@@ -3925,10 +3930,16 @@ class ModbusDashboard {
                 this.showToast(`${param.name} 읽기 실패`, 'error');
             }
         } else if (this.writer) {
-            await this.writer.write(frame);
-            this.addMonitorEntry('sent', frame, { functionCode, startAddress: address, quantity: 1 });
-            this.stats.requests++;
-            this.updateStatsDisplay();
+            // Use sendAndWaitResponse to wait for response (it handles stats internally)
+            const value = await this.sendAndWaitResponse(frame, slaveId);
+            if (value !== null) {
+                param.value = value;
+                this.saveParameters();
+                this.renderParameters();
+                this.showToast(`${param.name}: ${value} (0x${value.toString(16).toUpperCase()})`, 'success');
+            } else {
+                this.showToast(`${param.name} 읽기 실패`, 'error');
+            }
         }
     }
 

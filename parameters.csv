@@ -55,9 +55,9 @@ holding,0xD17D,Customer data 13,N,고객 사용 영역
 holding,0xD17E,Customer data 14,N,고객 사용 영역
 holding,0xD17F,Customer data 15,N,고객 사용 영역
 holding,0xD180,Operating hours counter (back-up),N,0xD009의 사용시간을 저장하는 파라미터
-holding,0xD182,Error indicator,Y,가장 최근 에러의 파라미터 번호를 표시
-holding,0xD184,Error 1,Y,팬에서 발생한 첫 번째 오류 표시
-holding,0xD185,Error time,Y,팬에서 발생한 에러를 최대 13개까지 저장
+holding,0xD182,Error indicator,N,가장 최근 에러의 파라미터 번호를 표시
+holding,0xD184,Error 1,N,팬에서 발생한 첫 번째 오류 표시
+holding,0xD185,Error time,N,팬에서 발생한 에러를 최대 13개까지 저장
 holding,0xD186,Error history 1,N,에러 히스토리 1
 holding,0xD187,Error history time 1,N,에러 히스토리 시간 1
 holding,0xD188,Error history 2,N,에러 히스토리 2
@@ -84,8 +84,8 @@ holding,0xD19C,Error history 12,N,에러 히스토리 12
 holding,0xD19D,Error history time 12,N,에러 히스토리 시간 12
 holding,0xD19E,Error history 13,N,에러 히스토리 13
 holding,0xD19F,Error history time 13,N,에러 히스토리 시간 13
-holding,0xD1A2,Serial Number 1,Y,팬 시리얼 번호 데이터
-holding,0xD1A3,Serial Number 2,Y,팬 시리얼 번호 데이터
+holding,0xD1A2,Serial Number 1,N,팬 시리얼 번호 데이터
+holding,0xD1A3,Serial Number 2,N,팬 시리얼 번호 데이터
 holding,0xD1A4,Date of manufacture,N,제조 날짜
 holding,0xD1A5,FAN type 1,N,ASCII 코드 형태로 표현
 holding,0xD1A6,FAN type 2,N,ASCII 코드 형태로 표현
