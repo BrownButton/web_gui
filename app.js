@@ -1063,6 +1063,9 @@ class ModbusDashboard {
         this.offlineThreshold = 3; // Number of consecutive failures before marking offline
         this.paramPollingDelay = 20; // ms between monitoring parameters
 
+        // Current page tracking
+        this.currentPage = 'dashboard'; // Default to dashboard
+
         // Chart Manager
         this.chartManager = null;
         this.chartPollingTimer = null;
@@ -1436,6 +1439,20 @@ class ModbusDashboard {
             page.classList.remove('active');
         });
         document.getElementById(`page-${pageName}`).classList.add('active');
+
+        // Track current page
+        this.currentPage = pageName;
+
+        // Start/stop polling based on page
+        if (pageName === 'dashboard') {
+            // Start polling when on Dashboard
+            if (this.writer || this.simulatorEnabled) {
+                this.startAutoPolling();
+            }
+        } else {
+            // Stop polling when leaving Dashboard
+            this.stopAutoPolling();
+        }
 
         // Update firmware device list when switching to firmware page
         if (pageName === 'firmware') {
@@ -1884,8 +1901,10 @@ class ModbusDashboard {
                 setTimeout(() => this.startDeviceScan(true), 500);
             }
 
-            // Start auto polling
-            this.startAutoPolling();
+            // Start auto polling only if on Dashboard page
+            if (this.currentPage === 'dashboard') {
+                this.startAutoPolling();
+            }
 
         } catch (error) {
             console.error('Connection error:', error);
@@ -4050,8 +4069,10 @@ class ModbusDashboard {
                 setTimeout(() => this.startDeviceScan(true), 500);
             }
 
-            // Start auto polling
-            this.startAutoPolling();
+            // Start auto polling only if on Dashboard page
+            if (this.currentPage === 'dashboard') {
+                this.startAutoPolling();
+            }
         } else {
             btn.textContent = '시뮬레이터 활성화';
 
@@ -4670,8 +4691,8 @@ class ModbusDashboard {
             this.initializeDeviceMode(device.id);
         }
 
-        // Start auto polling if connection is active and wasn't running
-        if (!this.autoPollingTimer && (this.simulatorEnabled || this.writer)) {
+        // Start auto polling if connection is active, on Dashboard, and wasn't running
+        if (!this.autoPollingTimer && (this.simulatorEnabled || this.writer) && this.currentPage === 'dashboard') {
             this.startAutoPolling();
         }
     }
@@ -6799,8 +6820,8 @@ class ModbusDashboard {
         // 연결 후 디바이스에서 모드와 최대 속도 읽기
         this.initializeDeviceMode(device.id);
 
-        // Start auto polling if connection is active and wasn't running (first device added)
-        if (!this.autoPollingTimer && (this.simulatorEnabled || this.writer)) {
+        // Start auto polling if connection is active, on Dashboard, and wasn't running (first device added)
+        if (!this.autoPollingTimer && (this.simulatorEnabled || this.writer) && this.currentPage === 'dashboard') {
             this.startAutoPolling();
         }
 
