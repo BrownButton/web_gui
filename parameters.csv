@@ -1,14 +1,14 @@
 type,address,name,implemented,description
-holding,0xD000,Reset,N,"Software Reset, Error Reset, EEPROM to RAM"
+holding,0xD000,Reset,Y,"Software Reset, Error Reset, EEPROM to RAM"
 holding,0xD001,Setpoint,Y,"지령 값, 오픈루프 모드이면 % or 속도모드이면 RPM"
 holding,0xD005,Factory setting Control,N,공장 초기값 변경 및 적용 용도
 holding,0xD009,Operating hours counter,N,65535시간까지 카운트 후 고정
 holding,0xD00A,Operating minutes counter,N,0분 to 59분 롤링
 holding,0xD00D,Stored set value,N,"Set Point 설정값이 EEPROM에 저장됨, 급작스러운 전원 공급 중단 및 복구 후 마지막 설정값으로 재시작"
 holding,0xD00F,Enable/Disable,N,"서보드라이브의 SVON/SVOFF와 같은 기능, 0xD16A(Enable/Disable source)의 값에 따라 적절한 Enable state가 결정"
-holding,0xD100,Fan address,N,Node ID와 같은 역할
+holding,0xD100,Fan address,Y,Node ID와 같은 역할
 holding,0xD101,Set value source,N,"Setpoint를 어떤 수단으로 사용할 것인지 설정 (0:AIN1, 1:RS485, 2:AIN2, 3:PWM)"
-holding,0xD102,Preferred running direction,N,"구동 방향 결정 (0:CCW, 1:CW)"
+holding,0xD102,Preferred running direction,Y,"구동 방향 결정 (0:CCW, 1:CW)"
 holding,0xD106,Operating mode,Y,"모터 제어 방식을 설정합니다. | 0:Speed Control, 2:Open-loop control"
 holding,0xD112,Motor stop enable,N,"0: set value가 0이더라도 모터 항상 SVON, 1: set value가 0일 경우 모터 SVOFF"
 holding,0xD119,Maximum speed,N,센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)
@@ -24,9 +24,9 @@ holding,0xD135,Maximum permissible power,N,허용 가능한 최대 파워 설정
 holding,0xD136,Max. power at derating end,N,모듈과 모터의 온도를 토대로 출력을 디레이팅 하는 기능
 holding,0xD137,Module temperature power derating start,N,모듈 온도 파워 디레이팅 시작점
 holding,0xD138,Module temperature power derating end,N,모듈 온도 파워 디레이팅 종료점
+holding,0xD13B,Maximum coil current,Y,전류 제한이 활성화 되면 모터 코일전류(rms값)를 이 파라미터에 설정된 값으로 제한
 holding,0xD14D,Motor temperature power derating start address,N,모터 온도 파워 디레이팅 시작 주소
 holding,0xD14E,Motor temperature power derating end address,N,모터 온도 파워 디레이팅 종료 주소
-holding,0xD13B,Maximum coil current,N,전류 제한이 활성화 되면 모터 코일전류(rms값)를 이 파라미터에 설정된 값으로 제한
 holding,0xD145,Speed limit for running monitoring,N,"실행 모니터링 속도제한, 속도 피드백이 이 파라미터에 설정된 속도보다 낮을 경우 오류 해제 (n_Low)"
 holding,0xD149,Transmission speed,N,"RS-485 통신 속도를 설정합니다. | 0:1200bps, 1:2400bps, 2:4800bps, 3:9600bps, 4:19200bps(default), 5:38400bps, 6:57600bps, 7:115200bps"
 holding,0xD14A,Parity configuration,N,"시리얼 통신의 데이터 비트, 패리티, 스톱 비트를 설정합니다. | 0:Data8/Even/Stop1(default), 1:Data8/Odd/Stop1, 2:Data8/None/Stop2, 3:Data8/None/Stop1"
@@ -87,32 +87,32 @@ holding,0xD19F,Error history time 13,N,에러 히스토리 시간 13
 holding,0xD1A2,Serial Number 1,Y,팬 시리얼 번호 데이터
 holding,0xD1A3,Serial Number 2,Y,팬 시리얼 번호 데이터
 holding,0xD1A4,Date of manufacture,N,제조 날짜
-holding,0xD1A5,FAN type 1,Y,ASCII 코드 형태로 표현
-holding,0xD1A6,FAN type 2,Y,ASCII 코드 형태로 표현
-holding,0xD1A7,FAN type 3,Y,ASCII 코드 형태로 표현
-holding,0xD1A8,FAN type 4,Y,ASCII 코드 형태로 표현
-holding,0xD1A9,FAN type 5,Y,ASCII 코드 형태로 표현
-holding,0xD1AA,FAN type 6,Y,ASCII 코드 형태로 표현
-holding,0xD623,Error Mask,Y,마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력
-holding,0xD624,Warning Mask,Y,마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력
-input,0xD000,Identification,N,장치 식별
-input,0xD001,Max. number of bytes,N,최대 바이트 수
-input,0xD002,Bus controller software name,N,Main 부트버전
-input,0xD003,Bus controller software version,N,Main 펌웨어 버전
-input,0xD004,Commutation controller software name,N,Inverter 부트 버전
-input,0xD005,Commutation controller software version,N,Inverter 펌웨어 버전
+holding,0xD1A5,FAN type 1,N,ASCII 코드 형태로 표현
+holding,0xD1A6,FAN type 2,N,ASCII 코드 형태로 표현
+holding,0xD1A7,FAN type 3,N,ASCII 코드 형태로 표현
+holding,0xD1A8,FAN type 4,N,ASCII 코드 형태로 표현
+holding,0xD1A9,FAN type 5,N,ASCII 코드 형태로 표현
+holding,0xD1AA,FAN type 6,N,ASCII 코드 형태로 표현
+holding,0xD623,Error Mask,N,마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력
+holding,0xD624,Warning Mask,N,마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력
+input,0xD000,Identification,Y,장치 식별
+input,0xD001,Max. number of bytes,Y,최대 바이트 수
+input,0xD002,Bus controller software name,Y,Main 부트버전
+input,0xD003,Bus controller software version,Y,Main 펌웨어 버전
+input,0xD004,Commutation controller software name,Y,Inverter 부트 버전
+input,0xD005,Commutation controller software version,Y,Inverter 펌웨어 버전
 input,0xD010,Actual speed (Relative),N,상대 속도
 input,0xD011,Motor status,Y,모터 상태
-input,0xD012,Warning,N,경고
-input,0xD013,DC-link voltage,N,DC 링크 전압
+input,0xD012,Warning,Y,경고
+input,0xD013,DC-link voltage,Y,DC 링크 전압
 input,0xD014,DC-link current,N,DC 링크 전류
-input,0xD015,Module temperature,N,IGBT Temperature Sensor 값
-input,0xD016,Motor temperature,N,Motor PTC
-input,0xD017,Electronics temperature,N,제어부 Temperature 값
+input,0xD015,Module temperature,Y,IGBT Temperature Sensor 값
+input,0xD016,Motor temperature,Y,Motor PTC
+input,0xD017,Electronics temperature,Y,제어부 Temperature 값
 input,0xD018,Current direction of rotation,N,현재 회전 방향
 input,0xD01A,Current set value,N,현재 설정값
 input,0xD01C,Enable/Disable input state,N,Enable/Disable 입력 상태
 input,0xD021,Current power (Relative),N,상대 전력
-input,0xD027,Current power [W] (Absolute),N,절대 전력 [W]
-input,0xD02D,Actual speed [RPM] (Absolute),N,절대 속도 [RPM]
+input,0xD027,Current power [W] (Absolute),Y,절대 전력 [W]
+input,0xD02D,Actual speed [RPM] (Absolute),Y,절대 속도 [RPM]
 input,0xD03D,Line Voltage,N,라인 전압
