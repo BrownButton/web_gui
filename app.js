@@ -4452,52 +4452,52 @@ class ModbusDashboard {
             deselectAllDevices.addEventListener('click', () => this.deselectAllDevices());
         }
 
-        // Batch mode toggle
-        const batchModeRpm = document.getElementById('batchModeRpm');
-        const batchModePct = document.getElementById('batchModePct');
-        if (batchModeRpm && batchModePct) {
-            batchModeRpm.addEventListener('click', () => this.setBatchMode(0));
-            batchModePct.addEventListener('click', () => this.setBatchMode(1));
+        // All device mode toggle
+        const allDeviceModeRpm = document.getElementById('allDeviceModeRpm');
+        const allDeviceModePct = document.getElementById('allDeviceModePct');
+        if (allDeviceModeRpm && allDeviceModePct) {
+            allDeviceModeRpm.addEventListener('click', () => this.setAllDeviceMode(0));
+            allDeviceModePct.addEventListener('click', () => this.setAllDeviceMode(1));
         }
 
-        // Batch setpoint input and slider sync
-        const batchSetpoint = document.getElementById('batchSetpoint');
-        const batchSetpointSlider = document.getElementById('batchSetpointSlider');
-        if (batchSetpoint && batchSetpointSlider) {
-            batchSetpoint.addEventListener('input', () => {
-                batchSetpointSlider.value = batchSetpoint.value;
-                this.updateSliderBackground(batchSetpointSlider);
+        // All device setpoint input and slider sync
+        const allDeviceSetpoint = document.getElementById('allDeviceSetpoint');
+        const allDeviceSetpointSlider = document.getElementById('allDeviceSetpointSlider');
+        if (allDeviceSetpoint && allDeviceSetpointSlider) {
+            allDeviceSetpoint.addEventListener('input', () => {
+                allDeviceSetpointSlider.value = allDeviceSetpoint.value;
+                this.updateSliderBackground(allDeviceSetpointSlider);
             });
-            batchSetpointSlider.addEventListener('input', () => {
-                batchSetpoint.value = batchSetpointSlider.value;
-                this.updateSliderBackground(batchSetpointSlider);
+            allDeviceSetpointSlider.addEventListener('input', () => {
+                allDeviceSetpoint.value = allDeviceSetpointSlider.value;
+                this.updateSliderBackground(allDeviceSetpointSlider);
             });
         }
 
-        // Quick preset buttons (batch control)
+        // Quick preset buttons (all device control)
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const percent = parseInt(btn.dataset.percent);
-                const maxValue = parseInt(batchSetpointSlider?.max || 10000);
+                const maxValue = parseInt(allDeviceSetpointSlider?.max || 10000);
                 const value = Math.round((percent / 100) * maxValue);
-                if (batchSetpoint) batchSetpoint.value = value;
-                if (batchSetpointSlider) {
-                    batchSetpointSlider.value = value;
-                    this.updateSliderBackground(batchSetpointSlider);
+                if (allDeviceSetpoint) allDeviceSetpoint.value = value;
+                if (allDeviceSetpointSlider) {
+                    allDeviceSetpointSlider.value = value;
+                    this.updateSliderBackground(allDeviceSetpointSlider);
                 }
             });
         });
 
-        // Batch Apply button
-        const batchApplyBtn = document.getElementById('batchApplyBtn');
-        if (batchApplyBtn) {
-            batchApplyBtn.addEventListener('click', () => this.applyBatchSetpoint());
+        // All device Apply button
+        const allDeviceApplyBtn = document.getElementById('allDeviceApplyBtn');
+        if (allDeviceApplyBtn) {
+            allDeviceApplyBtn.addEventListener('click', () => this.applyAllDeviceSetpoint());
         }
 
-        // Batch Stop button
-        const batchStopBtn = document.getElementById('batchStopBtn');
-        if (batchStopBtn) {
-            batchStopBtn.addEventListener('click', () => this.stopSelectedDevices());
+        // All device Stop button
+        const allDeviceStopBtn = document.getElementById('allDeviceStopBtn');
+        if (allDeviceStopBtn) {
+            allDeviceStopBtn.addEventListener('click', () => this.stopSelectedDevices());
         }
 
         // View mode toggle buttons
@@ -4529,45 +4529,59 @@ class ModbusDashboard {
      */
     updateSelectedDevicesChips() {
         const chipsContainer = document.getElementById('selectedDevicesChips');
+        const selectedCountEl = document.getElementById('selectedDeviceCount');
+        const allDeviceControlSection = document.querySelector('.all-device-control-section');
+
+        // Update selected count badge
+        if (selectedCountEl) {
+            selectedCountEl.textContent = `${this.selectedDevices.size}개 선택`;
+        }
+
+        // Update section style based on selection
+        if (allDeviceControlSection) {
+            if (this.selectedDevices.size > 0) {
+                allDeviceControlSection.classList.add('has-selection');
+            } else {
+                allDeviceControlSection.classList.remove('has-selection');
+            }
+        }
+
         if (!chipsContainer) return;
 
         chipsContainer.innerHTML = '';
 
-        if (this.selectedDevices.size === 0) {
-            chipsContainer.innerHTML = '<span class="no-selection">축을 선택해주세요</span>';
-        } else {
-            this.selectedDevices.forEach(deviceId => {
-                const device = this.devices.find(d => d.id === deviceId);
-                if (device) {
-                    const chip = document.createElement('span');
-                    chip.className = 'device-chip';
-                    chip.innerHTML = `
-                        <span>${device.name}</span>
-                        <span class="chip-remove" data-device-id="${deviceId}">&times;</span>
-                    `;
-                    chip.querySelector('.chip-remove').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.toggleDeviceSelection(deviceId);
-                    });
-                    chipsContainer.appendChild(chip);
-                }
-            });
-        }
+        // Display selected device chips (no message when empty - chips in header)
+        this.selectedDevices.forEach(deviceId => {
+            const device = this.devices.find(d => d.id === deviceId);
+            if (device) {
+                const chip = document.createElement('span');
+                chip.className = 'device-chip';
+                chip.innerHTML = `
+                    <span>${device.name}</span>
+                    <span class="chip-remove" data-device-id="${deviceId}">&times;</span>
+                `;
+                chip.querySelector('.chip-remove').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleDeviceSelection(deviceId);
+                });
+                chipsContainer.appendChild(chip);
+            }
+        });
     }
 
     /**
-     * Update batch action buttons state
+     * Update all device control buttons state
      */
-    updateBatchButtonsState() {
-        const batchApplyBtn = document.getElementById('batchApplyBtn');
-        const batchStopBtn = document.getElementById('batchStopBtn');
+    updateAllDeviceButtonsState() {
+        const allDeviceApplyBtn = document.getElementById('allDeviceApplyBtn');
+        const allDeviceStopBtn = document.getElementById('allDeviceStopBtn');
         const hasSelection = this.selectedDevices.size > 0;
 
-        if (batchApplyBtn) {
-            batchApplyBtn.disabled = !hasSelection;
+        if (allDeviceApplyBtn) {
+            allDeviceApplyBtn.disabled = !hasSelection;
         }
-        if (batchStopBtn) {
-            batchStopBtn.disabled = !hasSelection;
+        if (allDeviceStopBtn) {
+            allDeviceStopBtn.disabled = !hasSelection;
         }
     }
 
@@ -4828,7 +4842,6 @@ class ModbusDashboard {
                 <input type="number" placeholder="${modeText}" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
                 <span class="input-unit">${modeText}</span>
                 <button class="btn btn-success btn-sm btn-apply">Apply</button>
-                <button class="btn btn-secondary btn-sm btn-read">Read</button>
             </div>
             <div class="device-actions">
                 <button class="btn btn-danger btn-sm btn-delete">Delete</button>
@@ -4852,11 +4865,6 @@ class ModbusDashboard {
         applyBtn.addEventListener('click', () => {
             const input = item.querySelector('.device-controls input');
             this.applyDeviceSetpoint(device.id, parseInt(input.value));
-        });
-
-        const readBtn = item.querySelector('.btn-read');
-        readBtn.addEventListener('click', () => {
-            this.readDeviceStatus(device.id);
         });
 
         const deleteBtn = item.querySelector('.btn-delete');
@@ -5273,7 +5281,7 @@ class ModbusDashboard {
 
         // Update chips and button states
         this.updateSelectedDevicesChips();
-        this.updateBatchButtonsState();
+        this.updateAllDeviceButtonsState();
     }
 
     /**
@@ -5311,18 +5319,18 @@ class ModbusDashboard {
     }
 
     /**
-     * Set batch mode (RPM or %)
+     * Set all device control mode (RPM or %)
      */
-    setBatchMode(mode) {
-        const rpmBtn = document.getElementById('batchModeRpm');
-        const pctBtn = document.getElementById('batchModePct');
-        const unitSpan = document.getElementById('batchSetpointUnit');
-        const slider = document.getElementById('batchSetpointSlider');
+    setAllDeviceMode(mode) {
+        const rpmBtn = document.getElementById('allDeviceModeRpm');
+        const pctBtn = document.getElementById('allDeviceModePct');
+        const unitSpan = document.getElementById('allDeviceSetpointUnit');
+        const slider = document.getElementById('allDeviceSetpointSlider');
 
         if (mode === 0) {
             rpmBtn.classList.add('active');
             pctBtn.classList.remove('active');
-            unitSpan.textContent = '(RPM)';
+            unitSpan.textContent = 'RPM';
             slider.max = 10000;
         } else {
             rpmBtn.classList.remove('active');
@@ -5491,16 +5499,16 @@ class ModbusDashboard {
     }
 
     /**
-     * Apply batch setpoint to selected devices
+     * Apply setpoint to all selected devices
      */
-    async applyBatchSetpoint() {
+    async applyAllDeviceSetpoint() {
         if (this.selectedDevices.size === 0) {
             this.showToast('선택된 장치가 없습니다', 'warning');
             return;
         }
 
-        const setpoint = parseInt(document.getElementById('batchSetpoint').value);
-        const rpmBtn = document.getElementById('batchModeRpm');
+        const setpoint = parseInt(document.getElementById('allDeviceSetpoint').value);
+        const rpmBtn = document.getElementById('allDeviceModeRpm');
         const mode = rpmBtn.classList.contains('active') ? 0 : 1;
 
         let successCount = 0;
