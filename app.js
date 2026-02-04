@@ -949,6 +949,7 @@ class ModbusDashboard {
         this.port = null;
         this.reader = null;
         this.writer = null;
+        this.isConnected = false;
         this.modbus = new ModbusRTU();
         this.receiveBuffer = new Uint8Array(256);
         this.receiveIndex = 0;
@@ -1886,6 +1887,7 @@ class ModbusDashboard {
             this.writer = this.port.writable.getWriter();
             this.startReading();
 
+            this.isConnected = true;
             this.updateConnectionStatus(true);
 
             // Save settings to localStorage
@@ -1974,6 +1976,7 @@ class ModbusDashboard {
                 this.port = null;
             }
 
+            this.isConnected = false;
             this.updateConnectionStatus(false);
             this.addMonitorEntry('received', 'Disconnected from serial port');
             this.showToast('시리얼 포트 연결 해제됨', 'info');
@@ -2017,6 +2020,14 @@ class ModbusDashboard {
         for (let i = 0; i < data.length && this.receiveIndex < this.receiveBuffer.length; i++) {
             this.receiveBuffer[this.receiveIndex++] = data[i];
         }
+
+        // sendAndReceive에서 사용하는 responseBuffer에도 데이터 추가
+        if (this.responseBuffer) {
+            for (let i = 0; i < data.length; i++) {
+                this.responseBuffer.push(data[i]);
+            }
+        }
+
         this.tryParseFrame();
     }
 
@@ -2533,6 +2544,20 @@ class ModbusDashboard {
      * Create detailed HTML for expanded view
      */
     createDetailsHTML(frame, _byteInfo, _parsedData, type, timeStr, deltaStr) {
+        // frame이 너무 짧으면 기본 정보만 표시
+        if (!frame || frame.length < 2) {
+            return `<div class="monitor-details-grid">
+                <div class="monitor-detail-item detail-timestamp">
+                    <div class="monitor-detail-label">Timestamp</div>
+                    <div class="monitor-detail-value">${timeStr}</div>
+                </div>
+                <div class="monitor-detail-item detail-raw">
+                    <div class="monitor-detail-label">Raw Data</div>
+                    <div class="monitor-detail-value">${frame ? Array.from(frame).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ') : '-'}</div>
+                </div>
+            </div>`;
+        }
+
         const funcCode = frame[1];
         const isError = funcCode > 0x80;
         const actualFunc = isError ? funcCode - 0x80 : funcCode;
@@ -7114,7 +7139,8 @@ class ModbusDashboard {
             const initFrame = this.modbus.buildFirmwareInit(slaveId, totalSize);
             this.addFirmwareLog(`TX: ${this.modbus.bufferToHex(initFrame)}`, 'tx');
 
-            const initResponse = await this.sendAndReceive(initFrame, responseTimeout);
+            // 펌웨어 응답은 슬레이브 ID 1바이트만 옴 (펌웨어 버그가 표준이 됨)
+            const initResponse = await this.sendAndReceive(initFrame, responseTimeout, { minLength: 1, skipCRC: true });
             if (!initResponse) {
                 throw new Error('초기화 응답 없음 (timeout)');
             }
@@ -7127,15 +7153,17 @@ class ModbusDashboard {
 
             // ===== Step 2: Erase Confirm (OpCode 0x91) =====
             this.setFirmwareStepStatus('0x91', 'active');
+            this.addFirmwareLog('[0x91] Flash Erase 대기 중 (10초)...');
+
+            // Flash Erase 완료 대기 (10초)
+            await this.delay(10000);
+
             this.addFirmwareLog('[0x91] Flash Erase 확인 중...');
-
-            // Wait a bit for flash erase to complete
-            await this.delay(500);
-
             const eraseFrame = this.modbus.buildFirmwareEraseConfirm(slaveId);
             this.addFirmwareLog(`TX: ${this.modbus.bufferToHex(eraseFrame)}`, 'tx');
 
-            const eraseResponse = await this.sendAndReceive(eraseFrame, responseTimeout);
+            // 응답: 65바이트, CRC 없음
+            const eraseResponse = await this.sendAndReceive(eraseFrame, responseTimeout, { minLength: 65, skipCRC: true });
             if (!eraseResponse) {
                 throw new Error('Erase 확인 응답 없음 (timeout)');
             }
@@ -7144,7 +7172,8 @@ class ModbusDashboard {
             // Parse erase response
             const eraseResult = this.modbus.parseFirmwareResponse(eraseResponse);
             if (!eraseResult.success) {
-                throw new Error('Flash Erase 실패 또는 미완료');
+                const statusHex = eraseResult.data?.eraseStatus?.toString(16).toUpperCase() || 'unknown';
+                throw new Error(`Flash Erase 실패 (status: 0x${statusHex})`);
             }
 
             this.setFirmwareStepStatus('0x91', 'completed');
@@ -7180,7 +7209,8 @@ class ModbusDashboard {
                 // Measure response time
                 const packetStartTime = Date.now();
 
-                const dataResponse = await this.sendAndReceive(dataFrame, responseTimeout);
+                // 응답: 65바이트, CRC 없음
+                const dataResponse = await this.sendAndReceive(dataFrame, responseTimeout, { minLength: 65, skipCRC: true });
                 if (!dataResponse) {
                     throw new Error(`데이터 전송 응답 없음 (packet ${packetCount})`);
                 }
@@ -7197,7 +7227,13 @@ class ModbusDashboard {
                 // Parse response to check for ACK (0x04) or error (0x05)
                 const dataResult = this.modbus.parseFirmwareResponse(dataResponse);
                 if (!dataResult.success) {
-                    throw new Error(`데이터 전송 에러 (packet ${packetCount})`);
+                    throw new Error(`데이터 전송 에러 (packet ${packetCount}): OpCode 0x05`);
+                }
+
+                // Total Received Byte 검증
+                const expectedTotal = transferred + chunkSize;
+                if (dataResult.data?.totalReceivedByte !== expectedTotal) {
+                    this.addFirmwareLog(`경고: Total Received Byte 불일치 (expected: ${expectedTotal}, got: ${dataResult.data?.totalReceivedByte})`, 'warning');
                 }
 
                 transferred += chunkSize;
@@ -7232,12 +7268,14 @@ class ModbusDashboard {
             const doneFrame = this.modbus.buildFirmwareDone(slaveId);
             this.addFirmwareLog(`TX: ${this.modbus.bufferToHex(doneFrame)}`, 'tx');
 
-            const doneResponse = await this.sendAndReceive(doneFrame, responseTimeout);
+            // 응답: 65바이트, CRC 없음
+            const doneResponse = await this.sendAndReceive(doneFrame, responseTimeout, { minLength: 65, skipCRC: true });
             if (!doneResponse) {
                 throw new Error('완료 응답 없음 (timeout)');
             }
             this.addFirmwareLog(`RX: ${this.modbus.bufferToHex(doneResponse)}`, 'rx');
 
+            // 응답 OpCode가 0x04면 성공, 0x05면 에러
             const doneResult = this.modbus.parseFirmwareResponse(doneResponse);
             if (!doneResult.success) {
                 throw new Error('펌웨어 완료 처리 실패');
@@ -7362,8 +7400,13 @@ class ModbusDashboard {
 
     /**
      * Send frame and wait for response
+     * @param {Uint8Array} frame - Frame to send
+     * @param {number} timeout - Timeout in ms
+     * @param {object} options - Options: { minLength: minimum response bytes, skipCRC: skip CRC verification }
      */
-    async sendAndReceive(frame, timeout = 1000) {
+    async sendAndReceive(frame, timeout = 1000, options = {}) {
+        const { minLength = 4, skipCRC = false } = options;
+
         // Simulator mode
         if (this.simulatorEnabled) {
             this.addMonitorEntry('tx', frame);
@@ -7399,10 +7442,10 @@ class ModbusDashboard {
             const checkInterval = 10;
 
             const checkResponse = () => {
-                if (this.responseBuffer.length >= 4) {
-                    // We have at least minimum response, check if complete
+                if (this.responseBuffer.length >= minLength) {
                     const response = new Uint8Array(this.responseBuffer);
-                    if (this.modbus.verifyCRC(response)) {
+                    // Skip CRC check if requested, or verify CRC
+                    if (skipCRC || this.modbus.verifyCRC(response)) {
                         this.addMonitorEntry('rx', response);
                         resolve(response);
                         return;

@@ -408,13 +408,12 @@ class ModbusRTU {
 
     /**
      * Parse Firmware Update response
+     * 펌웨어 응답에는 CRC가 없음
      * @param {Uint8Array} response - Response frame
      * @returns {Object} Parsed response data
      */
     parseFirmwareResponse(response) {
-        if (!this.verifyCRC(response)) {
-            throw new Error('Invalid CRC');
-        }
+        // 펌웨어 응답에는 CRC가 없으므로 검증하지 않음
 
         const slaveId = response[0];
         const functionCode = response[1];
@@ -444,30 +443,26 @@ class ModbusRTU {
                 break;
 
             case 0x91: // Erase confirm response
-                // Response data: 0x00000000 = success, 0xFFFFFFFF = not ready
+                // Response data: 0xFFFFFFFF = 성공 (erase 완료), 0x00000000 = 실패
                 if (response.length >= 7) {
                     const status = (response[3] << 24) | (response[4] << 16) | (response[5] << 8) | response[6];
-                    result.success = (status === 0x00000000);
+                    result.success = (status === 0xFFFFFFFF);
                     result.data = { eraseStatus: status };
                 }
                 break;
 
-            case 0x04: // Data transfer ACK
+            case 0x04: // Data transfer ACK (성공)
                 result.success = true;
-                // RxPacketSize (4 bytes, big-endian)
+                // Total Received Byte (4 bytes, big-endian)
                 if (response.length >= 7) {
-                    const rxPacketSize = (response[3] << 24) | (response[4] << 16) | (response[5] << 8) | response[6];
-                    result.data = { rxPacketSize };
+                    const totalReceivedByte = (response[3] << 24) | (response[4] << 16) | (response[5] << 8) | response[6];
+                    result.data = { totalReceivedByte };
                 }
                 break;
 
             case 0x05: // Error response
                 result.success = false;
                 result.error = 'Slave reported error';
-                break;
-
-            case 0x99: // Done response - check if success (0x04) or error (0x05)
-                result.success = true;
                 break;
 
             default:
