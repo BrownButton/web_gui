@@ -5858,9 +5858,6 @@ class ModbusDashboard {
         const statusIndicator = element.querySelector('.status-indicator');
         const statusTextEl = element.querySelector('.status-text');
         const statusContainer = element.querySelector('.device-status');
-        // Card view uses .device-value-item:last-child, list view uses .device-value
-        const statusValueEl = element.querySelector('.device-value-item:last-child .device-value-number') ||
-                              element.querySelector('.device-value .device-value-number');
 
         if (statusIndicator) {
             statusIndicator.className = `status-indicator ${statusInfo.class}`;
@@ -5871,19 +5868,9 @@ class ModbusDashboard {
         if (statusContainer) {
             statusContainer.title = statusInfo.tooltip;
         }
-        // Update status value in card view
-        if (element.classList.contains('device-card')) {
-            const statusValueItem = element.querySelector('.device-value-item:last-child');
-            if (statusValueItem) {
-                statusValueItem.className = `device-value-item ${statusInfo.hasError ? 'has-error' : ''}`;
-                statusValueItem.title = statusInfo.tooltip;
-            }
-            if (statusValueEl) {
-                statusValueEl.className = `device-value-number status-value ${statusInfo.class}`;
-                statusValueEl.textContent = statusInfo.text;
-            }
 
-            // Update actual speed value
+        // Update actual speed value in card view
+        if (element.classList.contains('device-card')) {
             const actualSpeedEl = element.querySelector('.actual-speed-value');
             if (actualSpeedEl) {
                 actualSpeedEl.innerHTML = `${device.actualSpeed}<span class="device-value-unit">RPM</span>`;
