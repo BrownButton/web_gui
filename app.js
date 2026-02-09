@@ -1057,6 +1057,8 @@ class ModbusDashboard {
         this.pendingResponse = null; // Current pending response promise
         this.offlineThreshold = 3; // Number of consecutive failures before marking offline
         this.paramPollingDelay = 20; // ms between monitoring parameters
+        this.backgroundPollingEnabled = false; // Use Web Worker timer to avoid browser throttling
+        this.pollingWorker = null; // Web Worker for background polling
 
         // Current page tracking
         this.currentPage = 'dashboard'; // Default to dashboard
@@ -1714,6 +1716,7 @@ class ModbusDashboard {
         const interval = parseInt(document.getElementById('pollingInterval').value);
         const timeout = parseInt(document.getElementById('pollingTimeout').value);
         const paramDelay = parseInt(document.getElementById('paramPollingDelay').value);
+        const backgroundToggle = document.getElementById('backgroundPollingToggle');
 
         if (interval >= 10 && interval <= 5000) {
             this.autoPollingInterval = interval;
@@ -1723,6 +1726,16 @@ class ModbusDashboard {
         }
         if (paramDelay >= 0 && paramDelay <= 500) {
             this.paramPollingDelay = paramDelay;
+        }
+
+        const wasEnabled = this.backgroundPollingEnabled;
+        this.backgroundPollingEnabled = backgroundToggle.checked;
+
+        // Create or destroy worker based on setting change
+        if (this.backgroundPollingEnabled && !wasEnabled && this.autoPollingTimer) {
+            this.createPollingWorker();
+        } else if (!this.backgroundPollingEnabled && wasEnabled) {
+            this.destroyPollingWorker();
         }
 
         this.savePollingSettings();
@@ -1736,7 +1749,8 @@ class ModbusDashboard {
         const settings = {
             autoPollingInterval: this.autoPollingInterval,
             pollingTimeout: this.pollingTimeout,
-            paramPollingDelay: this.paramPollingDelay
+            paramPollingDelay: this.paramPollingDelay,
+            backgroundPollingEnabled: this.backgroundPollingEnabled
         };
         localStorage.setItem('pollingSettings', JSON.stringify(settings));
     }
@@ -1752,6 +1766,7 @@ class ModbusDashboard {
                 if (settings.autoPollingInterval) this.autoPollingInterval = settings.autoPollingInterval;
                 if (settings.pollingTimeout) this.pollingTimeout = settings.pollingTimeout;
                 if (settings.paramPollingDelay !== undefined) this.paramPollingDelay = settings.paramPollingDelay;
+                if (settings.backgroundPollingEnabled !== undefined) this.backgroundPollingEnabled = settings.backgroundPollingEnabled;
             } catch (e) {
                 console.error('Failed to load polling settings:', e);
             }
@@ -1774,6 +1789,7 @@ class ModbusDashboard {
         document.getElementById('pollingInterval').value = this.autoPollingInterval;
         document.getElementById('pollingTimeout').value = this.pollingTimeout;
         document.getElementById('paramPollingDelay').value = this.paramPollingDelay;
+        document.getElementById('backgroundPollingToggle').checked = this.backgroundPollingEnabled;
 
         // Update simulator button state
         this.updateModalSimulatorDisplay();
@@ -5614,6 +5630,11 @@ class ModbusDashboard {
         this.currentPollingIndex = 0;
         this.isPolling = false;
 
+        // Create Web Worker timer if background polling is enabled
+        if (this.backgroundPollingEnabled) {
+            this.createPollingWorker();
+        }
+
         // Use sequential polling instead of interval-based
         this.autoPollingTimer = true; // Flag to indicate polling is active
         console.log('[AutoPolling] Starting new polling');
@@ -5628,6 +5649,59 @@ class ModbusDashboard {
         this.isPolling = false;
         if (this.pendingResponse) {
             this.pendingResponse = null;
+        }
+        this.destroyPollingWorker();
+    }
+
+    /**
+     * Create inline Web Worker for background polling timer.
+     * Worker thread is NOT throttled when the browser tab is hidden/minimized.
+     */
+    createPollingWorker() {
+        if (this.pollingWorker) return;
+
+        const workerCode = `
+            let timerId = null;
+            self.onmessage = function(e) {
+                if (e.data.command === 'start') {
+                    clearTimeout(timerId);
+                    timerId = setTimeout(() => self.postMessage('tick'), e.data.interval);
+                } else if (e.data.command === 'stop') {
+                    clearTimeout(timerId);
+                    timerId = null;
+                }
+            };
+        `;
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        this.pollingWorker = new Worker(URL.createObjectURL(blob));
+        this.pollingWorker.onmessage = () => {
+            if (this.autoPollingTimer) {
+                this.pollNextDeviceSequential();
+            }
+        };
+    }
+
+    /**
+     * Destroy polling Web Worker
+     */
+    destroyPollingWorker() {
+        if (this.pollingWorker) {
+            this.pollingWorker.postMessage({ command: 'stop' });
+            this.pollingWorker.terminate();
+            this.pollingWorker = null;
+        }
+    }
+
+    /**
+     * Schedule next poll using either Web Worker timer or regular setTimeout
+     */
+    scheduleNextPoll() {
+        if (!this.autoPollingTimer) return;
+
+        if (this.backgroundPollingEnabled && this.pollingWorker) {
+            this.pollingWorker.postMessage({ command: 'start', interval: this.autoPollingInterval });
+        } else {
+            setTimeout(() => this.pollNextDeviceSequential(), this.autoPollingInterval);
         }
     }
 
@@ -5722,9 +5796,7 @@ class ModbusDashboard {
             this.isPolling = false;
 
             // Schedule next poll after interval
-            if (this.autoPollingTimer) {
-                setTimeout(() => this.pollNextDeviceSequential(), this.autoPollingInterval);
-            }
+            this.scheduleNextPoll();
         }
     }
 
