@@ -8,3 +8,4 @@
 8. Parameters - Parameter List에서 값을 선택해서 Live Watch 기능 추가
 9. Live Watch 폴링 주기 설정에 추가
 10. 브라우저 창을 최소화 했을때도 계속 serial 데이터를 풀로 주고받도록 설정가능한지?? 가능하다면 setting에 옵션추가
+11. setpoint 단위수정

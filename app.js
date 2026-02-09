@@ -5341,6 +5341,22 @@ class ModbusDashboard {
     }
 
     /**
+     * Convert user-entered setpoint to raw register value based on operation mode
+     * Speed Control (mode 0): raw = rpm / max_speed * 64000
+     * Open-loop Control (mode 2): raw = percent / 100 * 65535
+     */
+    convertSetpointToRaw(device, setpoint) {
+        if (device.operationMode === 0) {
+            // Speed Control: user enters RPM
+            const maxSpeed = device.maxSpeed || 10000;
+            return Math.round(setpoint / maxSpeed * 64000);
+        } else {
+            // Open-loop Control: user enters %
+            return Math.round(setpoint / 100 * 65535);
+        }
+    }
+
+    /**
      * Apply setpoint to a single device
      * @param {boolean} silent - If true, don't show toast message
      */
@@ -5354,15 +5370,19 @@ class ModbusDashboard {
         }
 
         try {
-            // Set setpoint
-            await this.writeRegister(device.slaveId, this.REGISTERS.SETPOINT, setpoint);
+            // Convert user-entered value to raw register value
+            const rawSetpoint = this.convertSetpointToRaw(device, setpoint);
 
-            // Update local state
+            // Set setpoint (send raw value to register)
+            await this.writeRegister(device.slaveId, this.REGISTERS.SETPOINT, rawSetpoint);
+
+            // Update local state (keep user-entered value for display)
             device.setpoint = setpoint;
             this.saveDevices();
             this.renderDeviceGrid();
 
-            if (!silent) this.showToast(`${device.name}: Setpoint ${setpoint} 적용`, 'success');
+            const unit = device.operationMode === 0 ? 'RPM' : '%';
+            if (!silent) this.showToast(`${device.name}: Setpoint ${setpoint}${unit} (raw: ${rawSetpoint}) 적용`, 'success');
         } catch (error) {
             if (!silent) this.showToast(`${device.name}: 설정 실패 - ${error.message}`, 'error');
         }
@@ -5521,7 +5541,8 @@ class ModbusDashboard {
             }
         }
 
-        this.showToast(`${successCount}개 장치에 Setpoint ${setpoint} 적용 완료`, 'success');
+        const unit = mode === 0 ? 'RPM' : '%';
+        this.showToast(`${successCount}개 장치에 Setpoint ${setpoint}${unit} 적용 완료`, 'success');
     }
 
     /**
