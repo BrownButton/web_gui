@@ -7504,13 +7504,17 @@ class ModbusDashboard {
 
         // Real serial port mode
         return new Promise(async (resolve) => {
-            // Clear any pending data
-            this.responseBuffer = [];
+            // Flush: 이전 통신에서 남은 데이터가 버퍼에 쌓이지 않도록
+            // null로 설정하여 handleReceivedData에서 데이터 축적 중지
+            this.responseBuffer = null;
             this.expectedResponseLength = 0;
 
-            // Send the frame
+            // Send the frame (await 중 도착하는 잔여 데이터는 null이므로 버려짐)
             await this.sendRawData(frame);
             this.addMonitorEntry('tx', frame);
+
+            // 프레임 전송 완료 후 새 버퍼 시작 - 이후 도착하는 데이터만 축적
+            this.responseBuffer = [];
 
             // Wait for response with timeout
             const startTime = Date.now();
