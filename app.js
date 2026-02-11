@@ -2069,8 +2069,7 @@ class ModbusDashboard {
                 const functionCode = frame[1];
                 if (functionCode === 0x66) {
                     // Firmware responses don't have CRC, skip normal parsing
-                    // Just display as system message
-                    this.addMonitorEntry('system', frame);
+                    // Already logged by sendAndReceive as 'rx', so don't duplicate
                     return;
                 }
 
@@ -2181,6 +2180,17 @@ class ModbusDashboard {
         };
         this.monitorEntries.push(entryData);
 
+        // Limit array size to prevent memory bloat (keep last 500 entries in memory)
+        const maxMemoryEntries = 500;
+        if (this.monitorEntries.length > maxMemoryEntries) {
+            const removeCount = this.monitorEntries.length - maxMemoryEntries;
+            this.monitorEntries.splice(0, removeCount);
+            // Re-index remaining entries
+            this.monitorEntries.forEach((entry, idx) => {
+                entry.index = idx;
+            });
+        }
+
         // Update entry count display
         this.updateMonitorEntryCount();
 
@@ -2239,14 +2249,19 @@ class ModbusDashboard {
     createMonitorEntryElement(entryData) {
         const { type, dataOrMessage, parsedData, errorMsg, timeStr, deltaStr } = entryData;
 
+        // Map 'tx'/'rx' to 'sent'/'received' for CSS styling
+        let cssType = type;
+        if (type === 'tx') cssType = 'sent';
+        else if (type === 'rx') cssType = 'received';
+
         const entry = document.createElement('div');
-        entry.className = `monitor-entry ${type}`;
+        entry.className = `monitor-entry ${cssType}`;
         entry.dataset.entryIndex = entryData.index;
 
         // Determine type label
         let typeLabel = 'SYSTEM';
-        if (type === 'sent') typeLabel = 'TX';
-        else if (type === 'received') typeLabel = 'RX';
+        if (type === 'sent' || type === 'tx') typeLabel = 'TX';
+        else if (type === 'received' || type === 'rx') typeLabel = 'RX';
         else if (type === 'error') typeLabel = 'ERROR';
 
         const mainLine = document.createElement('div');
@@ -2254,7 +2269,7 @@ class ModbusDashboard {
 
         // Type badge
         const typeBadge = document.createElement('span');
-        typeBadge.className = `monitor-type-badge ${type}`;
+        typeBadge.className = `monitor-type-badge ${cssType}`;
         typeBadge.textContent = typeLabel;
         mainLine.appendChild(typeBadge);
 
@@ -7274,7 +7289,9 @@ class ModbusDashboard {
 
             let transferred = 0;
             let packetCount = 0;
-            let packetTimes = []; // Store response times for averaging
+
+            // 전체 전송 시작 시간 기록
+            const transferStartTime = Date.now();
 
             while (transferred < totalSize) {
                 if (this.firmwareUpdateCancelled) throw new Error('사용자에 의해 취소됨');
@@ -7290,22 +7307,10 @@ class ModbusDashboard {
                     this.addFirmwareLog(`TX[${packetCount}]: ${chunkSize} bytes @ offset ${transferred}`, 'tx');
                 }
 
-                // Measure response time
-                const packetStartTime = Date.now();
-
                 // 응답: 65바이트, CRC 없음
                 const dataResponse = await this.sendAndReceive(dataFrame, responseTimeout, { minLength: 65, skipCRC: true });
                 if (!dataResponse) {
                     throw new Error(`데이터 전송 응답 없음 (packet ${packetCount})`);
-                }
-
-                const packetEndTime = Date.now();
-                const packetResponseTime = packetEndTime - packetStartTime;
-                packetTimes.push(packetResponseTime);
-
-                // Keep only last 10 times for averaging
-                if (packetTimes.length > 10) {
-                    packetTimes.shift();
                 }
 
                 // Parse response to check for ACK (0x04) or error (0x05)
@@ -7323,10 +7328,14 @@ class ModbusDashboard {
                 transferred += chunkSize;
                 packetCount++;
 
-                // Calculate remaining time
-                const avgResponseTime = packetTimes.reduce((a, b) => a + b, 0) / packetTimes.length;
-                const remainingPackets = totalPackets - packetCount;
-                const estimatedTimeMs = remainingPackets * (avgResponseTime + packetDelay);
+                // Calculate remaining time based on total elapsed time
+                let estimatedTimeMs = 0;
+                if (packetCount > 0) {
+                    const elapsedTime = Date.now() - transferStartTime;
+                    const avgTimePerPacket = elapsedTime / packetCount;
+                    const remainingPackets = totalPackets - packetCount;
+                    estimatedTimeMs = Math.round(remainingPackets * avgTimePerPacket);
+                }
 
                 // Update progress
                 const percent = Math.round((transferred / totalSize) * 100);
