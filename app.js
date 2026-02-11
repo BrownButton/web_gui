@@ -1474,6 +1474,11 @@ class ModbusDashboard {
             this.updateFirmwareDeviceList();
         }
 
+        // Update device setup list when switching to device-setup page
+        if (pageName === 'device-setup') {
+            this.renderDeviceSetupList();
+        }
+
         // Resize chart canvas when switching to chart page
         if (pageName === 'chart' && this.chartManager) {
             setTimeout(() => {
@@ -8002,6 +8007,169 @@ class ModbusDashboard {
                 console.debug('Chart polling error for channel', i, error);
             }
         }
+    }
+
+    /**
+     * Render device list in Device Setup page
+     */
+    renderDeviceSetupList() {
+        const listContainer = document.getElementById('deviceSetupList');
+        if (!listContainer) return;
+
+        // Clear existing content
+        listContainer.innerHTML = '';
+
+        if (this.devices.length === 0) {
+            listContainer.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: #6c757d;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">📦</div>
+                    <p>등록된 디바이스가 없습니다</p>
+                    <p style="font-size: 12px; margin-top: 5px;">Dashboard에서 디바이스를 추가하세요</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Create device list items
+        this.devices.forEach(device => {
+            const item = document.createElement('div');
+            item.className = 'device-setup-item';
+            item.dataset.deviceId = device.id;
+            item.style.cssText = `
+                padding: 12px 15px;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: all 0.2s;
+                background: white;
+            `;
+
+            const statusColor = device.online ? '#28a745' : '#6c757d';
+            const modeText = device.operationMode === 0 ? 'RPM' : '%';
+
+            item.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColor};"></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 500; color: #333; margin-bottom: 4px;">${device.name}</div>
+                        <div style="font-size: 11px; color: #6c757d;">
+                            ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId} • ${modeText}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Hover effect
+            item.addEventListener('mouseenter', () => {
+                item.style.background = '#f8f9fa';
+                item.style.borderColor = '#007bff';
+            });
+            item.addEventListener('mouseleave', () => {
+                if (!item.classList.contains('selected')) {
+                    item.style.background = 'white';
+                    item.style.borderColor = '#e0e0e0';
+                }
+            });
+
+            // Click to select
+            item.addEventListener('click', () => {
+                this.selectDeviceInSetup(device.id);
+            });
+
+            listContainer.appendChild(item);
+        });
+    }
+
+    /**
+     * Select a device in Device Setup page
+     */
+    selectDeviceInSetup(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        // Update selection state in list
+        const listItems = document.querySelectorAll('.device-setup-item');
+        listItems.forEach(item => {
+            if (item.dataset.deviceId === deviceId) {
+                item.classList.add('selected');
+                item.style.background = '#e7f3ff';
+                item.style.borderColor = '#007bff';
+            } else {
+                item.classList.remove('selected');
+                item.style.background = 'white';
+                item.style.borderColor = '#e0e0e0';
+            }
+        });
+
+        // Update configuration panel
+        this.renderDeviceSetupConfig(device);
+    }
+
+    /**
+     * Render device configuration in Device Setup page
+     */
+    renderDeviceSetupConfig(device) {
+        const configContainer = document.getElementById('deviceSetupConfig');
+        if (!configContainer) return;
+
+        const modeText = device.operationMode === 0 ? 'Speed Control (RPM)' : 'Open-loop Control (%)';
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online);
+
+        configContainer.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- Device Info -->
+                <div style="padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Device Name</div>
+                            <div style="font-weight: 500; color: #333;">${device.name}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Slave ID</div>
+                            <div style="font-weight: 500; color: #333;">${device.slaveId === 0 ? 'Not Assigned' : device.slaveId}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Operation Mode</div>
+                            <div style="font-weight: 500; color: #333;">${modeText}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Status</div>
+                            <div style="font-weight: 500; color: ${statusInfo.class.includes('success') ? '#28a745' : '#6c757d'};">${statusInfo.text}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Setpoint</div>
+                            <div style="font-weight: 500; color: #333;">${device.setpoint} ${device.operationMode === 0 ? 'RPM' : '%'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Actual Speed</div>
+                            <div style="font-weight: 500; color: #333;">${device.actualSpeed || 0} RPM</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div>
+                    <h4 style="margin-bottom: 10px; color: #495057; font-size: 14px; font-weight: 500;">Quick Actions</h4>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button onclick="window.dashboard.refreshDevice('${device.id}')" class="btn btn-secondary btn-sm">
+                            <span>↻</span> Refresh Status
+                        </button>
+                        <button onclick="window.dashboard.showEditDeviceModal('${device.id}')" class="btn btn-primary btn-sm">
+                            <span>✏️</span> Edit Device
+                        </button>
+                        <button onclick="window.dashboard.deleteDevice('${device.id}')" class="btn btn-danger btn-sm">
+                            <span>🗑️</span> Delete Device
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Device Settings -->
+                <div>
+                    <h4 style="margin-bottom: 10px; color: #495057; font-size: 14px; font-weight: 500;">Device Settings</h4>
+                    <p style="color: #6c757d; font-size: 13px;">Additional device configuration options will be available here.</p>
+                </div>
+            </div>
+        `;
     }
 
     /**
