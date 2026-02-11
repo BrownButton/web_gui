@@ -446,8 +446,10 @@ class ModbusRTU {
                 // Response data: 0xFFFFFFFF = 성공 (erase 완료), 0x00000000 = 실패
                 if (response.length >= 7) {
                     const status = (response[3] << 24) | (response[4] << 16) | (response[5] << 8) | response[6];
-                    result.success = (status === 0xFFFFFFFF);
-                    result.data = { eraseStatus: status };
+                    // JavaScript에서 >>> 0을 사용하여 unsigned 32-bit로 변환
+                    const unsignedStatus = status >>> 0;
+                    result.success = (unsignedStatus === 0xFFFFFFFF);
+                    result.data = { eraseStatus: unsignedStatus };
                 }
                 break;
 

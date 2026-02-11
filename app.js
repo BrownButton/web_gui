@@ -2065,6 +2065,15 @@ class ModbusDashboard {
                     }
                 }
 
+                // Check if this is a firmware update response (Function Code 0x66)
+                const functionCode = frame[1];
+                if (functionCode === 0x66) {
+                    // Firmware responses don't have CRC, skip normal parsing
+                    // Just display as system message
+                    this.addMonitorEntry('system', frame);
+                    return;
+                }
+
                 // Check if this is a response to a pending request
                 if (this.pendingResponse) {
                     this.handlePendingResponse(frame);
@@ -7508,6 +7517,12 @@ class ModbusDashboard {
             // null로 설정하여 handleReceivedData에서 데이터 축적 중지
             this.responseBuffer = null;
             this.expectedResponseLength = 0;
+
+            // receiveBuffer도 초기화하여 이전 패킷 데이터 제거
+            this.receiveIndex = 0;
+
+            // 버퍼에 남아있을 수 있는 이전 데이터 제거를 위한 짧은 딜레이
+            await this.delay(50);
 
             // Send the frame (await 중 도착하는 잔여 데이터는 null이므로 버려짐)
             await this.sendRawData(frame);
