@@ -1175,6 +1175,27 @@ class ModbusDashboard {
         document.getElementById('sendBtn').addEventListener('click', () => this.sendModbusRequest());
         document.getElementById('clearBtn').addEventListener('click', () => this.clearMonitor());
 
+        // Real-time value conversion for Modbus input fields
+        const modbusInputs = [
+            { id: 'slaveId', min: 1, max: 247 },
+            { id: 'startAddress', min: 0, max: 65535 },
+            { id: 'quantity', min: 1, max: 125 },
+            { id: 'writeValue', min: 0, max: 65535 }
+        ];
+
+        modbusInputs.forEach(({ id, min, max }) => {
+            const input = document.getElementById(id);
+            if (input) {
+                // Update on input (real-time)
+                input.addEventListener('input', () => {
+                    this.updateConvertedValue(id, min, max);
+                });
+
+                // Initial update
+                this.updateConvertedValue(id, min, max);
+            }
+        });
+
         // Monitor scroll controls
         this.initMonitorScrollControls();
 
@@ -2098,6 +2119,131 @@ class ModbusDashboard {
     }
 
     /**
+     * Detect if input is hexadecimal (auto-detection)
+     * @param {string} value - Input value
+     * @returns {boolean} True if likely hexadecimal
+     */
+    isHexadecimal(value) {
+        const trimmed = String(value).trim().toUpperCase();
+
+        // Explicit hex prefix
+        if (trimmed.startsWith('0X')) {
+            return true;
+        }
+
+        // Contains A-F characters (likely hex)
+        if (/[A-F]/.test(trimmed)) {
+            return true;
+        }
+
+        // Otherwise, assume decimal
+        return false;
+    }
+
+    /**
+     * Parse Modbus input value (supports decimal and hexadecimal with auto-detection)
+     * @param {string} value - Input value (e.g., "10", "D011", "0xFFFF")
+     * @param {number} min - Minimum allowed value
+     * @param {number} max - Maximum allowed value
+     * @returns {number} Parsed value
+     */
+    parseModbusValue(value, min = 0, max = 65535) {
+        const trimmed = String(value).trim();
+
+        if (!trimmed) {
+            throw new Error('빈 값은 허용되지 않습니다');
+        }
+
+        let parsed;
+
+        // Auto-detect hex or decimal
+        if (this.isHexadecimal(trimmed)) {
+            // Remove 0x prefix if present
+            const hexValue = trimmed.replace(/^0x/i, '');
+
+            // Check if empty after removing prefix (e.g., "0x" or "0X")
+            if (!hexValue) {
+                throw new Error('빈 값은 허용되지 않습니다');
+            }
+
+            // Validate hex string - only 0-9, A-F allowed
+            if (!/^[0-9A-Fa-f]+$/.test(hexValue)) {
+                throw new Error(`유효하지 않은 16진수: "${value}"`);
+            }
+
+            parsed = parseInt(hexValue, 16);
+        } else {
+            // Validate decimal string - only 0-9 allowed
+            if (!/^[0-9]+$/.test(trimmed)) {
+                throw new Error(`유효하지 않은 10진수: "${value}"`);
+            }
+
+            parsed = parseInt(trimmed, 10);
+        }
+
+        if (isNaN(parsed)) {
+            throw new Error(`유효하지 않은 값: "${value}"`);
+        }
+
+        if (parsed < min || parsed > max) {
+            throw new Error(`값 ${parsed} (0x${parsed.toString(16).toUpperCase()})는 범위를 벗어났습니다 (${min}-${max})`);
+        }
+
+        return parsed;
+    }
+
+    /**
+     * Update converted value display for an input field
+     * @param {string} inputId - Input element ID
+     * @param {number} min - Minimum value
+     * @param {number} max - Maximum value
+     */
+    updateConvertedValue(inputId, min = 0, max = 65535) {
+        const input = document.getElementById(inputId);
+        const convertedEl = document.getElementById(`${inputId}-converted`);
+
+        if (!input || !convertedEl) return;
+
+        const value = input.value.trim();
+
+        // Treat empty or just "0x"/"0X" as empty (no display)
+        if (!value || value.toLowerCase() === '0x') {
+            convertedEl.textContent = '';
+            input.style.borderColor = '';
+            input.style.background = '';
+            return;
+        }
+
+        try {
+            const parsed = this.parseModbusValue(value, min, max);
+            const isHex = this.isHexadecimal(value);
+
+            // Display the opposite format
+            if (isHex) {
+                convertedEl.textContent = `= ${parsed} (Dec)`;
+            } else {
+                convertedEl.textContent = `= 0x${parsed.toString(16).toUpperCase()} (Hex)`;
+            }
+
+            // Remove error styling
+            input.style.borderColor = '';
+            input.style.background = '';
+            convertedEl.style.color = '';
+        } catch (error) {
+            // Show error state
+            convertedEl.textContent = `⚠ ${error.message}`;
+            convertedEl.style.color = '#dc3545';
+            input.style.borderColor = '#dc3545';
+            input.style.background = '#fff5f5';
+
+            // Reset color after a moment
+            setTimeout(() => {
+                convertedEl.style.color = '';
+            }, 2000);
+        }
+    }
+
+    /**
      * Send Modbus request
      */
     async sendModbusRequest() {
@@ -2107,11 +2253,11 @@ class ModbusDashboard {
         }
 
         try {
-            const slaveId = parseInt(document.getElementById('slaveId').value);
+            const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 1, 247);
             const functionCode = parseInt(document.getElementById('functionCode').value);
-            const startAddress = parseInt(document.getElementById('startAddress').value);
-            const quantity = parseInt(document.getElementById('quantity').value);
-            const writeValue = parseInt(document.getElementById('writeValue').value) || 0;
+            const startAddress = this.parseModbusValue(document.getElementById('startAddress').value, 0, 65535);
+            const quantity = this.parseModbusValue(document.getElementById('quantity').value, 1, 125);
+            const writeValue = this.parseModbusValue(document.getElementById('writeValue').value || '0', 0, 65535);
 
             let frame;
 
@@ -4232,11 +4378,11 @@ class ModbusDashboard {
         }
 
         try {
-            const slaveId = parseInt(document.getElementById('slaveId').value);
+            const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 1, 247);
             const functionCode = parseInt(document.getElementById('functionCode').value);
-            const startAddress = parseInt(document.getElementById('startAddress').value);
-            const quantity = parseInt(document.getElementById('quantity').value);
-            const writeValue = parseInt(document.getElementById('writeValue').value) || 0;
+            const startAddress = this.parseModbusValue(document.getElementById('startAddress').value, 0, 65535);
+            const quantity = this.parseModbusValue(document.getElementById('quantity').value, 1, 125);
+            const writeValue = this.parseModbusValue(document.getElementById('writeValue').value || '0', 0, 65535);
 
             let frame;
 
@@ -4276,11 +4422,11 @@ class ModbusDashboard {
      */
     async sendSimulatedRequest() {
         try {
-            const slaveId = parseInt(document.getElementById('slaveId').value);
+            const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 1, 247);
             const functionCode = parseInt(document.getElementById('functionCode').value);
-            const startAddress = parseInt(document.getElementById('startAddress').value);
-            const quantity = parseInt(document.getElementById('quantity').value);
-            const writeValue = parseInt(document.getElementById('writeValue').value) || 0;
+            const startAddress = this.parseModbusValue(document.getElementById('startAddress').value, 0, 65535);
+            const quantity = this.parseModbusValue(document.getElementById('quantity').value, 1, 125);
+            const writeValue = this.parseModbusValue(document.getElementById('writeValue').value || '0', 0, 65535);
 
             let frame;
 

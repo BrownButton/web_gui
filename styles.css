@@ -610,6 +610,7 @@ label {
 }
 
 input[type="number"],
+input[type="text"],
 select {
     padding: 8px 10px;
     border: 1px solid #ced4da;
@@ -621,11 +622,37 @@ select {
 }
 
 input[type="number"]:focus,
+input[type="text"]:focus,
 select:focus {
     outline: none;
     border-color: #007bff;
     background: #f8f9fa;
     box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+/* Input hint text */
+.form-group .input-hint {
+    color: #6c757d;
+    font-size: 10px;
+    margin-top: 3px;
+    font-style: italic;
+    opacity: 0.85;
+}
+
+/* Input converted value display */
+.form-group .input-converted {
+    display: block;
+    color: #007bff;
+    font-size: 10px;
+    margin-top: 3px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-weight: 500;
+    min-height: 14px;
+    opacity: 0.9;
+}
+
+.form-group .input-converted:empty {
+    display: none;
 }
 
 .button-group {

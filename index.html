@@ -283,7 +283,8 @@
                                 <div class="modbus-config">
                                     <div class="form-group">
                                         <label for="slaveId">Slave ID</label>
-                                        <input type="number" id="slaveId" min="1" max="247" value="1">
+                                        <input type="text" id="slaveId" value="1" placeholder="1 or D">
+                                        <small class="input-converted" id="slaveId-converted"></small>
                                     </div>
                                     <div class="form-group">
                                         <label for="functionCode">Function Code</label>
@@ -300,15 +301,18 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="startAddress">Start Address</label>
-                                        <input type="number" id="startAddress" min="0" max="65535" value="0">
+                                        <input type="text" id="startAddress" value="0" placeholder="0 or D011">
+                                        <small class="input-converted" id="startAddress-converted"></small>
                                     </div>
                                     <div class="form-group">
                                         <label for="quantity">Quantity</label>
-                                        <input type="number" id="quantity" min="1" max="125" value="10">
+                                        <input type="text" id="quantity" value="10" placeholder="10 or A">
+                                        <small class="input-converted" id="quantity-converted"></small>
                                     </div>
                                     <div class="form-group" id="writeValueGroup" style="display: none;">
                                         <label for="writeValue">Write Value</label>
-                                        <input type="number" id="writeValue" min="0" max="65535" value="0">
+                                        <input type="text" id="writeValue" value="0" placeholder="0 or 3E8">
+                                        <small class="input-converted" id="writeValue-converted"></small>
                                     </div>
                                 </div>
                                 <div class="button-group">
