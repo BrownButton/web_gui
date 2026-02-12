@@ -142,8 +142,8 @@
                     <span class="menu-item-text">Dashboard</span>
                 </div>
                 <div class="menu-item" data-page="device-setup">
-                    <span class="menu-item-icon">🔧</span>
-                    <span class="menu-item-text">Device Setup</span>
+                    <span class="menu-item-icon">⚙️</span>
+                    <span class="menu-item-text">Device</span>
                 </div>
                 <div class="menu-item" data-page="modbus">
                     <span class="menu-item-icon">📡</span>
@@ -278,7 +278,6 @@
                 <!-- Device Setup Page -->
                 <div id="page-device-setup" class="page-content" style="height: 100%;">
                     <div class="card" style="height: calc(100vh - 120px); display: flex; flex-direction: column;">
-                        <h2 style="margin-bottom: 20px; color: #333; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; flex-shrink: 0;">Device Configuration</h2>
                         <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 0; flex: 1; overflow: hidden;">
                             <!-- Left: Device List -->
                             <div style="background: #f8f9fa; border-right: 1px solid #e9ecef; padding: 15px 10px; display: flex; flex-direction: column; overflow: hidden;">
@@ -292,14 +291,37 @@
                                 </div>
                             </div>
 
-                            <!-- Right: Configuration Content -->
-                            <div style="display: flex; flex-direction: column; overflow: hidden; padding: 15px 20px;">
-                                <h3 style="margin-bottom: 15px; color: #495057; font-size: 14px; font-weight: 500; flex-shrink: 0;">⚙️ Settings</h3>
-                                <div id="deviceSetupConfig" style="flex: 1; overflow-y: auto; padding-right: 10px;">
-                                    <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
-                                        <div style="font-size: 64px; margin-bottom: 15px;">🔧</div>
-                                        <p style="font-size: 16px;">디바이스를 선택하세요</p>
-                                        <p style="font-size: 13px; margin-top: 8px;">왼쪽에서 디바이스를 선택하면 설정을 변경할 수 있습니다</p>
+                            <!-- Right: Tab Content -->
+                            <div style="display: flex; flex-direction: column; overflow: hidden;">
+                                <!-- Tab Buttons -->
+                                <div style="display: flex; gap: 4px; background: #f8f9fa; padding: 8px 8px 0 8px; border-bottom: 1px solid #dee2e6; flex-shrink: 0;">
+                                    <button class="device-setup-tab active" data-tab="configuration" style="padding: 10px 20px; border: 1px solid #dee2e6; border-bottom: none; background: white; cursor: pointer; font-size: 13px; font-weight: 500; color: #495057; border-radius: 8px 8px 0 0; transition: all 0.2s; position: relative; margin-bottom: -1px;">
+                                        ⚙️ Configuration
+                                    </button>
+                                    <button class="device-setup-tab" data-tab="parameters" style="padding: 10px 20px; border: 1px solid transparent; border-bottom: none; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; border-radius: 8px 8px 0 0; transition: all 0.2s; position: relative; margin-bottom: -1px;">
+                                        📋 Parameters
+                                    </button>
+                                </div>
+
+                                <!-- Configuration Tab Content -->
+                                <div class="device-setup-tab-content active" id="deviceSetupConfigTab" style="flex: 1; overflow-y: auto; padding: 15px 20px 15px 10px; display: block;">
+                                    <div id="deviceSetupConfig">
+                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
+                                            <div style="font-size: 64px; margin-bottom: 15px;">🔧</div>
+                                            <p style="font-size: 16px;">디바이스를 선택하세요</p>
+                                            <p style="font-size: 13px; margin-top: 8px;">왼쪽에서 디바이스를 선택하면 설정을 변경할 수 있습니다</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Parameters Tab Content -->
+                                <div class="device-setup-tab-content" id="deviceSetupParamsTab" style="flex: 1; overflow-y: auto; padding: 15px 20px 15px 10px; display: none;">
+                                    <div id="deviceSetupParams">
+                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
+                                            <div style="font-size: 64px; margin-bottom: 15px;">📋</div>
+                                            <p style="font-size: 16px;">디바이스를 선택하세요</p>
+                                            <p style="font-size: 13px; margin-top: 8px;">왼쪽에서 디바이스를 선택하면 파라미터를 확인할 수 있습니다</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

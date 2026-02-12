@@ -4933,7 +4933,9 @@ class ModbusDashboard {
             maxSpeed: 10000,
             lastUpdate: null,
             online: false,
-            failCount: 0
+            failCount: 0,
+            runningDirection: 0,  // 0: CCW, 1: CW
+            maxCurrent: 0         // Maximum coil current in Amperes
         };
 
         this.devices.push(device);
@@ -7124,7 +7126,9 @@ class ModbusDashboard {
             motorStatus: 0,
             maxSpeed: 10000,
             lastUpdate: Date.now(),
-            online: true
+            online: true,
+            runningDirection: 0,  // 0: CCW, 1: CW
+            maxCurrent: 0         // Maximum coil current in Amperes
         };
 
         this.devices.push(device);
@@ -8156,8 +8160,9 @@ class ModbusDashboard {
             }
         });
 
-        // Update configuration panel
+        // Update configuration panel and parameters panel
         this.renderDeviceSetupConfig(device);
+        this.renderDeviceSetupParams(device);
     }
 
     /**
@@ -8202,9 +8207,129 @@ class ModbusDashboard {
                     </div>
                 </div>
 
+                <!-- Basic Settings Section -->
+                <div style="border-bottom: 1px solid #e9ecef; padding-bottom: 15px;">
+                    <h4 style="margin-bottom: 15px; color: #495057; font-size: 14px; font-weight: 600;">Basic Settings</h4>
+
+                    <!-- Fan Address (Node ID) -->
+                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f3f5;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Fan Address (Node ID)</div>
+                            <div style="font-size: 12px; color: #6c757d;">Modbus device address (0xD100)</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="number" id="fanAddress_${device.id}"
+                                value="${device.slaveId}"
+                                min="1" max="247"
+                                style="width: 80px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'fanAddress', this.value)">
+                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="window.dashboard.applyFanAddress(${device.id})">Apply</button>
+                        </div>
+                    </div>
+
+                    <!-- Operating Mode -->
+                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f3f5;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Operating Mode</div>
+                            <div style="font-size: 12px; color: #6c757d;">Motor control method (0xD106)</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="operatingMode_${device.id}"
+                                style="width: 180px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'operatingMode', this.value)">
+                                <option value="0" ${device.operationMode === 0 ? 'selected' : ''}>Speed Control (RPM)</option>
+                                <option value="2" ${device.operationMode === 2 ? 'selected' : ''}>Open-loop Control (%)</option>
+                            </select>
+                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="window.dashboard.applyOperatingMode(${device.id})">Apply</button>
+                        </div>
+                    </div>
+
+                    <!-- Preferred Running Direction -->
+                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f3f5;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Running Direction</div>
+                            <div style="font-size: 12px; color: #6c757d;">Motor rotation direction (0xD102)</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="runningDirection_${device.id}"
+                                style="width: 180px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'runningDirection', this.value)">
+                                <option value="0" ${device.runningDirection === 0 ? 'selected' : ''}>CCW (Counter-Clockwise)</option>
+                                <option value="1" ${device.runningDirection === 1 ? 'selected' : ''}>CW (Clockwise)</option>
+                            </select>
+                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="window.dashboard.applyRunningDirection(${device.id})">Apply</button>
+                        </div>
+                    </div>
+
+                    <!-- Setpoint -->
+                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Setpoint</div>
+                            <div style="font-size: 12px; color: #6c757d;">Target ${device.operationMode === 0 ? 'speed (RPM)' : 'power (%)'} (0xD001)</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="number" id="setpoint_${device.id}"
+                                value="${device.setpoint}"
+                                min="0" max="${device.operationMode === 0 ? '10000' : '100'}"
+                                style="width: 80px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'setpoint', this.value)">
+                            <span style="color: #6c757d; font-size: 13px; width: 40px;">${device.operationMode === 0 ? 'RPM' : '%'}</span>
+                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="window.dashboard.applySetpoint(${device.id})">Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced Settings Section -->
+                <div style="border-bottom: 1px solid #e9ecef; padding-bottom: 15px;">
+                    <h4 style="margin-bottom: 15px; color: #495057; font-size: 14px; font-weight: 600;">Advanced Settings</h4>
+
+                    <!-- Maximum Coil Current -->
+                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Maximum Coil Current</div>
+                            <div style="font-size: 12px; color: #6c757d;">Current limit (RMS) in Amperes (0xD13B)</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="number" id="maxCurrent_${device.id}"
+                                value="${device.maxCurrent || 0}"
+                                min="0" max="100" step="0.1"
+                                style="width: 80px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'maxCurrent', this.value)">
+                            <span style="color: #6c757d; font-size: 13px; width: 40px;">A</span>
+                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="window.dashboard.applyMaxCurrent(${device.id})">Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Actions Section -->
+                <div style="padding-bottom: 15px;">
+                    <h4 style="margin-bottom: 15px; color: #495057; font-size: 14px; font-weight: 600;">System Actions</h4>
+
+                    <!-- Reset Actions -->
+                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Reset Operations</div>
+                            <div style="font-size: 12px; color: #6c757d;">Software Reset, Error Reset, EEPROM to RAM (0xD000)</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-sm btn-warning" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="window.dashboard.resetDevice(${device.id}, 'software')">Software Reset</button>
+                            <button class="btn btn-sm btn-warning" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="window.dashboard.resetDevice(${device.id}, 'error')">Error Reset</button>
+                            <button class="btn btn-sm btn-info" style="padding: 6px 12px; font-size: 12px;"
+                                onclick="window.dashboard.resetDevice(${device.id}, 'eeprom')">EEPROM to RAM</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Quick Actions -->
-                <div>
-                    <h4 style="margin-bottom: 10px; color: #495057; font-size: 14px; font-weight: 500;">Quick Actions</h4>
+                <div style="border-top: 1px solid #e9ecef; padding-top: 15px;">
+                    <h4 style="margin-bottom: 10px; color: #495057; font-size: 14px; font-weight: 600;">Device Management</h4>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button onclick="window.dashboard.refreshDevice('${device.id}')" class="btn btn-secondary btn-sm">
                             <span>↻</span> Refresh Status
@@ -8217,14 +8342,360 @@ class ModbusDashboard {
                         </button>
                     </div>
                 </div>
+            </div>
+        `;
+    }
 
-                <!-- Device Settings -->
+    /**
+     * Render device parameters in Device Setup page
+     */
+    renderDeviceSetupParams(device) {
+        const paramsContainer = document.getElementById('deviceSetupParams');
+        if (!paramsContainer) return;
+
+        // Define implemented parameters (from Parameters.csv)
+        const holdingParams = [
+            { name: 'Reset', address: 0xD000, writable: true, description: 'Software Reset, Error Reset, EEPROM to RAM' },
+            { name: 'Setpoint', address: 0xD001, writable: true, description: '지령 값 (RPM or %)' },
+            { name: 'Fan Address', address: 0xD100, writable: true, description: 'Node ID (1-247)' },
+            { name: 'Preferred Running Direction', address: 0xD102, writable: true, description: '0: CCW, 1: CW' },
+            { name: 'Operating Mode', address: 0xD106, writable: true, description: '0: Speed Control, 2: Open-loop' },
+            { name: 'Maximum Coil Current', address: 0xD13B, writable: true, description: 'Current limit (RMS)' }
+        ];
+
+        const inputParams = [
+            { name: 'Identification', address: 0xD000, writable: false, description: '장치 식별' },
+            { name: 'Max Number of Bytes', address: 0xD001, writable: false, description: '최대 바이트 수' },
+            { name: 'Bus Controller SW Name', address: 0xD002, writable: false, description: 'Main 부트버전' },
+            { name: 'Bus Controller SW Version', address: 0xD003, writable: false, description: 'Main 펌웨어 버전' },
+            { name: 'Commutation Controller SW Name', address: 0xD004, writable: false, description: 'Inverter 부트 버전' },
+            { name: 'Commutation Controller SW Version', address: 0xD005, writable: false, description: 'Inverter 펌웨어 버전' },
+            { name: 'Motor Status', address: 0xD011, writable: false, description: '모터 상태' },
+            { name: 'Warning', address: 0xD012, writable: false, description: '경고' },
+            { name: 'DC-link Voltage', address: 0xD013, writable: false, description: 'DC 링크 전압' },
+            { name: 'Module Temperature', address: 0xD015, writable: false, description: 'IGBT Temperature' },
+            { name: 'Electronics Temperature', address: 0xD017, writable: false, description: '제어부 Temperature' },
+            { name: 'Actual Speed [RPM]', address: 0xD02D, writable: false, description: '절대 속도 [RPM]' },
+            { name: 'Command Speed', address: 0xD050, writable: false, description: '지령 속도' },
+            { name: 'Command Torque', address: 0xD051, writable: false, description: '지령 토크' }
+        ];
+
+        paramsContainer.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- Device Info Header -->
+                <div style="padding: 12px 15px; background: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;">
+                    <div style="font-weight: 600; color: #333; margin-bottom: 4px;">${device.name}</div>
+                    <div style="font-size: 12px; color: #6c757d;">Slave ID: ${device.slaveId === 0 ? 'Not Assigned' : device.slaveId}</div>
+                </div>
+
+                <!-- Holding Registers Section -->
                 <div>
-                    <h4 style="margin-bottom: 10px; color: #495057; font-size: 14px; font-weight: 500;">Device Settings</h4>
-                    <p style="color: #6c757d; font-size: 13px;">Additional device configuration options will be available here.</p>
+                    <h4 style="margin-bottom: 12px; color: #495057; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                        <span style="background: #28a745; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500;">HOLDING</span>
+                        Holding Registers (Read/Write)
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        ${holdingParams.map(param => `
+                            <div style="padding: 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; color: #333; margin-bottom: 2px;">${param.name}</div>
+                                    <div style="font-size: 11px; color: #6c757d;">${param.description}</div>
+                                    <div style="font-size: 11px; color: #007bff; margin-top: 2px;">Address: 0x${param.address.toString(16).toUpperCase()}</div>
+                                </div>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <input type="number" id="param_${param.address}" placeholder="Value"
+                                        style="width: 80px; padding: 6px 8px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px;">
+                                    <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 11px;"
+                                        onclick="window.dashboard.readParameter(${device.slaveId}, ${param.address}, true)">Read</button>
+                                    ${param.writable ? `
+                                        <button class="btn btn-sm btn-success" style="padding: 6px 12px; font-size: 11px;"
+                                            onclick="window.dashboard.writeParameter(${device.slaveId}, ${param.address}, document.getElementById('param_${param.address}').value)">Write</button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Input Registers Section -->
+                <div>
+                    <h4 style="margin-bottom: 12px; color: #495057; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                        <span style="background: #17a2b8; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500;">INPUT</span>
+                        Input Registers (Read Only)
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        ${inputParams.map(param => `
+                            <div style="padding: 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; color: #333; margin-bottom: 2px;">${param.name}</div>
+                                    <div style="font-size: 11px; color: #6c757d;">${param.description}</div>
+                                    <div style="font-size: 11px; color: #17a2b8; margin-top: 2px;">Address: 0x${param.address.toString(16).toUpperCase()}</div>
+                                </div>
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <input type="number" id="param_input_${param.address}" placeholder="Value" readonly
+                                        style="width: 80px; padding: 6px 8px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; background: #f8f9fa;">
+                                    <button class="btn btn-sm btn-info" style="padding: 6px 12px; font-size: 11px;"
+                                        onclick="window.dashboard.readParameter(${device.slaveId}, ${param.address}, false)">Read</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Read parameter from device
+     */
+    async readParameter(slaveId, address, isHolding) {
+        try {
+            const value = await this.readRegister(slaveId, address);
+
+            if (value !== null && value !== undefined) {
+                const inputId = isHolding ? `param_${address}` : `param_input_${address}`;
+                const inputElement = document.getElementById(inputId);
+                if (inputElement) {
+                    inputElement.value = value;
+                }
+                this.showToast(`Value read: ${value}`, 'success');
+            } else {
+                this.showToast('Failed to read parameter', 'error');
+            }
+        } catch (error) {
+            console.error('Read parameter error:', error);
+            this.showToast('Failed to read parameter', 'error');
+        }
+    }
+
+    /**
+     * Write parameter to device
+     */
+    async writeParameter(slaveId, address, value) {
+        const numValue = parseInt(value);
+        if (isNaN(numValue)) {
+            alert('Please enter a valid number');
+            return;
+        }
+
+        const success = await this.writeHoldingRegister(slaveId, address, numValue);
+        if (success) {
+            this.showToast('Parameter written successfully', 'success');
+        } else {
+            this.showToast('Failed to write parameter', 'error');
+        }
+    }
+
+    /**
+     * Write holding register wrapper
+     */
+    async writeHoldingRegister(slaveId, address, value) {
+        try {
+            await this.writeRegister(slaveId, address, value);
+            return true;
+        } catch (error) {
+            console.error('Write holding register error:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Update device parameter temporarily (before apply)
+     */
+    updateDeviceParameter(deviceId, paramName, value) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        // Store the pending value
+        if (!device.pendingParams) {
+            device.pendingParams = {};
+        }
+        device.pendingParams[paramName] = value;
+    }
+
+    /**
+     * Apply Fan Address to device
+     */
+    async applyFanAddress(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const inputElement = document.getElementById(`fanAddress_${deviceId}`);
+        if (!inputElement) return;
+
+        const newAddress = parseInt(inputElement.value);
+        if (isNaN(newAddress) || newAddress < 1 || newAddress > 247) {
+            alert('Invalid address. Must be between 1 and 247.');
+            return;
+        }
+
+        // Write to 0xD100 (Fan address)
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD100, newAddress);
+        if (success) {
+            device.slaveId = newAddress;
+            this.saveDevices();
+            this.renderDeviceSetupList();
+            this.renderDeviceSetupConfig(device);
+            this.showToast('Fan address updated successfully', 'success');
+        } else {
+            this.showToast('Failed to update fan address', 'error');
+        }
+    }
+
+    /**
+     * Apply Operating Mode to device
+     */
+    async applyOperatingMode(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const selectElement = document.getElementById(`operatingMode_${deviceId}`);
+        if (!selectElement) return;
+
+        const newMode = parseInt(selectElement.value);
+
+        // Write to 0xD106 (Operating mode)
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD106, newMode);
+        if (success) {
+            device.operationMode = newMode;
+            this.saveDevices();
+            this.renderDeviceSetupList();
+            this.renderDeviceSetupConfig(device);
+            this.showToast('Operating mode updated successfully', 'success');
+        } else {
+            this.showToast('Failed to update operating mode', 'error');
+        }
+    }
+
+    /**
+     * Apply Running Direction to device
+     */
+    async applyRunningDirection(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const selectElement = document.getElementById(`runningDirection_${deviceId}`);
+        if (!selectElement) return;
+
+        const newDirection = parseInt(selectElement.value);
+
+        // Write to 0xD102 (Preferred running direction)
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD102, newDirection);
+        if (success) {
+            device.runningDirection = newDirection;
+            this.saveDevices();
+            this.renderDeviceSetupConfig(device);
+            this.showToast('Running direction updated successfully', 'success');
+        } else {
+            this.showToast('Failed to update running direction', 'error');
+        }
+    }
+
+    /**
+     * Apply Setpoint to device
+     */
+    async applySetpoint(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const inputElement = document.getElementById(`setpoint_${deviceId}`);
+        if (!inputElement) return;
+
+        const newSetpoint = parseInt(inputElement.value);
+        const maxValue = device.operationMode === 0 ? 10000 : 100;
+
+        if (isNaN(newSetpoint) || newSetpoint < 0 || newSetpoint > maxValue) {
+            alert(`Invalid setpoint. Must be between 0 and ${maxValue}.`);
+            return;
+        }
+
+        // Write to 0xD001 (Setpoint)
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD001, newSetpoint);
+        if (success) {
+            device.setpoint = newSetpoint;
+            this.saveDevices();
+            this.renderDeviceSetupConfig(device);
+            this.showToast('Setpoint updated successfully', 'success');
+        } else {
+            this.showToast('Failed to update setpoint', 'error');
+        }
+    }
+
+    /**
+     * Apply Maximum Coil Current to device
+     */
+    async applyMaxCurrent(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const inputElement = document.getElementById(`maxCurrent_${deviceId}`);
+        if (!inputElement) return;
+
+        const newCurrent = parseFloat(inputElement.value);
+
+        if (isNaN(newCurrent) || newCurrent < 0 || newCurrent > 100) {
+            alert('Invalid current value. Must be between 0 and 100 A.');
+            return;
+        }
+
+        // Convert to register value (might need scaling based on device spec)
+        const registerValue = Math.round(newCurrent * 10); // Assuming 0.1A resolution
+
+        // Write to 0xD13B (Maximum coil current)
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD13B, registerValue);
+        if (success) {
+            device.maxCurrent = newCurrent;
+            this.saveDevices();
+            this.renderDeviceSetupConfig(device);
+            this.showToast('Maximum current updated successfully', 'success');
+        } else {
+            this.showToast('Failed to update maximum current', 'error');
+        }
+    }
+
+    /**
+     * Reset device (Software, Error, or EEPROM)
+     */
+    async resetDevice(deviceId, resetType) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        let resetValue;
+        let confirmMessage;
+
+        switch (resetType) {
+            case 'software':
+                resetValue = 1; // Software reset
+                confirmMessage = 'Are you sure you want to perform a software reset? The device will restart.';
+                break;
+            case 'error':
+                resetValue = 2; // Error reset
+                confirmMessage = 'Are you sure you want to reset all errors?';
+                break;
+            case 'eeprom':
+                resetValue = 4; // EEPROM to RAM
+                confirmMessage = 'Are you sure you want to load settings from EEPROM to RAM?';
+                break;
+            default:
+                return;
+        }
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        // Write to 0xD000 (Reset)
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD000, resetValue);
+        if (success) {
+            this.showToast(`${resetType.charAt(0).toUpperCase() + resetType.slice(1)} reset completed successfully`, 'success');
+
+            // Refresh device status after reset
+            setTimeout(() => {
+                this.refreshDevice(deviceId);
+            }, 1000);
+        } else {
+            this.showToast(`Failed to perform ${resetType} reset`, 'error');
+        }
     }
 
     /**
@@ -8259,4 +8730,54 @@ class ModbusDashboard {
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new ModbusDashboard();
+
+    // Device Setup Tab Switching
+    const deviceSetupTabs = document.querySelectorAll('.device-setup-tab');
+    deviceSetupTabs.forEach(tab => {
+        // Hover effects for inactive tabs
+        tab.addEventListener('mouseenter', () => {
+            if (!tab.classList.contains('active')) {
+                tab.style.background = '#e9ecef';
+            }
+        });
+
+        tab.addEventListener('mouseleave', () => {
+            if (!tab.classList.contains('active')) {
+                tab.style.background = 'transparent';
+            }
+        });
+
+        tab.addEventListener('click', () => {
+            const targetTab = tab.dataset.tab;
+
+            // Remove active class from all tabs (browser tab style)
+            deviceSetupTabs.forEach(t => {
+                t.classList.remove('active');
+                t.style.background = 'transparent';
+                t.style.color = '#6c757d';
+                t.style.borderColor = 'transparent';
+                t.style.borderBottom = 'none';
+            });
+
+            // Add active class to clicked tab (browser tab style)
+            tab.classList.add('active');
+            tab.style.background = 'white';
+            tab.style.color = '#495057';
+            tab.style.borderColor = '#dee2e6';
+            tab.style.borderBottom = 'none';
+
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.device-setup-tab-content');
+            tabContents.forEach(content => {
+                content.style.display = 'none';
+            });
+
+            // Show selected tab content
+            if (targetTab === 'configuration') {
+                document.getElementById('deviceSetupConfigTab').style.display = 'block';
+            } else if (targetTab === 'parameters') {
+                document.getElementById('deviceSetupParamsTab').style.display = 'block';
+            }
+        });
+    });
 });
