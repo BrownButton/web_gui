@@ -107,7 +107,6 @@ input,0xD012,Warning,Y,경고
 input,0xD013,DC-link voltage,Y,DC 링크 전압
 input,0xD014,DC-link current,N,DC 링크 전류
 input,0xD015,Module temperature,Y,IGBT Temperature Sensor 값
-input,0xD016,Motor temperature,Y,Motor PTC
 input,0xD017,Electronics temperature,Y,제어부 Temperature 값
 input,0xD018,Current direction of rotation,N,현재 회전 방향
 input,0xD01A,Current set value,N,현재 설정값
