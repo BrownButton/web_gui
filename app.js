@@ -8173,173 +8173,139 @@ class ModbusDashboard {
         if (!configContainer) return;
 
         const modeText = device.operationMode === 0 ? 'Speed Control (RPM)' : 'Open-loop Control (%)';
-        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online);
 
         configContainer.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <!-- Device Info -->
-                <div style="padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div>
-                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Device Name</div>
-                            <div style="font-weight: 500; color: #333;">${device.name}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Slave ID</div>
-                            <div style="font-weight: 500; color: #333;">${device.slaveId === 0 ? 'Not Assigned' : device.slaveId}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Operation Mode</div>
-                            <div style="font-weight: 500; color: #333;">${modeText}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Status</div>
-                            <div style="font-weight: 500; color: ${statusInfo.class.includes('success') ? '#28a745' : '#6c757d'};">${statusInfo.text}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Setpoint</div>
-                            <div style="font-weight: 500; color: #333;">${device.setpoint} ${device.operationMode === 0 ? 'RPM' : '%'}</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 12px; color: #6c757d; margin-bottom: 4px;">Actual Speed</div>
-                            <div style="font-weight: 500; color: #333;">${device.actualSpeed || 0} RPM</div>
-                        </div>
-                    </div>
+            <div style="max-width: 900px;">
+                <!-- Device Header -->
+                <div style="padding: 20px 0; border-bottom: 1px solid #e9ecef;">
+                    <div style="font-size: 24px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px;">${device.name}</div>
+                    <div style="font-size: 14px; color: #6c757d;">Slave ID: ${device.slaveId === 0 ? 'Not Assigned' : device.slaveId}</div>
                 </div>
 
-                <!-- Basic Settings Section -->
-                <div style="border-bottom: 1px solid #e9ecef; padding-bottom: 15px;">
-                    <h4 style="margin-bottom: 15px; color: #495057; font-size: 14px; font-weight: 600;">Basic Settings</h4>
-
-                    <!-- Fan Address (Node ID) -->
-                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f3f5;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Fan Address (Node ID)</div>
-                            <div style="font-size: 12px; color: #6c757d;">Modbus device address (0xD100)</div>
+                <!-- Settings List -->
+                <div style="margin-top: 8px;">
+                    <!-- Fan Address -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                        <div style="flex: 1; padding-right: 40px;">
+                            <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Fan Address</div>
+                            <div style="font-size: 13px; color: #6c757d;">Modbus device address (0xD100)</div>
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
                             <input type="number" id="fanAddress_${device.id}"
                                 value="${device.slaveId}"
                                 min="1" max="247"
-                                style="width: 80px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                style="width: 100px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
                                 onchange="window.dashboard.updateDeviceParameter(${device.id}, 'fanAddress', this.value)">
-                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
                                 onclick="window.dashboard.applyFanAddress(${device.id})">Apply</button>
                         </div>
                     </div>
 
                     <!-- Operating Mode -->
-                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f3f5;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Operating Mode</div>
-                            <div style="font-size: 12px; color: #6c757d;">Motor control method (0xD106)</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                        <div style="flex: 1; padding-right: 40px;">
+                            <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Operating Mode</div>
+                            <div style="font-size: 13px; color: #6c757d;">Motor control method (0xD106)</div>
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
                             <select id="operatingMode_${device.id}"
-                                style="width: 180px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                style="width: 200px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
                                 onchange="window.dashboard.updateDeviceParameter(${device.id}, 'operatingMode', this.value)">
-                                <option value="0" ${device.operationMode === 0 ? 'selected' : ''}>Speed Control (RPM)</option>
-                                <option value="2" ${device.operationMode === 2 ? 'selected' : ''}>Open-loop Control (%)</option>
+                                <option value="0" ${device.operationMode === 0 ? 'selected' : ''}>Speed Control</option>
+                                <option value="2" ${device.operationMode === 2 ? 'selected' : ''}>Open-loop</option>
                             </select>
-                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
                                 onclick="window.dashboard.applyOperatingMode(${device.id})">Apply</button>
                         </div>
                     </div>
 
-                    <!-- Preferred Running Direction -->
-                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f3f5;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Running Direction</div>
-                            <div style="font-size: 12px; color: #6c757d;">Motor rotation direction (0xD102)</div>
+                    <!-- Running Direction -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                        <div style="flex: 1; padding-right: 40px;">
+                            <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Running Direction</div>
+                            <div style="font-size: 13px; color: #6c757d;">Motor rotation direction (0xD102)</div>
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
                             <select id="runningDirection_${device.id}"
-                                style="width: 180px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                style="width: 200px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
                                 onchange="window.dashboard.updateDeviceParameter(${device.id}, 'runningDirection', this.value)">
-                                <option value="0" ${device.runningDirection === 0 ? 'selected' : ''}>CCW (Counter-Clockwise)</option>
-                                <option value="1" ${device.runningDirection === 1 ? 'selected' : ''}>CW (Clockwise)</option>
+                                <option value="0" ${device.runningDirection === 0 ? 'selected' : ''}>CCW</option>
+                                <option value="1" ${device.runningDirection === 1 ? 'selected' : ''}>CW</option>
                             </select>
-                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
                                 onclick="window.dashboard.applyRunningDirection(${device.id})">Apply</button>
                         </div>
                     </div>
 
                     <!-- Setpoint -->
-                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Setpoint</div>
-                            <div style="font-size: 12px; color: #6c757d;">Target ${device.operationMode === 0 ? 'speed (RPM)' : 'power (%)'} (0xD001)</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                        <div style="flex: 1; padding-right: 40px;">
+                            <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Setpoint</div>
+                            <div style="font-size: 13px; color: #6c757d;">Target ${device.operationMode === 0 ? 'speed' : 'power'} (0xD001)</div>
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
                             <input type="number" id="setpoint_${device.id}"
                                 value="${device.setpoint}"
                                 min="0" max="${device.operationMode === 0 ? '10000' : '100'}"
-                                style="width: 80px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                style="width: 100px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
                                 onchange="window.dashboard.updateDeviceParameter(${device.id}, 'setpoint', this.value)">
-                            <span style="color: #6c757d; font-size: 13px; width: 40px;">${device.operationMode === 0 ? 'RPM' : '%'}</span>
-                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                            <span style="color: #6c757d; font-size: 14px; width: 50px;">${device.operationMode === 0 ? 'RPM' : '%'}</span>
+                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
                                 onclick="window.dashboard.applySetpoint(${device.id})">Apply</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Advanced Settings Section -->
-                <div style="border-bottom: 1px solid #e9ecef; padding-bottom: 15px;">
-                    <h4 style="margin-bottom: 15px; color: #495057; font-size: 14px; font-weight: 600;">Advanced Settings</h4>
 
                     <!-- Maximum Coil Current -->
-                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Maximum Coil Current</div>
-                            <div style="font-size: 12px; color: #6c757d;">Current limit (RMS) in Amperes (0xD13B)</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                        <div style="flex: 1; padding-right: 40px;">
+                            <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Maximum Coil Current</div>
+                            <div style="font-size: 13px; color: #6c757d;">Current limit in Amperes (0xD13B)</div>
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
                             <input type="number" id="maxCurrent_${device.id}"
                                 value="${device.maxCurrent || 0}"
                                 min="0" max="100" step="0.1"
-                                style="width: 80px; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px;"
+                                style="width: 100px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
                                 onchange="window.dashboard.updateDeviceParameter(${device.id}, 'maxCurrent', this.value)">
-                            <span style="color: #6c757d; font-size: 13px; width: 40px;">A</span>
-                            <button class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: 12px;"
+                            <span style="color: #6c757d; font-size: 14px; width: 50px;">A</span>
+                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
                                 onclick="window.dashboard.applyMaxCurrent(${device.id})">Apply</button>
                         </div>
                     </div>
-                </div>
 
-                <!-- System Actions Section -->
-                <div style="padding-bottom: 15px;">
-                    <h4 style="margin-bottom: 15px; color: #495057; font-size: 14px; font-weight: 600;">System Actions</h4>
-
-                    <!-- Reset Actions -->
-                    <div class="settings-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 500; color: #333; margin-bottom: 3px;">Reset Operations</div>
-                            <div style="font-size: 12px; color: #6c757d;">Software Reset, Error Reset, EEPROM to RAM (0xD000)</div>
+                    <!-- Reset Operations -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                        <div style="flex: 1; padding-right: 40px;">
+                            <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Reset Operations</div>
+                            <div style="font-size: 13px; color: #6c757d;">Software Reset, Error Reset, EEPROM to RAM (0xD000)</div>
                         </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-sm btn-warning" style="padding: 6px 12px; font-size: 12px;"
-                                onclick="window.dashboard.resetDevice(${device.id}, 'software')">Software Reset</button>
-                            <button class="btn btn-sm btn-warning" style="padding: 6px 12px; font-size: 12px;"
+                        <div style="display: flex; gap: 8px; min-width: 280px; justify-content: flex-end;">
+                            <button class="btn btn-sm btn-warning" style="padding: 7px 12px; font-size: 13px; border-radius: 6px;"
+                                onclick="window.dashboard.resetDevice(${device.id}, 'software')">SW Reset</button>
+                            <button class="btn btn-sm btn-warning" style="padding: 7px 12px; font-size: 13px; border-radius: 6px;"
                                 onclick="window.dashboard.resetDevice(${device.id}, 'error')">Error Reset</button>
-                            <button class="btn btn-sm btn-info" style="padding: 6px 12px; font-size: 12px;"
-                                onclick="window.dashboard.resetDevice(${device.id}, 'eeprom')">EEPROM to RAM</button>
+                            <button class="btn btn-sm btn-info" style="padding: 7px 12px; font-size: 13px; border-radius: 6px;"
+                                onclick="window.dashboard.resetDevice(${device.id}, 'eeprom')">EEPROM</button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Quick Actions -->
-                <div style="border-top: 1px solid #e9ecef; padding-top: 15px;">
-                    <h4 style="margin-bottom: 10px; color: #495057; font-size: 14px; font-weight: 600;">Device Management</h4>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button onclick="window.dashboard.refreshDevice('${device.id}')" class="btn btn-secondary btn-sm">
-                            <span>↻</span> Refresh Status
-                        </button>
-                        <button onclick="window.dashboard.showEditDeviceModal('${device.id}')" class="btn btn-primary btn-sm">
-                            <span>✏️</span> Edit Device
-                        </button>
-                        <button onclick="window.dashboard.deleteDevice('${device.id}')" class="btn btn-danger btn-sm">
-                            <span>🗑️</span> Delete Device
-                        </button>
+                    <!-- Device Management -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0;">
+                        <div style="flex: 1; padding-right: 40px;">
+                            <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Device Management</div>
+                            <div style="font-size: 13px; color: #6c757d;">Refresh, Edit, or Delete this device</div>
+                        </div>
+                        <div style="display: flex; gap: 8px; min-width: 280px; justify-content: flex-end;">
+                            <button onclick="window.dashboard.refreshDevice('${device.id}')" class="btn btn-secondary btn-sm" style="padding: 7px 12px; font-size: 13px; border-radius: 6px;">
+                                <span>↻</span> Refresh
+                            </button>
+                            <button onclick="window.dashboard.showEditDeviceModal('${device.id}')" class="btn btn-primary btn-sm" style="padding: 7px 12px; font-size: 13px; border-radius: 6px;">
+                                <span>✏️</span> Edit
+                            </button>
+                            <button onclick="window.dashboard.deleteDevice('${device.id}')" class="btn btn-danger btn-sm" style="padding: 7px 12px; font-size: 13px; border-radius: 6px;">
+                                <span>🗑️</span> Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -8737,34 +8703,30 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hover effects for inactive tabs
         tab.addEventListener('mouseenter', () => {
             if (!tab.classList.contains('active')) {
-                tab.style.background = '#e9ecef';
+                tab.style.color = '#495057';
             }
         });
 
         tab.addEventListener('mouseleave', () => {
             if (!tab.classList.contains('active')) {
-                tab.style.background = 'transparent';
+                tab.style.color = '#6c757d';
             }
         });
 
         tab.addEventListener('click', () => {
             const targetTab = tab.dataset.tab;
 
-            // Remove active class from all tabs (browser tab style)
+            // Remove active class from all tabs (Notion style)
             deviceSetupTabs.forEach(t => {
                 t.classList.remove('active');
-                t.style.background = 'transparent';
                 t.style.color = '#6c757d';
-                t.style.borderColor = 'transparent';
-                t.style.borderBottom = 'none';
+                t.style.borderBottom = '2px solid transparent';
             });
 
-            // Add active class to clicked tab (browser tab style)
+            // Add active class to clicked tab (Notion style)
             tab.classList.add('active');
-            tab.style.background = 'white';
-            tab.style.color = '#495057';
-            tab.style.borderColor = '#dee2e6';
-            tab.style.borderBottom = 'none';
+            tab.style.color = '#1a1a1a';
+            tab.style.borderBottom = '2px solid #1a1a1a';
 
             // Hide all tab contents
             const tabContents = document.querySelectorAll('.device-setup-tab-content');
