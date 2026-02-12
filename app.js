@@ -1246,11 +1246,19 @@ class ModbusDashboard {
             this.renderParameters();
         });
 
-        // Close modal on outside click
-        document.getElementById('addParamModal').addEventListener('click', (e) => {
-            if (e.target.id === 'addParamModal') {
+        // Close modal on outside click (with drag protection)
+        const addParamModal = document.getElementById('addParamModal');
+        let paramModalMouseDownTarget = null;
+
+        addParamModal.addEventListener('mousedown', (e) => {
+            paramModalMouseDownTarget = e.target;
+        });
+
+        addParamModal.addEventListener('click', (e) => {
+            if (e.target.id === 'addParamModal' && paramModalMouseDownTarget && paramModalMouseDownTarget.id === 'addParamModal') {
                 this.hideAddParameterModal();
             }
+            paramModalMouseDownTarget = null;
         });
 
         // Parameter page device selector (event delegation for radio buttons)
@@ -1692,11 +1700,18 @@ class ModbusDashboard {
             this.closeSettingsModal();
         });
 
-        // Close on outside click
+        // Close on outside click (with drag protection)
+        let settingsMouseDownTarget = null;
+
+        settingsModal.addEventListener('mousedown', (e) => {
+            settingsMouseDownTarget = e.target;
+        });
+
         settingsModal.addEventListener('click', (e) => {
-            if (e.target === settingsModal) {
+            if (e.target === settingsModal && settingsMouseDownTarget === settingsModal) {
                 this.closeSettingsModal();
             }
+            settingsMouseDownTarget = null;
         });
 
         // Settings menu navigation
@@ -4585,13 +4600,21 @@ class ModbusDashboard {
             saveDeviceBtn.addEventListener('click', () => this.saveDevice());
         }
 
-        // Modal outside click
+        // Modal outside click (with drag protection)
         const addDeviceModal = document.getElementById('addDeviceModal');
         if (addDeviceModal) {
+            let mouseDownTarget = null;
+
+            addDeviceModal.addEventListener('mousedown', (e) => {
+                mouseDownTarget = e.target;
+            });
+
             addDeviceModal.addEventListener('click', (e) => {
-                if (e.target.id === 'addDeviceModal') {
+                // Only close if both mousedown and click happened on the modal background
+                if (e.target.id === 'addDeviceModal' && mouseDownTarget && mouseDownTarget.id === 'addDeviceModal') {
                     this.hideAddDeviceModal();
                 }
+                mouseDownTarget = null;
             });
         }
 
@@ -4614,10 +4637,17 @@ class ModbusDashboard {
 
         const autoAssignModal = document.getElementById('autoAssignModal');
         if (autoAssignModal) {
+            let mouseDownTarget = null;
+
+            autoAssignModal.addEventListener('mousedown', (e) => {
+                mouseDownTarget = e.target;
+            });
+
             autoAssignModal.addEventListener('click', (e) => {
-                if (e.target.id === 'autoAssignModal') {
+                if (e.target.id === 'autoAssignModal' && mouseDownTarget && mouseDownTarget.id === 'autoAssignModal') {
                     this.hideAutoAssignModal();
                 }
+                mouseDownTarget = null;
             });
         }
 
@@ -4881,6 +4911,15 @@ class ModbusDashboard {
         if (!name) {
             this.showToast('장치 이름을 입력해주세요', 'warning');
             return;
+        }
+
+        // Check for duplicate SlaveID (NodeID)
+        if (slaveId !== 0) {
+            const existingDevice = this.devices.find(d => d.slaveId === slaveId);
+            if (existingDevice) {
+                this.showToast(`Node ID ${slaveId}는 이미 사용 중입니다 (${existingDevice.name})`, 'error');
+                return;
+            }
         }
 
         const device = {
