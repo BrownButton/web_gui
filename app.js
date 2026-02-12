@@ -8030,44 +8030,45 @@ class ModbusDashboard {
             return;
         }
 
-        // Create device list items
-        this.devices.forEach(device => {
+        // Create device list items (Settings modal menu style)
+        this.devices.forEach((device, index) => {
             const item = document.createElement('div');
             item.className = 'device-setup-item';
             item.dataset.deviceId = device.id;
             item.style.cssText = `
-                padding: 12px 15px;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 15px;
                 cursor: pointer;
-                transition: all 0.2s;
-                background: white;
+                border-radius: 6px;
+                transition: all 0.2s ease;
+                color: #495057;
+                font-size: 14px;
+                margin-bottom: 4px;
+                background: transparent;
             `;
 
-            const statusColor = device.online ? '#28a745' : '#6c757d';
             const modeText = device.operationMode === 0 ? 'RPM' : '%';
 
             item.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColor};"></div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 500; color: #333; margin-bottom: 4px;">${device.name}</div>
-                        <div style="font-size: 11px; color: #6c757d;">
-                            ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId} • ${modeText}
-                        </div>
+                <div style="flex: 1;">
+                    <div class="device-setup-name" style="font-weight: 500; color: inherit; margin-bottom: 2px; pointer-events: none;">${device.name}</div>
+                    <div class="device-info" style="font-size: 11px; color: #6c757d;">
+                        ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId} • ${modeText}
                     </div>
                 </div>
             `;
 
             // Hover effect
             item.addEventListener('mouseenter', () => {
-                item.style.background = '#f8f9fa';
-                item.style.borderColor = '#007bff';
+                if (!item.classList.contains('selected')) {
+                    item.style.background = '#e9ecef';
+                }
             });
             item.addEventListener('mouseleave', () => {
                 if (!item.classList.contains('selected')) {
-                    item.style.background = 'white';
-                    item.style.borderColor = '#e0e0e0';
+                    item.style.background = 'transparent';
                 }
             });
 
@@ -8078,6 +8079,11 @@ class ModbusDashboard {
 
             listContainer.appendChild(item);
         });
+
+        // Auto-select first device
+        if (this.devices.length > 0) {
+            this.selectDeviceInSetup(this.devices[0].id);
+        }
     }
 
     /**
@@ -8087,17 +8093,27 @@ class ModbusDashboard {
         const device = this.devices.find(d => d.id === deviceId);
         if (!device) return;
 
-        // Update selection state in list
+        // Update selection state in list (Settings modal style)
         const listItems = document.querySelectorAll('.device-setup-item');
         listItems.forEach(item => {
-            if (item.dataset.deviceId === deviceId) {
+            if (item.dataset.deviceId == deviceId) {  // Use == for type coercion (dataset is string, deviceId is number)
                 item.classList.add('selected');
-                item.style.background = '#e7f3ff';
-                item.style.borderColor = '#007bff';
+                item.style.background = '#007bff';
+                item.style.color = 'white';
+                // Change text color to white for selected item
+                const nameDiv = item.querySelector('.device-setup-name');
+                const infoDiv = item.querySelector('.device-info');
+                if (nameDiv) nameDiv.style.color = 'white';
+                if (infoDiv) infoDiv.style.color = 'rgba(255, 255, 255, 0.8)';
             } else {
                 item.classList.remove('selected');
-                item.style.background = 'white';
-                item.style.borderColor = '#e0e0e0';
+                item.style.background = 'transparent';
+                item.style.color = '#495057';
+                // Reset text color for non-selected items
+                const nameDiv = item.querySelector('.device-setup-name');
+                const infoDiv = item.querySelector('.device-info');
+                if (nameDiv) nameDiv.style.color = 'inherit';
+                if (infoDiv) infoDiv.style.color = '#6c757d';
             }
         });
 
