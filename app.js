@@ -1068,6 +1068,9 @@ class ModbusDashboard {
         this.chartPollingTimer = null;
         this.chartSlaveId = 1; // Default slave ID for chart polling
 
+        // Device Setup auto-apply debounce timers
+        this.applyDebounceTimers = {};
+
         this.initializeUI();
         this.loadParameters();
         this.loadSettings();
@@ -8190,14 +8193,13 @@ class ModbusDashboard {
                             <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Fan Address</div>
                             <div style="font-size: 13px; color: #6c757d;">Modbus device address (0xD100)</div>
                         </div>
-                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 200px; justify-content: flex-end;">
                             <input type="number" id="fanAddress_${device.id}"
                                 value="${device.slaveId}"
                                 min="1" max="247"
-                                style="width: 100px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
-                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'fanAddress', this.value)">
-                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
-                                onclick="window.dashboard.applyFanAddress(${device.id})">Apply</button>
+                                style="width: 120px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
+                                onchange="window.dashboard.debouncedApply('fanAddress', ${device.id})">
+                            <span id="fanAddress_${device.id}_status" style="width: 20px; font-size: 12px; color: #6c757d;"></span>
                         </div>
                     </div>
 
@@ -8207,15 +8209,14 @@ class ModbusDashboard {
                             <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Operating Mode</div>
                             <div style="font-size: 13px; color: #6c757d;">Motor control method (0xD106)</div>
                         </div>
-                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 200px; justify-content: flex-end;">
                             <select id="operatingMode_${device.id}"
                                 style="width: 200px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
-                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'operatingMode', this.value)">
+                                onchange="window.dashboard.applyOperatingMode(${device.id})">
                                 <option value="0" ${device.operationMode === 0 ? 'selected' : ''}>Speed Control</option>
                                 <option value="2" ${device.operationMode === 2 ? 'selected' : ''}>Open-loop</option>
                             </select>
-                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
-                                onclick="window.dashboard.applyOperatingMode(${device.id})">Apply</button>
+                            <span id="operatingMode_${device.id}_status" style="width: 20px; font-size: 12px; color: #6c757d;"></span>
                         </div>
                     </div>
 
@@ -8225,15 +8226,14 @@ class ModbusDashboard {
                             <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Running Direction</div>
                             <div style="font-size: 13px; color: #6c757d;">Motor rotation direction (0xD102)</div>
                         </div>
-                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 200px; justify-content: flex-end;">
                             <select id="runningDirection_${device.id}"
                                 style="width: 200px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
-                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'runningDirection', this.value)">
+                                onchange="window.dashboard.applyRunningDirection(${device.id})">
                                 <option value="0" ${device.runningDirection === 0 ? 'selected' : ''}>CCW</option>
                                 <option value="1" ${device.runningDirection === 1 ? 'selected' : ''}>CW</option>
                             </select>
-                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
-                                onclick="window.dashboard.applyRunningDirection(${device.id})">Apply</button>
+                            <span id="runningDirection_${device.id}_status" style="width: 20px; font-size: 12px; color: #6c757d;"></span>
                         </div>
                     </div>
 
@@ -8243,15 +8243,14 @@ class ModbusDashboard {
                             <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Setpoint</div>
                             <div style="font-size: 13px; color: #6c757d;">Target ${device.operationMode === 0 ? 'speed' : 'power'} (0xD001)</div>
                         </div>
-                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 200px; justify-content: flex-end;">
                             <input type="number" id="setpoint_${device.id}"
                                 value="${device.setpoint}"
                                 min="0" max="${device.operationMode === 0 ? '10000' : '100'}"
                                 style="width: 100px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
-                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'setpoint', this.value)">
+                                onchange="window.dashboard.debouncedApply('setpoint', ${device.id})">
                             <span style="color: #6c757d; font-size: 14px; width: 50px;">${device.operationMode === 0 ? 'RPM' : '%'}</span>
-                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
-                                onclick="window.dashboard.applySetpoint(${device.id})">Apply</button>
+                            <span id="setpoint_${device.id}_status" style="width: 20px; font-size: 12px; color: #6c757d;"></span>
                         </div>
                     </div>
 
@@ -8261,15 +8260,14 @@ class ModbusDashboard {
                             <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Maximum Coil Current</div>
                             <div style="font-size: 13px; color: #6c757d;">Current limit in Amperes (0xD13B)</div>
                         </div>
-                        <div style="display: flex; gap: 10px; align-items: center; min-width: 280px; justify-content: flex-end;">
+                        <div style="display: flex; gap: 10px; align-items: center; min-width: 200px; justify-content: flex-end;">
                             <input type="number" id="maxCurrent_${device.id}"
                                 value="${device.maxCurrent || 0}"
                                 min="0" max="100" step="0.1"
                                 style="width: 100px; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;"
-                                onchange="window.dashboard.updateDeviceParameter(${device.id}, 'maxCurrent', this.value)">
+                                onchange="window.dashboard.debouncedApply('maxCurrent', ${device.id})">
                             <span style="color: #6c757d; font-size: 14px; width: 50px;">A</span>
-                            <button class="btn btn-sm btn-primary" style="padding: 7px 16px; font-size: 13px; border-radius: 6px;"
-                                onclick="window.dashboard.applyMaxCurrent(${device.id})">Apply</button>
+                            <span id="maxCurrent_${device.id}_status" style="width: 20px; font-size: 12px; color: #6c757d;"></span>
                         </div>
                     </div>
 
@@ -8482,16 +8480,77 @@ class ModbusDashboard {
     /**
      * Apply Fan Address to device
      */
+    /**
+     * Debounced apply function for auto-applying parameter changes
+     */
+    debouncedApply(paramType, deviceId) {
+        const key = `${paramType}_${deviceId}`;
+        const statusElement = document.getElementById(`${paramType}_${deviceId}_status`);
+
+        // Clear existing timer
+        if (this.applyDebounceTimers[key]) {
+            clearTimeout(this.applyDebounceTimers[key]);
+        }
+
+        // Show pending indicator
+        if (statusElement) {
+            statusElement.textContent = '⏳';
+            statusElement.title = 'Pending...';
+        }
+
+        // Set new timer for 800ms
+        this.applyDebounceTimers[key] = setTimeout(async () => {
+            // Show applying indicator
+            if (statusElement) {
+                statusElement.textContent = '↻';
+                statusElement.title = 'Applying...';
+            }
+
+            // Call appropriate apply function
+            let success = false;
+            try {
+                switch(paramType) {
+                    case 'fanAddress':
+                        await this.applyFanAddress(deviceId);
+                        success = true;
+                        break;
+                    case 'setpoint':
+                        await this.applySetpoint(deviceId);
+                        success = true;
+                        break;
+                    case 'maxCurrent':
+                        await this.applyMaxCurrent(deviceId);
+                        success = true;
+                        break;
+                }
+            } catch (error) {
+                success = false;
+            }
+
+            // Clear status after 2 seconds
+            if (statusElement) {
+                setTimeout(() => {
+                    statusElement.textContent = '';
+                    statusElement.title = '';
+                }, 2000);
+            }
+        }, 800);
+    }
+
     async applyFanAddress(deviceId) {
         const device = this.devices.find(d => d.id === deviceId);
         if (!device) return;
 
         const inputElement = document.getElementById(`fanAddress_${deviceId}`);
+        const statusElement = document.getElementById(`fanAddress_${deviceId}_status`);
         if (!inputElement) return;
 
         const newAddress = parseInt(inputElement.value);
         if (isNaN(newAddress) || newAddress < 1 || newAddress > 247) {
-            alert('Invalid address. Must be between 1 and 247.');
+            if (statusElement) {
+                statusElement.textContent = '❌';
+                statusElement.title = 'Invalid address (1-247)';
+            }
             return;
         }
 
@@ -8502,9 +8561,15 @@ class ModbusDashboard {
             this.saveDevices();
             this.renderDeviceSetupList();
             this.renderDeviceSetupConfig(device);
-            this.showToast('Fan address updated successfully', 'success');
+            if (statusElement) {
+                statusElement.textContent = '✓';
+                statusElement.title = 'Applied successfully';
+            }
         } else {
-            this.showToast('Failed to update fan address', 'error');
+            if (statusElement) {
+                statusElement.textContent = '❌';
+                statusElement.title = 'Failed to apply';
+            }
         }
     }
 
@@ -8516,9 +8581,16 @@ class ModbusDashboard {
         if (!device) return;
 
         const selectElement = document.getElementById(`operatingMode_${deviceId}`);
+        const statusElement = document.getElementById(`operatingMode_${deviceId}_status`);
         if (!selectElement) return;
 
         const newMode = parseInt(selectElement.value);
+
+        // Show applying indicator
+        if (statusElement) {
+            statusElement.textContent = '↻';
+            statusElement.title = 'Applying...';
+        }
 
         // Write to 0xD106 (Operating mode)
         const success = await this.writeHoldingRegister(device.slaveId, 0xD106, newMode);
@@ -8527,9 +8599,23 @@ class ModbusDashboard {
             this.saveDevices();
             this.renderDeviceSetupList();
             this.renderDeviceSetupConfig(device);
-            this.showToast('Operating mode updated successfully', 'success');
+            if (statusElement) {
+                statusElement.textContent = '✓';
+                statusElement.title = 'Applied successfully';
+            }
         } else {
-            this.showToast('Failed to update operating mode', 'error');
+            if (statusElement) {
+                statusElement.textContent = '❌';
+                statusElement.title = 'Failed to apply';
+            }
+        }
+
+        // Clear status after 2 seconds
+        if (statusElement) {
+            setTimeout(() => {
+                statusElement.textContent = '';
+                statusElement.title = '';
+            }, 2000);
         }
     }
 
@@ -8541,9 +8627,16 @@ class ModbusDashboard {
         if (!device) return;
 
         const selectElement = document.getElementById(`runningDirection_${deviceId}`);
+        const statusElement = document.getElementById(`runningDirection_${deviceId}_status`);
         if (!selectElement) return;
 
         const newDirection = parseInt(selectElement.value);
+
+        // Show applying indicator
+        if (statusElement) {
+            statusElement.textContent = '↻';
+            statusElement.title = 'Applying...';
+        }
 
         // Write to 0xD102 (Preferred running direction)
         const success = await this.writeHoldingRegister(device.slaveId, 0xD102, newDirection);
@@ -8551,9 +8644,23 @@ class ModbusDashboard {
             device.runningDirection = newDirection;
             this.saveDevices();
             this.renderDeviceSetupConfig(device);
-            this.showToast('Running direction updated successfully', 'success');
+            if (statusElement) {
+                statusElement.textContent = '✓';
+                statusElement.title = 'Applied successfully';
+            }
         } else {
-            this.showToast('Failed to update running direction', 'error');
+            if (statusElement) {
+                statusElement.textContent = '❌';
+                statusElement.title = 'Failed to apply';
+            }
+        }
+
+        // Clear status after 2 seconds
+        if (statusElement) {
+            setTimeout(() => {
+                statusElement.textContent = '';
+                statusElement.title = '';
+            }, 2000);
         }
     }
 
@@ -8565,14 +8672,24 @@ class ModbusDashboard {
         if (!device) return;
 
         const inputElement = document.getElementById(`setpoint_${deviceId}`);
+        const statusElement = document.getElementById(`setpoint_${deviceId}_status`);
         if (!inputElement) return;
 
         const newSetpoint = parseInt(inputElement.value);
         const maxValue = device.operationMode === 0 ? 10000 : 100;
 
         if (isNaN(newSetpoint) || newSetpoint < 0 || newSetpoint > maxValue) {
-            alert(`Invalid setpoint. Must be between 0 and ${maxValue}.`);
+            if (statusElement) {
+                statusElement.textContent = '❌';
+                statusElement.title = `Invalid setpoint (0-${maxValue})`;
+            }
             return;
+        }
+
+        // Show applying indicator
+        if (statusElement) {
+            statusElement.textContent = '↻';
+            statusElement.title = 'Applying...';
         }
 
         // Write to 0xD001 (Setpoint)
@@ -8581,9 +8698,23 @@ class ModbusDashboard {
             device.setpoint = newSetpoint;
             this.saveDevices();
             this.renderDeviceSetupConfig(device);
-            this.showToast('Setpoint updated successfully', 'success');
+            if (statusElement) {
+                statusElement.textContent = '✓';
+                statusElement.title = 'Applied successfully';
+            }
         } else {
-            this.showToast('Failed to update setpoint', 'error');
+            if (statusElement) {
+                statusElement.textContent = '❌';
+                statusElement.title = 'Failed to apply';
+            }
+        }
+
+        // Clear status after 2 seconds
+        if (statusElement) {
+            setTimeout(() => {
+                statusElement.textContent = '';
+                statusElement.title = '';
+            }, 2000);
         }
     }
 
@@ -8595,13 +8726,23 @@ class ModbusDashboard {
         if (!device) return;
 
         const inputElement = document.getElementById(`maxCurrent_${deviceId}`);
+        const statusElement = document.getElementById(`maxCurrent_${deviceId}_status`);
         if (!inputElement) return;
 
         const newCurrent = parseFloat(inputElement.value);
 
         if (isNaN(newCurrent) || newCurrent < 0 || newCurrent > 100) {
-            alert('Invalid current value. Must be between 0 and 100 A.');
+            if (statusElement) {
+                statusElement.textContent = '❌';
+                statusElement.title = 'Invalid current (0-100A)';
+            }
             return;
+        }
+
+        // Show applying indicator
+        if (statusElement) {
+            statusElement.textContent = '↻';
+            statusElement.title = 'Applying...';
         }
 
         // Convert to register value (might need scaling based on device spec)
@@ -8613,9 +8754,23 @@ class ModbusDashboard {
             device.maxCurrent = newCurrent;
             this.saveDevices();
             this.renderDeviceSetupConfig(device);
-            this.showToast('Maximum current updated successfully', 'success');
+            if (statusElement) {
+                statusElement.textContent = '✓';
+                statusElement.title = 'Applied successfully';
+            }
         } else {
-            this.showToast('Failed to update maximum current', 'error');
+            if (statusElement) {
+                statusElement.textContent = '❌';
+                statusElement.title = 'Failed to apply';
+            }
+        }
+
+        // Clear status after 2 seconds
+        if (statusElement) {
+            setTimeout(() => {
+                statusElement.textContent = '';
+                statusElement.title = '';
+            }, 2000);
         }
     }
 
