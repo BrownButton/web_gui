@@ -270,7 +270,7 @@
                 <!-- Device Setup Page -->
                 <div id="page-device-setup" class="page-content">
                     <div style="height: 100%; display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px;">
-                        <div style="display: flex; width: 100%; max-width: 1400px; height: fit-content; max-height: calc(100vh - 180px); overflow: hidden; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                        <div style="display: flex; width: 100%; max-width: 1400px; height: calc(100vh - 180px); overflow: hidden; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
                         <!-- Left: Device List -->
                         <div style="width: 240px; background: #fafafa; border-right: 1px solid #e5e5e5; padding: 20px 12px; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;">
                             <h3 style="margin-bottom: 15px; color: #404040; font-size: 12px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; flex-shrink: 0;">Devices</h3>
@@ -307,8 +307,8 @@
                             </div>
 
                             <!-- Parameters Tab Content -->
-                            <div class="device-setup-tab-content" id="deviceSetupParamsTab" style="flex: 1; overflow-y: auto; padding: 32px 40px; display: none; background: white;">
-                                <div id="deviceSetupParams">
+                            <div class="device-setup-tab-content" id="deviceSetupParamsTab" style="flex: 1; padding: 32px 40px; display: none; background: white; overflow: hidden;">
+                                <div id="deviceSetupParams" style="display: flex; flex-direction: column; height: 100%;">
                                     <!-- Header with Actions -->
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
                                         <div style="display: flex; align-items: center; gap: 12px;">
@@ -327,7 +327,7 @@
                                     </div>
 
                                     <!-- Filter Group -->
-                                    <div class="param-filter-group" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                                    <div class="param-filter-group" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex-shrink: 0;">
                                         <div style="display: flex; gap: 5px;">
                                             <button class="filter-btn active" data-filter="all">All</button>
                                             <button class="filter-btn" data-filter="holding">Holding</button>
@@ -343,7 +343,7 @@
                                     </div>
 
                                     <!-- Parameter List -->
-                                    <div id="paramList" class="param-list">
+                                    <div id="paramList" class="param-list" style="flex: 1; overflow-y: auto;">
                                         <p class="placeholder">No parameters defined. Click "Import CSV" or "Load Default" to load parameters.</p>
                                     </div>
                                 </div>
