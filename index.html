@@ -149,10 +149,6 @@
                     <span class="menu-item-icon">📡</span>
                     <span class="menu-item-text">Modbus</span>
                 </div>
-                <div class="menu-item" data-page="parameters">
-                    <span class="menu-item-icon">📋</span>
-                    <span class="menu-item-text">Parameters</span>
-                </div>
                 <div class="menu-item" data-page="firmware">
                     <span class="menu-item-icon">📥</span>
                     <span class="menu-item-text">Update</span>
@@ -288,7 +284,7 @@
                         </div>
 
                         <!-- Right: Tab Content -->
-                        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; max-width: 900px; background: white;">
+                        <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: white;">
                             <!-- Tab Buttons -->
                             <div style="display: flex; gap: 4px; background: white; padding: 24px 40px 0 40px; border-bottom: 1px solid #e5e5e5; flex-shrink: 0;">
                                 <button class="device-setup-tab active" data-tab="configuration" style="padding: 10px 16px; border: none; border-bottom: 2px solid #1a1a1a; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #1a1a1a; transition: all 0.2s;">
@@ -313,10 +309,42 @@
                             <!-- Parameters Tab Content -->
                             <div class="device-setup-tab-content" id="deviceSetupParamsTab" style="flex: 1; overflow-y: auto; padding: 32px 40px; display: none; background: white;">
                                 <div id="deviceSetupParams">
-                                    <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
-                                        <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">📋</div>
-                                        <p style="font-size: 15px; font-weight: 500; color: #404040;">디바이스를 선택하세요</p>
-                                        <p style="font-size: 13px; margin-top: 6px; color: #999;">왼쪽에서 디바이스를 선택하면 파라미터를 확인할 수 있습니다</p>
+                                    <!-- Header with Actions -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
+                                        <div style="display: flex; align-items: center; gap: 12px;">
+                                            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">Parameter List</h2>
+                                            <button id="paramReadAllBtn" class="btn btn-success btn-sm" disabled>📖 Read All</button>
+                                        </div>
+                                        <div style="display: flex; gap: 10px; align-items: center;">
+                                            <div class="csv-import-group">
+                                                <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+                                                <button id="importCsvBtn" class="btn btn-secondary btn-sm">📥 Import CSV</button>
+                                                <button id="exportCsvBtn" class="btn btn-secondary btn-sm">📤 Export CSV</button>
+                                                <button id="loadDefaultCsvBtn" class="btn btn-info btn-sm">📋 Load Default</button>
+                                            </div>
+                                            <button id="addParamBtn" class="btn btn-primary btn-sm">+ Add Parameter</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Filter Group -->
+                                    <div class="param-filter-group" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                                        <div style="display: flex; gap: 5px;">
+                                            <button class="filter-btn active" data-filter="all">All</button>
+                                            <button class="filter-btn" data-filter="holding">Holding</button>
+                                            <button class="filter-btn" data-filter="input">Input</button>
+                                        </div>
+                                        <div style="display: flex; gap: 5px;">
+                                            <button class="filter-btn" data-implemented="all">All Status</button>
+                                            <button class="filter-btn" data-implemented="Y">Implemented</button>
+                                            <button class="filter-btn" data-implemented="N">Not Implemented</button>
+                                        </div>
+                                        <input type="text" id="paramSearchInput" placeholder="Search by name or address..." style="flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;">
+                                        <span id="paramCount" style="color: #6c757d; font-size: 13px;">0 parameters</span>
+                                    </div>
+
+                                    <!-- Parameter List -->
+                                    <div id="paramList" class="param-list">
+                                        <p class="placeholder">No parameters defined. Click "Import CSV" or "Load Default" to load parameters.</p>
                                     </div>
                                 </div>
                             </div>
@@ -427,8 +455,8 @@
                     </div>
                 </div>
 
-                <!-- Parameters Page -->
-                <div id="page-parameters" class="page-content">
+                <!-- Parameters Page (moved to Device - Parameters tab) -->
+                <div id="page-parameters" class="page-content" style="display: none !important;">
                     <section class="card">
                         <!-- Device Selector (Collapsible) -->
                         <div class="param-device-selector">

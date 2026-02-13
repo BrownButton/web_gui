@@ -8165,7 +8165,11 @@ class ModbusDashboard {
 
         // Update configuration panel and parameters panel
         this.renderDeviceSetupConfig(device);
-        this.renderDeviceSetupParams(device);
+
+        // Set selected device for parameters and render
+        this.selectedParamDeviceId = device.slaveId;
+        this.updateParamDeviceStatus();
+        this.renderParameters();
     }
 
     /**
