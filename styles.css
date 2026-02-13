@@ -3947,6 +3947,8 @@ select:focus {
     outline: none;
     width: 120px;
     background-color: #fff;
+    box-sizing: border-box;
+    line-height: 1.4;
 }
 
 .device-name-input:focus {

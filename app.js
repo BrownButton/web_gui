@@ -5131,11 +5131,35 @@ class ModbusDashboard {
         if (!device) return;
 
         const currentName = device.name;
+
+        // Get computed style from nameSpan to maintain same height
+        const computedStyle = window.getComputedStyle(nameSpan);
+
+        // Get parent container width for appropriate input sizing
+        const parentWidth = nameSpan.parentNode.offsetWidth;
+        const maxInputWidth = Math.max(150, Math.min(300, parentWidth - 20)); // Between 150px and 300px
+
+        // Get exact height of nameSpan
+        const spanHeight = nameSpan.offsetHeight;
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'device-name-input';
         input.value = currentName;
         input.title = 'Press Enter to save, Escape to cancel';
+
+        // Copy styles to maintain same dimensions
+        input.style.fontSize = computedStyle.fontSize;
+        input.style.fontWeight = computedStyle.fontWeight;
+        input.style.lineHeight = computedStyle.lineHeight;
+        input.style.padding = computedStyle.padding;
+        input.style.margin = computedStyle.margin;
+        input.style.height = spanHeight + 'px'; // Use exact measured height
+        input.style.boxSizing = 'border-box';
+        input.style.width = maxInputWidth + 'px';
+        input.style.maxWidth = '100%';
+        input.style.border = '1px solid #007bff'; // Explicit border
+        input.style.borderRadius = '4px';
 
         nameSpan.style.display = 'none';
         nameSpan.parentNode.insertBefore(input, nameSpan.nextSibling);
@@ -5144,14 +5168,23 @@ class ModbusDashboard {
 
         const saveEdit = () => {
             const newName = input.value.trim();
+
+            // Always restore UI first
+            input.remove();
+            nameSpan.style.display = '';
+
             if (newName && newName !== currentName) {
                 device.name = newName;
                 this.saveDevices();
                 nameSpan.textContent = newName;
                 this.showToast(`Device name changed to "${newName}"`, 'success');
+
+                // Update Device List in Device Setup page
+                this.renderDeviceSetupList();
+
+                // Update Dashboard
+                this.renderDashboard();
             }
-            input.remove();
-            nameSpan.style.display = '';
         };
 
         const cancelEdit = () => {
@@ -8272,7 +8305,14 @@ class ModbusDashboard {
                 <!-- Device Header -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-height: 48px;">
                     <div>
-                        <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; line-height: 1.4;">${device.name}</h2>
+                        <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; line-height: 1.4; min-height: 29px; display: flex; align-items: center;">
+                            <span class="device-name"
+                                  id="deviceName_${device.id}"
+                                  title="Click to edit name"
+                                  style="cursor: pointer; display: inline-block; padding: 2px 4px; border: 1px solid transparent; border-radius: 4px; transition: background 0.2s; box-sizing: border-box;"
+                                  onmouseover="this.style.background='#f0f0f0'"
+                                  onmouseout="this.style.background='transparent'">${device.name}</span>
+                        </h2>
                         <div style="font-size: 13px; color: #6c757d; line-height: 1.4;">Slave ID: ${device.slaveId === 0 ? 'Not Assigned' : device.slaveId}</div>
                     </div>
                     <div style="display: flex; gap: 10px; width: 220px; justify-content: flex-end; padding-right: 32px;">
@@ -8432,6 +8472,14 @@ class ModbusDashboard {
                 </div>
             </div>
         `;
+
+        // Add click event listener for device name editing
+        const deviceNameSpan = document.getElementById(`deviceName_${device.id}`);
+        if (deviceNameSpan) {
+            deviceNameSpan.addEventListener('click', () => {
+                this.startEditDeviceName(device.id, deviceNameSpan);
+            });
+        }
     }
 
     /**
