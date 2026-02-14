@@ -1146,6 +1146,9 @@ class ModbusDashboard {
         // Monitor Panel toggle
         this.initMonitorPanel();
 
+        // Developer Mode - Logo Click Easter Egg
+        this.initDeveloperMode();
+
         // Menu navigation
         document.querySelectorAll('.menu-item').forEach(item => {
             item.addEventListener('click', () => {
@@ -1455,6 +1458,91 @@ class ModbusDashboard {
 
         // Then load saved settings (will override defaults)
         this.loadSerialSettings();
+    }
+
+    /**
+     * Initialize Developer Mode Easter Egg
+     * Logo click 5 times to activate manufacture menu
+     */
+    initDeveloperMode() {
+        let clickCount = 0;
+        let clickTimer = null;
+        const logo = document.querySelector('.navbar-logo-img');
+        const manufactureMenuItem = document.getElementById('manufactureMenuItem');
+        const disableDevModeBtn = document.getElementById('disableDevModeBtn');
+
+        // Check if developer mode is already enabled
+        if (localStorage.getItem('developerMode') === 'true') {
+            this.enableDeveloperMode();
+        }
+
+        // Logo click handler
+        if (logo) {
+            logo.style.cursor = 'pointer';
+            logo.addEventListener('click', () => {
+                clickCount++;
+
+                // Reset timer
+                if (clickTimer) {
+                    clearTimeout(clickTimer);
+                }
+
+                // If 5 clicks within 2 seconds, activate developer mode
+                if (clickCount >= 5) {
+                    if (localStorage.getItem('developerMode') !== 'true') {
+                        localStorage.setItem('developerMode', 'true');
+                        this.enableDeveloperMode();
+                        this.showToast('🔧 Developer Mode Activated!', 'success');
+                    }
+                    clickCount = 0;
+                } else {
+                    // Reset click count after 2 seconds
+                    clickTimer = setTimeout(() => {
+                        clickCount = 0;
+                    }, 2000);
+                }
+            });
+        }
+
+        // Disable developer mode button handler
+        if (disableDevModeBtn) {
+            disableDevModeBtn.addEventListener('click', () => {
+                localStorage.removeItem('developerMode');
+                if (manufactureMenuItem) {
+                    manufactureMenuItem.style.display = 'none';
+                }
+
+                // Hide manufacture tab in Device page
+                const deviceManufactureTab = document.querySelector('.device-setup-tab[data-tab="manufacture"]');
+                if (deviceManufactureTab) {
+                    deviceManufactureTab.style.display = 'none';
+                }
+
+                this.showToast('Developer Mode Disabled', 'info');
+                // Switch to dashboard if currently on manufacture page
+                if (this.currentPage === 'manufacture') {
+                    this.switchPage('dashboard');
+                    document.querySelectorAll('.menu-item').forEach(mi => mi.classList.remove('active'));
+                    document.querySelector('.menu-item[data-page="dashboard"]').classList.add('active');
+                }
+            });
+        }
+    }
+
+    /**
+     * Enable developer mode - show manufacture menu
+     */
+    enableDeveloperMode() {
+        const manufactureMenuItem = document.getElementById('manufactureMenuItem');
+        if (manufactureMenuItem) {
+            manufactureMenuItem.style.display = 'flex';
+        }
+
+        // Also show manufacture tab in Device page
+        const deviceManufactureTab = document.querySelector('.device-setup-tab[data-tab="manufacture"]');
+        if (deviceManufactureTab) {
+            deviceManufactureTab.style.display = '';  // Remove inline display:none to show the button
+        }
     }
 
     /**
@@ -9066,6 +9154,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('deviceSetupConfigTab').style.display = 'block';
             } else if (targetTab === 'parameters') {
                 document.getElementById('deviceSetupParamsTab').style.display = 'block';
+            } else if (targetTab === 'manufacture') {
+                document.getElementById('deviceSetupManufactureTab').style.display = 'block';
             }
         });
     });

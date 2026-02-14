@@ -293,6 +293,9 @@
                                 <button class="device-setup-tab" data-tab="parameters" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
                                     Parameters
                                 </button>
+                                <button class="device-setup-tab" data-tab="manufacture" style="display: none; padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
+                                    Manufacture
+                                </button>
                             </div>
 
                             <!-- Configuration Tab Content -->
@@ -347,6 +350,96 @@
                                         <p class="placeholder">No parameters defined. Click "Import CSV" or "Load Default" to load parameters.</p>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- Manufacture Tab Content (Developer Only) -->
+                            <div class="device-setup-tab-content" id="deviceSetupManufactureTab" style="flex: 1; padding: 32px 40px; display: none; background: white; overflow-y: auto;">
+                                <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin-bottom: 30px; border-left: 4px solid #ffc107;">
+                                    <strong>⚠️ Developer Mode Activated</strong>
+                                    <p style="margin: 10px 0 0 0; color: #856404; font-size: 14px;">
+                                        이 메뉴는 제조 및 개발 목적으로만 사용됩니다. 테스트 및 디버깅 기능이 포함되어 있습니다.
+                                    </p>
+                                </div>
+
+                                <!-- Manufacturing Tools Section -->
+                                <section style="margin-bottom: 30px;">
+                                    <h3 style="margin-bottom: 15px; color: #1a1a1a; font-size: 18px;">Manufacturing Tools</h3>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+
+                                        <!-- Factory Reset -->
+                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                                <span style="font-size: 24px;">🏭</span>
+                                                <h4 style="margin: 0; font-size: 16px;">Factory Reset</h4>
+                                            </div>
+                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                                                모든 디바이스를 공장 초기화 상태로 되돌립니다.
+                                            </p>
+                                            <button class="btn btn-warning btn-sm">Reset Device</button>
+                                        </div>
+
+                                        <!-- Calibration -->
+                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                                <span style="font-size: 24px;">📐</span>
+                                                <h4 style="margin: 0; font-size: 16px;">Calibration</h4>
+                                            </div>
+                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                                                센서 및 모터 캘리브레이션을 수행합니다.
+                                            </p>
+                                            <button class="btn btn-info btn-sm">Start Calibration</button>
+                                        </div>
+
+                                        <!-- Production Test -->
+                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                                <span style="font-size: 24px;">✅</span>
+                                                <h4 style="margin: 0; font-size: 16px;">Production Test</h4>
+                                            </div>
+                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                                                자동화된 생산 테스트를 실행합니다.
+                                            </p>
+                                            <button class="btn btn-success btn-sm">Run Test Suite</button>
+                                        </div>
+
+                                        <!-- Serial Number -->
+                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                                <span style="font-size: 24px;">🏷️</span>
+                                                <h4 style="margin: 0; font-size: 16px;">Serial Number</h4>
+                                            </div>
+                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                                                시리얼 넘버를 기록하고 관리합니다.
+                                            </p>
+                                            <button class="btn btn-primary btn-sm">Write S/N</button>
+                                        </div>
+
+                                    </div>
+                                </section>
+
+                                <!-- Debug Tools Section -->
+                                <section style="margin-bottom: 30px;">
+                                    <h3 style="margin-bottom: 15px; color: #1a1a1a; font-size: 18px;">Debug Tools</h3>
+                                    <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <div class="form-group" style="margin-bottom: 15px;">
+                                            <label style="font-size: 14px; font-weight: 500;">Raw Command Input</label>
+                                            <input type="text" placeholder="Enter raw Modbus command (hex)" style="width: 100%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; font-family: monospace;">
+                                        </div>
+                                        <button class="btn btn-primary btn-sm">Send Raw Command</button>
+                                    </div>
+                                </section>
+
+                                <!-- Developer Actions -->
+                                <section>
+                                    <h3 style="margin-bottom: 15px; color: #1a1a1a; font-size: 18px;">Developer Actions</h3>
+                                    <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <div style="display: flex; gap: 10px; align-items: center;">
+                                            <button class="btn btn-secondary btn-sm">Export Logs</button>
+                                            <button class="btn btn-secondary btn-sm">Clear Cache</button>
+                                            <button class="btn btn-danger btn-sm" id="disableDevModeBtn">Disable Dev Mode</button>
+                                        </div>
+                                    </div>
+                                </section>
                             </div>
                         </div>
                     </div>
@@ -992,6 +1085,111 @@
                             <div class="chart-markers" id="chartMarkers">
                                 <span class="markers-label">Markers:</span>
                                 <span class="markers-info" id="markersInfo">No markers set (Click to add)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manufacture Page (Developer Only) - DEPRECATED: Moved to Device tab -->
+                <div id="page-manufacture" class="page-content" style="display: none !important;">
+                    <div style="height: 100%; display: flex; align-items: flex-start; justify-content: center; padding: 40px 20px;">
+                        <div style="display: flex; flex-direction: column; width: 100%; max-width: 1200px; height: fit-content; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+
+                            <!-- Header -->
+                            <div style="padding: 24px 40px; border-bottom: 1px solid #e9ecef; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                <div style="font-size: 24px; font-weight: 600; color: white; margin-bottom: 4px;">🔧 Manufacture Mode</div>
+                                <div style="font-size: 14px; color: rgba(255,255,255,0.9);">Developer-only configuration and testing tools</div>
+                            </div>
+
+                            <!-- Content -->
+                            <div style="padding: 32px 40px;">
+                                <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin-bottom: 30px; border-left: 4px solid #ffc107;">
+                                    <strong>⚠️ Developer Mode Activated</strong>
+                                    <p style="margin: 10px 0 0 0; color: #856404; font-size: 14px;">
+                                        이 메뉴는 제조 및 개발 목적으로만 사용됩니다. 테스트 및 디버깅 기능이 포함되어 있습니다.
+                                    </p>
+                                </div>
+
+                                <!-- Manufacturing Tools Section -->
+                                <section style="margin-bottom: 30px;">
+                                    <h3 style="margin-bottom: 15px; color: #1a1a1a; font-size: 18px;">Manufacturing Tools</h3>
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+
+                                        <!-- Factory Reset -->
+                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                                <span style="font-size: 24px;">🏭</span>
+                                                <h4 style="margin: 0; font-size: 16px;">Factory Reset</h4>
+                                            </div>
+                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                                                모든 디바이스를 공장 초기화 상태로 되돌립니다.
+                                            </p>
+                                            <button class="btn btn-warning btn-sm">Reset Device</button>
+                                        </div>
+
+                                        <!-- Calibration -->
+                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                                <span style="font-size: 24px;">📐</span>
+                                                <h4 style="margin: 0; font-size: 16px;">Calibration</h4>
+                                            </div>
+                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                                                센서 및 모터 캘리브레이션을 수행합니다.
+                                            </p>
+                                            <button class="btn btn-info btn-sm">Start Calibration</button>
+                                        </div>
+
+                                        <!-- Production Test -->
+                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                                <span style="font-size: 24px;">✅</span>
+                                                <h4 style="margin: 0; font-size: 16px;">Production Test</h4>
+                                            </div>
+                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                                                자동화된 생산 테스트를 실행합니다.
+                                            </p>
+                                            <button class="btn btn-success btn-sm">Run Test Suite</button>
+                                        </div>
+
+                                        <!-- Serial Number -->
+                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                                <span style="font-size: 24px;">🏷️</span>
+                                                <h4 style="margin: 0; font-size: 16px;">Serial Number</h4>
+                                            </div>
+                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
+                                                시리얼 넘버를 기록하고 관리합니다.
+                                            </p>
+                                            <button class="btn btn-primary btn-sm">Write S/N</button>
+                                        </div>
+
+                                    </div>
+                                </section>
+
+                                <!-- Debug Tools Section -->
+                                <section style="margin-bottom: 30px;">
+                                    <h3 style="margin-bottom: 15px; color: #1a1a1a; font-size: 18px;">Debug Tools</h3>
+                                    <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <div class="form-group" style="margin-bottom: 15px;">
+                                            <label style="font-size: 14px; font-weight: 500;">Raw Command Input</label>
+                                            <input type="text" placeholder="Enter raw Modbus command (hex)" style="width: 100%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; font-family: monospace;">
+                                        </div>
+                                        <button class="btn btn-primary btn-sm">Send Raw Command</button>
+                                    </div>
+                                </section>
+
+                                <!-- Developer Actions -->
+                                <section>
+                                    <h3 style="margin-bottom: 15px; color: #1a1a1a; font-size: 18px;">Developer Actions</h3>
+                                    <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                                        <div style="display: flex; gap: 10px; align-items: center;">
+                                            <button class="btn btn-secondary btn-sm">Export Logs</button>
+                                            <button class="btn btn-secondary btn-sm">Clear Cache</button>
+                                            <button class="btn btn-danger btn-sm" id="disableDevModeBtn">Disable Dev Mode</button>
+                                        </div>
+                                    </div>
+                                </section>
+
                             </div>
                         </div>
                     </div>
