@@ -353,98 +353,449 @@
                             </div>
 
                             <!-- Manufacture Tab Content (Developer Only) -->
-                            <div class="device-setup-tab-content" id="deviceSetupManufactureTab" style="flex: 1; padding: 32px 40px; display: none; background: white; overflow-y: auto;">
-                                <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin-bottom: 30px; border-left: 4px solid #ffc107;">
-                                    <strong>⚠️ Developer Mode Activated</strong>
-                                    <p style="margin: 10px 0 0 0; color: #856404; font-size: 14px;">
-                                        이 메뉴는 제조 및 개발 목적으로만 사용됩니다. 테스트 및 디버깅 기능이 포함되어 있습니다.
-                                    </p>
+                            <div class="device-setup-tab-content" id="deviceSetupManufactureTab" style="flex: 1; padding: 0; display: none; background: white; overflow: hidden; flex-direction: column;">
+                                <!-- Sub-tabs -->
+                                <div style="display: flex; gap: 4px; background: #f8f9fa; padding: 16px 24px 0 24px; border-bottom: 1px solid #e5e5e5; flex-shrink: 0;">
+                                    <button class="manufacture-subtab active" data-subtab="os-verification" style="padding: 10px 16px; border: none; border-bottom: 2px solid #667eea; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #667eea; transition: all 0.2s;">
+                                        OS Verification
+                                    </button>
+                                    <button class="manufacture-subtab" data-subtab="hardware-test" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
+                                        Hardware Test
+                                    </button>
+                                    <button class="manufacture-subtab" data-subtab="tuning" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
+                                        Tuning
+                                    </button>
+                                    <button class="manufacture-subtab" data-subtab="offset" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
+                                        Offset Setting
+                                    </button>
+                                    <button class="manufacture-subtab" data-subtab="serial-number" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
+                                        Serial Number
+                                    </button>
                                 </div>
 
-                                <!-- Manufacturing Tools Section -->
-                                <section style="margin-bottom: 30px;">
-                                    <h3 style="margin-bottom: 15px; color: #1a1a1a; font-size: 18px;">Manufacturing Tools</h3>
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                                <!-- Sub-tab Contents Container -->
+                                <div style="flex: 1; overflow-y: auto; background: white;">
+                                    <!-- OS Verification Sub-tab -->
+                                    <div class="manufacture-subtab-content active" id="manufactureOsVerification" style="display: block; height: 100%;">
 
-                                        <!-- Factory Reset -->
-                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
-                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                                <span style="font-size: 24px;">🏭</span>
-                                                <h4 style="margin: 0; font-size: 16px;">Factory Reset</h4>
-                                            </div>
-                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
-                                                모든 디바이스를 공장 초기화 상태로 되돌립니다.
-                                            </p>
-                                            <button class="btn btn-warning btn-sm">Reset Device</button>
+                                <!-- Progress Summary -->
+                                <div style="padding: 24px 32px; background: #f8f9fa; border-bottom: 1px solid #e9ecef;">
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 32px; font-weight: 700; color: #1a1a1a;" id="osTestTotal">16</div>
+                                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Total Tests</div>
                                         </div>
-
-                                        <!-- Calibration -->
-                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
-                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                                <span style="font-size: 24px;">📐</span>
-                                                <h4 style="margin: 0; font-size: 16px;">Calibration</h4>
-                                            </div>
-                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
-                                                센서 및 모터 캘리브레이션을 수행합니다.
-                                            </p>
-                                            <button class="btn btn-info btn-sm">Start Calibration</button>
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 32px; font-weight: 700; color: #28a745;" id="osTestPassed">0</div>
+                                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Passed</div>
                                         </div>
-
-                                        <!-- Production Test -->
-                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
-                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                                <span style="font-size: 24px;">✅</span>
-                                                <h4 style="margin: 0; font-size: 16px;">Production Test</h4>
-                                            </div>
-                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
-                                                자동화된 생산 테스트를 실행합니다.
-                                            </p>
-                                            <button class="btn btn-success btn-sm">Run Test Suite</button>
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 32px; font-weight: 700; color: #dc3545;" id="osTestFailed">0</div>
+                                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Failed</div>
                                         </div>
-
-                                        <!-- Serial Number -->
-                                        <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
-                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                                <span style="font-size: 24px;">🏷️</span>
-                                                <h4 style="margin: 0; font-size: 16px;">Serial Number</h4>
-                                            </div>
-                                            <p style="font-size: 13px; color: #6c757d; margin-bottom: 15px;">
-                                                시리얼 넘버를 기록하고 관리합니다.
-                                            </p>
-                                            <button class="btn btn-primary btn-sm">Write S/N</button>
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 32px; font-weight: 700; color: #6c757d;" id="osTestPending">16</div>
+                                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Pending</div>
                                         </div>
-
-                                    </div>
-                                </section>
-
-                                <!-- Debug Tools Section -->
-                                <section style="margin-bottom: 30px;">
-                                    <h3 style="margin-bottom: 15px; color: #1a1a1a; font-size: 18px;">Debug Tools</h3>
-                                    <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
-                                        <div class="form-group" style="margin-bottom: 15px;">
-                                            <label style="font-size: 14px; font-weight: 500;">Raw Command Input</label>
-                                            <input type="text" placeholder="Enter raw Modbus command (hex)" style="width: 100%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 4px; font-family: monospace;">
-                                        </div>
-                                        <button class="btn btn-primary btn-sm">Send Raw Command</button>
-                                    </div>
-                                </section>
-
-                                <!-- Developer Actions -->
-                                <section>
-                                    <h3 style="margin-bottom: 15px; color: #1a1a1a; font-size: 18px;">Developer Actions</h3>
-                                    <div style="padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
-                                        <div style="display: flex; gap: 10px; align-items: center;">
-                                            <button class="btn btn-secondary btn-sm">Export Logs</button>
-                                            <button class="btn btn-secondary btn-sm">Clear Cache</button>
-                                            <button class="btn btn-danger btn-sm" id="disableDevModeBtn">Disable Dev Mode</button>
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 32px; font-weight: 700; color: #667eea;" id="osTestProgress">0%</div>
+                                            <div style="font-size: 12px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Progress</div>
                                         </div>
                                     </div>
-                                </section>
+                                </div>
+
+                                <!-- Test Categories -->
+                                <div style="padding: 32px;">
+                                    <!-- 1. RS485 -->
+                                    <section style="margin-bottom: 32px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                                            <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">1. RS485</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">1 test</span>
+                                        </div>
+                                        <div style="display: grid; gap: 12px;">
+                                            <div class="os-test-item" data-test-id="rs485-1" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden; transition: all 0.2s;">
+                                                <!-- Test Header (Always Visible) -->
+                                                <div class="os-test-header" style="padding: 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">RS485 No. 1 - Node ID 설정</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">RS485 통신 기본 기능 검증</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <span class="test-expand-icon" style="font-size: 18px; color: #6c757d; transition: transform 0.3s;">▼</span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Test Content (Expandable) -->
+                                                <div class="os-test-content" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <!-- Test Info Section -->
+                                                    <div style="padding: 20px; background: #f8f9fa;">
+                                                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; font-size: 13px;">
+                                                            <div>
+                                                                <div style="color: #6c757d; margin-bottom: 4px;">시험 분류</div>
+                                                                <div style="color: #1a1a1a; font-weight: 500;" class="test-category">RS485</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style="color: #6c757d; margin-bottom: 4px;">시험 번호</div>
+                                                                <div style="color: #1a1a1a; font-weight: 500;" class="test-number">1</div>
+                                                            </div>
+                                                            <div style="grid-column: 1 / -1;">
+                                                                <div style="color: #6c757d; margin-bottom: 4px;">시험 목적</div>
+                                                                <div style="color: #1a1a1a;" class="test-purpose">예지보전 툴을 이용해 Node ID 설정이 되는지 확인한다</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style="color: #6c757d; margin-bottom: 4px;">적용 모델</div>
+                                                                <div style="color: #1a1a1a;" class="test-model">EC-FAN</div>
+                                                            </div>
+                                                            <div>
+                                                                <div style="color: #6c757d; margin-bottom: 4px;">시험 장비</div>
+                                                                <div style="color: #1a1a1a;" class="test-equipment">EC FAN 1EA, USB to RS485 Converter</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Test Control Section -->
+                                                    <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e9ecef;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                                            <h4 style="margin: 0; font-size: 15px; font-weight: 600;">테스트 실행</h4>
+                                                            <div style="display: flex; gap: 8px;">
+                                                                <button class="btn btn-primary btn-sm test-start-btn">▶ Start Test</button>
+                                                                <button class="btn btn-secondary btn-sm test-stop-btn" style="display: none;">⏹ Stop</button>
+                                                            </div>
+                                                        </div>
+                                                        <div style="background: #e9ecef; height: 6px; border-radius: 3px; overflow: hidden;">
+                                                            <div class="test-progress-bar" style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s;"></div>
+                                                        </div>
+                                                        <div class="test-progress-text" style="margin-top: 6px; font-size: 12px; color: #6c757d; text-align: center;">
+                                                            테스트를 시작하려면 Start Test 버튼을 클릭하세요
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Test Steps Section -->
+                                                    <div style="padding: 20px;">
+                                                        <h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">시험 단계</h4>
+                                                        <div class="test-steps-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                                            <!-- Steps will be dynamically added here -->
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Test Log Section -->
+                                                    <div style="padding: 0 20px 20px 20px;">
+                                                        <h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">실행 로그</h4>
+                                                        <div class="test-log-container" style="background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 4px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; max-height: 250px; overflow-y: auto; line-height: 1.5;">
+                                                            <div style="color: #6c757d;">테스트 로그가 여기에 표시됩니다...</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Criteria Section -->
+                                                    <div style="padding: 0 20px 20px 20px;">
+                                                        <h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">판정 기준</h4>
+                                                        <div style="padding: 12px; background: #e7f3ff; border-left: 4px solid #2196f3; border-radius: 4px;">
+                                                            <div style="font-size: 13px; color: #1a1a1a;" class="test-criteria">설정 Node ID 입력 시 Device, SW Ver, Boot Ver 출력</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Notes Section -->
+                                                    <div style="padding: 0 20px 20px 20px;">
+                                                        <h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">비고 / 메모</h4>
+                                                        <textarea class="test-notes" placeholder="테스트 중 발견한 사항이나 메모를 입력하세요..."
+                                                            style="width: 100%; min-height: 70px; padding: 10px; border: 1px solid #e9ecef; border-radius: 4px; font-family: inherit; font-size: 13px; resize: vertical;"></textarea>
+                                                    </div>
+
+                                                    <!-- Result Section -->
+                                                    <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e9ecef;">
+                                                        <h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">테스트 결과</h4>
+                                                        <div class="test-result-display" style="display: none;">
+                                                            <!-- Auto result will be displayed here -->
+                                                        </div>
+                                                        <div class="test-result-pending" style="padding: 12px; background: #e9ecef; border-radius: 4px; text-align: center; color: #6c757d; font-size: 13px;">
+                                                            테스트를 실행하면 결과가 자동으로 표시됩니다
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- 2. Modbus RTU -->
+                                    <section style="margin-bottom: 32px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                                            <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">2. Modbus RTU</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">3 tests</span>
+                                        </div>
+                                        <div style="display: grid; gap: 12px;">
+                                            <div class="os-test-item" data-test-id="modbus-1" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Modbus No. 1</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">Modbus RTU 프로토콜 기본 기능</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="modbus-2" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Modbus No. 2</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">레지스터 읽기/쓰기 기능</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="modbus-3" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Modbus No. 3</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">에러 처리 및 예외 상황</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- 3. Open-loop Control -->
+                                    <section style="margin-bottom: 32px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                                            <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">3. Open-loop Control</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">1 test</span>
+                                        </div>
+                                        <div style="display: grid; gap: 12px;">
+                                            <div class="os-test-item" data-test-id="openloop-1" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Open-loop Control No. 1</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">개방형 제어 모드 동작</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- 4. Closed loop Velocity Control -->
+                                    <section style="margin-bottom: 32px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                                            <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">4. Closed loop Velocity Control</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">1 test</span>
+                                        </div>
+                                        <div style="display: grid; gap: 12px;">
+                                            <div class="os-test-item" data-test-id="closedloop-1" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Closed-loop Velocity Control No. 1</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">폐루프 속도 제어 기능</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- 5. 기본 동작 -->
+                                    <section style="margin-bottom: 32px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                                            <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">5. 기본 동작</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">4 tests</span>
+                                        </div>
+                                        <div style="display: grid; gap: 12px;">
+                                            <div class="os-test-item" data-test-id="basic-1" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">기본동작 No. 1 - OS 다운로드</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">펌웨어 다운로드 기능</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="basic-2" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">기본동작 No. 2 - OS 다운로드 중 분리</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">다운로드 중단 처리</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="basic-3" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">기본동작 No. 3 - 회전 방향</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">정/역 회전 방향 제어</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="basic-4" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">기본동작 No. 4 - 역방향 외력 회전 억제</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">외력 억제 기능</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- 6. 보호 동작 -->
+                                    <section style="margin-bottom: 32px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                                            <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a;">6. 보호 동작</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">6 tests</span>
+                                        </div>
+                                        <div style="display: grid; gap: 12px;">
+                                            <div class="os-test-item" data-test-id="protection-1" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">보호동작 No. 1 - 주 전원 결상 보호</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">전원 결상 감지 및 보호</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="protection-2" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">보호동작 No. 2 - 엔코더 신호 이상 보호</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">엔코더 오류 감지</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="protection-3" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">보호동작 No. 3 - 모터 구속 보호</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">모터 락 감지 및 정지</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="protection-4" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">보호동작 No. 4 - 과속 보호</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">과속 감지 및 제한</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="protection-5" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">보호동작 No. 5 - 엔코더 보정 에러</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">엔코더 캘리브레이션 오류</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="os-test-item" data-test-id="protection-6" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">보호동작 No. 6 - 저 전압 에러</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">저전압 감지 및 보호</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                                        <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
+                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- Action Buttons -->
+                                    <div style="display: flex; justify-content: center; gap: 12px; margin-top: 40px; padding-top: 32px; border-top: 1px solid #e9ecef;">
+                                        <button class="btn btn-success" id="osRunAllTestsBtn" style="padding: 12px 32px;">▶ Run All Tests</button>
+                                        <button class="btn btn-warning" id="osResetTestsBtn" style="padding: 12px 32px;">↺ Reset All</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hardware Test Sub-tab -->
+                            <div class="manufacture-subtab-content" id="manufactureHardwareTest" style="display: none; padding: 32px;">
+                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
+                                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">🔧</div>
+                                            <p style="font-size: 15px; font-weight: 500; color: #404040;">Hardware Test</p>
+                                            <p style="font-size: 13px; margin-top: 6px; color: #999;">하드웨어 검사 기능 (준비 중)</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tuning Sub-tab -->
+                                    <div class="manufacture-subtab-content" id="manufactureTuning" style="display: none; padding: 32px;">
+                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
+                                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">⚙️</div>
+                                            <p style="font-size: 15px; font-weight: 500; color: #404040;">Tuning</p>
+                                            <p style="font-size: 13px; margin-top: 6px; color: #999;">모터 튜닝 기능 (준비 중)</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Offset Setting Sub-tab -->
+                                    <div class="manufacture-subtab-content" id="manufactureOffset" style="display: none; padding: 32px;">
+                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
+                                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">📐</div>
+                                            <p style="font-size: 15px; font-weight: 500; color: #404040;">Offset Setting</p>
+                                            <p style="font-size: 13px; margin-top: 6px; color: #999;">Offset 값 설정 (준비 중)</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Serial Number Sub-tab -->
+                                    <div class="manufacture-subtab-content" id="manufactureSerialNumber" style="display: none; padding: 32px;">
+                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
+                                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">🏷️</div>
+                                            <p style="font-size: 15px; font-weight: 500; color: #404040;">Serial Number</p>
+                                            <p style="font-size: 13px; margin-top: 6px; color: #999;">시리얼 넘버 부여 (준비 중)</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+                </div>
 
                 <!-- Modbus Page -->
                 <div id="page-modbus" class="page-content">
