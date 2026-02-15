@@ -1062,8 +1062,8 @@ class ModbusDashboard {
         this.backgroundPollingEnabled = false; // Use Web Worker timer to avoid browser throttling
         this.pollingWorker = null; // Web Worker for background polling
 
-        // Current page tracking
-        this.currentPage = 'dashboard'; // Default to dashboard
+        // Current page tracking - restore from sessionStorage if available
+        this.currentPage = sessionStorage.getItem('currentPage') || 'dashboard';
 
         // Chart Manager
         this.chartManager = null;
@@ -1474,13 +1474,12 @@ class ModbusDashboard {
         const disableDevModeBtn = document.getElementById('disableDevModeBtn');
 
         // Check if developer mode is already enabled
-        if (localStorage.getItem('developerMode') === 'true') {
+        if (sessionStorage.getItem('developerMode') === 'true') {
             this.enableDeveloperMode();
         }
 
         // Logo click handler
         if (logo) {
-            logo.style.cursor = 'pointer';
             logo.addEventListener('click', () => {
                 clickCount++;
 
@@ -1491,8 +1490,8 @@ class ModbusDashboard {
 
                 // If 5 clicks within 2 seconds, activate developer mode
                 if (clickCount >= 5) {
-                    if (localStorage.getItem('developerMode') !== 'true') {
-                        localStorage.setItem('developerMode', 'true');
+                    if (sessionStorage.getItem('developerMode') !== 'true') {
+                        sessionStorage.setItem('developerMode', 'true');
                         this.enableDeveloperMode();
                         this.showToast('🔧 Developer Mode Activated!', 'success');
                     }
@@ -1509,7 +1508,7 @@ class ModbusDashboard {
         // Disable developer mode button handler
         if (disableDevModeBtn) {
             disableDevModeBtn.addEventListener('click', () => {
-                localStorage.removeItem('developerMode');
+                sessionStorage.removeItem('developerMode');
                 if (manufactureMenuItem) {
                     manufactureMenuItem.style.display = 'none';
                 }
@@ -1528,6 +1527,31 @@ class ModbusDashboard {
                     document.querySelector('.menu-item[data-page="dashboard"]').classList.add('active');
                 }
             });
+        }
+
+        // Restore last visited page from sessionStorage and activate immediately
+        const savedPage = sessionStorage.getItem('currentPage');
+        const pageToShow = savedPage || 'dashboard';
+
+        // Immediately activate the correct page without rendering other pages first
+        const pageElement = document.getElementById(`page-${pageToShow}`);
+        if (pageElement) {
+            // Directly set active class to avoid rendering unwanted pages
+            pageElement.classList.add('active');
+
+            // Update menu item active state immediately
+            document.querySelectorAll('.menu-item').forEach(mi => mi.classList.remove('active'));
+            const menuItem = document.querySelector(`.menu-item[data-page="${pageToShow}"]`);
+            if (menuItem) {
+                menuItem.classList.add('active');
+            }
+
+            // Call page-specific initialization if needed
+            if (pageToShow === 'firmware') {
+                this.updateFirmwareDeviceList();
+            } else if (pageToShow === 'device-setup') {
+                // Device setup will be fully initialized after tabs are restored in DOMContentLoaded
+            }
         }
     }
 
@@ -1558,6 +1582,15 @@ class ModbusDashboard {
 
         // Track current page
         this.currentPage = pageName;
+
+        // Save current page to sessionStorage for refresh persistence
+        sessionStorage.setItem('currentPage', pageName);
+
+        // Clear device setup tab state when leaving device-setup page
+        if (pageName !== 'device-setup') {
+            sessionStorage.removeItem('deviceSetupTab');
+            sessionStorage.removeItem('manufactureSubtab');
+        }
 
         // Start/stop polling based on page
         if (pageName === 'dashboard') {
@@ -9475,6 +9508,9 @@ document.addEventListener('DOMContentLoaded', () => {
         tab.addEventListener('click', () => {
             const targetTab = tab.dataset.tab;
 
+            // Save current device setup tab to sessionStorage
+            sessionStorage.setItem('deviceSetupTab', targetTab);
+
             // Remove active class from all tabs (Notion style)
             deviceSetupTabs.forEach(t => {
                 t.classList.remove('active');
@@ -9522,6 +9558,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tab.addEventListener('click', () => {
             const targetSubtab = tab.dataset.subtab;
+
+            // Save current manufacture subtab to sessionStorage
+            sessionStorage.setItem('manufactureSubtab', targetSubtab);
 
             // Remove active class from all subtabs
             manufactureSubtabs.forEach(t => {
@@ -9583,4 +9622,35 @@ document.addEventListener('DOMContentLoaded', () => {
             window.osTestManager.stopTest();
         }
     });
+
+    // Restore Device Setup tab state from sessionStorage immediately to prevent flash
+    const savedPage = sessionStorage.getItem('currentPage');
+    if (savedPage === 'device-setup') {
+        const savedDeviceTab = sessionStorage.getItem('deviceSetupTab') || 'configuration';
+
+        // Use requestAnimationFrame for smooth restoration without flash
+        requestAnimationFrame(() => {
+            // Find and click the saved tab (or default configuration tab) to restore state
+            const tabToRestore = document.querySelector(`.device-setup-tab[data-tab="${savedDeviceTab}"]`);
+            if (tabToRestore) {
+                tabToRestore.click();
+            }
+
+            // If on manufacture tab, restore manufacture subtab immediately
+            if (savedDeviceTab === 'manufacture') {
+                const savedManufactureSubtab = sessionStorage.getItem('manufactureSubtab');
+                if (savedManufactureSubtab) {
+                    const subtabToRestore = document.querySelector(`.manufacture-subtab[data-subtab="${savedManufactureSubtab}"]`);
+                    if (subtabToRestore) {
+                        subtabToRestore.click();
+                    }
+                }
+            }
+
+            // Render device list after tab is restored
+            requestAnimationFrame(() => {
+                window.dashboard.renderDeviceSetupList();
+            });
+        });
+    }
 });
