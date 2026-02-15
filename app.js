@@ -1737,6 +1737,27 @@ class ModbusDashboard {
         const panel = document.getElementById('monitorPanel');
         const toggleBtn = document.getElementById('monitorToggleBtn');
         const mainContent = document.querySelector('.main-content');
+        const grid = document.querySelector('.device-grid');
+
+        // Calculate grid columns for smooth transition
+        if (grid) {
+            const currentColumns = window.getComputedStyle(grid).gridTemplateColumns;
+            const currentCols = currentColumns.split(' ').length;
+
+            // Set current columns as explicit repeat()
+            grid.style.gridTemplateColumns = `repeat(${currentCols}, 1fr)`;
+
+            // Force reflow
+            void grid.offsetHeight;
+
+            // Calculate new column count after monitor opens
+            requestAnimationFrame(() => {
+                const newWidth = mainContent.offsetWidth - this.monitorPanelWidth;
+                const newCols = Math.max(1, Math.floor(newWidth / 320));
+                grid.style.gridTemplateColumns = `repeat(${newCols}, 1fr)`;
+                grid.style.transition = 'grid-template-columns 0.3s ease';
+            });
+        }
 
         panel.classList.add('open');
         toggleBtn.classList.add('active');
@@ -1746,6 +1767,14 @@ class ModbusDashboard {
         // Apply saved width
         mainContent.style.marginRight = this.monitorPanelWidth + 'px';
         document.documentElement.style.setProperty('--monitor-width', this.monitorPanelWidth + 'px');
+
+        // Restore auto-fill after transition completes
+        if (grid) {
+            setTimeout(() => {
+                grid.style.gridTemplateColumns = '';
+                grid.style.transition = '';
+            }, 300);
+        }
 
         // Save state
         localStorage.setItem('monitorPanelOpen', 'true');
@@ -1758,6 +1787,27 @@ class ModbusDashboard {
         const panel = document.getElementById('monitorPanel');
         const toggleBtn = document.getElementById('monitorToggleBtn');
         const mainContent = document.querySelector('.main-content');
+        const grid = document.querySelector('.device-grid');
+
+        // Calculate grid columns for smooth transition
+        if (grid) {
+            const currentColumns = window.getComputedStyle(grid).gridTemplateColumns;
+            const currentCols = currentColumns.split(' ').length;
+
+            // Set current columns as explicit repeat()
+            grid.style.gridTemplateColumns = `repeat(${currentCols}, 1fr)`;
+
+            // Force reflow
+            void grid.offsetHeight;
+
+            // Calculate new column count after monitor closes
+            requestAnimationFrame(() => {
+                const newWidth = mainContent.offsetWidth;
+                const newCols = Math.max(1, Math.floor(newWidth / 320));
+                grid.style.gridTemplateColumns = `repeat(${newCols}, 1fr)`;
+                grid.style.transition = 'grid-template-columns 0.3s ease';
+            });
+        }
 
         panel.classList.remove('open');
         toggleBtn.classList.remove('active');
@@ -1770,6 +1820,14 @@ class ModbusDashboard {
         // Set closed position based on panel width to fully hide the panel
         const panelWidth = panel.offsetWidth || this.monitorPanelWidth;
         panel.style.right = `-${panelWidth + 50}px`;
+
+        // Restore auto-fill after transition completes
+        if (grid) {
+            setTimeout(() => {
+                grid.style.gridTemplateColumns = '';
+                grid.style.transition = '';
+            }, 300);
+        }
 
         // Save state
         localStorage.setItem('monitorPanelOpen', 'false');
