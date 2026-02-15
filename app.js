@@ -5345,7 +5345,7 @@ class ModbusDashboard {
 
         // Confirm before deleting device
         const confirmed = await this.showConfirm(
-            `Device List에서 ${device.name}( ID: ${device.slaveId} )을(를) 삭제하시겠습니까?`,
+            `${device.name} (Slave ID: ${device.slaveId})을(를) 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`,
             '🗑️ 장치 삭제',
             '🗑️'
         );
@@ -5357,6 +5357,18 @@ class ModbusDashboard {
             this.renderDeviceGrid();
             this.updateSelectedCount();
             this.showToast('장치가 삭제되었습니다', 'info');
+
+            // If currently on Device Setup page for this device, go back to Dashboard
+            if (this.currentPage === 'device-setup' && this.currentDeviceId === deviceId) {
+                this.showPage('dashboard');
+            }
+
+            // Close device edit modal if it's open
+            const deviceEditModal = document.getElementById('deviceEditModal');
+            if (deviceEditModal && deviceEditModal.style.display === 'flex') {
+                const closeBtn = document.getElementById('closeDeviceEditBtn');
+                if (closeBtn) closeBtn.click();
+            }
         }
     }
 
@@ -8818,10 +8830,10 @@ class ModbusDashboard {
                         <div style="font-size: 13px; color: #6c757d; line-height: 1.4;">Slave ID: ${device.slaveId === 0 ? 'Not Assigned' : device.slaveId}</div>
                     </div>
                     <div style="display: flex; gap: 10px; width: 220px; justify-content: flex-end; padding-right: 32px;">
-                        <button onclick="window.dashboard.refreshDevice('${device.id}')" class="btn btn-secondary btn-sm">
+                        <button onclick="window.dashboard.refreshDevice(${device.id})" class="btn btn-secondary btn-sm">
                             <span>↻</span> Refresh
                         </button>
-                        <button onclick="window.dashboard.deleteDevice('${device.id}')" class="btn btn-danger btn-sm">
+                        <button onclick="window.dashboard.deleteDevice(${device.id})" class="btn btn-danger btn-sm">
                             <span>🗑️</span> Delete
                         </button>
                     </div>
