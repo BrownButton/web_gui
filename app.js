@@ -5303,8 +5303,21 @@ class ModbusDashboard {
     /**
      * Delete a device
      */
-    deleteDevice(deviceId) {
-        if (confirm('이 장치를 삭제하시겠습니까?')) {
+    async deleteDevice(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) {
+            this.showToast('장치를 찾을 수 없습니다', 'error');
+            return;
+        }
+
+        // Confirm before deleting device
+        const confirmed = await this.showConfirm(
+            `Device List에서 ${device.name}( ID: ${device.slaveId} )을(를) 삭제하시겠습니까?`,
+            '🗑️ 장치 삭제',
+            '🗑️'
+        );
+
+        if (confirmed) {
             this.devices = this.devices.filter(d => d.id !== deviceId);
             this.selectedDevices.delete(deviceId);
             this.saveDevices();
@@ -6084,7 +6097,7 @@ class ModbusDashboard {
 
         // Confirm before software reset
         const confirmed = await this.showConfirm(
-            `${device.name}을(를) 소프트웨어 리셋하시겠습니까?\n디바이스가 재시작됩니다.`,
+            `${device.name}을(를) 재부팅 하시겠습니까?\n디바이스가 재시작됩니다.`,
             '🔄 소프트웨어 리셋',
             '🔄'
         );
