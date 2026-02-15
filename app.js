@@ -1016,7 +1016,9 @@ class ModbusDashboard {
             MOTOR_STATUS: 0xD011,
             ACTUAL_SPEED: 0xD02D,
             OPERATION_MODE: 0xD106,
-            MAXIMUM_SPEED: 0xD119
+            MAXIMUM_SPEED: 0xD119,
+            ALARM_RESET: 0x800E,
+            SOFTWARE_RESET: 0x8001
         };
 
         // Motor Status Bit Definitions (D011)
@@ -5167,6 +5169,8 @@ class ModbusDashboard {
                 <button class="btn btn-success btn-sm btn-apply">Apply</button>
             </div>
             <div class="device-actions">
+                <button class="btn btn-warning btn-sm btn-alarm-reset" title="알람 리셋">⚠️</button>
+                <button class="btn btn-info btn-sm btn-software-reset" title="소프트웨어 리셋">🔄</button>
                 <button class="btn btn-danger btn-sm btn-delete">Delete</button>
             </div>
         `;
@@ -5193,6 +5197,18 @@ class ModbusDashboard {
         const deleteBtn = item.querySelector('.btn-delete');
         deleteBtn.addEventListener('click', () => {
             this.deleteDevice(device.id);
+        });
+
+        // Alarm Reset button
+        const alarmResetBtn = item.querySelector('.btn-alarm-reset');
+        alarmResetBtn.addEventListener('click', () => {
+            this.performAlarmReset(device.id);
+        });
+
+        // Software Reset button
+        const softwareResetBtn = item.querySelector('.btn-software-reset');
+        softwareResetBtn.addEventListener('click', () => {
+            this.performSoftwareReset(device.id);
         });
 
         // Mode buttons
@@ -5402,8 +5418,14 @@ class ModbusDashboard {
                 </div>
             </div>
             <div class="device-card-footer">
-                <button class="btn btn-secondary btn-edit">Edit</button>
-                <button class="btn btn-danger btn-delete">Delete</button>
+                <div class="device-footer-left">
+                    <button class="btn btn-warning btn-sm btn-alarm-reset" title="알람 리셋">⚠️ Alarm Reset</button>
+                    <button class="btn btn-info btn-sm btn-software-reset" title="소프트웨어 리셋">🔄 SW Reset</button>
+                </div>
+                <div class="device-footer-right">
+                    <button class="btn btn-secondary btn-edit">Edit</button>
+                    <button class="btn btn-danger btn-delete">Delete</button>
+                </div>
             </div>
         `;
 
@@ -5429,6 +5451,18 @@ class ModbusDashboard {
         const deleteBtn = card.querySelector('.btn-delete');
         deleteBtn.addEventListener('click', () => {
             this.deleteDevice(device.id);
+        });
+
+        // Alarm Reset button
+        const alarmResetBtn = card.querySelector('.btn-alarm-reset');
+        alarmResetBtn.addEventListener('click', () => {
+            this.performAlarmReset(device.id);
+        });
+
+        // Software Reset button
+        const softwareResetBtn = card.querySelector('.btn-software-reset');
+        softwareResetBtn.addEventListener('click', () => {
+            this.performSoftwareReset(device.id);
         });
 
         // Mode buttons
@@ -5741,6 +5775,68 @@ class ModbusDashboard {
             if (!silent) this.showToast(`${device.name}: Setpoint ${setpoint}${unit} (raw: ${rawSetpoint}) 적용`, 'success');
         } catch (error) {
             if (!silent) this.showToast(`${device.name}: 설정 실패 - ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Perform Alarm Reset
+     */
+    async performAlarmReset(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        if (device.slaveId === 0) {
+            this.showToast('Slave ID가 설정되지 않은 장치입니다', 'warning');
+            return;
+        }
+
+        try {
+            // Send alarm reset command (write 1 to ALARM_RESET register)
+            await this.writeRegister(device.slaveId, this.REGISTERS.ALARM_RESET, 1);
+            this.showToast(`${device.name}: 알람 리셋 완료`, 'success');
+
+            // Read device status after reset to update UI
+            setTimeout(() => {
+                this.readDeviceStatus(deviceId);
+            }, 500);
+        } catch (error) {
+            this.showToast(`${device.name}: 알람 리셋 실패 - ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Perform Software Reset
+     */
+    async performSoftwareReset(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        if (device.slaveId === 0) {
+            this.showToast('Slave ID가 설정되지 않은 장치입니다', 'warning');
+            return;
+        }
+
+        // Confirm before software reset
+        if (!confirm(`${device.name}을(를) 소프트웨어 리셋하시겠습니까?\n디바이스가 재시작됩니다.`)) {
+            return;
+        }
+
+        try {
+            // Send software reset command (write 1 to SOFTWARE_RESET register)
+            await this.writeRegister(device.slaveId, this.REGISTERS.SOFTWARE_RESET, 1);
+            this.showToast(`${device.name}: 소프트웨어 리셋 완료`, 'success');
+
+            // Mark device as offline temporarily
+            device.online = false;
+            this.renderDeviceGrid();
+
+            // Try to reconnect after a delay
+            setTimeout(() => {
+                this.showToast(`${device.name}: 재연결 시도 중...`, 'info');
+                this.readDeviceStatus(deviceId);
+            }, 3000);
+        } catch (error) {
+            this.showToast(`${device.name}: 소프트웨어 리셋 실패 - ${error.message}`, 'error');
         }
     }
 

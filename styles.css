@@ -4,6 +4,19 @@
     box-sizing: border-box;
 }
 
+/* Force cursor display on all input elements */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea {
+    cursor: text !important;
+    caret-color: #000000 !important;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #fbfcff;
@@ -3517,12 +3530,19 @@ select:focus {
     font-size: 16px;
     font-weight: 600;
     text-align: right;
+    cursor: text !important;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+    caret-color: #000000 !important;
 }
 
 .all-device-setpoint-input:focus {
     outline: none;
     border-color: #007bff;
     box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+    z-index: 2;
+    caret-color: #000000 !important;
 }
 
 .all-device-setpoint-unit {
@@ -3530,6 +3550,7 @@ select:focus {
     color: #6c757d;
     font-weight: 500;
     min-width: 35px;
+    pointer-events: none;
 }
 
 .all-device-setpoint-slider {
@@ -4149,11 +4170,18 @@ select:focus {
     border: 1px solid #ced4da;
     border-radius: 6px;
     font-size: 14px;
+    cursor: text !important;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+    caret-color: #000000 !important;
 }
 
 .device-controls input:focus {
     border-color: #007bff;
     outline: none;
+    z-index: 2;
+    caret-color: #000000 !important;
 }
 
 .device-controls .input-unit {
@@ -4161,6 +4189,7 @@ select:focus {
     color: #6c757d;
     font-weight: 500;
     min-width: 35px;
+    pointer-events: none;
 }
 
 .device-controls .btn {
@@ -4182,16 +4211,32 @@ select:focus {
 
 .device-card-footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
     gap: 10px;
     padding: 12px 18px;
     background: #f8f9fa;
     border-top: 1px solid #e0e6ed;
 }
 
+.device-footer-left {
+    display: flex;
+    gap: 8px;
+}
+
+.device-footer-right {
+    display: flex;
+    gap: 10px;
+}
+
 .device-card-footer .btn {
     padding: 8px 14px;
     font-size: 12px;
+}
+
+.device-card-footer .btn-sm {
+    padding: 6px 12px;
+    font-size: 11px;
 }
 
 /* Device Monitoring Section */
@@ -4842,6 +4887,11 @@ select:focus {
     border-radius: 4px;
     font-size: 13px;
     text-align: center;
+    cursor: text !important;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+    caret-color: #000000 !important;
 }
 
 .device-list-item .device-controls .input-unit {
@@ -4849,6 +4899,7 @@ select:focus {
     color: #6c757d;
     font-weight: 500;
     min-width: 30px;
+    pointer-events: none;
 }
 
 .device-list-item .device-controls .btn {
@@ -6548,17 +6599,18 @@ select:focus {
     user-select: none;
 }
 
-/* Remove number input spinner buttons */
-/* Chrome, Safari, Edge, Opera */
+/* Remove number input spinner buttons and fix cursor */
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
+    cursor: inherit;
 }
 
-/* Firefox */
 input[type=number] {
     -moz-appearance: textfield;
+    cursor: text !important;
+    caret-color: #000000 !important;
 }
 
 /* Configuration Category Selector */
@@ -6678,4 +6730,25 @@ input[type=number] {
     50% {
         opacity: 0.6;
     }
+}
+
+/* Global input cursor fix - ensure all text/number inputs show text cursor */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+textarea {
+    cursor: text !important;
+    pointer-events: auto !important;
+    caret-color: #000000 !important;
+}
+
+input[type="text"]:disabled,
+input[type="number"]:disabled,
+textarea:disabled {
+    cursor: not-allowed !important;
+    caret-color: #adb5bd !important;
 }
