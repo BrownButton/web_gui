@@ -4661,6 +4661,67 @@ class ModbusDashboard {
         startAutoHide();
     }
 
+    /**
+     * Show confirm dialog
+     * @param {string} message - The message to display
+     * @param {string} title - Dialog title (default: '확인')
+     * @param {string} icon - Icon emoji (default: '⚠️')
+     * @returns {Promise<boolean>} - Resolves to true if user confirms, false if cancelled
+     */
+    showConfirm(message, title = '확인', icon = '⚠️') {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirmModal');
+            const titleEl = document.getElementById('confirmModalTitle');
+            const messageEl = document.getElementById('confirmModalMessage');
+            const iconEl = document.getElementById('confirmModalIcon');
+            const okBtn = document.getElementById('confirmOkBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
+            const closeBtn = document.getElementById('confirmModalClose');
+
+            // Set content
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            iconEl.textContent = icon;
+
+            // Show modal
+            modal.style.display = 'flex';
+
+            // Handle OK click
+            const handleOk = () => {
+                cleanup();
+                resolve(true);
+            };
+
+            // Handle Cancel click
+            const handleCancel = () => {
+                cleanup();
+                resolve(false);
+            };
+
+            // Handle outside click
+            const handleOutsideClick = (e) => {
+                if (e.target === modal) {
+                    handleCancel();
+                }
+            };
+
+            // Cleanup function
+            const cleanup = () => {
+                modal.style.display = 'none';
+                okBtn.removeEventListener('click', handleOk);
+                cancelBtn.removeEventListener('click', handleCancel);
+                closeBtn.removeEventListener('click', handleCancel);
+                modal.removeEventListener('click', handleOutsideClick);
+            };
+
+            // Attach event listeners
+            okBtn.addEventListener('click', handleOk);
+            cancelBtn.addEventListener('click', handleCancel);
+            closeBtn.addEventListener('click', handleCancel);
+            modal.addEventListener('click', handleOutsideClick);
+        });
+    }
+
     // ========================================
     // Product Test Dashboard Functions
     // ========================================
@@ -5164,9 +5225,8 @@ class ModbusDashboard {
                 <button class="mode-btn ${device.operationMode !== 0 ? 'active' : ''}" data-mode="2">%</button>
             </div>
             <div class="device-controls">
-                <input type="number" placeholder="${modeText}" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
+                <input type="number" class="device-setpoint-input" placeholder="${modeText}" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
                 <span class="input-unit">${modeText}</span>
-                <button class="btn btn-success btn-sm btn-apply">Apply</button>
             </div>
             <div class="device-actions">
                 <button class="btn btn-warning btn-sm btn-alarm-reset" title="알람 리셋">⚠️</button>
@@ -5188,11 +5248,13 @@ class ModbusDashboard {
             this.startEditDeviceName(device.id, nameSpan);
         });
 
-        const applyBtn = item.querySelector('.btn-apply');
-        applyBtn.addEventListener('click', () => {
-            const input = item.querySelector('.device-controls input');
-            this.applyDeviceSetpoint(device.id, parseInt(input.value));
-        });
+        // Auto-apply setpoint on input change
+        const setpointInput = item.querySelector('.device-setpoint-input');
+        if (setpointInput) {
+            setpointInput.addEventListener('change', () => {
+                this.applyDeviceSetpoint(device.id, parseInt(setpointInput.value));
+            });
+        }
 
         const deleteBtn = item.querySelector('.btn-delete');
         deleteBtn.addEventListener('click', () => {
@@ -5332,9 +5394,12 @@ class ModbusDashboard {
                     <input type="checkbox" class="device-checkbox" ${this.selectedDevices.has(device.id) ? 'checked' : ''}>
                     <span class="device-name" title="Click to edit name">${device.name}</span>
                 </div>
-                <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
-                    ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
-                </span>
+                <div class="device-header-right">
+                    <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
+                        ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
+                    </span>
+                    <button class="btn-delete-icon" title="Delete device">×</button>
+                </div>
             </div>
             <div class="device-card-body">
                 <div class="device-status-row">
@@ -5362,9 +5427,8 @@ class ModbusDashboard {
                     </div>
                 </div>
                 <div class="device-controls">
-                    <input type="number" placeholder="Setpoint (${modeText})" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
+                    <input type="number" class="device-setpoint-input" placeholder="Setpoint (${modeText})" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
                     <span class="input-unit">${modeText}</span>
-                    <button class="btn btn-success btn-apply">Apply</button>
                 </div>
                 <div class="device-quick-btns">
                     ${device.operationMode === 0 ? `
@@ -5423,8 +5487,7 @@ class ModbusDashboard {
                     <button class="btn btn-info btn-sm btn-software-reset" title="소프트웨어 리셋">🔄 SW Reset</button>
                 </div>
                 <div class="device-footer-right">
-                    <button class="btn btn-secondary btn-edit">Edit</button>
-                    <button class="btn btn-danger btn-delete">Delete</button>
+                    <button class="btn-edit" title="Edit device">⚙</button>
                 </div>
             </div>
         `;
@@ -5442,14 +5505,18 @@ class ModbusDashboard {
             this.startEditDeviceName(device.id, nameSpan);
         });
 
-        const applyBtn = card.querySelector('.btn-apply');
-        applyBtn.addEventListener('click', () => {
-            const input = card.querySelector('.device-controls input');
-            this.applyDeviceSetpoint(device.id, parseInt(input.value));
-        });
+        // Auto-apply setpoint on input change
+        const setpointInput = card.querySelector('.device-setpoint-input');
+        if (setpointInput) {
+            setpointInput.addEventListener('change', () => {
+                this.applyDeviceSetpoint(device.id, parseInt(setpointInput.value));
+            });
+        }
 
-        const deleteBtn = card.querySelector('.btn-delete');
-        deleteBtn.addEventListener('click', () => {
+        // Delete button (X icon in header)
+        const deleteBtn = card.querySelector('.btn-delete-icon');
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             this.deleteDevice(device.id);
         });
 
@@ -5817,7 +5884,13 @@ class ModbusDashboard {
         }
 
         // Confirm before software reset
-        if (!confirm(`${device.name}을(를) 소프트웨어 리셋하시겠습니까?\n디바이스가 재시작됩니다.`)) {
+        const confirmed = await this.showConfirm(
+            `${device.name}을(를) 소프트웨어 리셋하시겠습니까?\n디바이스가 재시작됩니다.`,
+            '🔄 소프트웨어 리셋',
+            '🔄'
+        );
+
+        if (!confirmed) {
             return;
         }
 
