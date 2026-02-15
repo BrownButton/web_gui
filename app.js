@@ -4722,6 +4722,106 @@ class ModbusDashboard {
         });
     }
 
+    /**
+     * Show device edit modal
+     * @param {number} deviceId - The device ID to edit
+     */
+    showDeviceEditModal(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) {
+            console.error('Device not found:', deviceId);
+            return;
+        }
+
+        const modal = document.getElementById('deviceEditModal');
+        const modalBody = document.getElementById('deviceEditModalBody');
+        const modalTitle = document.getElementById('deviceEditModalTitle');
+        const closeBtn = document.getElementById('closeDeviceEditBtn');
+
+        if (!modal || !modalBody) {
+            console.error('Modal elements not found');
+            return;
+        }
+
+        // Update modal title with device name
+        if (modalTitle) {
+            modalTitle.textContent = `Device Configuration - ${device.name}`;
+        }
+
+        // Clear modal body and create proper flex container structure
+        modalBody.innerHTML = '';
+        console.log('Step 1: Modal body cleared');
+
+        // Create wrapper that mimics Device Setup page structure
+        const configWrapper = document.createElement('div');
+        configWrapper.style.cssText = 'display: flex; flex-direction: column; width: 100%; min-height: 0; flex: 1;';
+        console.log('Step 2: Config wrapper created');
+
+        // Create the deviceSetupConfig container with proper flex context
+        const configContainer = document.createElement('div');
+        configContainer.id = 'deviceSetupConfig';
+        configContainer.style.cssText = 'flex: 1; overflow-y: auto; display: block; min-height: 0;';
+        console.log('Step 3: Config container created with id:', configContainer.id);
+
+        // Build container hierarchy
+        configWrapper.appendChild(configContainer);
+        modalBody.appendChild(configWrapper);
+        console.log('Step 4: Container hierarchy built');
+
+        // Show modal
+        modal.style.display = 'flex';
+        console.log('Step 5: Modal displayed');
+
+        // CRITICAL: Temporarily remove the page's deviceSetupConfig to avoid ID collision
+        const pageConfigContainer = document.querySelector('#page-device-setup #deviceSetupConfig');
+        let originalId = null;
+        if (pageConfigContainer) {
+            originalId = pageConfigContainer.id;
+            pageConfigContainer.id = 'deviceSetupConfig_temp';
+            console.log('Step 5.5: Temporarily renamed page config container to avoid ID collision');
+        }
+
+        // Render device configuration - it will find #deviceSetupConfig in modal
+        console.log('Step 6: About to call renderDeviceSetupConfig for device:', device.name);
+        this.renderDeviceSetupConfig(device);
+        console.log('Step 7: renderDeviceSetupConfig called');
+
+        // Restore the page's deviceSetupConfig ID
+        if (pageConfigContainer && originalId) {
+            pageConfigContainer.id = originalId;
+            console.log('Step 7.5: Restored page config container ID');
+        }
+
+        // Verify rendering
+        const deviceNameSpan = document.getElementById(`deviceName_${device.id}`);
+        console.log('Step 8: Device name span found:', !!deviceNameSpan);
+        console.log('Config container innerHTML length:', configContainer.innerHTML.length);
+        console.log('Config container offsetHeight:', configContainer.offsetHeight);
+        console.log('Config container offsetWidth:', configContainer.offsetWidth);
+
+        if (!deviceNameSpan) {
+            console.warn('Device configuration may not have rendered correctly');
+        }
+
+        // Close button handler
+        const handleClose = () => {
+            modal.style.display = 'none';
+            modalBody.innerHTML = '';
+            closeBtn.removeEventListener('click', handleClose);
+            modal.removeEventListener('click', handleOutsideClick);
+        };
+
+        // Outside click handler
+        const handleOutsideClick = (e) => {
+            if (e.target === modal) {
+                handleClose();
+            }
+        };
+
+        closeBtn.addEventListener('click', handleClose);
+        modal.addEventListener('click', handleOutsideClick);
+    }
+
     // ========================================
     // Product Test Dashboard Functions
     // ========================================
@@ -5531,6 +5631,14 @@ class ModbusDashboard {
         softwareResetBtn.addEventListener('click', () => {
             this.performSoftwareReset(device.id);
         });
+
+        // Edit button
+        const editBtn = card.querySelector('.btn-edit');
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                this.showDeviceEditModal(device.id);
+            });
+        }
 
         // Mode buttons
         card.querySelectorAll('.device-mode-btns .mode-btn').forEach(btn => {
@@ -8558,7 +8666,7 @@ class ModbusDashboard {
         const modeText = device.operationMode === 0 ? 'Speed Control (RPM)' : 'Open-loop Control (%)';
 
         configContainer.innerHTML = `
-            <div>
+            <div style="display: block; position: relative;">
                 <!-- Device Header -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-height: 48px;">
                     <div>

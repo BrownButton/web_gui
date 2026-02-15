@@ -2639,6 +2639,62 @@ select:focus {
     box-shadow: 0 2px 8px rgba(149, 165, 166, 0.3);
 }
 
+/* Device Edit Modal Styles */
+#deviceEditModal {
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+#deviceEditModal.active,
+#deviceEditModal[style*="display: flex"] {
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+}
+
+.device-edit-modal-content {
+    max-width: 900px;
+    width: 90%;
+    margin: auto;
+}
+
+.device-edit-modal-content .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e6ed;
+}
+
+.device-edit-modal-content .modal-header h3 {
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.device-edit-modal-body {
+    padding: 0;
+    max-height: 70vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Device configuration rendering in modal context */
+.device-edit-modal-body #deviceSetupConfig {
+    padding: 20px 24px;
+}
+
+/* Ensure flex children in modal work correctly */
+.device-edit-modal-body [style*="flex: 1"] {
+    min-height: 0;
+    min-width: 0;
+}
+
+/* Adjust category selector for narrower modal */
+.device-edit-modal-body .config-category-item {
+    font-size: 12px;
+    padding: 10px 14px;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .content-grid {
