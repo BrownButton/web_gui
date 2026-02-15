@@ -1269,6 +1269,30 @@ class ModbusDashboard {
             paramModalMouseDownTarget = null;
         });
 
+        // Global ESC key handler for all modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // Check and close each modal type
+                const addParamModal = document.getElementById('addParamModal');
+                const settingsModal = document.getElementById('settingsModal');
+                const deviceEditModal = document.getElementById('deviceEditModal');
+                const confirmModal = document.getElementById('confirmModal');
+
+                if (addParamModal && addParamModal.style.display === 'flex') {
+                    this.hideAddParameterModal();
+                } else if (settingsModal && settingsModal.style.display === 'flex') {
+                    this.closeSettingsModal();
+                } else if (deviceEditModal && deviceEditModal.style.display === 'flex') {
+                    const closeBtn = document.getElementById('closeDeviceEditBtn');
+                    if (closeBtn) closeBtn.click();
+                } else if (confirmModal && confirmModal.style.display === 'flex') {
+                    // Confirm modal is handled by its own ESC handler in showConfirm()
+                    const cancelBtn = document.getElementById('confirmCancelBtn');
+                    if (cancelBtn) cancelBtn.click();
+                }
+            }
+        });
+
         // Parameter page device selector (event delegation for radio buttons)
         const paramDeviceRadioGroup = document.getElementById('paramDeviceRadioGroup');
         if (paramDeviceRadioGroup) {
@@ -4796,6 +4820,13 @@ class ModbusDashboard {
                 }
             };
 
+            // Handle ESC key
+            const handleEscKey = (e) => {
+                if (e.key === 'Escape') {
+                    handleCancel();
+                }
+            };
+
             // Cleanup function
             const cleanup = () => {
                 modal.style.display = 'none';
@@ -4803,6 +4834,7 @@ class ModbusDashboard {
                 cancelBtn.removeEventListener('click', handleCancel);
                 closeBtn.removeEventListener('click', handleCancel);
                 modal.removeEventListener('click', handleOutsideClick);
+                document.removeEventListener('keydown', handleEscKey);
             };
 
             // Attach event listeners
@@ -4810,6 +4842,7 @@ class ModbusDashboard {
             cancelBtn.addEventListener('click', handleCancel);
             closeBtn.addEventListener('click', handleCancel);
             modal.addEventListener('click', handleOutsideClick);
+            document.addEventListener('keydown', handleEscKey);
         });
     }
 
