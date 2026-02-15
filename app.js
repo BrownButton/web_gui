@@ -4743,9 +4743,9 @@ class ModbusDashboard {
             return;
         }
 
-        // Update modal title with device name
+        // Update modal title
         if (modalTitle) {
-            modalTitle.textContent = `Device Configuration - ${device.name}`;
+            modalTitle.textContent = 'Device Configuration';
         }
 
         // Clear modal body and create proper flex container structure
