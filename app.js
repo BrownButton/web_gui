@@ -5479,7 +5479,7 @@ class ModbusDashboard {
             </div>
             <div class="device-actions">
                 <button class="btn-action-icon btn-alarm-reset" title="알람 리셋"><svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/></svg></button>
-                <button class="btn-action-icon btn-software-reset" title="소프트웨어 리셋"><svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg></button>
+                <button class="btn-action-icon btn-software-reset" title="소프트웨어 리셋">↺</button>
                 <button class="btn-delete-icon btn-delete" title="Delete device">×</button>
             </div>
         `;
@@ -5714,7 +5714,7 @@ class ModbusDashboard {
                             <select class="param-select">
                                 ${this.generateParameterOptions()}
                             </select>
-                            <button class="btn btn-primary btn-sm add-param-btn">+ Add</button>
+                            <button class="btn btn-success btn-sm add-param-btn">+ Add</button>
                         </div>
                         <div class="add-tab-content" data-tab="manual">
                             <div class="manual-input-row">
@@ -5724,7 +5724,7 @@ class ModbusDashboard {
                                 </select>
                                 <input type="text" class="manual-address" placeholder="0xD001">
                                 <input type="text" class="manual-name" placeholder="Name">
-                                <button class="btn btn-primary btn-sm add-manual-btn">+ Add</button>
+                                <button class="btn btn-success btn-sm add-manual-btn">+ Add</button>
                             </div>
                         </div>
                     </div>
@@ -5733,7 +5733,7 @@ class ModbusDashboard {
             <div class="device-card-footer">
                 <div class="device-footer-left">
                     <button class="btn-action-icon btn-alarm-reset" title="알람 리셋"><svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/></svg></button>
-                    <button class="btn-action-icon btn-software-reset" title="소프트웨어 리셋"><svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg></button>
+                    <button class="btn-action-icon btn-software-reset" title="소프트웨어 리셋">↺</button>
                 </div>
                 <div class="device-footer-right">
                     <button class="btn-edit" title="Edit device">⚙</button>
@@ -7520,7 +7520,7 @@ class ModbusDashboard {
                     return `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: white; margin-bottom: 5px; border-radius: 4px; border: 1px solid #e0e6ed;">
                         <span><strong>ID ${d.slaveId}</strong> - Status: ${d.responseValue}</span>
-                        <button class="btn btn-sm btn-primary add-scanned-device" data-slave-id="${d.slaveId}" ${alreadyAdded ? 'disabled' : ''}>${alreadyAdded ? '추가됨' : '추가'}</button>
+                        <button class="btn btn-sm btn-success add-scanned-device" data-slave-id="${d.slaveId}" ${alreadyAdded ? 'disabled' : ''}>${alreadyAdded ? '추가됨' : '추가'}</button>
                     </div>
                 `;
                 }).join('');

@@ -4122,6 +4122,8 @@ select:focus {
     border: none;
     background: transparent;
     color: #95a5a6;
+    font-size: 18px;
+    line-height: 1;
     cursor: pointer;
     border-radius: 4px;
     display: flex;
