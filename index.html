@@ -133,7 +133,6 @@
                         </div>
                         <div class="sidebar-button-group">
                             <button id="sidebar-connectBtn" class="btn btn-primary btn-block">Connect</button>
-                            <button id="sidebar-disconnectBtn" class="btn btn-secondary btn-block" disabled>Disconnect</button>
                         </div>
                     </div>
                 </div>
@@ -1912,7 +1911,7 @@
                         <span class="add-device-icon">🔢</span>
                         <label for="deviceSlaveId">Slave ID</label>
                     </div>
-                    <input type="number" id="deviceSlaveId" min="0" max="247" value="1">
+                    <input type="number" id="deviceSlaveId" min="0" max="247" value="1" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value>247)this.value=247; if(this.value<0)this.value=0;">
                     <span class="add-device-hint">0 = 미설정 (Auto Assign으로 나중에 할당 가능)</span>
                 </div>
                 <div class="add-device-form-group">

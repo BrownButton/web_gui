@@ -1172,9 +1172,14 @@ class ModbusDashboard {
             });
         });
 
-        // Connection buttons (sidebar)
-        document.getElementById('sidebar-connectBtn').addEventListener('click', () => this.connect());
-        document.getElementById('sidebar-disconnectBtn').addEventListener('click', () => this.disconnect());
+        // Connection button (sidebar) - single toggle
+        document.getElementById('sidebar-connectBtn').addEventListener('click', () => {
+            if (this.isConnected) {
+                this.disconnect();
+            } else {
+                this.connect();
+            }
+        });
 
         // Sync sidebar serial settings with main settings
         this.syncSerialSettings();
@@ -3538,7 +3543,7 @@ class ModbusDashboard {
             return `
                 <div class="device-stats-row">
                     <span class="device-id">ID ${slaveId}</span>
-                    <span class="device-name">${name}</span>
+                    <span class="device-name" title="${name}">${name}</span>
                     <span class="stat-ok">${stats.success}</span>
                     <span class="stat-err">${stats.errors}</span>
                     <span class="stat-rate">${rate}%</span>
@@ -3570,21 +3575,20 @@ class ModbusDashboard {
         const navbarStatusIndicator = document.getElementById('navbar-status-indicator');
         const navbarStatusText = document.getElementById('navbar-status-text');
         const sidebarConnectBtn = document.getElementById('sidebar-connectBtn');
-        const sidebarDisconnectBtn = document.getElementById('sidebar-disconnectBtn');
         const sendBtn = document.getElementById('sendBtn');
         const serialPortMenu = document.getElementById('serialPortMenu');
 
         if (connected) {
             navbarStatusIndicator.className = 'navbar-status-indicator status-connected';
             navbarStatusText.textContent = 'Connected';
-            sidebarConnectBtn.disabled = true;
-            sidebarDisconnectBtn.disabled = false;
+            sidebarConnectBtn.textContent = 'Disconnect';
+            sidebarConnectBtn.className = 'btn btn-secondary btn-block';
             sendBtn.disabled = false;
         } else {
             navbarStatusIndicator.className = 'navbar-status-indicator status-disconnected';
             navbarStatusText.textContent = 'Disconnected';
-            sidebarConnectBtn.disabled = false;
-            sidebarDisconnectBtn.disabled = true;
+            sidebarConnectBtn.textContent = 'Connect';
+            sidebarConnectBtn.className = 'btn btn-primary btn-block';
             sendBtn.disabled = true;
 
             // Open Serial Port menu when disconnected
@@ -4204,45 +4208,45 @@ class ModbusDashboard {
     getDefaultParameters() {
         return [
             // Holding Registers
-            {type:'holding',address:'0xD000',name:'Reset',implemented:'N',description:'Software Reset, Error Reset, EEPROM to RAM'},
+            {type:'holding',address:'0xD000',name:'Reset',implemented:'Y',description:'Software Reset, Error Reset, EEPROM to RAM'},
             {type:'holding',address:'0xD001',name:'Setpoint',implemented:'Y',description:'지령 값, 오픈루프 모드이면 % or 속도모드이면 RPM'},
             {type:'holding',address:'0xD005',name:'Factory setting Control',implemented:'N',description:'공장 초기값 변경 및 적용 용도'},
             {type:'holding',address:'0xD009',name:'Operating hours counter',implemented:'N',description:'65535시간까지 카운트 후 고정'},
             {type:'holding',address:'0xD00A',name:'Operating minutes counter',implemented:'N',description:'0분 to 59분 롤링'},
-            {type:'holding',address:'0xD00D',name:'Stored set value',implemented:'N',description:'Set Point 설정값이 EEPROM에 저장됨'},
-            {type:'holding',address:'0xD00F',name:'Enable/Disable',implemented:'N',description:'서보드라이브의 SVON/SVOFF와 같은 기능'},
-            {type:'holding',address:'0xD100',name:'Fan address',implemented:'N',description:'Node ID와 같은 역할'},
-            {type:'holding',address:'0xD101',name:'Set value source',implemented:'N',description:'Setpoint 수단 설정 (0:AIN1, 1:RS485, 2:AIN2, 3:PWM)'},
-            {type:'holding',address:'0xD102',name:'Preferred running direction',implemented:'N',description:'구동 방향 결정 (0:CCW, 1:CW)'},
-            {type:'holding',address:'0xD106',name:'Operating mode',implemented:'Y',description:'0: Speed Control, 2: Open-loop control'},
-            {type:'holding',address:'0xD112',name:'Motor stop enable',implemented:'N',description:'0: 모터 항상 SVON, 1: set value 0일 경우 SVOFF'},
-            {type:'holding',address:'0xD119',name:'Maximum speed',implemented:'N',description:'토크모드에서의 속도제한 값'},
-            {type:'holding',address:'0xD11A',name:'Maximum permissible speed',implemented:'N',description:'모터 최대 속도'},
-            {type:'holding',address:'0xD11F',name:'Ramp-up curve',implemented:'N',description:'가속도 조정 파라미터'},
+            {type:'holding',address:'0xD00D',name:'Stored set value',implemented:'N',description:'Set Point 설정값이 EEPROM에 저장됨, 급작스러운 전원 공급 중단 및 복구 후 마지막 설정값으로 재시작'},
+            {type:'holding',address:'0xD00F',name:'Enable/Disable',implemented:'N',description:'서보드라이브의 SVON/SVOFF와 같은 기능, 0xD16A(Enable/Disable source)의 값에 따라 적절한 Enable state가 결정'},
+            {type:'holding',address:'0xD100',name:'Fan address',implemented:'Y',description:'Node ID와 같은 역할'},
+            {type:'holding',address:'0xD101',name:'Set value source',implemented:'N',description:'Setpoint를 어떤 수단으로 사용할 것인지 설정 (0:AIN1, 1:RS485, 2:AIN2, 3:PWM)'},
+            {type:'holding',address:'0xD102',name:'Preferred running direction',implemented:'Y',description:'구동 방향 결정 (0:CCW, 1:CW)'},
+            {type:'holding',address:'0xD106',name:'Operating mode',implemented:'Y',description:'모터 제어 방식을 설정합니다. | 0:Speed Control, 2:Open-loop control'},
+            {type:'holding',address:'0xD112',name:'Motor stop enable',implemented:'N',description:'0: set value가 0이더라도 모터 항상 SVON, 1: set value가 0일 경우 모터 SVOFF'},
+            {type:'holding',address:'0xD119',name:'Maximum speed',implemented:'N',description:'센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)'},
+            {type:'holding',address:'0xD11A',name:'Maximum permissible speed',implemented:'N',description:'최대 속도의 상한치를 설정 (모터 최대 속도)'},
+            {type:'holding',address:'0xD11F',name:'Ramp-up curve',implemented:'N',description:'가/감속도 조정 파라미터, 알람 등 모터 정지조건이 감지되면 감속없이 정지함'},
             {type:'holding',address:'0xD120',name:'Ramp-down curve',implemented:'N',description:'감속 곡선 설정'},
-            {type:'holding',address:'0xD12A',name:'Point 1 X-coordinate',implemented:'N',description:'아날로그/PWM 입력 신호 설정값 할당'},
-            {type:'holding',address:'0xD12B',name:'Point 1 Y-coordinate',implemented:'N',description:'아날로그/PWM 입력 신호 설정값 할당'},
-            {type:'holding',address:'0xD12C',name:'Point 2 X-coordinate',implemented:'N',description:'아날로그/PWM 입력 신호 설정값 할당'},
-            {type:'holding',address:'0xD12D',name:'Point 2 Y-coordinate',implemented:'N',description:'아날로그/PWM 입력 신호 설정값 할당'},
-            {type:'holding',address:'0xD12F',name:'Limitation Control',implemented:'N',description:'0비트:Power limit, 1비트:Current Limit'},
+            {type:'holding',address:'0xD12A',name:'Point 1 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',address:'0xD12B',name:'Point 1 Y-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',address:'0xD12C',name:'Point 2 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',address:'0xD12D',name:'Point 2 Y-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',address:'0xD12F',name:'Limitation Control',implemented:'N',description:'0번 비트 set: Power limit 활성화, 1번 비트 set: Current Limit 활성화'},
             {type:'holding',address:'0xD135',name:'Maximum permissible power',implemented:'N',description:'허용 가능한 최대 파워 설정'},
-            {type:'holding',address:'0xD136',name:'Max. power at derating end',implemented:'N',description:'온도 기반 출력 디레이팅'},
-            {type:'holding',address:'0xD137',name:'Module temp power derating start',implemented:'N',description:'모듈 온도 파워 디레이팅 시작점'},
-            {type:'holding',address:'0xD138',name:'Module temp power derating end',implemented:'N',description:'모듈 온도 파워 디레이팅 종료점'},
-            {type:'holding',address:'0xD14D',name:'Motor temp power derating start',implemented:'N',description:'모터 온도 파워 디레이팅 시작'},
-            {type:'holding',address:'0xD14E',name:'Motor temp power derating end',implemented:'N',description:'모터 온도 파워 디레이팅 종료'},
-            {type:'holding',address:'0xD13B',name:'Maximum coil current',implemented:'N',description:'모터 코일전류 제한값'},
-            {type:'holding',address:'0xD145',name:'Speed limit for running monitoring',implemented:'N',description:'실행 모니터링 속도제한 (n_Low)'},
-            {type:'holding',address:'0xD149',name:'Transmission speed',implemented:'N',description:'통신 속도 (0~7: 1200~115200bps)'},
-            {type:'holding',address:'0xD14A',name:'Parity configuration',implemented:'N',description:'패리티 설정 (0~3)'},
-            {type:'holding',address:'0xF150',name:'Shedding function',implemented:'N',description:'팬 구속 상태 제거 기능'},
+            {type:'holding',address:'0xD136',name:'Max. power at derating end',implemented:'N',description:'모듈과 모터의 온도를 토대로 출력을 디레이팅 하는 기능'},
+            {type:'holding',address:'0xD137',name:'Module temperature power derating start',implemented:'N',description:'모듈 온도 파워 디레이팅 시작점'},
+            {type:'holding',address:'0xD138',name:'Module temperature power derating end',implemented:'N',description:'모듈 온도 파워 디레이팅 종료점'},
+            {type:'holding',address:'0xD13B',name:'Maximum coil current',implemented:'Y',description:'전류 제한이 활성화 되면 모터 코일전류(rms값)를 이 파라미터에 설정된 값으로 제한'},
+            {type:'holding',address:'0xD14D',name:'Motor temperature power derating start address',implemented:'N',description:'모터 온도 파워 디레이팅 시작 주소'},
+            {type:'holding',address:'0xD14E',name:'Motor temperature power derating end address',implemented:'N',description:'모터 온도 파워 디레이팅 종료 주소'},
+            {type:'holding',address:'0xD145',name:'Speed limit for running monitoring',implemented:'N',description:'실행 모니터링 속도제한, 속도 피드백이 이 파라미터에 설정된 속도보다 낮을 경우 오류 해제 (n_Low)'},
+            {type:'holding',address:'0xD149',name:'Transmission speed',implemented:'N',description:'RS-485 통신 속도를 설정합니다. | 0:1200bps, 1:2400bps, 2:4800bps, 3:9600bps, 4:19200bps(default), 5:38400bps, 6:57600bps, 7:115200bps'},
+            {type:'holding',address:'0xD14A',name:'Parity configuration',implemented:'N',description:'시리얼 통신의 데이터 비트, 패리티, 스톱 비트를 설정합니다. | 0:Data8/Even/Stop1(default), 1:Data8/Odd/Stop1, 2:Data8/None/Stop2, 3:Data8/None/Stop1'},
+            {type:'holding',address:'0xF150',name:'Shedding function',implemented:'N',description:'외부 환경에 의해 팬이 얼어 기동이 어려울 경우 이 기능 활성화를 통해 구속 상태를 제거'},
             {type:'holding',address:'0xF151',name:'Max. starting modulation level',implemented:'N',description:'최대 시작 모듈레이션 레벨'},
             {type:'holding',address:'0xF152',name:'Number of start attempts',implemented:'N',description:'시작 시도 횟수'},
-            {type:'holding',address:'0xF153',name:'Relay dropout delay',implemented:'N',description:'릴레이 출력 지연시간'},
+            {type:'holding',address:'0xF153',name:'Relay dropout delay',implemented:'N',description:'에러나 경고 감지 시 릴레이 출력 지연시간을 설정하여 단기 이슈일 경우는 무시'},
             {type:'holding',address:'0xD155',name:'Maximum power',implemented:'N',description:'최대 파워 설정'},
-            {type:'holding',address:'0xD158',name:'Configuration of I/O 1',implemented:'N',description:'I/O 1 설정'},
-            {type:'holding',address:'0xD159',name:'Configuration of I/O 2',implemented:'N',description:'I/O 2 설정'},
-            {type:'holding',address:'0xD15A',name:'Configuration of I/O 3',implemented:'N',description:'I/O 3 설정'},
+            {type:'holding',address:'0xD158',name:'Configuration of I/O 1',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
+            {type:'holding',address:'0xD159',name:'Configuration of I/O 2',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
+            {type:'holding',address:'0xD15A',name:'Configuration of I/O 3',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
             {type:'holding',address:'0xD170',name:'Customer data 0',implemented:'N',description:'고객 사용 영역'},
             {type:'holding',address:'0xD171',name:'Customer data 1',implemented:'N',description:'고객 사용 영역'},
             {type:'holding',address:'0xD172',name:'Customer data 2',implemented:'N',description:'고객 사용 영역'},
@@ -4259,10 +4263,10 @@ class ModbusDashboard {
             {type:'holding',address:'0xD17D',name:'Customer data 13',implemented:'N',description:'고객 사용 영역'},
             {type:'holding',address:'0xD17E',name:'Customer data 14',implemented:'N',description:'고객 사용 영역'},
             {type:'holding',address:'0xD17F',name:'Customer data 15',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD180',name:'Operating hours counter (back-up)',implemented:'N',description:'사용시간 백업 저장'},
-            {type:'holding',address:'0xD182',name:'Error indicator',implemented:'Y',description:'가장 최근 에러 파라미터 번호'},
-            {type:'holding',address:'0xD184',name:'Error 1',implemented:'Y',description:'첫 번째 오류 표시'},
-            {type:'holding',address:'0xD185',name:'Error time',implemented:'Y',description:'에러 발생 시간'},
+            {type:'holding',address:'0xD180',name:'Operating hours counter (back-up)',implemented:'N',description:'0xD009의 사용시간을 저장하는 파라미터'},
+            {type:'holding',address:'0xD182',name:'Error indicator',implemented:'N',description:'가장 최근 에러의 파라미터 번호를 표시'},
+            {type:'holding',address:'0xD184',name:'Error 1',implemented:'N',description:'팬에서 발생한 첫 번째 오류 표시'},
+            {type:'holding',address:'0xD185',name:'Error time',implemented:'N',description:'팬에서 발생한 에러를 최대 13개까지 저장'},
             {type:'holding',address:'0xD186',name:'Error history 1',implemented:'N',description:'에러 히스토리 1'},
             {type:'holding',address:'0xD187',name:'Error history time 1',implemented:'N',description:'에러 히스토리 시간 1'},
             {type:'holding',address:'0xD188',name:'Error history 2',implemented:'N',description:'에러 히스토리 2'},
@@ -4289,39 +4293,39 @@ class ModbusDashboard {
             {type:'holding',address:'0xD19D',name:'Error history time 12',implemented:'N',description:'에러 히스토리 시간 12'},
             {type:'holding',address:'0xD19E',name:'Error history 13',implemented:'N',description:'에러 히스토리 13'},
             {type:'holding',address:'0xD19F',name:'Error history time 13',implemented:'N',description:'에러 히스토리 시간 13'},
-            {type:'holding',address:'0xD1A2',name:'Serial Number 1',implemented:'Y',description:'팬 시리얼 번호'},
-            {type:'holding',address:'0xD1A3',name:'Serial Number 2',implemented:'Y',description:'팬 시리얼 번호'},
+            {type:'holding',address:'0xD1A2',name:'Serial Number 1',implemented:'N',description:'팬 시리얼 번호 데이터'},
+            {type:'holding',address:'0xD1A3',name:'Serial Number 2',implemented:'N',description:'팬 시리얼 번호 데이터'},
             {type:'holding',address:'0xD1A4',name:'Date of manufacture',implemented:'N',description:'제조 날짜'},
-            {type:'holding',address:'0xD1A5',name:'FAN type 1',implemented:'Y',description:'ASCII 코드 형태'},
-            {type:'holding',address:'0xD1A6',name:'FAN type 2',implemented:'Y',description:'ASCII 코드 형태'},
-            {type:'holding',address:'0xD1A7',name:'FAN type 3',implemented:'Y',description:'ASCII 코드 형태'},
-            {type:'holding',address:'0xD1A8',name:'FAN type 4',implemented:'Y',description:'ASCII 코드 형태'},
-            {type:'holding',address:'0xD1A9',name:'FAN type 5',implemented:'Y',description:'ASCII 코드 형태'},
-            {type:'holding',address:'0xD1AA',name:'FAN type 6',implemented:'Y',description:'ASCII 코드 형태'},
-            {type:'holding',address:'0xD623',name:'Error Mask',implemented:'Y',description:'에러 마스크 릴레이 출력'},
-            {type:'holding',address:'0xD624',name:'Warning Mask',implemented:'Y',description:'경고 마스크 릴레이 출력'},
+            {type:'holding',address:'0xD1A5',name:'FAN type 1',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',address:'0xD1A6',name:'FAN type 2',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',address:'0xD1A7',name:'FAN type 3',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',address:'0xD1A8',name:'FAN type 4',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',address:'0xD1A9',name:'FAN type 5',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',address:'0xD1AA',name:'FAN type 6',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',address:'0xD623',name:'Error Mask',implemented:'N',description:'마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력'},
+            {type:'holding',address:'0xD624',name:'Warning Mask',implemented:'N',description:'마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력'},
             // Input Registers
-            {type:'input',address:'0xD000',name:'Identification',implemented:'N',description:'장치 식별'},
-            {type:'input',address:'0xD001',name:'Max. number of bytes',implemented:'N',description:'최대 바이트 수'},
-            {type:'input',address:'0xD002',name:'Bus controller software name',implemented:'N',description:'Main 부트버전'},
-            {type:'input',address:'0xD003',name:'Bus controller software version',implemented:'N',description:'Main 펌웨어 버전'},
-            {type:'input',address:'0xD004',name:'Commutation controller software name',implemented:'N',description:'Inverter 부트 버전'},
-            {type:'input',address:'0xD005',name:'Commutation controller software version',implemented:'N',description:'Inverter 펌웨어 버전'},
+            {type:'input',address:'0xD000',name:'Identification',implemented:'Y',description:'장치 식별'},
+            {type:'input',address:'0xD001',name:'Max. number of bytes',implemented:'Y',description:'최대 바이트 수'},
+            {type:'input',address:'0xD002',name:'Bus controller software name',implemented:'Y',description:'Main 부트버전'},
+            {type:'input',address:'0xD003',name:'Bus controller software version',implemented:'Y',description:'Main 펌웨어 버전'},
+            {type:'input',address:'0xD004',name:'Commutation controller software name',implemented:'Y',description:'Inverter 부트 버전'},
+            {type:'input',address:'0xD005',name:'Commutation controller software version',implemented:'Y',description:'Inverter 펌웨어 버전'},
             {type:'input',address:'0xD010',name:'Actual speed (Relative)',implemented:'N',description:'상대 속도'},
             {type:'input',address:'0xD011',name:'Motor status',implemented:'Y',description:'모터 상태'},
-            {type:'input',address:'0xD012',name:'Warning',implemented:'N',description:'경고'},
-            {type:'input',address:'0xD013',name:'DC-link voltage',implemented:'N',description:'DC 링크 전압'},
+            {type:'input',address:'0xD012',name:'Warning',implemented:'Y',description:'경고'},
+            {type:'input',address:'0xD013',name:'DC-link voltage',implemented:'Y',description:'DC 링크 전압'},
             {type:'input',address:'0xD014',name:'DC-link current',implemented:'N',description:'DC 링크 전류'},
-            {type:'input',address:'0xD015',name:'Module temperature',implemented:'N',description:'IGBT Temperature'},
-            {type:'input',address:'0xD016',name:'Motor temperature',implemented:'N',description:'Motor PTC'},
-            {type:'input',address:'0xD017',name:'Electronics temperature',implemented:'N',description:'제어부 온도'},
+            {type:'input',address:'0xD015',name:'Module temperature',implemented:'Y',description:'IGBT Temperature Sensor 값'},
+            {type:'input',address:'0xD017',name:'Electronics temperature',implemented:'Y',description:'제어부 Temperature 값'},
             {type:'input',address:'0xD018',name:'Current direction of rotation',implemented:'N',description:'현재 회전 방향'},
             {type:'input',address:'0xD01A',name:'Current set value',implemented:'N',description:'현재 설정값'},
-            {type:'input',address:'0xD01C',name:'Enable/Disable input state',implemented:'N',description:'Enable/Disable 상태'},
+            {type:'input',address:'0xD01C',name:'Enable/Disable input state',implemented:'N',description:'Enable/Disable 입력 상태'},
             {type:'input',address:'0xD021',name:'Current power (Relative)',implemented:'N',description:'상대 전력'},
-            {type:'input',address:'0xD027',name:'Current power [W] (Absolute)',implemented:'N',description:'절대 전력 [W]'},
-            {type:'input',address:'0xD02D',name:'Actual speed [RPM] (Absolute)',implemented:'N',description:'절대 속도 [RPM]'},
-            {type:'input',address:'0xD03D',name:'Line Voltage',implemented:'N',description:'라인 전압'}
+            {type:'input',address:'0xD02D',name:'Actual speed [RPM] (Absolute)',implemented:'Y',description:'절대 속도 [RPM]'},
+            {type:'input',address:'0xD03D',name:'Line Voltage',implemented:'N',description:'라인 전압'},
+            {type:'input',address:'0xD050',name:'Command speed',implemented:'Y',description:'지령 속도'},
+            {type:'input',address:'0xD051',name:'Command torque',implemented:'Y',description:'지령 토크'}
         ];
     }
 
@@ -5288,6 +5292,12 @@ class ModbusDashboard {
 
         if (!name) {
             this.showToast('장치 이름을 입력해주세요', 'warning');
+            return;
+        }
+
+        if (isNaN(slaveId) || slaveId < 0 || slaveId > 247) {
+            this.showToast('Slave ID는 0~247 사이의 값이어야 합니다', 'error');
+            document.getElementById('deviceSlaveId').focus();
             return;
         }
 
@@ -7205,6 +7215,7 @@ class ModbusDashboard {
                 this.removeMonitoringParam(deviceId, paramId);
             });
         });
+
     }
 
     /**

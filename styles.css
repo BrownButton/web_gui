@@ -226,8 +226,8 @@ body {
 
 .device-stats-row {
     display: grid;
-    grid-template-columns: 50px 1fr 50px 50px 50px;
-    gap: 8px;
+    grid-template-columns: 42px 1fr 40px 40px 44px;
+    gap: 4px;
     padding: 4px 0;
     font-size: 11px;
     border-bottom: 1px solid #f0f0f0;
@@ -1368,9 +1368,9 @@ select:focus {
 }
 
 .format-btn.active {
-    background: #007bff;
+    background: #0ea5e9;
     color: white;
-    border-color: #007bff;
+    border-color: #0ea5e9;
 }
 
 .format-btn:hover:not(.active) {
@@ -1574,9 +1574,9 @@ select:focus {
 }
 
 .filter-btn.active {
-    background: #007bff;
+    background: #0ea5e9;
     color: white;
-    border-color: #007bff;
+    border-color: #0ea5e9;
 }
 
 /* Parameter list header */
@@ -3420,8 +3420,8 @@ select:focus {
 }
 
 .mode-toggle .mode-btn.active {
-    background: #007bff;
-    border-color: #007bff;
+    background: #0ea5e9;
+    border-color: #0ea5e9;
     color: white;
 }
 
@@ -3759,7 +3759,7 @@ select:focus {
 }
 
 .all-device-mode-toggle .mode-btn.active {
-    background: #007bff;
+    background: #0ea5e9;
     color: white;
 }
 
@@ -3886,9 +3886,9 @@ select:focus {
 }
 
 .mode-btn.active {
-    background: #007bff;
+    background: #0ea5e9;
     color: white;
-    border-color: #007bff;
+    border-color: #0ea5e9;
 }
 
 .mode-btn:hover:not(.active) {
@@ -4309,9 +4309,9 @@ select:focus {
 }
 
 .device-mode-btns .mode-btn.active {
-    background: #007bff;
+    background: #0ea5e9;
     color: white;
-    border-color: #007bff;
+    border-color: #0ea5e9;
 }
 
 .device-mode-btns .mode-btn:hover:not(.active) {
@@ -4553,7 +4553,7 @@ select:focus {
 /* Monitoring Parameters List */
 .monitoring-params-list {
     margin-bottom: 15px;
-    max-height: 200px;
+    height: 200px;
     overflow-y: auto;
 }
 
@@ -4658,9 +4658,9 @@ select:focus {
 }
 
 .add-tab.active {
-    background: #007bff;
+    background: #0ea5e9;
     color: white;
-    border-color: #007bff;
+    border-color: #0ea5e9;
 }
 
 .add-tab-content {
@@ -4728,13 +4728,19 @@ select:focus {
 
 /* Empty State */
 .monitoring-empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
     text-align: center;
-    padding: 20px 15px;
     color: #6c757d;
     font-size: 13px;
     background: white;
     border: 1px dashed #dee2e6;
     border-radius: 6px;
+    box-sizing: border-box;
 }
 
 /* Radio Group */
@@ -4934,9 +4940,9 @@ select:focus {
 }
 
 .view-mode-btn.active {
-    background: #007bff;
+    background: #0ea5e9;
     color: white;
-    border-color: #007bff;
+    border-color: #0ea5e9;
 }
 
 .view-mode-btn:hover:not(.active) {
