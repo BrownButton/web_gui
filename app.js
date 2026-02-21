@@ -1412,6 +1412,24 @@ class ModbusDashboard {
         statsTooltip.addEventListener('click', (e) => {
             e.stopPropagation();
         });
+
+        // Clear stats button
+        const clearBtn = document.getElementById('clearStatsBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.resetStats();
+            });
+        }
+    }
+
+    /**
+     * Reset communication statistics
+     */
+    resetStats() {
+        this.stats = { requests: 0, success: 0, errors: 0 };
+        this.deviceStats = {};
+        this.updateStatsDisplay();
     }
 
     /**
@@ -3514,6 +3532,13 @@ class ModbusDashboard {
             if (el) el.textContent = value;
         }
 
+        // ERR/N 최대 자릿수(baseFrameCount + ".0")에 맞춰 너비 고정
+        const errRateEl = document.getElementById('navStatErrorRate');
+        if (errRateEl) {
+            const maxChars = String(this.baseFrameCount).length + 2; // e.g. 1000 → "1000.0" = 6
+            errRateEl.style.minWidth = maxChars + 'ch';
+        }
+
         // Update per-device stats
         this.updateDeviceStatsDisplay();
     }
@@ -3542,14 +3567,56 @@ class ModbusDashboard {
 
             return `
                 <div class="device-stats-row">
-                    <span class="device-id">ID ${slaveId}</span>
-                    <span class="device-name" title="${name}">${name}</span>
+                    <div class="stats-device-info">
+                        <span class="device-id-badge">ID: ${slaveId}</span>
+                        <span class="device-name" data-devname="${name}">${name}</span>
+                    </div>
                     <span class="stat-ok">${stats.success}</span>
                     <span class="stat-err">${stats.errors}</span>
                     <span class="stat-rate">${rate}%</span>
                 </div>
             `;
         }).join('');
+
+        this.setupDeviceNameTooltips(container);
+    }
+
+    setupDeviceNameTooltips(container) {
+        let tip = document.getElementById('devNameFloatTip');
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.id = 'devNameFloatTip';
+            tip.style.cssText = [
+                'position:fixed',
+                'background:rgba(44,62,80,0.95)',
+                'color:#fff',
+                'padding:4px 10px',
+                'border-radius:4px',
+                'font-size:12px',
+                'white-space:nowrap',
+                'z-index:99999',
+                'pointer-events:none',
+                'display:none',
+                'box-shadow:0 2px 6px rgba(0,0,0,0.3)'
+            ].join(';');
+            document.body.appendChild(tip);
+        }
+
+        container.querySelectorAll('.device-name[data-devname]').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                if (el.scrollWidth > el.clientWidth) {
+                    tip.textContent = el.dataset.devname;
+                    tip.style.display = 'block';
+                }
+            });
+            el.addEventListener('mousemove', (e) => {
+                tip.style.left = (e.clientX + 14) + 'px';
+                tip.style.top  = (e.clientY - 32) + 'px';
+            });
+            el.addEventListener('mouseleave', () => {
+                tip.style.display = 'none';
+            });
+        });
     }
 
     /**

@@ -88,7 +88,7 @@ body {
     transition: transform 0.2s;
 }
 
-.navbar-stat-item:hover {
+.navbar-stats:hover .navbar-stat-item {
     transform: translateY(-2px);
 }
 
@@ -104,6 +104,9 @@ body {
     font-size: 14px;
     font-weight: 600;
     color: #2c3e50;
+    min-width: 3ch;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
 }
 
 .navbar-connection {
@@ -187,12 +190,34 @@ body {
 }
 
 .stats-tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 13px;
     font-weight: 600;
     color: #2c3e50;
     margin-bottom: 12px;
     padding-bottom: 8px;
     border-bottom: 2px solid #e0e6ed;
+}
+
+.stats-clear-btn {
+    font-size: 10px;
+    font-weight: 500;
+    color: #6c757d;
+    background: none;
+    border: 1px solid #ced4da;
+    border-radius: 3px;
+    padding: 2px 7px;
+    cursor: pointer;
+    line-height: 1.4;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.stats-clear-btn:hover {
+    color: #dc3545;
+    border-color: #dc3545;
+    background: #fff5f5;
 }
 
 .stats-tooltip-row {
@@ -226,9 +251,9 @@ body {
 
 .device-stats-row {
     display: grid;
-    grid-template-columns: 42px 1fr 40px 40px 44px;
+    grid-template-columns: 1fr 40px 40px 44px;
     gap: 4px;
-    padding: 4px 0;
+    padding: 5px 0;
     font-size: 11px;
     border-bottom: 1px solid #f0f0f0;
     align-items: center;
@@ -238,16 +263,32 @@ body {
     border-bottom: none;
 }
 
-.device-stats-row .device-id {
-    font-weight: 600;
-    color: #2c3e50;
+.stats-device-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
 }
 
-.device-stats-row .device-name {
-    color: #6c757d;
+.stats-device-info .device-id-badge {
+    font-size: 10px;
+    padding: 1px 5px;
+    flex-shrink: 0;
+}
+
+.stats-device-info .device-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #2c3e50;
+    cursor: default;
+    padding: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.stats-device-info .device-name:hover {
+    background: none;
 }
 
 .device-stats-row .stat-ok {

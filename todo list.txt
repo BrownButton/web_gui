@@ -12,7 +12,8 @@
 + 비밀 manufacture 탭 추가
 
 - Communication Statistics 값 클리어 기능
-- Communication Statistics에서 Device 이름 부분이 짤림
++ Communication Statistics에서 Device 이름 부분이 짤림
+- 사이즈가 바뀜
 
 - Dashboard에서 Setpoint 를 설정하고 재연결했을때 이전 값이 남아있음
 
