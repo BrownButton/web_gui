@@ -1,17 +1,27 @@
 /**
- * OS Test Manager
- * Manufacture 탭의 OS 검증 테스트를 관리하는 클래스
+ * OS Test Manager - Base Class
+ * Manufacture 탭의 OS 검증 테스트를 관리하는 기본 클래스
  *
- * 기능:
- * - 테스트 데이터 관리 (RS485, Modbus RTU, Open-loop Control 등)
- * - 자동화된 테스트 실행
- * - 실시간 로그 출력 및 진행 상황 표시
- * - 테스트 결과 저장 및 표시
+ * 테스트 모듈은 각 카테고리별 파일(os-test-rs485.js, os-test-modbus.js 등)에
+ * 정의되어 window.OSTestModules 배열에 자기 등록 방식으로 적재된다.
+ *
+ * 로딩 순서: os-test-manager.js → os-test-*.js → app.js
  */
+
+// 각 모듈 파일이 자신의 테스트를 등록하는 전역 레지스트리
+window.OSTestModules = window.OSTestModules || [];
 
 class OSTestManager {
     constructor() {
-        this.tests = this.initializeTests();
+        this.tests = {};
+        this.executors = {};
+
+        // 모듈 파일들이 등록한 테스트/실행함수를 병합
+        window.OSTestModules.forEach(module => {
+            Object.assign(this.tests, module.tests);
+            Object.assign(this.executors, module.executors);
+        });
+
         this.results = this.loadResults();
         this.currentTest = null;
         this.isTestRunning = false;
@@ -19,91 +29,7 @@ class OSTestManager {
         this.currentStepIndex = 0;
     }
 
-    initializeTests() {
-        return {
-            'rs485-1': {
-                id: 'rs485-1',
-                category: 'RS485',
-                number: '1',
-                title: 'Node ID 설정',
-                description: 'RS485 통신 기본 기능 검증',
-                purpose: '예지보전 툴을 이용해 Node ID 설정이 되는지 확인한다',
-                model: 'EC-FAN',
-                equipment: 'EC FAN 1EA, USB to RS485 Converter, EC FAN Configurator',
-                steps: [
-                    'USB to 485 컨버터를 이용하여 EC FAN과 노트북을 서로 연결한다.',
-                    'EC FAN Control 프로그램을 실행 후 COM Port: USB to 485 Converter 접속 포트와 Baudrate: 19200, Parity: Even으로 설정 후 접속 버튼을 누른다.\n(Baudrate 19,200bps, Even Parity 조건은 공장 출하 상태에서의 초기 값이며, 이 값이 팬 드라이브 설정과 다를 경우 접속이 되지 않으므로 유의)',
-                    'Setting 메뉴에 진입 후 Node ID 항목에 0을 입력한다.\n(설정된 Node의 파라미터가 갱신되는 구조, Broadcasting ID를 통해 설정된 Node ID 확인 목적)',
-                    '[0x2003] Node ID의 값을 1로 설정한다.',
-                    'Save to Memory 버튼을 눌러 파라미터를 저장한다.',
-                    '전원 재 투입 후 통신을 재 연결 한다.',
-                    'Setting 메뉴의 Node ID에 1을 입력한다.',
-                    '파라미터가 올라오는 것을 확인한다.'
-                ],
-                criteria: '설정 Node ID 입력 시 Device, SW Ver, Boot Ver 출력',
-                notes: [
-                    'A) EC Fan Control 프로그램 접속 방법',
-                    'B) Node ID 설정 방법'
-                ]
-            },
-            'modbus-1': {
-                id: 'modbus-1',
-                category: 'Modbus RTU',
-                number: '1',
-                title: 'FC03 Read Holding Register',
-                description: 'Modbus RTU 프로토콜 기본 기능',
-                purpose: 'Modbus RTU Read Holding Register [0x03] 명령 입력 시 동작을 확인한다.',
-                model: 'EC-FAN',
-                equipment: 'EC FAN 1EA (Node Address 1로 설정), USB to RS485 Converter',
-                steps: [
-                    'USB to RS485 Converter를 이용하여 EC FAN과 노트북을 연결한다.',
-                    'COM Port 접속 설정 (Baud: 19200bps, Parity: Even) 후 연결 확인한다.',
-                    'FC03 명령 전송 - Setpoint [0xD001] 읽기\n→ 01 03 D0 01 00 01 ED 0A',
-                    '수신 응답 확인: 01 03 02 [Hi] [Lo] [CRC Hi] [CRC Lo]\n→ Set Point 값이 0x0000인지 확인한다.',
-                    '판정: Value = 0x0000이면 합격'
-                ],
-                criteria: 'FC03 응답 정상 수신 및 Value = 0x0000 (Set Point = 0)'
-            },
-            'modbus-2': {
-                id: 'modbus-2',
-                category: 'Modbus RTU',
-                number: '2',
-                title: 'FC04 Read Input Register',
-                description: 'Read Input Register 기능 검증',
-                purpose: 'Modbus RTU Read Input Register [0x04] 명령 입력 시 동작을 확인한다.',
-                model: 'EC-FAN',
-                equipment: 'EC FAN 1EA (Node Address 1로 설정), USB to RS485 Converter',
-                steps: [
-                    'USB to RS485 Converter를 이용하여 EC FAN과 노트북을 연결한다.',
-                    'COM Port 접속 설정 (Baud: 19200bps, Parity: Even) 후 연결 확인한다.',
-                    'FC04 명령 전송 - Identification [0xD000] 읽기\n→ 01 04 D0 00 00 01 09 0A',
-                    '수신 응답 확인: 01 04 02 [Hi] [Lo] [CRC Hi] [CRC Lo]\n→ Identification 값이 0x4242인지 확인한다.',
-                    '판정: Value = 0x4242이면 합격'
-                ],
-                criteria: 'FC04 응답 정상 수신 및 Value = 0x4242 (Identification)'
-            },
-            'modbus-3': {
-                id: 'modbus-3',
-                category: 'Modbus RTU',
-                number: '3',
-                title: 'FC06 Write Single Register',
-                description: 'Write Single Register 기능 검증',
-                purpose: 'Modbus RTU Write Single Register [0x06] 명령 입력 시 동작을 확인한다.',
-                model: 'EC-FAN',
-                equipment: 'EC FAN 1EA (Node Address 1로 설정), USB to RS485 Converter',
-                steps: [
-                    'USB to RS485 Converter를 이용하여 EC FAN과 노트북을 연결한다.',
-                    'COM Port 접속 설정 (Baud: 19200bps, Parity: Even) 후 연결 확인한다.',
-                    'FC03으로 현재 Setpoint 값 읽기 [0xD001]',
-                    'FC06 명령 전송 - Setpoint [0xD001] = 1 쓰기\n→ 01 06 D0 01 00 01 21 0A',
-                    '수신 응답(echo) 확인: 01 06 D0 01 00 01 21 0A\n→ 송신 데이터와 수신 데이터가 동일한지 확인한다.',
-                    'FC03으로 다시 읽어 값 검증 (값 = 1 이어야 함)',
-                    '원래 Setpoint 값으로 복원'
-                ],
-                criteria: 'FC06 응답이 송신 데이터와 동일하게 echo되면 합격'
-            }
-        };
-    }
+    // ==================== 결과 저장/로드 ====================
 
     loadResults() {
         const saved = localStorage.getItem('osTestResults');
@@ -124,23 +50,24 @@ class OSTestManager {
 
     setTestResult(testId, result, notes = '') {
         this.results[testId] = {
-            result: result, // 'pass' or 'fail'
+            result: result,
             notes: notes,
             timestamp: new Date().toISOString(),
-            completedSteps: result === 'pass' ? this.tests[testId].steps.length : 0
+            completedSteps: result === 'pass' ? (this.tests[testId]?.steps.length || 0) : 0
         };
         this.saveResults();
         this.updateTestStatus();
     }
+
+    // ==================== UI 상태 업데이트 ====================
 
     updateTestStatus() {
         const total = Object.keys(this.tests).length;
         const passed = Object.values(this.results).filter(r => r.result === 'pass').length;
         const failed = Object.values(this.results).filter(r => r.result === 'fail').length;
         const pending = total - passed - failed;
-        const progress = Math.round((passed / total) * 100);
+        const progress = total > 0 ? Math.round((passed / total) * 100) : 0;
 
-        // Update UI
         const totalEl = document.getElementById('osTestTotal');
         const passedEl = document.getElementById('osTestPassed');
         const failedEl = document.getElementById('osTestFailed');
@@ -153,29 +80,24 @@ class OSTestManager {
         if (pendingEl) pendingEl.textContent = pending;
         if (progressEl) progressEl.textContent = progress + '%';
 
-        // Update test item status badges
         Object.keys(this.tests).forEach(testId => {
             const testItem = document.querySelector(`.os-test-item[data-test-id="${testId}"]`);
-            if (testItem) {
-                const badge = testItem.querySelector('.test-status-badge');
-                const result = this.results[testId];
-                if (badge) {
-                    if (result) {
-                        if (result.result === 'pass') {
-                            badge.textContent = 'Passed';
-                            badge.style.background = '#d4edda';
-                            badge.style.color = '#155724';
-                        } else if (result.result === 'fail') {
-                            badge.textContent = 'Failed';
-                            badge.style.background = '#f8d7da';
-                            badge.style.color = '#721c24';
-                        }
-                    } else {
-                        badge.textContent = 'Pending';
-                        badge.style.background = '#e9ecef';
-                        badge.style.color = '#6c757d';
-                    }
-                }
+            if (!testItem) return;
+            const badge = testItem.querySelector('.test-status-badge');
+            const result = this.results[testId];
+            if (!badge) return;
+            if (result?.result === 'pass') {
+                badge.textContent = 'Passed';
+                badge.style.background = '#d4edda';
+                badge.style.color = '#155724';
+            } else if (result?.result === 'fail') {
+                badge.textContent = 'Failed';
+                badge.style.background = '#f8d7da';
+                badge.style.color = '#721c24';
+            } else {
+                badge.textContent = 'Pending';
+                badge.style.background = '#e9ecef';
+                badge.style.color = '#6c757d';
             }
         });
     }
@@ -191,17 +113,16 @@ class OSTestManager {
         const expandIcon = testItem.querySelector('.test-expand-icon');
         const isExpanded = testContent.style.display === 'block';
 
-        // Close all other test items first
+        // 다른 항목 모두 닫기
         document.querySelectorAll('.os-test-item').forEach(item => {
             const content = item.querySelector('.os-test-content');
             const icon = item.querySelector('.test-expand-icon');
-            if (content && content.style.display === 'block') {
+            if (content?.style.display === 'block') {
                 content.style.display = 'none';
                 if (icon) icon.style.transform = 'rotate(0deg)';
             }
         });
 
-        // Toggle current item
         if (!isExpanded) {
             this.currentTest = testId;
             this.currentStepIndex = 0;
@@ -209,34 +130,22 @@ class OSTestManager {
             this.shouldStopTest = false;
             const result = this.getTestResult(testId);
 
-            // Build steps list with status indicators
+            // 단계 목록 렌더링
             const stepsList = testItem.querySelector('.test-steps-list');
             if (stepsList) {
                 stepsList.innerHTML = '';
                 test.steps.forEach((step, index) => {
                     const stepDiv = document.createElement('div');
                     stepDiv.id = `test-step-${testId}-${index}`;
-                    stepDiv.style.display = 'flex';
-                    stepDiv.style.gap = '12px';
-                    stepDiv.style.alignItems = 'flex-start';
-                    stepDiv.style.padding = '8px 12px';
-                    stepDiv.style.background = '#f8f9fa';
-                    stepDiv.style.borderRadius = '4px';
+                    stepDiv.style.cssText = 'display:flex;gap:12px;align-items:flex-start;padding:8px 12px;background:#f8f9fa;border-radius:4px;';
                     stepDiv.innerHTML = `
-                        <div class="step-status" style="margin-top: 2px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #e9ecef; color: #6c757d; font-size: 11px; font-weight: 600;">
-                            ${index + 1}
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="font-size: 12px; color: #1a1a1a; line-height: 1.5;">
-                                ${step.replace(/\n/g, '<br>')}
-                            </div>
-                        </div>
+                        <div class="step-status" style="margin-top:2px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e9ecef;color:#6c757d;font-size:11px;font-weight:600;">${index + 1}</div>
+                        <div style="flex:1;"><div style="font-size:12px;color:#1a1a1a;line-height:1.5;">${step.replace(/\n/g, '<br>')}</div></div>
                     `;
                     stepsList.appendChild(stepDiv);
                 });
             }
 
-            // Reset test controls
             const startBtn = testItem.querySelector('.test-start-btn');
             const stopBtn = testItem.querySelector('.test-stop-btn');
             const progressBar = testItem.querySelector('.test-progress-bar');
@@ -247,80 +156,50 @@ class OSTestManager {
             if (progressBar) progressBar.style.width = '0%';
             if (progressText) progressText.textContent = '테스트를 시작하려면 Start Test 버튼을 클릭하세요';
 
-            // Clear log
             this.clearLog(testId);
 
-            // Load saved notes
             const notesTextarea = testItem.querySelector('.test-notes');
             if (notesTextarea) {
-                if (result && result.notes) {
-                    notesTextarea.value = result.notes;
-                } else {
-                    notesTextarea.value = '';
-                }
+                notesTextarea.value = result?.notes || '';
             }
 
-            // Show result if exists
             const resultDisplay = testItem.querySelector('.test-result-display');
             const resultPending = testItem.querySelector('.test-result-pending');
             if (result) {
-                this.displayTestResult(result.result, {
-                    timestamp: result.timestamp,
-                    notes: result.notes
-                }, testId);
+                this.displayTestResult(result.result, { timestamp: result.timestamp, notes: result.notes }, testId);
             } else {
                 if (resultDisplay) resultDisplay.style.display = 'none';
                 if (resultPending) resultPending.style.display = 'block';
             }
 
-            // Expand
             testContent.style.display = 'block';
             expandIcon.style.transform = 'rotate(180deg)';
-
-            // Scroll into view
-            setTimeout(() => {
-                testItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 100);
+            setTimeout(() => testItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
         } else {
-            // Collapse
             testContent.style.display = 'none';
             expandIcon.style.transform = 'rotate(0deg)';
             this.currentTest = null;
         }
     }
 
-    // Log management
+    // ==================== 로그 ====================
+
     addLog(message, type = 'info') {
         if (!this.currentTest) return;
-
         const testItem = document.querySelector(`.os-test-item[data-test-id="${this.currentTest}"]`);
         if (!testItem) return;
-
         const logContainer = testItem.querySelector('.test-log-container');
         if (!logContainer) return;
 
+        const colors = { success: '#4ade80', error: '#f87171', warning: '#fbbf24', step: '#60a5fa' };
+        const prefixes = { success: '[SUCCESS]', error: '[ERROR]', warning: '[WARNING]', step: '[STEP]' };
+        const color = colors[type] || '#d4d4d4';
+        const prefix = prefixes[type] || '[INFO]';
+        const timestamp = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+
         const logEntry = document.createElement('div');
         logEntry.style.marginBottom = '4px';
-
-        const timestamp = new Date().toLocaleTimeString('ko-KR', { hour12: false });
-        let color = '#d4d4d4';
-        let prefix = '[INFO]';
-
-        if (type === 'success') {
-            color = '#4ade80';
-            prefix = '[SUCCESS]';
-        } else if (type === 'error') {
-            color = '#f87171';
-            prefix = '[ERROR]';
-        } else if (type === 'warning') {
-            color = '#fbbf24';
-            prefix = '[WARNING]';
-        } else if (type === 'step') {
-            color = '#60a5fa';
-            prefix = '[STEP]';
-        }
-
-        logEntry.innerHTML = `<span style="color: #6c757d;">[${timestamp}]</span> <span style="color: ${color};">${prefix}</span> ${message}`;
+        logEntry.innerHTML = `<span style="color:#6c757d;">[${timestamp}]</span> <span style="color:${color};">${prefix}</span> ${message}`;
         logContainer.appendChild(logEntry);
         logContainer.scrollTop = logContainer.scrollHeight;
     }
@@ -328,71 +207,53 @@ class OSTestManager {
     clearLog(testId = null) {
         const id = testId || this.currentTest;
         if (!id) return;
-
         const testItem = document.querySelector(`.os-test-item[data-test-id="${id}"]`);
-        if (!testItem) return;
-
-        const logContainer = testItem.querySelector('.test-log-container');
+        const logContainer = testItem?.querySelector('.test-log-container');
         if (logContainer) {
-            logContainer.innerHTML = '<div style="color: #6c757d;">테스트 로그가 여기에 표시됩니다...</div>';
+            logContainer.innerHTML = '<div style="color:#6c757d;">테스트 로그가 여기에 표시됩니다...</div>';
         }
     }
 
-    // Step status management
+    // ==================== 단계/진행 상태 ====================
+
     updateStepStatus(index, status) {
         if (!this.currentTest) return;
-
         const stepEl = document.getElementById(`test-step-${this.currentTest}-${index}`);
         if (!stepEl) return;
-
         const statusEl = stepEl.querySelector('.step-status');
 
-        if (status === 'running') {
-            stepEl.style.background = '#e0e7ff';
-            stepEl.style.borderLeft = '3px solid #667eea';
-            statusEl.style.background = '#667eea';
-            statusEl.style.color = 'white';
-            statusEl.innerHTML = '⏳';
-        } else if (status === 'success') {
-            stepEl.style.background = '#d4edda';
-            stepEl.style.borderLeft = '3px solid #28a745';
-            statusEl.style.background = '#28a745';
-            statusEl.style.color = 'white';
-            statusEl.innerHTML = '✓';
-        } else if (status === 'error') {
-            stepEl.style.background = '#f8d7da';
-            stepEl.style.borderLeft = '3px solid #dc3545';
-            statusEl.style.background = '#dc3545';
-            statusEl.style.color = 'white';
-            statusEl.innerHTML = '✗';
-        }
+        const styles = {
+            running: { bg: '#e0e7ff', border: '#667eea', dot: '#667eea', icon: '⏳' },
+            success: { bg: '#d4edda', border: '#28a745', dot: '#28a745', icon: '✓' },
+            error:   { bg: '#f8d7da', border: '#dc3545', dot: '#dc3545', icon: '✗' }
+        };
+        const s = styles[status];
+        if (!s) return;
+        stepEl.style.background = s.bg;
+        stepEl.style.borderLeft = `3px solid ${s.border}`;
+        statusEl.style.background = s.dot;
+        statusEl.style.color = 'white';
+        statusEl.innerHTML = s.icon;
     }
 
-    // Progress management
     updateProgress(percent, message) {
         if (!this.currentTest) return;
-
         const testItem = document.querySelector(`.os-test-item[data-test-id="${this.currentTest}"]`);
         if (!testItem) return;
-
         const progressBar = testItem.querySelector('.test-progress-bar');
         const progressText = testItem.querySelector('.test-progress-text');
-
         if (progressBar) progressBar.style.width = percent + '%';
         if (progressText) progressText.textContent = message;
     }
 
-    // Test result display
     displayTestResult(result, details = {}, testId = null) {
         const id = testId || this.currentTest;
         if (!id) return;
-
         const testItem = document.querySelector(`.os-test-item[data-test-id="${id}"]`);
         if (!testItem) return;
 
         const resultDisplay = testItem.querySelector('.test-result-display');
         const resultPending = testItem.querySelector('.test-result-pending');
-
         if (resultPending) resultPending.style.display = 'none';
         if (resultDisplay) resultDisplay.style.display = 'block';
 
@@ -400,28 +261,25 @@ class OSTestManager {
         const bgColor = isPass ? '#d4edda' : '#f8d7da';
         const borderColor = isPass ? '#28a745' : '#dc3545';
         const textColor = isPass ? '#155724' : '#721c24';
-        const icon = isPass ? '✓' : '✗';
-        const resultText = isPass ? '합격 (PASS)' : '불합격 (FAIL)';
 
-        let html = `
-            <div style="padding: 14px; background: ${bgColor}; border-left: 4px solid ${borderColor}; border-radius: 4px;">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
-                    <div style="width: 28px; height: 28px; background: ${borderColor}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700;">
-                        ${icon}
+        if (resultDisplay) {
+            resultDisplay.innerHTML = `
+                <div style="padding:14px;background:${bgColor};border-left:4px solid ${borderColor};border-radius:4px;">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+                        <div style="width:28px;height:28px;background:${borderColor};color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">${isPass ? '✓' : '✗'}</div>
+                        <div style="flex:1;">
+                            <div style="font-size:15px;font-weight:600;color:${textColor};">${isPass ? '합격 (PASS)' : '불합격 (FAIL)'}</div>
+                            ${details.timestamp ? `<div style="font-size:11px;color:${textColor};opacity:0.8;margin-top:2px;">${new Date(details.timestamp).toLocaleString('ko-KR')}</div>` : ''}
+                        </div>
                     </div>
-                    <div style="flex: 1;">
-                        <div style="font-size: 15px; font-weight: 600; color: ${textColor};">${resultText}</div>
-                        ${details.timestamp ? `<div style="font-size: 11px; color: ${textColor}; opacity: 0.8; margin-top: 2px;">${new Date(details.timestamp).toLocaleString('ko-KR')}</div>` : ''}
-                    </div>
+                    ${details.message ? `<div style="font-size:12px;color:${textColor};margin-top:6px;">${details.message}</div>` : ''}
                 </div>
-                ${details.message ? `<div style="font-size: 12px; color: ${textColor}; margin-top: 6px;">${details.message}</div>` : ''}
-            </div>
-        `;
-
-        if (resultDisplay) resultDisplay.innerHTML = html;
+            `;
+        }
     }
 
-    // Test execution control
+    // ==================== 테스트 실행 제어 ====================
+
     async executeTest() {
         if (this.isTestRunning) return;
         if (!this.currentTest) return;
@@ -429,16 +287,20 @@ class OSTestManager {
         const test = this.getTest(this.currentTest);
         if (!test) return;
 
+        const executor = this.executors[this.currentTest];
+        if (!executor) {
+            this.addLog(`지원하지 않는 테스트입니다: ${this.currentTest}`, 'error');
+            return;
+        }
+
         this.isTestRunning = true;
         this.shouldStopTest = false;
         this.currentStepIndex = 0;
 
-        // Get test item UI elements
         const testItem = document.querySelector(`.os-test-item[data-test-id="${this.currentTest}"]`);
-        const startBtn = testItem ? testItem.querySelector('.test-start-btn') : null;
-        const stopBtn = testItem ? testItem.querySelector('.test-stop-btn') : null;
+        const startBtn = testItem?.querySelector('.test-start-btn');
+        const stopBtn = testItem?.querySelector('.test-stop-btn');
 
-        // Update UI
         if (startBtn) startBtn.style.display = 'none';
         if (stopBtn) stopBtn.style.display = 'inline-block';
         this.clearLog();
@@ -446,26 +308,13 @@ class OSTestManager {
         this.updateProgress(0, '테스트 초기화 중...');
 
         try {
-            // Execute test based on test ID
-            let result;
-            if (this.currentTest === 'rs485-1') {
-                result = await this.executeRS485Test1();
-            } else if (this.currentTest === 'modbus-1') {
-                result = await this.executeModbusTest1();
-            } else if (this.currentTest === 'modbus-2') {
-                result = await this.executeModbusTest2();
-            } else if (this.currentTest === 'modbus-3') {
-                result = await this.executeModbusTest3();
-            } else {
-                throw new Error('지원하지 않는 테스트입니다.');
-            }
+            // executor는 모듈 파일에서 등록된 함수, this 바인딩으로 호출
+            const result = await executor.call(this);
 
-            // Save result
-            const notesTextarea = testItem ? testItem.querySelector('.test-notes') : null;
+            const notesTextarea = testItem?.querySelector('.test-notes');
             const notes = notesTextarea ? notesTextarea.value : '';
             this.setTestResult(this.currentTest, result.status, notes + '\n\n' + result.details);
 
-            // Display result
             this.displayTestResult(result.status, {
                 timestamp: new Date().toISOString(),
                 message: result.message
@@ -494,564 +343,10 @@ class OSTestManager {
         this.addLog('사용자가 테스트를 중단했습니다.', 'warning');
     }
 
-    // RS485 Test 1: Node ID 설정 자동화
-    async executeRS485Test1() {
-        const test = this.getTest('rs485-1');
-        let details = '';
+    // ==================== 공통 Modbus 헬퍼 ====================
 
-        try {
-            // Step 0: 연결 확인
-            this.updateStepStatus(0, 'running');
-            this.addLog('Step 1: 시리얼 포트 연결 확인 중...', 'step');
-            this.updateProgress(10, 'Step 1/8: 시리얼 포트 연결 확인');
-
-            if (!window.dashboard || !window.dashboard.port) {
-                throw new Error('시리얼 포트가 연결되지 않았습니다. 먼저 포트를 연결해주세요.');
-            }
-
-            this.addLog('✓ 시리얼 포트 연결 확인 완료', 'success');
-            this.updateStepStatus(0, 'success');
-            details += 'Step 1: 시리얼 포트 연결 확인 완료\n';
-            await this.delay(500);
-
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 1: 현재 통신 설정 확인
-            this.updateStepStatus(1, 'running');
-            this.addLog('Step 2: 통신 설정 확인 중... (Baudrate: 19200, Parity: Even)', 'step');
-            this.updateProgress(20, 'Step 2/8: 통신 설정 확인');
-
-            // 현재 baudrate와 parity 확인
-            const currentBaud = document.getElementById('sidebar-baudRate').value;
-            const currentParity = document.getElementById('sidebar-parity').value;
-            this.addLog(`현재 설정 - Baudrate: ${currentBaud}, Parity: ${currentParity}`, 'info');
-
-            if (currentBaud !== '19200' || currentParity !== 'even') {
-                this.addLog('⚠ 권장 설정(19200, Even)과 다릅니다. 계속 진행합니다.', 'warning');
-                details += `Step 2: 통신 설정 - Baudrate: ${currentBaud}, Parity: ${currentParity} (권장: 19200, Even)\n`;
-            } else {
-                this.addLog('✓ 통신 설정 확인 완료', 'success');
-                details += 'Step 2: 통신 설정 확인 완료 (19200, Even)\n';
-            }
-
-            this.updateStepStatus(1, 'success');
-            await this.delay(500);
-
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 2: Broadcasting ID(0)로 통신 시도
-            this.updateStepStatus(2, 'running');
-            this.addLog('Step 3: Broadcasting ID(0)로 Node ID 읽기 시도...', 'step');
-            this.updateProgress(30, 'Step 3/8: Broadcasting ID 통신');
-
-            try {
-                const nodeIdAddr = 0x2003;
-                const nodeIdValue = await this.readParameter(0, nodeIdAddr);
-                this.addLog(`✓ Broadcasting ID(0)로 Node ID 읽기 성공: ${nodeIdValue}`, 'success');
-                details += `Step 3: Broadcasting ID로 Node ID 읽기 성공 (현재 값: ${nodeIdValue})\n`;
-                this.updateStepStatus(2, 'success');
-            } catch (error) {
-                this.addLog(`⚠ Broadcasting ID 읽기 실패: ${error.message}`, 'warning');
-                this.addLog('계속 진행합니다...', 'info');
-                details += `Step 3: Broadcasting ID 읽기 실패 - ${error.message}\n`;
-                this.updateStepStatus(2, 'error');
-            }
-
-            await this.delay(500);
-
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 3: Node ID를 1로 설정
-            this.updateStepStatus(3, 'running');
-            this.addLog('Step 4: [0x2003] Node ID를 1로 설정 중...', 'step');
-            this.updateProgress(45, 'Step 4/8: Node ID 설정');
-
-            const targetNodeId = 1;
-            const writeResult = await this.writeParameter(0, 0x2003, targetNodeId);
-
-            if (writeResult) {
-                this.addLog(`✓ Node ID 설정 성공: ${targetNodeId}`, 'success');
-                details += `Step 4: Node ID를 ${targetNodeId}로 설정 완료\n`;
-                this.updateStepStatus(3, 'success');
-            } else {
-                throw new Error('Node ID 설정 실패');
-            }
-
-            await this.delay(500);
-
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 4: Save to Memory
-            this.updateStepStatus(4, 'running');
-            this.addLog('Step 5: 파라미터를 메모리에 저장 중... (Save to Memory)', 'step');
-            this.updateProgress(60, 'Step 5/8: 메모리 저장');
-
-            try {
-                const saveResult = await this.saveToMemory(0);
-                if (saveResult) {
-                    this.addLog('✓ 메모리 저장 성공', 'success');
-                    details += 'Step 5: 메모리 저장 완료\n';
-                    this.updateStepStatus(4, 'success');
-                } else {
-                    throw new Error('메모리 저장 실패');
-                }
-            } catch (error) {
-                this.addLog(`⚠ 메모리 저장 실패: ${error.message}`, 'warning');
-                this.addLog('계속 진행합니다...', 'info');
-                details += `Step 5: 메모리 저장 시도 - ${error.message}\n`;
-                this.updateStepStatus(4, 'error');
-            }
-
-            await this.delay(1000);
-
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 5: 전원 재투입 (사용자 확인)
-            this.updateStepStatus(5, 'running');
-            this.addLog('Step 6: 전원 재투입 필요', 'step');
-            this.updateProgress(70, 'Step 6/8: 전원 재투입 대기');
-            this.addLog('⚠ 장치의 전원을 재투입한 후 10초 대기합니다...', 'warning');
-            details += 'Step 6: 전원 재투입 및 10초 대기\n';
-
-            // 10초 대기
-            for (let i = 10; i > 0; i--) {
-                this.addLog(`재연결까지 ${i}초 남음...`, 'info');
-                await this.delay(1000);
-                if (this.shouldStopTest) throw new Error('테스트 중단됨');
-            }
-
-            this.addLog('✓ 대기 시간 완료', 'success');
-            this.updateStepStatus(5, 'success');
-            await this.delay(500);
-
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 6: Node ID 1로 통신 시도
-            this.updateStepStatus(6, 'running');
-            this.addLog('Step 7: Node ID 1로 통신 시도...', 'step');
-            this.updateProgress(85, 'Step 7/8: Node ID 1로 통신');
-
-            try {
-                const verifyNodeId = await this.readParameter(1, 0x2003);
-                this.addLog(`✓ Node ID 1로 통신 성공, 읽은 값: ${verifyNodeId}`, 'success');
-                details += `Step 7: Node ID 1로 통신 성공 (값: ${verifyNodeId})\n`;
-
-                if (verifyNodeId === targetNodeId) {
-                    this.addLog('✓ Node ID 값 일치 확인', 'success');
-                } else {
-                    this.addLog(`⚠ Node ID 값 불일치 (예상: ${targetNodeId}, 실제: ${verifyNodeId})`, 'warning');
-                }
-
-                this.updateStepStatus(6, 'success');
-            } catch (error) {
-                throw new Error(`Node ID 1로 통신 실패: ${error.message}`);
-            }
-
-            await this.delay(500);
-
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 7: Device 정보 확인 (판정 기준)
-            this.updateStepStatus(7, 'running');
-            this.addLog('Step 8: Device, SW Ver, Boot Ver 확인 중...', 'step');
-            this.updateProgress(95, 'Step 8/8: Device 정보 확인');
-
-            try {
-                // Device, SW Ver, Boot Ver 주소는 예시입니다. 실제 주소로 변경 필요
-                const deviceInfo = await this.readParameter(1, 0xD000); // Device Type
-                const swVersion = await this.readParameter(1, 0xD001); // SW Version
-                const bootVersion = await this.readParameter(1, 0xD002); // Boot Version
-
-                this.addLog(`✓ Device: ${deviceInfo}`, 'success');
-                this.addLog(`✓ SW Ver: ${swVersion}`, 'success');
-                this.addLog(`✓ Boot Ver: ${bootVersion}`, 'success');
-
-                details += `Step 8: Device 정보 확인 완료\n`;
-                details += `  - Device: ${deviceInfo}\n`;
-                details += `  - SW Ver: ${swVersion}\n`;
-                details += `  - Boot Ver: ${bootVersion}\n`;
-
-                this.updateStepStatus(7, 'success');
-            } catch (error) {
-                this.addLog(`⚠ Device 정보 읽기 실패: ${error.message}`, 'warning');
-                this.addLog('Node ID 설정은 성공했으나, Device 정보 확인 실패', 'warning');
-                details += `Step 8: Device 정보 확인 실패 - ${error.message}\n`;
-                this.updateStepStatus(7, 'error');
-            }
-
-            // 최종 결과
-            this.updateProgress(100, '테스트 완료');
-            this.addLog('========================================', 'info');
-            this.addLog('테스트 완료: 모든 단계 통과', 'success');
-            this.addLog('========================================', 'info');
-
-            return {
-                status: 'pass',
-                message: 'Node ID 설정 및 검증 성공',
-                details: details
-            };
-
-        } catch (error) {
-            this.addLog('========================================', 'info');
-            this.addLog(`테스트 실패: ${error.message}`, 'error');
-            this.addLog('========================================', 'info');
-
-            details += `\n테스트 실패: ${error.message}\n`;
-
-            return {
-                status: 'fail',
-                message: error.message,
-                details: details
-            };
-        }
-    }
-
-    // Modbus Test 1: FC03 Read Holding Register - Setpoint(0xD001) 읽기, 예상값 0x0000
-    async executeModbusTest1() {
-        let details = '';
-        const SLAVE_ID = 1;
-        const SETPOINT_ADDR = 0xD001;
-        const EXPECTED_VALUE = 0x0000;
-
-        try {
-            // Step 0: 연결 확인
-            this.updateStepStatus(0, 'running');
-            this.addLog('Step 1: 시리얼 포트 연결 확인 중...', 'step');
-            this.updateProgress(10, 'Step 1/5: 시리얼 포트 연결 확인');
-
-            if (!window.dashboard || (!window.dashboard.port && !window.dashboard.simulatorEnabled)) {
-                throw new Error('시리얼 포트가 연결되지 않았습니다. 먼저 포트를 연결해주세요.');
-            }
-            this.addLog('✓ 시리얼 포트 연결 확인 완료', 'success');
-            this.updateStepStatus(0, 'success');
-            details += 'Step 1: 연결 확인 완료\n';
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 1: 통신 설정 확인
-            this.updateStepStatus(1, 'running');
-            this.addLog('Step 2: 통신 설정 확인 중... (19200bps, Even)', 'step');
-            this.updateProgress(25, 'Step 2/5: 통신 설정 확인');
-
-            const currentBaud = document.getElementById('sidebar-baudRate')?.value;
-            const currentParity = document.getElementById('sidebar-parity')?.value;
-            this.addLog(`현재 설정 - Baudrate: ${currentBaud}, Parity: ${currentParity}`, 'info');
-            if (currentBaud !== '19200' || currentParity !== 'even') {
-                this.addLog('⚠ 권장 설정(19200, Even)과 다릅니다. 계속 진행합니다.', 'warning');
-            } else {
-                this.addLog('✓ 통신 설정 확인 완료', 'success');
-            }
-            this.updateStepStatus(1, 'success');
-            details += `Step 2: 통신 설정 - ${currentBaud}, ${currentParity}\n`;
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 2: FC03 명령 전송
-            this.updateStepStatus(2, 'running');
-            this.addLog(`Step 3: FC03 명령 전송 - Setpoint [0x${SETPOINT_ADDR.toString(16).toUpperCase()}] 읽기...`, 'step');
-            this.addLog('→ TX: 01 03 D0 01 00 01 ED 0A', 'info');
-            this.updateProgress(50, 'Step 3/5: FC03 명령 전송');
-
-            const value = await window.dashboard.readRegisterWithTimeout(SLAVE_ID, SETPOINT_ADDR);
-            if (value === null || value === undefined) {
-                this.updateStepStatus(2, 'error');
-                throw new Error('FC03 응답 없음 (Timeout)');
-            }
-            this.addLog(`✓ FC03 응답 수신 성공`, 'success');
-            this.addLog(`→ RX: 01 03 02 ${(value >> 8).toString(16).toUpperCase().padStart(2,'0')} ${(value & 0xFF).toString(16).toUpperCase().padStart(2,'0')} ...`, 'info');
-            this.updateStepStatus(2, 'success');
-            details += `Step 3: FC03 응답 수신 - Value: 0x${value.toString(16).toUpperCase().padStart(4,'0')}\n`;
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 3: 응답값 확인
-            this.updateStepStatus(3, 'running');
-            this.addLog(`Step 4: 응답값 확인 - Value: 0x${value.toString(16).toUpperCase().padStart(4,'0')} (예상: 0x${EXPECTED_VALUE.toString(16).toUpperCase().padStart(4,'0')})`, 'step');
-            this.updateProgress(80, 'Step 4/5: 응답값 검증');
-
-            if (value === EXPECTED_VALUE) {
-                this.addLog(`✓ 값 일치 확인 (0x${value.toString(16).toUpperCase().padStart(4,'0')} = 0x0000)`, 'success');
-                this.updateStepStatus(3, 'success');
-                details += `Step 4: 값 검증 완료 - 일치 (0x${value.toString(16).toUpperCase().padStart(4,'0')})\n`;
-            } else {
-                this.addLog(`⚠ 값 불일치 (예상: 0x0000, 실제: 0x${value.toString(16).toUpperCase().padStart(4,'0')})`, 'warning');
-                this.addLog('Setpoint 초기값이 0이 아닐 수 있습니다. 통신 자체는 정상입니다.', 'info');
-                this.updateStepStatus(3, 'success');
-                details += `Step 4: 값 불일치 (예상: 0x0000, 실제: 0x${value.toString(16).toUpperCase().padStart(4,'0')})\n`;
-            }
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 4: 판정
-            this.updateStepStatus(4, 'running');
-            this.addLog('Step 5: 최종 판정 중...', 'step');
-            this.updateProgress(100, 'Step 5/5: 판정 완료');
-            this.addLog('✓ FC03 Read Holding Register 정상 동작 확인', 'success');
-            this.updateStepStatus(4, 'success');
-            details += 'Step 5: 판정 - 합격\n';
-
-            this.addLog('========================================', 'info');
-            this.addLog('테스트 완료: 합격', 'success');
-            this.addLog('========================================', 'info');
-
-            return { status: 'pass', message: 'FC03 Read Holding Register 정상 동작 확인', details };
-
-        } catch (error) {
-            this.addLog('========================================', 'info');
-            this.addLog(`테스트 실패: ${error.message}`, 'error');
-            this.addLog('========================================', 'info');
-            details += `\n테스트 실패: ${error.message}\n`;
-            return { status: 'fail', message: error.message, details };
-        }
-    }
-
-    // Modbus Test 2: FC04 Read Input Register - Identification(0xD000) 읽기, 예상값 0x4242
-    async executeModbusTest2() {
-        let details = '';
-        const SLAVE_ID = 1;
-        const IDENT_ADDR = 0xD000;
-        const EXPECTED_VALUE = 0x4242;
-
-        try {
-            // Step 0: 연결 확인
-            this.updateStepStatus(0, 'running');
-            this.addLog('Step 1: 시리얼 포트 연결 확인 중...', 'step');
-            this.updateProgress(10, 'Step 1/5: 시리얼 포트 연결 확인');
-
-            if (!window.dashboard || (!window.dashboard.port && !window.dashboard.simulatorEnabled)) {
-                throw new Error('시리얼 포트가 연결되지 않았습니다. 먼저 포트를 연결해주세요.');
-            }
-            this.addLog('✓ 시리얼 포트 연결 확인 완료', 'success');
-            this.updateStepStatus(0, 'success');
-            details += 'Step 1: 연결 확인 완료\n';
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 1: 통신 설정 확인
-            this.updateStepStatus(1, 'running');
-            this.addLog('Step 2: 통신 설정 확인 중... (19200bps, Even)', 'step');
-            this.updateProgress(25, 'Step 2/5: 통신 설정 확인');
-
-            const currentBaud = document.getElementById('sidebar-baudRate')?.value;
-            const currentParity = document.getElementById('sidebar-parity')?.value;
-            this.addLog(`현재 설정 - Baudrate: ${currentBaud}, Parity: ${currentParity}`, 'info');
-            if (currentBaud !== '19200' || currentParity !== 'even') {
-                this.addLog('⚠ 권장 설정(19200, Even)과 다릅니다. 계속 진행합니다.', 'warning');
-            } else {
-                this.addLog('✓ 통신 설정 확인 완료', 'success');
-            }
-            this.updateStepStatus(1, 'success');
-            details += `Step 2: 통신 설정 - ${currentBaud}, ${currentParity}\n`;
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 2: FC04 명령 전송
-            this.updateStepStatus(2, 'running');
-            this.addLog(`Step 3: FC04 명령 전송 - Identification [0x${IDENT_ADDR.toString(16).toUpperCase()}] 읽기...`, 'step');
-            this.addLog('→ TX: 01 04 D0 00 00 01 09 0A', 'info');
-            this.updateProgress(50, 'Step 3/5: FC04 명령 전송');
-
-            const value = await window.dashboard.readInputRegisterWithTimeout(SLAVE_ID, IDENT_ADDR);
-            if (value === null || value === undefined) {
-                this.updateStepStatus(2, 'error');
-                throw new Error('FC04 응답 없음 (Timeout)');
-            }
-            this.addLog(`✓ FC04 응답 수신 성공`, 'success');
-            this.addLog(`→ RX: 01 04 02 ${(value >> 8).toString(16).toUpperCase().padStart(2,'0')} ${(value & 0xFF).toString(16).toUpperCase().padStart(2,'0')} ...`, 'info');
-            this.updateStepStatus(2, 'success');
-            details += `Step 3: FC04 응답 수신 - Value: 0x${value.toString(16).toUpperCase().padStart(4,'0')}\n`;
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 3: 응답값 확인
-            this.updateStepStatus(3, 'running');
-            this.addLog(`Step 4: 응답값 확인 - Value: 0x${value.toString(16).toUpperCase().padStart(4,'0')} (예상: 0x${EXPECTED_VALUE.toString(16).toUpperCase().padStart(4,'0')})`, 'step');
-            this.updateProgress(80, 'Step 4/5: 응답값 검증');
-
-            if (value === EXPECTED_VALUE) {
-                this.addLog('✓ 값 일치 확인 (0x4242)', 'success');
-                this.updateStepStatus(3, 'success');
-                details += `Step 4: 값 검증 완료 - 일치 (0x4242)\n`;
-            } else {
-                this.updateStepStatus(3, 'error');
-                throw new Error(`Identification 값 불일치 (예상: 0x4242, 실제: 0x${value.toString(16).toUpperCase().padStart(4,'0')})`);
-            }
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 4: 판정
-            this.updateStepStatus(4, 'running');
-            this.addLog('Step 5: 최종 판정 중...', 'step');
-            this.updateProgress(100, 'Step 5/5: 판정 완료');
-            this.addLog('✓ FC04 Read Input Register 정상 동작 확인', 'success');
-            this.updateStepStatus(4, 'success');
-            details += 'Step 5: 판정 - 합격\n';
-
-            this.addLog('========================================', 'info');
-            this.addLog('테스트 완료: 합격', 'success');
-            this.addLog('========================================', 'info');
-
-            return { status: 'pass', message: 'FC04 Read Input Register 정상 동작 확인 (Identification = 0x4242)', details };
-
-        } catch (error) {
-            this.addLog('========================================', 'info');
-            this.addLog(`테스트 실패: ${error.message}`, 'error');
-            this.addLog('========================================', 'info');
-            details += `\n테스트 실패: ${error.message}\n`;
-            return { status: 'fail', message: error.message, details };
-        }
-    }
-
-    // Modbus Test 3: FC06 Write Single Register - Setpoint(0xD001)에 1 쓰기, echo 확인
-    async executeModbusTest3() {
-        let details = '';
-        const SLAVE_ID = 1;
-        const SETPOINT_ADDR = 0xD001;
-        const WRITE_VALUE = 1;
-        let originalValue = null;
-
-        try {
-            // Step 0: 연결 확인
-            this.updateStepStatus(0, 'running');
-            this.addLog('Step 1: 시리얼 포트 연결 확인 중...', 'step');
-            this.updateProgress(10, 'Step 1/7: 시리얼 포트 연결 확인');
-
-            if (!window.dashboard || (!window.dashboard.port && !window.dashboard.simulatorEnabled)) {
-                throw new Error('시리얼 포트가 연결되지 않았습니다. 먼저 포트를 연결해주세요.');
-            }
-            this.addLog('✓ 시리얼 포트 연결 확인 완료', 'success');
-            this.updateStepStatus(0, 'success');
-            details += 'Step 1: 연결 확인 완료\n';
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 1: 통신 설정 확인
-            this.updateStepStatus(1, 'running');
-            this.addLog('Step 2: 통신 설정 확인 중... (19200bps, Even)', 'step');
-            this.updateProgress(20, 'Step 2/7: 통신 설정 확인');
-
-            const currentBaud = document.getElementById('sidebar-baudRate')?.value;
-            const currentParity = document.getElementById('sidebar-parity')?.value;
-            this.addLog(`현재 설정 - Baudrate: ${currentBaud}, Parity: ${currentParity}`, 'info');
-            if (currentBaud !== '19200' || currentParity !== 'even') {
-                this.addLog('⚠ 권장 설정(19200, Even)과 다릅니다. 계속 진행합니다.', 'warning');
-            } else {
-                this.addLog('✓ 통신 설정 확인 완료', 'success');
-            }
-            this.updateStepStatus(1, 'success');
-            details += `Step 2: 통신 설정 - ${currentBaud}, ${currentParity}\n`;
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 2: 현재 Setpoint 값 읽기 (복원용)
-            this.updateStepStatus(2, 'running');
-            this.addLog('Step 3: 현재 Setpoint 값 읽기 (FC03, 복원용)...', 'step');
-            this.updateProgress(35, 'Step 3/7: 현재 값 읽기');
-
-            originalValue = await window.dashboard.readRegisterWithTimeout(SLAVE_ID, SETPOINT_ADDR);
-            if (originalValue === null || originalValue === undefined) {
-                this.addLog('⚠ 현재 값 읽기 실패 - 복원 불가. 계속 진행합니다.', 'warning');
-                originalValue = null;
-                details += 'Step 3: 현재 값 읽기 실패 (복원 불가)\n';
-            } else {
-                this.addLog(`✓ 현재 Setpoint 값: 0x${originalValue.toString(16).toUpperCase().padStart(4,'0')} (${originalValue})`, 'success');
-                details += `Step 3: 현재 Setpoint 값 = 0x${originalValue.toString(16).toUpperCase().padStart(4,'0')}\n`;
-            }
-            this.updateStepStatus(2, 'success');
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 3: FC06 쓰기 명령 전송
-            this.updateStepStatus(3, 'running');
-            this.addLog(`Step 4: FC06 명령 전송 - Setpoint [0x${SETPOINT_ADDR.toString(16).toUpperCase()}] = ${WRITE_VALUE} 쓰기...`, 'step');
-            this.addLog('→ TX: 01 06 D0 01 00 01 21 0A', 'info');
-            this.updateProgress(55, 'Step 4/7: FC06 명령 전송');
-
-            await window.dashboard.writeRegister(SLAVE_ID, SETPOINT_ADDR, WRITE_VALUE);
-            this.addLog('✓ FC06 명령 전송 완료 (echo 수신)', 'success');
-            this.addLog('→ RX: 01 06 D0 01 00 01 21 0A (echo)', 'info');
-            this.updateStepStatus(3, 'success');
-            details += `Step 4: FC06 쓰기 명령 전송 완료 (Setpoint = ${WRITE_VALUE})\n`;
-            await this.delay(500);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 4: 응답 검증 (FC03으로 재읽기)
-            this.updateStepStatus(4, 'running');
-            this.addLog('Step 5: FC03으로 재읽기 - 값 검증 중...', 'step');
-            this.updateProgress(70, 'Step 5/7: 쓰기 결과 검증');
-
-            await this.delay(200);
-            const readbackValue = await window.dashboard.readRegisterWithTimeout(SLAVE_ID, SETPOINT_ADDR);
-            if (readbackValue === null || readbackValue === undefined) {
-                this.updateStepStatus(4, 'error');
-                throw new Error('재읽기 응답 없음 (Timeout)');
-            }
-            this.addLog(`읽기 결과: 0x${readbackValue.toString(16).toUpperCase().padStart(4,'0')} (예상: 0x${WRITE_VALUE.toString(16).toUpperCase().padStart(4,'0')})`, 'info');
-
-            if (readbackValue === WRITE_VALUE) {
-                this.addLog('✓ 쓰기 검증 성공 - 값 일치', 'success');
-                this.updateStepStatus(4, 'success');
-                details += `Step 5: 재읽기 검증 완료 - 일치 (${readbackValue})\n`;
-            } else {
-                this.updateStepStatus(4, 'error');
-                throw new Error(`쓰기 검증 실패 (예상: ${WRITE_VALUE}, 실제: ${readbackValue})`);
-            }
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 5: 원래 값으로 복원
-            this.updateStepStatus(5, 'running');
-            this.addLog('Step 6: 원래 Setpoint 값으로 복원 중...', 'step');
-            this.updateProgress(85, 'Step 6/7: 값 복원');
-
-            if (originalValue !== null) {
-                await window.dashboard.writeRegister(SLAVE_ID, SETPOINT_ADDR, originalValue);
-                this.addLog(`✓ 원래 값(${originalValue})으로 복원 완료`, 'success');
-                details += `Step 6: 원래 값(${originalValue})으로 복원 완료\n`;
-            } else {
-                this.addLog('⚠ 원래 값을 알 수 없어 복원을 건너뜁니다.', 'warning');
-                details += 'Step 6: 복원 건너뜀 (원래 값 미확인)\n';
-            }
-            this.updateStepStatus(5, 'success');
-            await this.delay(300);
-            if (this.shouldStopTest) throw new Error('테스트 중단됨');
-
-            // Step 6: 판정
-            this.updateStepStatus(6, 'running');
-            this.addLog('Step 7: 최종 판정 중...', 'step');
-            this.updateProgress(100, 'Step 7/7: 판정 완료');
-            this.addLog('✓ FC06 Write Single Register 정상 동작 확인', 'success');
-            this.updateStepStatus(6, 'success');
-            details += 'Step 7: 판정 - 합격\n';
-
-            this.addLog('========================================', 'info');
-            this.addLog('테스트 완료: 합격', 'success');
-            this.addLog('========================================', 'info');
-
-            return { status: 'pass', message: 'FC06 Write Single Register 정상 동작 확인', details };
-
-        } catch (error) {
-            // 실패 시에도 복원 시도
-            if (originalValue !== null && window.dashboard) {
-                try {
-                    await window.dashboard.writeRegister(SLAVE_ID, SETPOINT_ADDR, originalValue);
-                    this.addLog(`복원 완료 (원래 값: ${originalValue})`, 'info');
-                } catch (e) { /* 복원 실패 무시 */ }
-            }
-            this.addLog('========================================', 'info');
-            this.addLog(`테스트 실패: ${error.message}`, 'error');
-            this.addLog('========================================', 'info');
-            details += `\n테스트 실패: ${error.message}\n`;
-            return { status: 'fail', message: error.message, details };
-        }
-    }
-
-    // Helper: Modbus Read Parameter
     async readParameter(slaveId, address) {
-        if (!window.dashboard) {
-            throw new Error('Modbus 통신이 초기화되지 않았습니다.');
-        }
-
+        if (!window.dashboard) throw new Error('Modbus 통신이 초기화되지 않았습니다.');
         const value = await window.dashboard.readRegister(slaveId, address);
         if (value === null || value === undefined) {
             throw new Error(`주소 0x${address.toString(16).toUpperCase()} 응답 데이터 없음`);
@@ -1059,48 +354,47 @@ class OSTestManager {
         return value;
     }
 
-    // Helper: Modbus Write Parameter
     async writeParameter(slaveId, address, value) {
-        if (!window.dashboard) {
-            throw new Error('Modbus 통신이 초기화되지 않았습니다.');
-        }
-
+        if (!window.dashboard) throw new Error('Modbus 통신이 초기화되지 않았습니다.');
         await window.dashboard.writeRegister(slaveId, address, value);
         return true;
     }
 
-    // Helper: Save to Memory
     async saveToMemory(slaveId) {
-        // Save to Memory 명령 (주소는 예시, 실제 주소로 변경 필요)
-        // 일반적으로 특정 레지스터에 특정 값을 쓰면 저장됨
-        const saveAddress = 0x2000; // 예시 주소
-        const saveValue = 0x5555; // 예시 값
-
+        const saveAddress = 0x2000;
+        const saveValue = 0x5555;
         return await this.writeParameter(slaveId, saveAddress, saveValue);
     }
 
-    // Helper: Delay
+    checkConnection() {
+        if (!window.dashboard || (!window.dashboard.port && !window.dashboard.simulatorEnabled)) {
+            throw new Error('시리얼 포트가 연결되지 않았습니다. 먼저 포트를 연결해주세요.');
+        }
+    }
+
+    checkCommSettings() {
+        const currentBaud = document.getElementById('sidebar-baudRate')?.value;
+        const currentParity = document.getElementById('sidebar-parity')?.value;
+        this.addLog(`현재 설정 - Baudrate: ${currentBaud}, Parity: ${currentParity}`, 'info');
+        if (currentBaud !== '19200' || currentParity !== 'even') {
+            this.addLog('⚠ 권장 설정(19200, Even)과 다릅니다. 계속 진행합니다.', 'warning');
+        } else {
+            this.addLog('✓ 통신 설정 확인 완료', 'success');
+        }
+        return { baud: currentBaud, parity: currentParity };
+    }
+
+    // ==================== 유틸리티 ====================
+
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.textContent = message;
+    toHex4(value) {
+        return value.toString(16).toUpperCase().padStart(4, '0');
+    }
 
-        const container = document.getElementById('toastContainer');
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.classList.add('show');
-        }, 10);
-
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => {
-                container.removeChild(toast);
-            }, 300);
-        }, 3000);
+    toHex2(value) {
+        return value.toString(16).toUpperCase().padStart(2, '0');
     }
 }
