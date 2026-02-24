@@ -1190,7 +1190,7 @@ class ModbusDashboard {
 
         // Real-time value conversion for Modbus input fields
         const modbusInputs = [
-            { id: 'slaveId', min: 1, max: 247 },
+            { id: 'slaveId', min: 0, max: 255 },
             { id: 'startAddress', min: 0, max: 65535 },
             { id: 'quantity', min: 1, max: 125 },
             { id: 'writeValue', min: 0, max: 65535 }
@@ -2504,7 +2504,7 @@ class ModbusDashboard {
         }
 
         try {
-            const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 1, 247);
+            const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 0, 255);
             const functionCode = parseInt(document.getElementById('functionCode').value);
             const startAddress = this.parseModbusValue(document.getElementById('startAddress').value, 0, 65535);
             const quantity = this.parseModbusValue(document.getElementById('quantity').value, 1, 125);
@@ -4677,7 +4677,7 @@ class ModbusDashboard {
         }
 
         try {
-            const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 1, 247);
+            const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 0, 255);
             const functionCode = parseInt(document.getElementById('functionCode').value);
             const startAddress = this.parseModbusValue(document.getElementById('startAddress').value, 0, 65535);
             const quantity = this.parseModbusValue(document.getElementById('quantity').value, 1, 125);
@@ -4721,7 +4721,7 @@ class ModbusDashboard {
      */
     async sendSimulatedRequest() {
         try {
-            const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 1, 247);
+            const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 0, 255);
             const functionCode = parseInt(document.getElementById('functionCode').value);
             const startAddress = this.parseModbusValue(document.getElementById('startAddress').value, 0, 65535);
             const quantity = this.parseModbusValue(document.getElementById('quantity').value, 1, 125);

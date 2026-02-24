@@ -646,38 +646,25 @@ class OSTestManager {
 
     // Helper: Modbus Read Parameter
     async readParameter(slaveId, address) {
-        if (!window.dashboard || !window.dashboard.modbusRTU) {
+        if (!window.dashboard) {
             throw new Error('Modbus 통신이 초기화되지 않았습니다.');
         }
 
-        return new Promise((resolve, reject) => {
-            window.dashboard.modbusRTU.readHoldingRegisters(slaveId, address, 1, (error, response) => {
-                if (error) {
-                    reject(new Error(`주소 0x${address.toString(16).toUpperCase()} 읽기 실패: ${error.message}`));
-                } else if (response && response.data && response.data.length > 0) {
-                    resolve(response.data[0]);
-                } else {
-                    reject(new Error(`주소 0x${address.toString(16).toUpperCase()} 응답 데이터 없음`));
-                }
-            });
-        });
+        const value = await window.dashboard.readRegister(slaveId, address);
+        if (value === null || value === undefined) {
+            throw new Error(`주소 0x${address.toString(16).toUpperCase()} 응답 데이터 없음`);
+        }
+        return value;
     }
 
     // Helper: Modbus Write Parameter
     async writeParameter(slaveId, address, value) {
-        if (!window.dashboard || !window.dashboard.modbusRTU) {
+        if (!window.dashboard) {
             throw new Error('Modbus 통신이 초기화되지 않았습니다.');
         }
 
-        return new Promise((resolve, reject) => {
-            window.dashboard.modbusRTU.writeSingleRegister(slaveId, address, value, (error) => {
-                if (error) {
-                    reject(new Error(`주소 0x${address.toString(16).toUpperCase()} 쓰기 실패: ${error.message}`));
-                } else {
-                    resolve(true);
-                }
-            });
-        });
+        await window.dashboard.writeRegister(slaveId, address, value);
+        return true;
     }
 
     // Helper: Save to Memory
