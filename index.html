@@ -526,40 +526,126 @@
                                             <span style="font-size: 12px; color: #6c757d;">3 tests</span>
                                         </div>
                                         <div style="display: grid; gap: 12px;">
-                                            <div class="os-test-item" data-test-id="modbus-1" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
-                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                            <!-- Modbus No. 1: FC03 Read Holding Register -->
+                                            <div class="os-test-item" data-test-id="modbus-1" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden; transition: all 0.2s;">
+                                                <div class="os-test-header" style="padding: 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
                                                     <div style="flex: 1;">
-                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Modbus No. 1</div>
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Modbus No. 1 - FC03 Read Holding Register</div>
                                                         <div style="font-size: 12px; color: #6c757d;">Modbus RTU 프로토콜 기본 기능</div>
                                                     </div>
                                                     <div style="display: flex; align-items: center; gap: 12px;">
                                                         <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
-                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                        <span class="test-expand-icon" style="font-size: 18px; color: #6c757d; transition: transform 0.3s;">▼</span>
                                                     </div>
                                                 </div>
+                                                <div class="os-test-content" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 20px; background: #f8f9fa;">
+                                                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; font-size: 13px;">
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">시험 분류</div><div style="color: #1a1a1a; font-weight: 500;" class="test-category">Modbus RTU</div></div>
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">시험 번호</div><div style="color: #1a1a1a; font-weight: 500;" class="test-number">1</div></div>
+                                                            <div style="grid-column: 1 / -1;"><div style="color: #6c757d; margin-bottom: 4px;">시험 목적</div><div style="color: #1a1a1a;" class="test-purpose">Modbus RTU Read Holding Register [0x03] 명령 입력 시 동작을 확인한다.</div></div>
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">적용 모델</div><div style="color: #1a1a1a;" class="test-model">EC-FAN</div></div>
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">시험 장비</div><div style="color: #1a1a1a;" class="test-equipment">EC FAN 1EA (Node Address 1로 설정), USB to RS485 Converter</div></div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e9ecef;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                                            <h4 style="margin: 0; font-size: 15px; font-weight: 600;">테스트 실행</h4>
+                                                            <div style="display: flex; gap: 8px;">
+                                                                <button class="btn btn-primary btn-sm test-start-btn">▶ Start Test</button>
+                                                                <button class="btn btn-secondary btn-sm test-stop-btn" style="display: none;">⏹ Stop</button>
+                                                            </div>
+                                                        </div>
+                                                        <div style="background: #e9ecef; height: 6px; border-radius: 3px; overflow: hidden;"><div class="test-progress-bar" style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s;"></div></div>
+                                                        <div class="test-progress-text" style="margin-top: 6px; font-size: 12px; color: #6c757d; text-align: center;">테스트를 시작하려면 Start Test 버튼을 클릭하세요</div>
+                                                    </div>
+                                                    <div style="padding: 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">시험 단계</h4><div class="test-steps-list" style="display: flex; flex-direction: column; gap: 8px;"></div></div>
+                                                    <div style="padding: 0 20px 20px 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">실행 로그</h4><div class="test-log-container" style="background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 4px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; max-height: 250px; overflow-y: auto; line-height: 1.5;"><div style="color: #6c757d;">테스트 로그가 여기에 표시됩니다...</div></div></div>
+                                                    <div style="padding: 0 20px 20px 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">판정 기준</h4><div style="padding: 12px; background: #e7f3ff; border-left: 4px solid #2196f3; border-radius: 4px;"><div style="font-size: 13px; color: #1a1a1a;" class="test-criteria">FC03 응답 정상 수신 및 Value = 0x0000 (Set Point = 0)</div></div></div>
+                                                    <div style="padding: 0 20px 20px 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">비고 / 메모</h4><textarea class="test-notes" placeholder="테스트 중 발견한 사항이나 메모를 입력하세요..." style="width: 100%; min-height: 70px; padding: 10px; border: 1px solid #e9ecef; border-radius: 4px; font-family: inherit; font-size: 13px; resize: vertical;"></textarea></div>
+                                                    <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e9ecef;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">테스트 결과</h4><div class="test-result-display" style="display: none;"></div><div class="test-result-pending" style="padding: 12px; background: #e9ecef; border-radius: 4px; text-align: center; color: #6c757d; font-size: 13px;">테스트를 실행하면 결과가 자동으로 표시됩니다</div></div>
+                                                </div>
                                             </div>
-                                            <div class="os-test-item" data-test-id="modbus-2" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
-                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+
+                                            <!-- Modbus No. 2: FC04 Read Input Register -->
+                                            <div class="os-test-item" data-test-id="modbus-2" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden; transition: all 0.2s;">
+                                                <div class="os-test-header" style="padding: 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
                                                     <div style="flex: 1;">
-                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Modbus No. 2</div>
-                                                        <div style="font-size: 12px; color: #6c757d;">레지스터 읽기/쓰기 기능</div>
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Modbus No. 2 - FC04 Read Input Register</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">Read Input Register 기능 검증</div>
                                                     </div>
                                                     <div style="display: flex; align-items: center; gap: 12px;">
                                                         <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
-                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                        <span class="test-expand-icon" style="font-size: 18px; color: #6c757d; transition: transform 0.3s;">▼</span>
                                                     </div>
                                                 </div>
+                                                <div class="os-test-content" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 20px; background: #f8f9fa;">
+                                                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; font-size: 13px;">
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">시험 분류</div><div style="color: #1a1a1a; font-weight: 500;" class="test-category">Modbus RTU</div></div>
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">시험 번호</div><div style="color: #1a1a1a; font-weight: 500;" class="test-number">2</div></div>
+                                                            <div style="grid-column: 1 / -1;"><div style="color: #6c757d; margin-bottom: 4px;">시험 목적</div><div style="color: #1a1a1a;" class="test-purpose">Modbus RTU Read Input Register [0x04] 명령 입력 시 동작을 확인한다.</div></div>
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">적용 모델</div><div style="color: #1a1a1a;" class="test-model">EC-FAN</div></div>
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">시험 장비</div><div style="color: #1a1a1a;" class="test-equipment">EC FAN 1EA (Node Address 1로 설정), USB to RS485 Converter</div></div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e9ecef;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                                            <h4 style="margin: 0; font-size: 15px; font-weight: 600;">테스트 실행</h4>
+                                                            <div style="display: flex; gap: 8px;">
+                                                                <button class="btn btn-primary btn-sm test-start-btn">▶ Start Test</button>
+                                                                <button class="btn btn-secondary btn-sm test-stop-btn" style="display: none;">⏹ Stop</button>
+                                                            </div>
+                                                        </div>
+                                                        <div style="background: #e9ecef; height: 6px; border-radius: 3px; overflow: hidden;"><div class="test-progress-bar" style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s;"></div></div>
+                                                        <div class="test-progress-text" style="margin-top: 6px; font-size: 12px; color: #6c757d; text-align: center;">테스트를 시작하려면 Start Test 버튼을 클릭하세요</div>
+                                                    </div>
+                                                    <div style="padding: 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">시험 단계</h4><div class="test-steps-list" style="display: flex; flex-direction: column; gap: 8px;"></div></div>
+                                                    <div style="padding: 0 20px 20px 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">실행 로그</h4><div class="test-log-container" style="background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 4px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; max-height: 250px; overflow-y: auto; line-height: 1.5;"><div style="color: #6c757d;">테스트 로그가 여기에 표시됩니다...</div></div></div>
+                                                    <div style="padding: 0 20px 20px 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">판정 기준</h4><div style="padding: 12px; background: #e7f3ff; border-left: 4px solid #2196f3; border-radius: 4px;"><div style="font-size: 13px; color: #1a1a1a;" class="test-criteria">FC04 응답 정상 수신 및 Value = 0x4242 (Identification)</div></div></div>
+                                                    <div style="padding: 0 20px 20px 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">비고 / 메모</h4><textarea class="test-notes" placeholder="테스트 중 발견한 사항이나 메모를 입력하세요..." style="width: 100%; min-height: 70px; padding: 10px; border: 1px solid #e9ecef; border-radius: 4px; font-family: inherit; font-size: 13px; resize: vertical;"></textarea></div>
+                                                    <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e9ecef;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">테스트 결과</h4><div class="test-result-display" style="display: none;"></div><div class="test-result-pending" style="padding: 12px; background: #e9ecef; border-radius: 4px; text-align: center; color: #6c757d; font-size: 13px;">테스트를 실행하면 결과가 자동으로 표시됩니다</div></div>
+                                                </div>
                                             </div>
-                                            <div class="os-test-item" data-test-id="modbus-3" style="padding: 16px; background: white; border: 1px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
-                                                <div style="display: flex; align-items: center; justify-content: space-between;">
+
+                                            <!-- Modbus No. 3: FC06 Write Single Register -->
+                                            <div class="os-test-item" data-test-id="modbus-3" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden; transition: all 0.2s;">
+                                                <div class="os-test-header" style="padding: 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
                                                     <div style="flex: 1;">
-                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Modbus No. 3</div>
-                                                        <div style="font-size: 12px; color: #6c757d;">에러 처리 및 예외 상황</div>
+                                                        <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Modbus No. 3 - FC06 Write Single Register</div>
+                                                        <div style="font-size: 12px; color: #6c757d;">Write Single Register 기능 검증</div>
                                                     </div>
                                                     <div style="display: flex; align-items: center; gap: 12px;">
                                                         <span class="test-status-badge" style="padding: 4px 12px; background: #e9ecef; color: #6c757d; border-radius: 12px; font-size: 12px; font-weight: 500;">Pending</span>
-                                                        <button class="btn btn-primary btn-sm test-run-btn">Run Test</button>
+                                                        <span class="test-expand-icon" style="font-size: 18px; color: #6c757d; transition: transform 0.3s;">▼</span>
                                                     </div>
+                                                </div>
+                                                <div class="os-test-content" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 20px; background: #f8f9fa;">
+                                                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; font-size: 13px;">
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">시험 분류</div><div style="color: #1a1a1a; font-weight: 500;" class="test-category">Modbus RTU</div></div>
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">시험 번호</div><div style="color: #1a1a1a; font-weight: 500;" class="test-number">3</div></div>
+                                                            <div style="grid-column: 1 / -1;"><div style="color: #6c757d; margin-bottom: 4px;">시험 목적</div><div style="color: #1a1a1a;" class="test-purpose">Modbus RTU Write Single Register [0x06] 명령 입력 시 동작을 확인한다.</div></div>
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">적용 모델</div><div style="color: #1a1a1a;" class="test-model">EC-FAN</div></div>
+                                                            <div><div style="color: #6c757d; margin-bottom: 4px;">시험 장비</div><div style="color: #1a1a1a;" class="test-equipment">EC FAN 1EA (Node Address 1로 설정), USB to RS485 Converter</div></div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e9ecef;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                                            <h4 style="margin: 0; font-size: 15px; font-weight: 600;">테스트 실행</h4>
+                                                            <div style="display: flex; gap: 8px;">
+                                                                <button class="btn btn-primary btn-sm test-start-btn">▶ Start Test</button>
+                                                                <button class="btn btn-secondary btn-sm test-stop-btn" style="display: none;">⏹ Stop</button>
+                                                            </div>
+                                                        </div>
+                                                        <div style="background: #e9ecef; height: 6px; border-radius: 3px; overflow: hidden;"><div class="test-progress-bar" style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s;"></div></div>
+                                                        <div class="test-progress-text" style="margin-top: 6px; font-size: 12px; color: #6c757d; text-align: center;">테스트를 시작하려면 Start Test 버튼을 클릭하세요</div>
+                                                    </div>
+                                                    <div style="padding: 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">시험 단계</h4><div class="test-steps-list" style="display: flex; flex-direction: column; gap: 8px;"></div></div>
+                                                    <div style="padding: 0 20px 20px 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">실행 로그</h4><div class="test-log-container" style="background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 4px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; max-height: 250px; overflow-y: auto; line-height: 1.5;"><div style="color: #6c757d;">테스트 로그가 여기에 표시됩니다...</div></div></div>
+                                                    <div style="padding: 0 20px 20px 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">판정 기준</h4><div style="padding: 12px; background: #e7f3ff; border-left: 4px solid #2196f3; border-radius: 4px;"><div style="font-size: 13px; color: #1a1a1a;" class="test-criteria">FC06 응답이 송신 데이터와 동일하게 echo되면 합격</div></div></div>
+                                                    <div style="padding: 0 20px 20px 20px;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">비고 / 메모</h4><textarea class="test-notes" placeholder="테스트 중 발견한 사항이나 메모를 입력하세요..." style="width: 100%; min-height: 70px; padding: 10px; border: 1px solid #e9ecef; border-radius: 4px; font-family: inherit; font-size: 13px; resize: vertical;"></textarea></div>
+                                                    <div style="padding: 20px; background: #f8f9fa; border-top: 1px solid #e9ecef;"><h4 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">테스트 결과</h4><div class="test-result-display" style="display: none;"></div><div class="test-result-pending" style="padding: 12px; background: #e9ecef; border-radius: 4px; text-align: center; color: #6c757d; font-size: 13px;">테스트를 실행하면 결과가 자동으로 표시됩니다</div></div>
                                                 </div>
                                             </div>
                                         </div>
