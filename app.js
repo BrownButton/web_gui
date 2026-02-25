@@ -1054,6 +1054,7 @@ class ModbusDashboard {
         this.autoPollingTimer = null;
         this.currentPollingIndex = 0;
         this.isPolling = false; // Flag to prevent concurrent polling
+        this.commandQueue = []; // Queue for user write commands - prevents 485 bus collision during polling
         this.pollingTimeout = 200; // Response timeout in ms for polling
         this.commandTimeout = 200; // Response timeout in ms for user commands (write/read)
         this.pendingResponse = null; // Current pending response promise
@@ -1085,6 +1086,16 @@ class ModbusDashboard {
      * Initialize UI event listeners
      */
     initializeUI() {
+        // 485 컨버터(USB Serial) 물리적 제거 감지
+        if ('serial' in navigator) {
+            navigator.serial.addEventListener('disconnect', (event) => {
+                if (this.isConnected && event.target === this.port) {
+                    this.addMonitorEntry('error', 'RS-485 converter physically removed');
+                    this.disconnect();
+                }
+            });
+        }
+
         // Sidebar toggle with hover effect
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');
@@ -2237,32 +2248,38 @@ class ModbusDashboard {
             this.readInProgress = false;
 
             if (this.reader) {
-                await this.reader.cancel();
+                try { await this.reader.cancel(); } catch (e) { /* ignore - port may be gone */ }
                 // startReading()의 finally 블록에서 이미 releaseLock()이 호출될 수 있으므로 재확인
                 if (this.reader) {
-                    this.reader.releaseLock();
+                    try { this.reader.releaseLock(); } catch (e) { /* ignore */ }
                     this.reader = null;
                 }
             }
 
             if (this.writer) {
-                this.writer.releaseLock();
+                try { this.writer.releaseLock(); } catch (e) { /* ignore - port may be gone */ }
                 this.writer = null;
             }
 
             if (this.port) {
-                await this.port.close();
+                try {
+                    await this.port.close();
+                } catch (e) {
+                    // 물리적으로 제거된 경우 port.close()가 실패할 수 있음 - 무시
+                    console.warn('Port close warning (physical removal?):', e.message);
+                }
                 this.port = null;
             }
 
-            this.isConnected = false;
-            this.updateConnectionStatus(false);
             this.addMonitorEntry('received', 'Disconnected from serial port');
             this.showToast('시리얼 포트 연결 해제됨', 'info');
 
         } catch (error) {
-            this.addMonitorEntry('error', `Disconnect failed: ${error.message}`);
-            this.showToast(`연결 해제 실패: ${error.message}`, 'error');
+            this.addMonitorEntry('error', `Disconnect error: ${error.message}`);
+        } finally {
+            // 물리적 제거 포함 모든 경우에 항상 연결 상태를 해제
+            this.isConnected = false;
+            this.updateConnectionStatus(false);
         }
     }
 
@@ -2283,10 +2300,18 @@ class ModbusDashboard {
         } catch (error) {
             if (this.readInProgress) {
                 this.addMonitorEntry('error', `Read error: ${error.message}`);
+                // 예기치 않은 읽기 오류 = 485 컨버터 물리적 제거 감지 → 자동 연결 해제
+                setTimeout(() => {
+                    if (this.isConnected) {
+                        this.addMonitorEntry('error', 'Serial port physically removed - auto disconnecting');
+                        this.showToast('시리얼 포트가 물리적으로 제거됨 - 자동 연결 해제', 'error');
+                        this.disconnect();
+                    }
+                }, 0);
             }
         } finally {
             if (this.reader) {
-                this.reader.releaseLock();
+                try { this.reader.releaseLock(); } catch (e) { /* ignore */ }
                 this.reader = null;
             }
         }
@@ -6493,6 +6518,11 @@ class ModbusDashboard {
         if (this.pendingResponse) {
             this.pendingResponse = null;
         }
+        // 대기 중인 write 명령을 모두 reject (연결 해제 시 caller가 catch 처리 가능)
+        while (this.commandQueue.length > 0) {
+            const cmd = this.commandQueue.shift();
+            cmd.reject(new Error('Polling stopped (disconnected)'));
+        }
         this.destroyPollingWorker();
     }
 
@@ -6572,6 +6602,24 @@ class ModbusDashboard {
         // Prevent concurrent polling
         if (this.isPolling) return;
         this.isPolling = true;
+
+        // Command queue: polling 사이클 사이에 사용자 write 명령을 처리
+        // 이 블록에서만 TX가 발생하므로 485 버스 충돌 원천 차단
+        if (this.commandQueue.length > 0) {
+            const cmd = this.commandQueue.shift();
+            try {
+                // commandTimeout (설정의 Timeout)을 사용해 write 후 응답 대기
+                await this.sendWriteAndWaitResponse(cmd.frame, cmd.slaveId, cmd.address);
+                cmd.resolve();
+            } catch (err) {
+                cmd.reject(err);
+            } finally {
+                this.isPolling = false;
+                // Interval(설정의 Interval)만큼 대기 후 다음 사이클 (queue에 더 있으면 즉시 처리)
+                this.scheduleNextPoll();
+            }
+            return;
+        }
 
         // Get devices with valid slave IDs
         const validDevices = this.devices.filter(d => d.slaveId !== 0);
@@ -6888,8 +6936,16 @@ class ModbusDashboard {
                 this.updateStats(true);
             }
         } else if (this.writer) {
-            // Wait for response with timeout
-            await this.sendWriteAndWaitResponse(frame, slaveId, address);
+            if (this.autoPollingTimer) {
+                // Polling active: enqueue to avoid 485 bus collision
+                // Uses commandTimeout (설정의 Timeout 값) for the actual write response
+                return new Promise((resolve, reject) => {
+                    this.commandQueue.push({ frame, slaveId, address, resolve, reject });
+                });
+            } else {
+                // Polling not active: execute directly
+                await this.sendWriteAndWaitResponse(frame, slaveId, address);
+            }
         } else {
             throw new Error('Not connected');
         }
