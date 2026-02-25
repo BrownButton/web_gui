@@ -2336,62 +2336,120 @@ class ModbusDashboard {
     }
 
     /**
-     * Try to parse complete Modbus frame from buffer
+     * Modbus RTU 응답 프레임의 예상 길이를 버퍼 내용으로부터 계산.
+     * 아직 길이를 확정할 수 없으면 null 반환.
+     */
+    getExpectedFrameLength() {
+        if (this.receiveIndex < 2) return null;
+
+        const fc = this.receiveBuffer[1];
+
+        // 에러 응답: slave(1) + fc|0x80(1) + exception_code(1) + CRC(2) = 5
+        if (fc & 0x80) return 5;
+
+        // FC 01~04 읽기 응답: slave(1) + fc(1) + byte_count(1) + data(n) + CRC(2)
+        if (fc === 0x01 || fc === 0x02 || fc === 0x03 || fc === 0x04) {
+            if (this.receiveIndex < 3) return null; // byte_count 아직 미수신
+            return 3 + this.receiveBuffer[2] + 2;
+        }
+
+        // FC 05, 06, 0F, 10 쓰기 응답 에코: slave(1) + fc(1) + addr(2) + value/qty(2) + CRC(2) = 8
+        if (fc === 0x05 || fc === 0x06 || fc === 0x0F || fc === 0x10) return 8;
+
+        // 그 외 (알 수 없는 FC): 최소 5바이트로 폴백
+        return 5;
+    }
+
+    /**
+     * 수신 버퍼에서 완성된 Modbus RTU 프레임을 파싱.
+     *
+     * 기존 setTimeout(50ms) 방식 대신 FC 기반 길이 계산으로 즉시 처리:
+     * - 필요한 바이트 수가 정확히 차면 바로 처리 → split 오탐 없음
+     * - 50ms 타이머 중첩으로 인한 레이스 컨디션 제거
+     * - 처리 후 남은 바이트는 버퍼 앞으로 당겨 재귀 파싱
      */
     tryParseFrame() {
-        if (this.receiveIndex < 5) return;
+        if (this.receiveIndex < 2) return;
 
-        setTimeout(() => {
-            if (this.receiveIndex > 0) {
-                const frame = this.receiveBuffer.slice(0, this.receiveIndex);
-                this.receiveIndex = 0;
+        // FC 0x66: 펌웨어 업데이트 응답 — responseBuffer에서 별도 처리, 여기서는 무시
+        if (this.receiveBuffer[1] === 0x66) return;
 
-                // Check if this is a scan response
-                if (this.scanResolve && frame.length >= 5) {
-                    const responseSlaveId = frame[0];
-                    const functionCode = frame[1];
-
-                    // Check if response matches expected slave ID and is not an error
-                    if (responseSlaveId === this.scanExpectedSlaveId && (functionCode & 0x80) === 0) {
-                        // Valid response - extract register value
-                        const responseValue = (frame[3] << 8) | frame[4];
-                        this.addMonitorEntry('received', frame);
-                        this.updateStats(true);
-                        this.scanResolve(responseValue);
-                        return;
-                    }
-                }
-
-                // Check if this is a firmware update response (Function Code 0x66)
-                const functionCode = frame[1];
-                if (functionCode === 0x66) {
-                    // Firmware responses don't have CRC, skip normal parsing
-                    // Already logged by sendAndReceive as 'rx', so don't duplicate
-                    return;
-                }
-
-                // Check if this is a response to a pending request
-                if (this.pendingResponse) {
-                    this.handlePendingResponse(frame);
-                    try {
-                        const response = this.modbus.parseResponse(frame);
-                        this.addMonitorEntry('received', frame, response);
-                    } catch (error) {
-                        this.addMonitorEntry('error', frame, null, error.message);
-                    }
-                } else {
-                    // Normal frame processing
-                    try {
-                        const response = this.modbus.parseResponse(frame);
-                        this.addMonitorEntry('received', frame, response);
-                        this.updateStats(true);
-                    } catch (error) {
-                        this.addMonitorEntry('error', frame, null, error.message);
-                        this.updateStats(false);
-                    }
-                }
+        // 0xFF 바이어스 노이즈 즉시 폐기:
+        // RS-485 DE→RE 전환 시 버스 floating → UART idle(mark) = 0xFF 연속 수신됨
+        // Modbus 유효 슬레이브 주소는 1~247이므로 0xFF로 시작하는 바이트는 무효
+        if (this.receiveBuffer[0] === 0xFF) {
+            // 0xFF가 아닌 첫 번째 바이트까지 버퍼 앞으로 당김 (노이즈 바이트들 제거)
+            let skipCount = 0;
+            while (skipCount < this.receiveIndex && this.receiveBuffer[skipCount] === 0xFF) {
+                skipCount++;
             }
-        }, 50); // Reduced timeout for faster response
+            if (skipCount > 0) {
+                for (let i = 0; i < this.receiveIndex - skipCount; i++) {
+                    this.receiveBuffer[i] = this.receiveBuffer[skipCount + i];
+                }
+                this.receiveIndex -= skipCount;
+            }
+            if (this.receiveIndex < 2) return; // 유효 바이트 없음, 대기
+        }
+
+        const expectedLength = this.getExpectedFrameLength();
+        if (expectedLength === null) return;          // 길이 확정 불가 (바이트 부족)
+        if (this.receiveIndex < expectedLength) return; // 프레임 미완성, 추가 바이트 대기
+
+        // 정확히 한 프레임만 추출
+        const frame = this.receiveBuffer.slice(0, expectedLength);
+
+        // 나머지 바이트를 버퍼 앞으로 이동
+        const remaining = this.receiveIndex - expectedLength;
+        for (let i = 0; i < remaining; i++) {
+            this.receiveBuffer[i] = this.receiveBuffer[expectedLength + i];
+        }
+        this.receiveIndex = remaining;
+
+        // CRC 검증 (가장 먼저 — 깨진 프레임 조기 폐기)
+        if (!this.modbus.verifyCRC(frame)) {
+            this.addMonitorEntry('error', frame, null, 'CRC mismatch');
+            this.updateStats(false);
+            if (this.receiveIndex >= 2) this.tryParseFrame();
+            return;
+        }
+
+        // 스캔 응답 처리
+        if (this.scanResolve) {
+            const responseSlaveId = frame[0];
+            const functionCode = frame[1];
+            if (responseSlaveId === this.scanExpectedSlaveId && (functionCode & 0x80) === 0) {
+                const responseValue = (frame[3] << 8) | frame[4];
+                this.addMonitorEntry('received', frame);
+                this.updateStats(true);
+                this.scanResolve(responseValue);
+                if (this.receiveIndex >= 2) this.tryParseFrame();
+                return;
+            }
+        }
+
+        // pending 요청 응답 또는 비요청 프레임 처리
+        if (this.pendingResponse) {
+            this.handlePendingResponse(frame);
+            try {
+                const response = this.modbus.parseResponse(frame);
+                this.addMonitorEntry('received', frame, response);
+            } catch (error) {
+                this.addMonitorEntry('error', frame, null, error.message);
+            }
+        } else {
+            try {
+                const response = this.modbus.parseResponse(frame);
+                this.addMonitorEntry('received', frame, response);
+                this.updateStats(true);
+            } catch (error) {
+                this.addMonitorEntry('error', frame, null, error.message);
+                this.updateStats(false);
+            }
+        }
+
+        // 버퍼에 남은 바이트가 있으면 다음 프레임도 파싱 (back-to-back 응답 대응)
+        if (this.receiveIndex >= 2) this.tryParseFrame();
     }
 
     /**
