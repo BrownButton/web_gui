@@ -79,29 +79,25 @@ window.OSTestModules.push({
                     expect: 1
                 },
                 {
-                    // Device 정보는 합격 기준 참고용이므로 soft fail
                     type: 'read_holding',
                     slaveId: 1,
                     address: 0xD000,
                     label: 'Device 정보 확인 [0xD000]',
-                    storeAs: 'deviceInfo',
-                    softFail: true
+                    storeAs: 'deviceInfo'
                 },
                 {
                     type: 'read_holding',
                     slaveId: 1,
                     address: 0xD001,
                     label: 'SW Ver 확인 [0xD001]',
-                    storeAs: 'swVer',
-                    softFail: true
+                    storeAs: 'swVer'
                 },
                 {
                     type: 'read_holding',
                     slaveId: 1,
                     address: 0xD002,
                     label: 'Boot Ver 확인 [0xD002]',
-                    storeAs: 'bootVer',
-                    softFail: true
+                    storeAs: 'bootVer'
                 }
             ]
         }
