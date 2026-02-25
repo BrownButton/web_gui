@@ -1993,19 +1993,79 @@ class ModbusDashboard {
     }
 
     /**
+     * 예상 갱신 주기를 계산해 UI에 표시
+     * 공식: 디바이스당 최악 주기 = (읽기 타임아웃 × 2 + 메시지 간격 × 3) + 폴링 간격
+     * "최악"은 두 번의 읽기(status, speed)가 모두 타임아웃 되는 경우
+     */
+    updatePollingEstimate() {
+        const el = document.getElementById('pollingEstimateText');
+        if (!el) return;
+
+        const readTimeout  = parseInt(document.getElementById('pollingTimeout')?.value)  || this.pollingTimeout;
+        const gap          = parseInt(document.getElementById('paramPollingDelay')?.value) || this.paramPollingDelay;
+        const pollInterval = parseInt(document.getElementById('pollingInterval')?.value)  || this.autoPollingInterval;
+        const numDevices   = this.devices ? this.devices.length : 0;
+
+        // 디바이스 1대당 1 사이클: status read + gap + speed read + gap + (모니터링 파라미터) + pollInterval
+        // 모니터링 파라미터 수는 평균으로 추정
+        const avgMonParams = numDevices > 0
+            ? this.devices.reduce((s, d) => s + (d.monitoringParams?.length || 0), 0) / numDevices
+            : 0;
+        const readsPerDevice   = 2 + Math.round(avgMonParams);  // status + speed + monitoring
+        const worstPerDevice   = readTimeout * readsPerDevice + gap * readsPerDevice + pollInterval;
+        const normalPerDevice  = gap * readsPerDevice + pollInterval; // 응답이 빠를 때 (응답시간 무시)
+
+        // 전체 라운드: 모든 디바이스 한 바퀴
+        const worstRound  = worstPerDevice  * Math.max(numDevices, 1);
+        const normalRound = normalPerDevice * Math.max(numDevices, 1);
+
+        const fmt = ms => ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
+
+        if (numDevices === 0) {
+            el.innerHTML = `
+                <span style="color:#aaa;">연결된 디바이스가 없습니다.</span><br>
+                <span style="color:#888; font-size:11px;">디바이스 추가 후 갱신 주기가 표시됩니다.</span>`;
+        } else {
+            el.innerHTML = `
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div>
+                        <div style="color:#888; font-size:11px;">디바이스 수</div>
+                        <div style="color:#fff; font-weight:600;">${numDevices}대</div>
+                    </div>
+                    <div>
+                        <div style="color:#888; font-size:11px;">읽기 수 / 디바이스</div>
+                        <div style="color:#fff; font-weight:600;">${readsPerDevice}회</div>
+                    </div>
+                    <div>
+                        <div style="color:#888; font-size:11px;">전체 라운드 (정상)</div>
+                        <div style="color:#90ee90; font-weight:600;">≈ ${fmt(normalRound)}</div>
+                    </div>
+                    <div>
+                        <div style="color:#888; font-size:11px;">전체 라운드 (타임아웃 시)</div>
+                        <div style="color:#f08080; font-weight:600;">최대 ${fmt(worstRound)}</div>
+                    </div>
+                </div>`;
+        }
+    }
+
+    /**
      * Apply polling settings from modal
      */
     applyPollingSettings() {
-        const interval = parseInt(document.getElementById('pollingInterval').value);
-        const timeout = parseInt(document.getElementById('pollingTimeout').value);
-        const paramDelay = parseInt(document.getElementById('paramPollingDelay').value);
+        const interval    = parseInt(document.getElementById('pollingInterval').value);
+        const readTimeout = parseInt(document.getElementById('pollingTimeout').value);
+        const writeTimeout = parseInt(document.getElementById('commandTimeout').value);
+        const paramDelay  = parseInt(document.getElementById('paramPollingDelay').value);
         const backgroundToggle = document.getElementById('backgroundPollingToggle');
 
         if (interval >= 10 && interval <= 5000) {
             this.autoPollingInterval = interval;
         }
-        if (timeout >= 50 && timeout <= 5000) {
-            this.pollingTimeout = timeout;
+        if (readTimeout >= 50 && readTimeout <= 5000) {
+            this.pollingTimeout = readTimeout;
+        }
+        if (writeTimeout >= 50 && writeTimeout <= 5000) {
+            this.commandTimeout = writeTimeout;
         }
         if (paramDelay >= 0 && paramDelay <= 500) {
             this.paramPollingDelay = paramDelay;
@@ -2022,6 +2082,7 @@ class ModbusDashboard {
         }
 
         this.savePollingSettings();
+        this.updatePollingEstimate();
         this.showToast('Polling settings applied', 'success');
     }
 
@@ -2032,6 +2093,7 @@ class ModbusDashboard {
         const settings = {
             autoPollingInterval: this.autoPollingInterval,
             pollingTimeout: this.pollingTimeout,
+            commandTimeout: this.commandTimeout,
             paramPollingDelay: this.paramPollingDelay,
             backgroundPollingEnabled: this.backgroundPollingEnabled
         };
@@ -2048,6 +2110,7 @@ class ModbusDashboard {
                 const settings = JSON.parse(saved);
                 if (settings.autoPollingInterval) this.autoPollingInterval = settings.autoPollingInterval;
                 if (settings.pollingTimeout) this.pollingTimeout = settings.pollingTimeout;
+                if (settings.commandTimeout) this.commandTimeout = settings.commandTimeout;
                 if (settings.paramPollingDelay !== undefined) this.paramPollingDelay = settings.paramPollingDelay;
                 if (settings.backgroundPollingEnabled !== undefined) this.backgroundPollingEnabled = settings.backgroundPollingEnabled;
             } catch (e) {
@@ -2071,8 +2134,10 @@ class ModbusDashboard {
         // Sync polling settings
         document.getElementById('pollingInterval').value = this.autoPollingInterval;
         document.getElementById('pollingTimeout').value = this.pollingTimeout;
+        document.getElementById('commandTimeout').value = this.commandTimeout;
         document.getElementById('paramPollingDelay').value = this.paramPollingDelay;
         document.getElementById('backgroundPollingToggle').checked = this.backgroundPollingEnabled;
+        this.updatePollingEstimate();
 
         // Update simulator button state
         this.updateModalSimulatorDisplay();
@@ -6705,6 +6770,9 @@ class ModbusDashboard {
                 device.online = true;
                 device.failCount = 0; // Reset fail count on success
                 this.updateDeviceStats(device.slaveId, true);
+
+                // Inter-frame gap before next read (메시지 간격 설정 적용)
+                if (this.paramPollingDelay > 0) await this.delay(this.paramPollingDelay);
 
                 // Read actual speed (Function Code 04 - Input Register)
                 const actualSpeed = await this.readInputRegisterWithTimeout(device.slaveId, this.REGISTERS.ACTUAL_SPEED);

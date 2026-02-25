@@ -1917,33 +1917,71 @@
 
                     <!-- Polling Settings -->
                     <div class="settings-panel" id="settings-polling">
-                        <h4>Polling Settings</h4>
+                        <h4>RS-485 통신 타이밍</h4>
                         <p style="color: #6c757d; margin-bottom: 20px; font-size: 13px;">
-                            디바이스 모니터링 폴링 속도를 설정합니다.
+                            RS-485 Modbus RTU 통신 타이밍을 설정합니다.
                         </p>
 
+                        <!-- 타이밍 다이어그램 -->
+                        <div style="margin-bottom: 20px; padding: 12px 14px; background: #1a1a2e; border: 1px solid #2d2d4e; border-radius: 8px; font-size: 11px; color: #aaa; font-family: monospace; line-height: 1.8;">
+                            <div style="color: #7ec8e3; margin-bottom: 4px; font-size: 12px;">통신 흐름</div>
+                            TX ──▶ <span style="color:#f0c040;">[ 읽기 타임아웃 대기 ]</span> ──▶ RX
+                            <span style="color:#90ee90;">←메시지 간격→</span>
+                            TX ──▶ <span style="color:#f0c040;">[ 읽기 타임아웃 대기 ]</span> ──▶ RX
+                            <span style="color:#f08080;">←── 폴링 간격 ──→</span>
+                            다음 디바이스...
+                        </div>
+
                         <div class="form-group">
-                            <label for="pollingInterval">Polling Interval (ms)</label>
-                            <input type="number" id="pollingInterval" min="10" max="5000" value="50" step="10">
+                            <label for="pollingInterval">폴링 간격 · Poll Gap (ms)</label>
+                            <input type="number" id="pollingInterval" min="10" max="5000" value="50" step="10"
+                                   oninput="window.dashboard && window.dashboard.updatePollingEstimate()">
                             <small style="color: #6c757d; margin-top: 5px; display: block;">
-                                디바이스 간 폴링 간격입니다. 값이 작을수록 빠르게 업데이트되지만 통신 부하가 증가합니다.
+                                디바이스 폴링 완료 후 다음 디바이스까지 대기 시간.
+                                값이 클수록 버스 여유가 생기고 작을수록 갱신이 빠릅니다.
                             </small>
                         </div>
 
                         <div class="form-group">
-                            <label for="pollingTimeout">Response Timeout (ms)</label>
-                            <input type="number" id="pollingTimeout" min="50" max="5000" value="200" step="50">
+                            <label for="pollingTimeout">읽기 타임아웃 · Read Timeout (ms)</label>
+                            <input type="number" id="pollingTimeout" min="50" max="5000" value="200" step="50"
+                                   oninput="window.dashboard && window.dashboard.updatePollingEstimate()">
                             <small style="color: #6c757d; margin-top: 5px; display: block;">
-                                각 레지스터 읽기 요청의 응답 대기 시간입니다.
+                                레지스터 읽기 요청 후 응답이 없을 때 포기하는 시간. 스캔에도 동일하게 적용됩니다.
                             </small>
                         </div>
 
                         <div class="form-group">
-                            <label for="paramPollingDelay">Parameter Polling Delay (ms)</label>
-                            <input type="number" id="paramPollingDelay" min="0" max="500" value="20" step="5">
+                            <label for="commandTimeout">쓰기 타임아웃 · Write Timeout (ms)</label>
+                            <input type="number" id="commandTimeout" min="50" max="5000" value="200" step="50">
                             <small style="color: #6c757d; margin-top: 5px; display: block;">
-                                모니터링 파라미터 간 딜레이입니다. 통신 안정성을 위해 약간의 딜레이를 권장합니다.
+                                Setpoint·모드 변경 등 쓰기 명령 후 응답 대기 시간.
+                                읽기 타임아웃과 별도로 설정할 수 있습니다.
                             </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="paramPollingDelay">메시지 간격 · Inter-frame Gap (ms)</label>
+                            <input type="number" id="paramPollingDelay" min="0" max="500" value="20" step="1"
+                                   oninput="window.dashboard && window.dashboard.updatePollingEstimate()">
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                연속 RS-485 메시지 사이 최소 간격. 버스 안정화 시간입니다.
+                            </small>
+                            <div style="margin-top: 8px; padding: 8px 10px; background: #1a1a2e; border-radius: 4px; font-size: 11px; color: #aaa;">
+                                <span style="color: #7ec8e3;">권장값 —</span>
+                                9600 bps: <strong style="color:#fff;">4ms</strong> &nbsp;|&nbsp;
+                                19200 bps: <strong style="color:#fff;">2ms</strong> &nbsp;|&nbsp;
+                                38400 bps: <strong style="color:#fff;">1ms</strong> &nbsp;|&nbsp;
+                                115200 bps: <strong style="color:#fff;">0.5ms</strong>
+                            </div>
+                        </div>
+
+                        <!-- 예상 갱신 주기 -->
+                        <div id="pollingEstimate" style="margin-top: 4px; padding: 12px 14px; background: #1a1a2e; border: 1px solid #2d2d4e; border-radius: 8px; font-size: 12px;">
+                            <div style="color: #7ec8e3; margin-bottom: 6px;">예상 갱신 주기</div>
+                            <div id="pollingEstimateText" style="color: #ccc; line-height: 1.7;">
+                                설정을 변경하면 자동으로 계산됩니다.
+                            </div>
                         </div>
 
                         <div class="form-group" style="margin-top: 15px; padding: 15px; background: #1a1a2e; border: 1px solid #2d2d4e; border-radius: 8px;">
@@ -1959,15 +1997,6 @@
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
-                        </div>
-
-                        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 4px; font-size: 13px;">
-                            <strong style="color: #007bff;">💡 권장 설정</strong>
-                            <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #495057;">
-                                <li><strong>빠른 응답:</strong> Interval 50ms, Timeout 200ms</li>
-                                <li><strong>안정적 통신:</strong> Interval 200ms, Timeout 500ms</li>
-                                <li><strong>저부하 모드:</strong> Interval 500ms, Timeout 1000ms</li>
-                            </ul>
                         </div>
 
                         <button id="applyPollingSettings" class="btn btn-primary" style="margin-top: 20px;">
