@@ -1038,7 +1038,7 @@ class ModbusDashboard {
         };
 
         // Auto Scan settings
-        this.autoScanEnabled = false;
+        this.autoScanEnabled = true;
         this.scanRangeStart = 1;
         this.scanRangeEnd = 10;
         this.scanTimeout = 200;
@@ -3894,7 +3894,7 @@ class ModbusDashboard {
             document.getElementById('baseFrameCount').value = this.baseFrameCount;
 
             // Load auto scan settings
-            this.autoScanEnabled = settings.autoScanEnabled || false;
+            this.autoScanEnabled = settings.autoScanEnabled !== undefined ? settings.autoScanEnabled : true;
             this.scanRangeStart = settings.scanRangeStart || 1;
             this.scanRangeEnd = settings.scanRangeEnd || 10;
             this.scanTimeout = settings.scanTimeout || 200;
