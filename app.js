@@ -4034,24 +4034,36 @@ class ModbusDashboard {
             return;
         }
 
-        this.showToast(`Reading ${implementedParams.length} parameters...`, 'info');
+        const total = implementedParams.length;
+        const progress = this.showProgressToast(`Reading ${total} parameters...`, total);
 
         let successCount = 0;
         let errorCount = 0;
+        let current = 0;
 
         for (const param of implementedParams) {
+            if (progress.isCancelled()) break;
+
             try {
-                await this.readParameterByAddress(param);
+                await this.readParameterByAddress(param, true);
                 successCount++;
-                // Small delay between reads
-                await new Promise(resolve => setTimeout(resolve, 50));
             } catch (error) {
                 console.error(`Error reading ${param.name}:`, error);
                 errorCount++;
             }
+
+            current++;
+            progress.update(current);
+            // Small delay between reads
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
 
-        this.showToast(`Read complete: ${successCount} success, ${errorCount} errors`, successCount > 0 ? 'success' : 'error');
+        const wasCancelled = progress.isCancelled();
+        const resultMsg = wasCancelled
+            ? `중단: ${successCount} 성공, ${errorCount} 실패`
+            : `완료: ${successCount} 성공, ${errorCount} 실패`;
+
+        progress.dismiss(resultMsg);
     }
 
     /**
@@ -4547,15 +4559,15 @@ class ModbusDashboard {
     /**
      * Read parameter by address (for CSV-based parameters)
      */
-    async readParameterByAddress(param) {
+    async readParameterByAddress(param, silent = false) {
         if (!this.writer && !this.simulatorEnabled) {
-            this.showToast('먼저 연결하거나 시뮬레이터를 활성화하세요', 'warning');
+            if (!silent) this.showToast('먼저 연결하거나 시뮬레이터를 활성화하세요', 'warning');
             return;
         }
 
         // Check if device is selected on Parameters page
         if (!this.selectedParamDeviceId) {
-            this.showToast('디바이스를 먼저 선택하세요', 'warning');
+            if (!silent) this.showToast('디바이스를 먼저 선택하세요', 'warning');
             return;
         }
 
@@ -4593,10 +4605,10 @@ class ModbusDashboard {
                 this.saveParameters();
                 this.renderParameters();
                 this.updateStats(true);
-                this.showToast(`${param.name}: ${value} (0x${value.toString(16).toUpperCase()})`, 'success');
+                if (!silent) this.showToast(`${param.name}: ${value} (0x${value.toString(16).toUpperCase()})`, 'success');
             } else {
                 this.updateStats(false);
-                this.showToast(`${param.name} 읽기 실패`, 'error');
+                if (!silent) this.showToast(`${param.name} 읽기 실패`, 'error');
             }
         } else if (this.writer) {
             // Use sendAndWaitResponse to wait for response (it handles stats internally)
@@ -4605,9 +4617,9 @@ class ModbusDashboard {
                 param.value = value;
                 this.saveParameters();
                 this.renderParameters();
-                this.showToast(`${param.name}: ${value} (0x${value.toString(16).toUpperCase()})`, 'success');
+                if (!silent) this.showToast(`${param.name}: ${value} (0x${value.toString(16).toUpperCase()})`, 'success');
             } else {
-                this.showToast(`${param.name} 읽기 실패`, 'error');
+                if (!silent) this.showToast(`${param.name} 읽기 실패`, 'error');
             }
         }
     }
@@ -4993,6 +5005,92 @@ class ModbusDashboard {
 
         // Start auto-hide timer
         startAutoHide();
+    }
+
+    /**
+     * Show a persistent progress toast with circular progress bar
+     * Returns a controller: { update(current), dismiss(finalMsg), isCancelled() }
+     */
+    showProgressToast(message, total) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-progress-toast';
+
+        const radius = 14;
+        const circumference = 2 * Math.PI * radius;
+
+        toast.innerHTML = `
+            <div class="toast-icon" style="font-size:18px;">↻</div>
+            <div class="toast-message" style="flex:1;">
+                <div class="toast-progress-label">${message}</div>
+                <div class="toast-progress-sub">0 / ${total}</div>
+            </div>
+            <div class="toast-progress-ring">
+                <svg width="36" height="36" viewBox="0 0 36 36">
+                    <circle class="toast-ring-bg" cx="18" cy="18" r="${radius}"/>
+                    <circle class="toast-ring-fg" cx="18" cy="18" r="${radius}"
+                        stroke-dasharray="${circumference.toFixed(2)}"
+                        stroke-dashoffset="${circumference.toFixed(2)}"/>
+                </svg>
+                <span class="toast-ring-pct">0%</span>
+            </div>
+            <button class="toast-cancel-btn" title="중단">✕</button>
+        `;
+
+        container.appendChild(toast);
+
+        let cancelled = false;
+        let hidden = false;
+
+        const ringFg = toast.querySelector('.toast-ring-fg');
+        const ringPct = toast.querySelector('.toast-ring-pct');
+        const subLabel = toast.querySelector('.toast-progress-sub');
+        const progressLabel = toast.querySelector('.toast-progress-label');
+        const cancelBtn = toast.querySelector('.toast-cancel-btn');
+
+        // Click body to hide toast (keeps running)
+        toast.addEventListener('click', (e) => {
+            if (e.target === cancelBtn) return;
+            hidden = true;
+            toast.classList.add('toast-hide');
+            setTimeout(() => {
+                if (container.contains(toast)) container.removeChild(toast);
+            }, 300);
+        });
+
+        // X button to cancel
+        cancelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cancelled = true;
+            dismiss('중단됨');
+        });
+
+        const dismiss = (finalMsg) => {
+            if (finalMsg && !hidden) {
+                progressLabel.textContent = finalMsg;
+                setTimeout(() => {
+                    toast.classList.add('toast-hide');
+                    setTimeout(() => {
+                        if (container.contains(toast)) container.removeChild(toast);
+                    }, 300);
+                }, 800);
+            } else if (!hidden) {
+                toast.classList.add('toast-hide');
+                setTimeout(() => {
+                    if (container.contains(toast)) container.removeChild(toast);
+                }, 300);
+            }
+        };
+
+        const update = (current) => {
+            const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+            const offset = circumference - (pct / 100) * circumference;
+            ringFg.style.strokeDashoffset = offset;
+            ringPct.textContent = `${pct}%`;
+            subLabel.textContent = `${current} / ${total}`;
+        };
+
+        return { update, dismiss, isCancelled: () => cancelled };
     }
 
     /**

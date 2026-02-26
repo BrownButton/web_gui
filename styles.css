@@ -2906,6 +2906,78 @@ select:focus {
     }
 }
 
+/* Progress Toast */
+.toast-progress-toast {
+    background: #2c3e50;
+    min-width: 320px;
+    gap: 10px;
+}
+
+.toast-progress-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    line-height: 1.3;
+}
+
+.toast-progress-sub {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 3px;
+}
+
+.toast-progress-ring {
+    position: relative;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 3;
+}
+
+.toast-ring-fg {
+    fill: none;
+    stroke: #4ade80;
+    stroke-width: 3;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 18px 18px;
+    transition: stroke-dashoffset 0.25s ease;
+}
+
+.toast-ring-pct {
+    position: absolute;
+    font-size: 8px;
+    color: white;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.toast-cancel-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    line-height: 1;
+    transition: background 0.2s, color 0.2s;
+}
+
+.toast-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
 /* Sidebar Footer */
 .sidebar-footer {
     margin-top: auto;
