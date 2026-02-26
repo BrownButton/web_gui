@@ -4060,15 +4060,16 @@ class ModbusDashboard {
             if (progress.isCancelled()) break;
 
             try {
-                await this.readParameterByAddress(param, true);
-                successCount++;
+                const ok = await this.readParameterByAddress(param, true);
+                if (ok) successCount++;
+                else errorCount++;
             } catch (error) {
                 console.error(`Error reading ${param.name}:`, error);
                 errorCount++;
             }
 
             current++;
-            progress.update(current);
+            progress.update(current, successCount, errorCount);
             // Small delay between reads
             await new Promise(resolve => setTimeout(resolve, 50));
         }
@@ -4621,9 +4622,11 @@ class ModbusDashboard {
                 this.renderParameters();
                 this.updateStats(true);
                 if (!silent) this.showToast(`${param.name}: ${value} (0x${value.toString(16).toUpperCase()})`, 'success');
+                return true;
             } else {
                 this.updateStats(false);
                 if (!silent) this.showToast(`${param.name} 읽기 실패`, 'error');
+                return false;
             }
         } else if (this.writer) {
             // Use sendAndWaitResponse to wait for response (it handles stats internally)
@@ -4633,10 +4636,13 @@ class ModbusDashboard {
                 this.saveParameters();
                 this.renderParameters();
                 if (!silent) this.showToast(`${param.name}: ${value} (0x${value.toString(16).toUpperCase()})`, 'success');
+                return true;
             } else {
                 if (!silent) this.showToast(`${param.name} 읽기 실패`, 'error');
+                return false;
             }
         }
+        return false;
     }
 
     /**
@@ -5017,8 +5023,11 @@ class ModbusDashboard {
                 <svg width="36" height="36" viewBox="0 0 36 36">
                     <circle class="toast-ring-bg" cx="18" cy="18" r="${radius}"/>
                     <circle class="toast-ring-fg" cx="18" cy="18" r="${radius}"
-                        stroke-dasharray="${circumference.toFixed(2)}"
-                        stroke-dashoffset="${circumference.toFixed(2)}"/>
+                        stroke-dasharray="0 ${circumference.toFixed(2)}"
+                        stroke-dashoffset="0"/>
+                    <circle class="toast-ring-err" cx="18" cy="18" r="${radius}"
+                        stroke-dasharray="0 ${circumference.toFixed(2)}"
+                        stroke-dashoffset="0"/>
                 </svg>
                 <span class="toast-ring-pct">0%</span>
             </div>
@@ -5031,6 +5040,7 @@ class ModbusDashboard {
         let hidden = false;
 
         const ringFg = toast.querySelector('.toast-ring-fg');
+        const ringErr = toast.querySelector('.toast-ring-err');
         const ringPct = toast.querySelector('.toast-ring-pct');
         const subLabel = toast.querySelector('.toast-progress-sub');
         const progressLabel = toast.querySelector('.toast-progress-label');
@@ -5071,10 +5081,19 @@ class ModbusDashboard {
             }
         };
 
-        const update = (current) => {
+        const update = (current, successCount = current, errorCount = 0) => {
             const pct = total > 0 ? Math.round((current / total) * 100) : 0;
-            const offset = circumference - (pct / 100) * circumference;
-            ringFg.style.strokeDashoffset = offset;
+
+            // Green arc: success portion from top
+            const successLen = total > 0 ? (successCount / total) * circumference : 0;
+            ringFg.style.strokeDasharray = `${successLen.toFixed(2)} ${(circumference - successLen).toFixed(2)}`;
+
+            // Red arc: error portion, starting right after the green arc
+            const errorLen = total > 0 ? (errorCount / total) * circumference : 0;
+            const successAngle = -90 + (successCount / total) * 360;
+            ringErr.style.transform = `rotate(${successAngle}deg)`;
+            ringErr.style.strokeDasharray = `${errorLen.toFixed(2)} ${(circumference - errorLen).toFixed(2)}`;
+
             ringPct.textContent = `${pct}%`;
             subLabel.textContent = `${current} / ${total}`;
         };

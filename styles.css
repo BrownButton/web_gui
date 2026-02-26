@@ -2975,7 +2975,17 @@ select:focus {
     stroke-linecap: round;
     transform: rotate(-90deg);
     transform-origin: 18px 18px;
-    transition: stroke-dashoffset 0.25s ease;
+    transition: stroke-dasharray 0.25s ease;
+}
+
+.toast-ring-err {
+    fill: none;
+    stroke: #f87171;
+    stroke-width: 3;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: 18px 18px;
+    transition: stroke-dasharray 0.25s ease, transform 0.25s ease;
 }
 
 .toast-ring-pct {
