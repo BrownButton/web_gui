@@ -1001,7 +1001,7 @@ class ModbusDashboard {
         // Product Test Dashboard
         this.devices = [];
         this.selectedDevices = new Set();
-        this.deviceViewMode = localStorage.getItem('deviceViewMode') || 'list'; // 'card' or 'list'
+        this.deviceViewMode = localStorage.getItem('deviceViewMode') || 'card'; // 'card' or 'list'
 
         // Parameters page device selection
         this.selectedParamDeviceId = null;
