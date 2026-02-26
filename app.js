@@ -4999,7 +4999,7 @@ class ModbusDashboard {
      * Show a persistent progress toast with circular progress bar
      * Returns a controller: { update(current), dismiss(finalMsg), isCancelled() }
      */
-    showProgressToast(message, total) {
+    showProgressToast(message, total, onCancel = null) {
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
         toast.className = 'toast toast-progress-toast';
@@ -5050,6 +5050,7 @@ class ModbusDashboard {
         cancelBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             cancelled = true;
+            if (onCancel) onCancel();
             dismiss('중단됨');
         });
 
@@ -5666,6 +5667,7 @@ class ModbusDashboard {
             this.selectedDevices.delete(deviceId);
             this.saveDevices();
             this.renderDeviceGrid();
+            this.renderDeviceSetupList();
             this.updateSelectedCount();
             this.showToast('장치가 삭제되었습니다', 'info');
 
@@ -7841,6 +7843,12 @@ class ModbusDashboard {
         const foundDevices = [];
         const totalToScan = this.scanRangeEnd - this.scanRangeStart + 1;
 
+        const scanToast = this.showProgressToast(
+            `ID ${this.scanRangeStart} ~ ${this.scanRangeEnd} 탐색 중...`,
+            totalToScan,
+            () => this.stopDeviceScan()
+        );
+
         this.addMonitorEntry('received', `Device scan started (ID ${this.scanRangeStart} ~ ${this.scanRangeEnd})${autoAdd ? ' [Auto Add]' : ''}`);
 
         for (let slaveId = this.scanRangeStart; slaveId <= this.scanRangeEnd; slaveId++) {
@@ -7849,9 +7857,11 @@ class ModbusDashboard {
                 break;
             }
 
-            const progress = ((slaveId - this.scanRangeStart + 1) / totalToScan) * 100;
+            const current = slaveId - this.scanRangeStart + 1;
+            const progress = (current / totalToScan) * 100;
+            scanToast.update(current);
             if (scanProgressBar) scanProgressBar.style.width = `${progress}%`;
-            if (scanProgressText) scanProgressText.textContent = `Scanning ID ${slaveId}... (${slaveId - this.scanRangeStart + 1}/${totalToScan})`;
+            if (scanProgressText) scanProgressText.textContent = `Scanning ID ${slaveId}... (${current}/${totalToScan})`;
 
             const response = await this.scanSlaveId(slaveId);
 
@@ -7917,8 +7927,11 @@ class ModbusDashboard {
             }
         }
 
-        const autoAddMsg = autoAdd && foundDevices.length > 0 ? ' (Dashboard에 자동 추가됨)' : '';
-        this.showToast(`탐색 완료: ${foundDevices.length}개 장치 발견${autoAddMsg}`, foundDevices.length > 0 ? 'success' : 'info');
+        const autoAddMsg = autoAdd && foundDevices.length > 0 ? ' (자동 추가됨)' : '';
+        const finalMsg = this.scanAborted
+            ? `탐색 중단: ${foundDevices.length}개 발견`
+            : `탐색 완료: ${foundDevices.length}개 발견${autoAddMsg}`;
+        scanToast.dismiss(finalMsg);
     }
 
     /**
@@ -8062,6 +8075,7 @@ class ModbusDashboard {
         this.devices.push(device);
         this.saveDevices();
         this.renderDeviceGrid();
+        this.renderDeviceSetupList();
 
         // 연결 후 디바이스에서 모드와 최대 속도 읽기
         this.initializeDeviceMode(device.id);
