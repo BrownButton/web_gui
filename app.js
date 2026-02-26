@@ -9507,6 +9507,17 @@ class ModbusDashboard {
             this.saveDevices();
             this.renderDeviceSetupList();
             this.renderDeviceSetupConfig(device);
+
+            // Update Dashboard card ID badge immediately without full re-render
+            const dashboardCard = document.querySelector(`.device-card[data-device-id="${deviceId}"], .device-list-item[data-device-id="${deviceId}"]`);
+            if (dashboardCard) {
+                const idBadge = dashboardCard.querySelector('.device-id-badge');
+                if (idBadge) {
+                    idBadge.className = `device-id-badge`;
+                    idBadge.textContent = `ID: ${newAddress}`;
+                }
+            }
+
             if (statusElement) {
                 statusElement.textContent = '✓';
                 statusElement.title = 'Applied successfully';
