@@ -4629,8 +4629,16 @@ class ModbusDashboard {
                 return false;
             }
         } else if (this.writer) {
-            // Use sendAndWaitResponse to wait for response (it handles stats internally)
-            const value = await this.sendAndWaitResponse(frame, slaveId);
+            let value;
+            if (this.autoPollingTimer) {
+                // Polling is active: enqueue the read to avoid 485 bus collision.
+                // The queue is drained between polling cycles in pollNextDeviceSequential.
+                value = await new Promise((resolve, reject) => {
+                    this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
+                });
+            } else {
+                value = await this.sendAndWaitResponse(frame, slaveId);
+            }
             if (value !== null) {
                 param.value = value;
                 this.saveParameters();
@@ -6831,14 +6839,20 @@ class ModbusDashboard {
         if (this.isPolling) return;
         this.isPolling = true;
 
-        // Command queue: polling 사이클 사이에 사용자 write 명령을 처리
+        // Command queue: polling 사이클 사이에 사용자 write/read 명령을 처리
         // 이 블록에서만 TX가 발생하므로 485 버스 충돌 원천 차단
         if (this.commandQueue.length > 0) {
             const cmd = this.commandQueue.shift();
             try {
-                // commandTimeout (설정의 Timeout)을 사용해 write 후 응답 대기
-                await this.sendWriteAndWaitResponse(cmd.frame, cmd.slaveId, cmd.address);
-                cmd.resolve();
+                if (cmd.type === 'read') {
+                    // Read 명령: sendAndWaitResponse로 값을 받아서 resolve에 전달
+                    const value = await this.sendAndWaitResponse(cmd.frame, cmd.slaveId);
+                    cmd.resolve(value);
+                } else {
+                    // Write 명령 (기존 동작): commandTimeout으로 응답 대기
+                    await this.sendWriteAndWaitResponse(cmd.frame, cmd.slaveId, cmd.address);
+                    cmd.resolve();
+                }
             } catch (err) {
                 cmd.reject(err);
             } finally {
@@ -8009,6 +8023,14 @@ class ModbusDashboard {
      * Scan with timeout for real serial communication
      */
     async scanWithTimeout(frame, slaveId) {
+        // Wait for any in-progress polling cycle to finish before sending scan TX.
+        // isScanning=true already prevents NEW polling cycles from starting, but a
+        // cycle that was already executing (e.g. waiting for Slave 7's response) must
+        // complete first — otherwise the scan TX collides with the pending poll response.
+        while (this.isPolling) {
+            await new Promise(resolve => setTimeout(resolve, 5));
+        }
+
         return new Promise(async (resolve) => {
             // Set up scan response callback
             this.scanExpectedSlaveId = slaveId;
@@ -9723,9 +9745,17 @@ class ModbusDashboard {
         }
 
         // Write to 0xD100 (Fan address)
+        const oldSlaveId = device.slaveId;
         const success = await this.writeHoldingRegister(device.slaveId, 0xD100, newAddress);
         if (success) {
             device.slaveId = newAddress;
+            // Keep selectedParamDeviceId in sync: if it was pointing at the old address,
+            // update it so Read All continues to target the correct device.
+            if (this.selectedParamDeviceId === oldSlaveId) {
+                this.selectedParamDeviceId = newAddress;
+                this.updateParamDeviceStatus();
+                this.renderParameters();
+            }
             this.saveDevices();
             this.renderDeviceSetupList();
             this.renderDeviceSetupConfig(device);
