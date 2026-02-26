@@ -5197,63 +5197,50 @@ class ModbusDashboard {
             modalTitle.textContent = 'Device Configuration';
         }
 
-        // Clear modal body and create proper flex container structure
+        // Clear modal body
         modalBody.innerHTML = '';
-        console.log('Step 1: Modal body cleared');
 
-        // Create wrapper that mimics Device Setup page structure
+        // Create the deviceSetupConfig container for the modal
         const configWrapper = document.createElement('div');
         configWrapper.style.cssText = 'display: flex; flex-direction: column; width: 100%; min-height: 0; flex: 1;';
-        console.log('Step 2: Config wrapper created');
 
-        // Create the deviceSetupConfig container with proper flex context
         const configContainer = document.createElement('div');
         configContainer.id = 'deviceSetupConfig';
         configContainer.style.cssText = 'flex: 1; overflow-y: auto; display: block; min-height: 0;';
-        console.log('Step 3: Config container created with id:', configContainer.id);
 
-        // Build container hierarchy
         configWrapper.appendChild(configContainer);
         modalBody.appendChild(configWrapper);
-        console.log('Step 4: Container hierarchy built');
 
         // Show modal
         modal.style.display = 'flex';
-        console.log('Step 5: Modal displayed');
 
-        // CRITICAL: Temporarily remove the page's deviceSetupConfig to avoid ID collision
-        const pageConfigContainer = document.querySelector('#page-device-setup #deviceSetupConfig');
-        let originalId = null;
+        // While the modal is open, the page's #deviceSetupConfig may contain child elements
+        // with the same IDs (e.g. fanAddress_1, operatingMode_1). Because the page container
+        // appears earlier in the DOM than the modal, getElementById always finds the page's
+        // elements first, causing apply* functions to read stale values instead of what the
+        // user typed in the modal.
+        //
+        // Fix: clear the page container's content entirely while the modal is open so that
+        // no duplicate IDs exist. Restore content + ID when the modal closes.
+        const pageConfigContainer = document.querySelector(
+            '#page-device-setup #deviceSetupConfig, #page-device-setup [id="deviceSetupConfig_temp"]'
+        );
+        let savedPageContent = '';
         if (pageConfigContainer) {
-            originalId = pageConfigContainer.id;
             pageConfigContainer.id = 'deviceSetupConfig_temp';
-            console.log('Step 5.5: Temporarily renamed page config container to avoid ID collision');
+            savedPageContent = pageConfigContainer.innerHTML;
+            pageConfigContainer.innerHTML = '';
         }
 
-        // Render device configuration - it will find #deviceSetupConfig in modal
-        console.log('Step 6: About to call renderDeviceSetupConfig for device:', device.name);
+        // Render device configuration into the modal's #deviceSetupConfig
         this.renderDeviceSetupConfig(device);
-        console.log('Step 7: renderDeviceSetupConfig called');
 
-        // Restore the page's deviceSetupConfig ID
-        if (pageConfigContainer && originalId) {
-            pageConfigContainer.id = originalId;
-            console.log('Step 7.5: Restored page config container ID');
-        }
-
-        // Verify rendering
-        const deviceNameSpan = document.getElementById(`deviceName_${device.id}`);
-        console.log('Step 8: Device name span found:', !!deviceNameSpan);
-        console.log('Config container innerHTML length:', configContainer.innerHTML.length);
-        console.log('Config container offsetHeight:', configContainer.offsetHeight);
-        console.log('Config container offsetWidth:', configContainer.offsetWidth);
-
-        if (!deviceNameSpan) {
-            console.warn('Device configuration may not have rendered correctly');
-        }
-
-        // Close button handler
+        // Close button handler - restore page container content and ID
         const handleClose = () => {
+            if (pageConfigContainer) {
+                pageConfigContainer.innerHTML = savedPageContent;
+                pageConfigContainer.id = 'deviceSetupConfig';
+            }
             modal.style.display = 'none';
             modalBody.innerHTML = '';
             closeBtn.removeEventListener('click', handleClose);

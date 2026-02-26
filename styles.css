@@ -2972,7 +2972,7 @@ select:focus {
     fill: none;
     stroke: #4ade80;
     stroke-width: 3;
-    stroke-linecap: round;
+    stroke-linecap: butt;
     transform: rotate(-90deg);
     transform-origin: 18px 18px;
     transition: stroke-dasharray 0.25s ease;
@@ -2982,7 +2982,7 @@ select:focus {
     fill: none;
     stroke: #f87171;
     stroke-width: 3;
-    stroke-linecap: round;
+    stroke-linecap: butt;
     transform: rotate(-90deg);
     transform-origin: 18px 18px;
     transition: stroke-dasharray 0.25s ease, transform 0.25s ease;
