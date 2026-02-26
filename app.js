@@ -6972,7 +6972,16 @@ class ModbusDashboard {
                 return null;
             }
         } else if (this.writer) {
-            // Real serial communication with timeout
+            if (this.autoPollingTimer && !this.isPolling) {
+                // Called from outside the polling loop while polling is active
+                // (e.g. refreshDevice). Queue the read so it runs between poll
+                // cycles and never collides with an in-progress poll frame.
+                return new Promise((resolve, reject) => {
+                    this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
+                });
+            }
+            // Either polling is inactive, or we are already inside a polling
+            // cycle (isPolling=true) — safe to send directly.
             return await this.sendAndWaitResponse(frame, slaveId);
         }
 
