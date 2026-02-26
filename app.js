@@ -1005,6 +1005,7 @@ class ModbusDashboard {
 
         // Parameters page device selection
         this.selectedParamDeviceId = null;
+        this.currentSetupDeviceId = null;
 
         // Drag and drop state
         this.draggedElement = null;
@@ -1577,6 +1578,12 @@ class ModbusDashboard {
                     deviceManufactureTab.style.display = 'none';
                 }
 
+                // Hide communication statistics in navbar
+                const navbarStats = document.getElementById('navbarStats');
+                if (navbarStats) {
+                    navbarStats.style.display = 'none';
+                }
+
                 this.showToast('Developer Mode Disabled', 'info');
                 // Switch to dashboard if currently on manufacture page
                 if (this.currentPage === 'manufacture') {
@@ -1626,6 +1633,12 @@ class ModbusDashboard {
         const deviceManufactureTab = document.querySelector('.device-setup-tab[data-tab="manufacture"]');
         if (deviceManufactureTab) {
             deviceManufactureTab.style.display = '';  // Remove inline display:none to show the button
+        }
+
+        // Show communication statistics in navbar
+        const navbarStats = document.getElementById('navbarStats');
+        if (navbarStats) {
+            navbarStats.style.display = 'flex';
         }
     }
 
@@ -3869,6 +3882,8 @@ class ModbusDashboard {
         const stored = localStorage.getItem('modbusParameters');
         if (stored) {
             this.parameters = JSON.parse(stored);
+            // Clear previous session values - only show values actually read from device
+            this.parameters.forEach(p => { p.value = null; });
             this.renderParameters();
         } else {
             // No stored parameters - load default CSV automatically
@@ -4943,11 +4958,9 @@ class ModbusDashboard {
     showToast(message, type = 'info', duration = 3000) {
         const container = document.getElementById('toastContainer');
 
-        // Create toast element
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
 
-        // Icon mapping
         const icons = {
             success: '✓',
             info: 'ⓘ',
@@ -4958,53 +4971,28 @@ class ModbusDashboard {
         toast.innerHTML = `
             <div class="toast-icon">${icons[type] || icons.info}</div>
             <div class="toast-message">${message}</div>
+            <div class="toast-timer-bar" style="animation-duration: ${duration}ms"></div>
         `;
 
-        // Add to container
         container.appendChild(toast);
 
-        let autoHideTimeout;
-        let isHovered = false;
-
-        // Function to remove toast
         const removeToast = () => {
             toast.classList.add('toast-hide');
             setTimeout(() => {
-                if (container.contains(toast)) {
-                    container.removeChild(toast);
-                }
-            }, 300); // Wait for animation to complete
+                if (container.contains(toast)) container.removeChild(toast);
+            }, 300);
         };
 
-        // Auto hide after duration
-        const startAutoHide = () => {
-            autoHideTimeout = setTimeout(() => {
-                if (!isHovered) {
-                    removeToast();
-                }
-            }, duration);
-        };
+        const timerBar = toast.querySelector('.toast-timer-bar');
+
+        // Auto-remove when timer bar animation ends (respects hover-pause automatically via CSS)
+        timerBar.addEventListener('animationend', removeToast);
 
         // Click to dismiss immediately
         toast.addEventListener('click', () => {
-            clearTimeout(autoHideTimeout);
+            timerBar.removeEventListener('animationend', removeToast);
             removeToast();
         });
-
-        // Pause auto-hide on hover
-        toast.addEventListener('mouseenter', () => {
-            isHovered = true;
-            clearTimeout(autoHideTimeout);
-        });
-
-        // Resume auto-hide on mouse leave
-        toast.addEventListener('mouseleave', () => {
-            isHovered = false;
-            startAutoHide();
-        });
-
-        // Start auto-hide timer
-        startAutoHide();
     }
 
     /**
@@ -5394,7 +5382,7 @@ class ModbusDashboard {
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const percent = parseInt(btn.dataset.percent);
-                const maxValue = parseInt(allDeviceSetpointSlider?.max || 10000);
+                const maxValue = parseInt(allDeviceSetpointSlider?.max || 1600);
                 const value = Math.round((percent / 100) * maxValue);
                 if (allDeviceSetpoint) allDeviceSetpoint.value = value;
                 if (allDeviceSetpointSlider) {
@@ -5631,7 +5619,7 @@ class ModbusDashboard {
             setpoint: 0,
             actualSpeed: 0,
             motorStatus: 0,
-            maxSpeed: 10000,
+            maxSpeed: 1600,
             lastUpdate: null,
             online: false,
             failCount: 0,
@@ -5682,7 +5670,7 @@ class ModbusDashboard {
             this.showToast('장치가 삭제되었습니다', 'info');
 
             // If currently on Device Setup page for this device, go back to Dashboard
-            if (this.currentPage === 'device-setup' && this.currentDeviceId === deviceId) {
+            if (this.currentPage === 'device-setup' && this.currentSetupDeviceId === deviceId) {
                 this.showPage('dashboard');
             }
 
@@ -5788,7 +5776,7 @@ class ModbusDashboard {
                 <span class="status-text">${statusInfo.text}</span>
             </div>
             <div class="device-value">
-                <div class="device-value-number">
+                <div class="device-value-number setpoint-display-value">
                     ${device.setpoint}<span class="device-value-unit">${modeText}</span>
                 </div>
             </div>
@@ -5797,7 +5785,7 @@ class ModbusDashboard {
                 <button class="mode-btn ${device.operationMode !== 0 ? 'active' : ''}" data-mode="2">%</button>
             </div>
             <div class="device-controls">
-                <input type="number" class="device-setpoint-input" placeholder="${modeText}" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
+                <input type="number" class="device-setpoint-input" placeholder="${modeText}" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 1600 : 100)}" value="${device.setpoint}">
                 <span class="input-unit">${modeText}</span>
             </div>
             <div class="device-actions">
@@ -5987,7 +5975,7 @@ class ModbusDashboard {
                 <div class="device-values">
                     <div class="device-value-item">
                         <div class="device-value-label">Setpoint</div>
-                        <div class="device-value-number">
+                        <div class="device-value-number setpoint-display-value">
                             ${device.setpoint}<span class="device-value-unit">${modeText}</span>
                         </div>
                     </div>
@@ -5999,16 +5987,16 @@ class ModbusDashboard {
                     </div>
                 </div>
                 <div class="device-controls">
-                    <input type="number" class="device-setpoint-input" placeholder="Setpoint (${modeText})" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 10000 : 100)}" value="${device.setpoint}">
+                    <input type="number" class="device-setpoint-input" placeholder="Setpoint (${modeText})" min="0" max="${device.maxSpeed || (device.operationMode === 0 ? 1600 : 100)}" value="${device.setpoint}">
                     <span class="input-unit">${modeText}</span>
                 </div>
                 <div class="device-quick-btns">
                     ${device.operationMode === 0 ? `
                     <button class="quick-btn" data-value="0">0</button>
-                    <button class="quick-btn" data-value="${Math.round((device.maxSpeed || 10000) * 0.25)}">${Math.round((device.maxSpeed || 10000) * 0.25)}</button>
-                    <button class="quick-btn" data-value="${Math.round((device.maxSpeed || 10000) * 0.5)}">${Math.round((device.maxSpeed || 10000) * 0.5)}</button>
-                    <button class="quick-btn" data-value="${Math.round((device.maxSpeed || 10000) * 0.75)}">${Math.round((device.maxSpeed || 10000) * 0.75)}</button>
-                    <button class="quick-btn" data-value="${device.maxSpeed || 10000}">${device.maxSpeed || 10000}</button>
+                    <button class="quick-btn" data-value="${Math.round((device.maxSpeed || 1600) * 0.25)}">${Math.round((device.maxSpeed || 1600) * 0.25)}</button>
+                    <button class="quick-btn" data-value="${Math.round((device.maxSpeed || 1600) * 0.5)}">${Math.round((device.maxSpeed || 1600) * 0.5)}</button>
+                    <button class="quick-btn" data-value="${Math.round((device.maxSpeed || 1600) * 0.75)}">${Math.round((device.maxSpeed || 1600) * 0.75)}</button>
+                    <button class="quick-btn" data-value="${device.maxSpeed || 1600}">${device.maxSpeed || 1600}</button>
                     ` : `
                     <button class="quick-btn" data-value="0">0%</button>
                     <button class="quick-btn" data-value="25">25%</button>
@@ -6368,7 +6356,7 @@ class ModbusDashboard {
             rpmBtn.classList.add('active');
             pctBtn.classList.remove('active');
             unitSpan.textContent = 'RPM';
-            slider.max = 10000;
+            slider.max = 1600;
         } else {
             rpmBtn.classList.remove('active');
             pctBtn.classList.add('active');
@@ -6385,11 +6373,22 @@ class ModbusDashboard {
     convertSetpointToRaw(device, setpoint) {
         if (device.operationMode === 0) {
             // Speed Control: user enters RPM
-            const maxSpeed = device.maxSpeed || 10000;
+            const maxSpeed = device.maxSpeed || 1600;
             return Math.round(setpoint / maxSpeed * 64000);
         } else {
             // Open-loop Control: user enters %
             return Math.round(setpoint / 100 * 65535);
+        }
+    }
+
+    convertRawToSetpoint(device, raw) {
+        if (device.operationMode === 0) {
+            // Speed Control: raw → RPM
+            const maxSpeed = device.maxSpeed || 1600;
+            return Math.round(raw * maxSpeed / 64000);
+        } else {
+            // Open-loop Control: raw → %
+            return Math.round(raw * 100 / 65535);
         }
     }
 
@@ -6521,7 +6520,7 @@ class ModbusDashboard {
             // If Speed Control mode (RPM), read maximum speed
             if (mode === 0) {
                 const maxSpeed = await this.readRegister(device.slaveId, this.REGISTERS.MAXIMUM_SPEED);
-                device.maxSpeed = maxSpeed > 0 ? maxSpeed : 10000;
+                device.maxSpeed = maxSpeed > 0 ? maxSpeed : 1600;
             } else {
                 // Open-loop mode uses percentage (0-100%)
                 device.maxSpeed = 100;
@@ -6557,7 +6556,7 @@ class ModbusDashboard {
             // If Speed Control mode (RPM), read maximum speed
             if (mode === 0) {
                 const maxSpeed = await this.readRegister(device.slaveId, this.REGISTERS.MAXIMUM_SPEED);
-                device.maxSpeed = maxSpeed > 0 ? maxSpeed : 10000;
+                device.maxSpeed = maxSpeed > 0 ? maxSpeed : 1600;
             } else {
                 // Open-loop mode uses percentage (0-100%)
                 device.maxSpeed = 100;
@@ -6601,7 +6600,7 @@ class ModbusDashboard {
             if (newMode === 0) {
                 // Speed Control mode - read max speed from device
                 const maxSpeed = await this.readRegister(device.slaveId, this.REGISTERS.MAXIMUM_SPEED);
-                device.maxSpeed = maxSpeed > 0 ? maxSpeed : 10000;
+                device.maxSpeed = maxSpeed > 0 ? maxSpeed : 1600;
             } else {
                 // Open-loop mode uses percentage (0-100%)
                 device.maxSpeed = 100;
@@ -6879,6 +6878,15 @@ class ModbusDashboard {
                     device.actualSpeed = actualSpeed > 32767 ? actualSpeed - 65536 : actualSpeed;
                 }
 
+                // Inter-frame gap
+                if (this.paramPollingDelay > 0) await this.delay(this.paramPollingDelay);
+
+                // Read setpoint (Function Code 03 - Holding Register)
+                const rawSetpoint = await this.readRegisterWithTimeout(device.slaveId, this.REGISTERS.SETPOINT);
+                if (rawSetpoint !== null) {
+                    device.setpoint = this.convertRawToSetpoint(device, rawSetpoint);
+                }
+
                 this.updateDeviceCardStatus(device);
 
                 // Poll monitoring parameters if any
@@ -7078,6 +7086,18 @@ class ModbusDashboard {
             if (actualSpeedEl) {
                 actualSpeedEl.innerHTML = `${device.actualSpeed}<span class="device-value-unit">RPM</span>`;
             }
+        }
+
+        // Update setpoint display (card & list view)
+        const modeText = device.operationMode === 0 ? 'RPM' : '%';
+        const setpointDisplayEl = element.querySelector('.setpoint-display-value');
+        if (setpointDisplayEl) {
+            setpointDisplayEl.innerHTML = `${device.setpoint}<span class="device-value-unit">${modeText}</span>`;
+        }
+        // Update setpoint input only if not currently focused
+        const setpointInputEl = element.querySelector('.device-setpoint-input');
+        if (setpointInputEl && document.activeElement !== setpointInputEl) {
+            setpointInputEl.value = device.setpoint;
         }
     }
 
@@ -8032,7 +8052,7 @@ class ModbusDashboard {
             operationMode: 0,
             setpoint: 0,
             motorStatus: 0,
-            maxSpeed: 10000,
+            maxSpeed: 1600,
             lastUpdate: Date.now(),
             online: true,
             runningDirection: 0,  // 0: CCW, 1: CW
@@ -9066,8 +9086,17 @@ class ModbusDashboard {
             }
         });
 
+        // Track currently selected setup device
+        this.currentSetupDeviceId = device.id;
+
         // Update configuration panel and parameters panel
         this.renderDeviceSetupConfig(device);
+
+        // Auto-read config values from device if on configuration tab and connected
+        const activeTab = sessionStorage.getItem('deviceSetupTab') || 'configuration';
+        if (activeTab === 'configuration' && (this.writer || this.simulatorEnabled)) {
+            this.refreshDevice(device.id);
+        }
 
         // Set selected device for parameters and render
         this.selectedParamDeviceId = device.slaveId;
@@ -9166,6 +9195,81 @@ class ModbusDashboard {
     /**
      * Render device configuration in Device Setup page
      */
+    async refreshDevice(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device || device.slaveId === 0) return;
+
+        if (!this.writer && !this.simulatorEnabled) {
+            this.showToast('연결되지 않은 상태에서는 읽을 수 없습니다', 'warning');
+            return;
+        }
+
+        // Show loading on all status spans
+        ['fanAddress', 'operatingMode', 'runningDirection', 'maxCurrent'].forEach(key => {
+            const el = document.getElementById(`${key}_${deviceId}_status`);
+            if (el) { el.textContent = '↻'; el.title = 'Reading...'; }
+        });
+
+        try {
+            // Fan Address (0xD100)
+            const fanAddr = await this.readRegisterWithTimeout(device.slaveId, 0xD100);
+            if (fanAddr !== null) {
+                device.slaveId = fanAddr;
+                const input = document.getElementById(`fanAddress_${deviceId}`);
+                if (input) input.value = fanAddr;
+                const s = document.getElementById(`fanAddress_${deviceId}_status`);
+                if (s) { s.textContent = '✓'; s.title = ''; }
+            }
+
+            // Operating Mode (0xD106)
+            const mode = await this.readRegisterWithTimeout(device.slaveId, 0xD106);
+            if (mode !== null) {
+                device.operationMode = mode;
+                const sel = document.getElementById(`operatingMode_${deviceId}`);
+                if (sel) sel.value = mode;
+                const s = document.getElementById(`operatingMode_${deviceId}_status`);
+                if (s) { s.textContent = '✓'; s.title = ''; }
+            }
+
+            // Running Direction (0xD102)
+            const dir = await this.readRegisterWithTimeout(device.slaveId, 0xD102);
+            if (dir !== null) {
+                device.runningDirection = dir;
+                const sel = document.getElementById(`runningDirection_${deviceId}`);
+                if (sel) sel.value = dir;
+                const s = document.getElementById(`runningDirection_${deviceId}_status`);
+                if (s) { s.textContent = '✓'; s.title = ''; }
+            }
+
+            // Max Current (0xD13B) — raw = A * 10
+            const rawCurrent = await this.readRegisterWithTimeout(device.slaveId, 0xD13B);
+            if (rawCurrent !== null) {
+                device.maxCurrent = rawCurrent / 10;
+                const input = document.getElementById(`maxCurrent_${deviceId}`);
+                if (input) input.value = device.maxCurrent;
+                const s = document.getElementById(`maxCurrent_${deviceId}_status`);
+                if (s) { s.textContent = '✓'; s.title = ''; }
+            }
+
+            this.saveDevices();
+
+            // Clear status icons after 2 seconds
+            setTimeout(() => {
+                ['fanAddress', 'operatingMode', 'runningDirection', 'maxCurrent'].forEach(key => {
+                    const el = document.getElementById(`${key}_${deviceId}_status`);
+                    if (el && el.textContent === '✓') { el.textContent = ''; el.title = ''; }
+                });
+            }, 2000);
+
+        } catch (error) {
+            console.error('refreshDevice error:', error);
+            ['fanAddress', 'operatingMode', 'runningDirection', 'maxCurrent'].forEach(key => {
+                const el = document.getElementById(`${key}_${deviceId}_status`);
+                if (el && el.textContent === '↻') { el.textContent = '❌'; el.title = 'Read failed'; }
+            });
+        }
+    }
+
     renderDeviceSetupConfig(device) {
         const configContainer = document.getElementById('deviceSetupConfig');
         if (!configContainer) return;
@@ -9731,7 +9835,7 @@ class ModbusDashboard {
         if (!inputElement) return;
 
         const newSetpoint = parseInt(inputElement.value);
-        const maxValue = device.operationMode === 0 ? 10000 : 100;
+        const maxValue = device.operationMode === 0 ? 1600 : 100;
 
         if (isNaN(newSetpoint) || newSetpoint < 0 || newSetpoint > maxValue) {
             if (statusElement) {
@@ -9959,6 +10063,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show selected tab content
             if (targetTab === 'configuration') {
                 document.getElementById('deviceSetupConfigTab').style.display = 'block';
+                // Auto-read config values from device if connected
+                if (this.currentSetupDeviceId && (this.writer || this.simulatorEnabled)) {
+                    this.refreshDevice(this.currentSetupDeviceId);
+                }
             } else if (targetTab === 'parameters') {
                 document.getElementById('deviceSetupParamsTab').style.display = 'block';
             } else if (targetTab === 'manufacture') {
