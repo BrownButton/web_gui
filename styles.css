@@ -2586,6 +2586,7 @@ select:focus {
     display: none;
     justify-content: center;
     align-items: center;
+    z-index: 1100;
 }
 
 #confirmModal.active,
@@ -3693,6 +3694,15 @@ select:focus {
     opacity: 1;
     visibility: visible;
     margin-right: 0;
+}
+
+.section-header #addDeviceBtn {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.section-header .view-mode-btn {
+    font-size: 13px;
 }
 
 .device-count-badge {

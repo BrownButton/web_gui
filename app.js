@@ -1245,7 +1245,7 @@ class ModbusDashboard {
 
         // Parameter filters
         this.paramTypeFilter = 'all';
-        this.paramImplementedFilter = 'all';
+        this.paramImplementedFilter = 'Y';
         this.paramSearchText = '';
 
         document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
@@ -6881,7 +6881,9 @@ class ModbusDashboard {
 
         try {
             // Read motor status with timeout (Function Code 04 - Input Register)
-            const status = await this.readInputRegisterWithTimeout(device.slaveId, this.REGISTERS.MOTOR_STATUS);
+            // Direct sendAndWaitResponse — bypasses queue since we are the polling loop.
+            const motorFrame = this.modbus.buildReadInputRegisters(device.slaveId, this.REGISTERS.MOTOR_STATUS, 1);
+            const status = await this.sendAndWaitResponse(motorFrame, device.slaveId);
 
             if (status !== null) {
                 device.motorStatus = status;
@@ -6894,7 +6896,8 @@ class ModbusDashboard {
                 if (this.paramPollingDelay > 0) await this.delay(this.paramPollingDelay);
 
                 // Read actual speed (Function Code 04 - Input Register)
-                const actualSpeed = await this.readInputRegisterWithTimeout(device.slaveId, this.REGISTERS.ACTUAL_SPEED);
+                const speedFrame = this.modbus.buildReadInputRegisters(device.slaveId, this.REGISTERS.ACTUAL_SPEED, 1);
+                const actualSpeed = await this.sendAndWaitResponse(speedFrame, device.slaveId);
                 if (actualSpeed !== null) {
                     // Handle signed 16-bit value
                     device.actualSpeed = actualSpeed > 32767 ? actualSpeed - 65536 : actualSpeed;
@@ -6904,7 +6907,8 @@ class ModbusDashboard {
                 if (this.paramPollingDelay > 0) await this.delay(this.paramPollingDelay);
 
                 // Read setpoint (Function Code 03 - Holding Register)
-                const rawSetpoint = await this.readRegisterWithTimeout(device.slaveId, this.REGISTERS.SETPOINT);
+                const setpointFrame = this.modbus.buildReadHoldingRegisters(device.slaveId, this.REGISTERS.SETPOINT, 1);
+                const rawSetpoint = await this.sendAndWaitResponse(setpointFrame, device.slaveId);
                 if (rawSetpoint !== null) {
                     device.setpoint = this.convertRawToSetpoint(device, rawSetpoint);
                 }
@@ -6972,16 +6976,18 @@ class ModbusDashboard {
                 return null;
             }
         } else if (this.writer) {
-            if (this.autoPollingTimer && !this.isPolling) {
-                // Called from outside the polling loop while polling is active
-                // (e.g. refreshDevice). Queue the read so it runs between poll
-                // cycles and never collides with an in-progress poll frame.
+            if (this.autoPollingTimer) {
+                // Called while polling is active — always queue regardless of isPolling.
+                // isPolling=true does NOT mean we are inside the polling loop; the loop
+                // could be suspended at an await while this external caller runs.
+                // Sending directly here would collide with the in-progress poll frame.
+                // Internal polling reads (pollNextDeviceSequential, pollMonitoringParams)
+                // bypass this function and call sendAndWaitResponse directly.
                 return new Promise((resolve, reject) => {
                     this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
                 });
             }
-            // Either polling is inactive, or we are already inside a polling
-            // cycle (isPolling=true) — safe to send directly.
+            // Polling is inactive — safe to send directly.
             return await this.sendAndWaitResponse(frame, slaveId);
         }
 
@@ -7294,12 +7300,8 @@ class ModbusDashboard {
                 return (response[3] << 8) | response[4];
             }
         } else if (this.writer) {
-            await this.writer.write(frame);
-            this.addMonitorEntry('sent', frame, { functionCode: 3, startAddress: address, quantity: 1 });
-            this.stats.requests++;
-            this.updateStatsDisplay();
-            // Note: Real implementation would need to wait and parse the response
-            return 0;
+            // Delegate to readRegisterWithTimeout which handles queue + response parsing correctly
+            return await this.readRegisterWithTimeout(slaveId, address);
         } else {
             throw new Error('Not connected');
         }
@@ -7626,11 +7628,11 @@ class ModbusDashboard {
             try {
                 let value = null;
 
-                if (param.type === 'input') {
-                    value = await this.readInputRegisterWithTimeout(device.slaveId, param.address);
-                } else {
-                    value = await this.readRegisterWithTimeout(device.slaveId, param.address);
-                }
+                // Direct sendAndWaitResponse — bypasses queue since we are inside the polling loop.
+                const paramFrame = param.type === 'input'
+                    ? this.modbus.buildReadInputRegisters(device.slaveId, param.address, 1)
+                    : this.modbus.buildReadHoldingRegisters(device.slaveId, param.address, 1);
+                value = await this.sendAndWaitResponse(paramFrame, device.slaveId);
 
                 if (value !== null) {
                     param.value = value;
@@ -7671,6 +7673,14 @@ class ModbusDashboard {
                 return null;
             }
         } else if (this.writer) {
+            if (this.autoPollingTimer) {
+                // Called while polling is active — always queue regardless of isPolling.
+                // Internal polling reads bypass this function and call sendAndWaitResponse directly.
+                return new Promise((resolve, reject) => {
+                    this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
+                });
+            }
+            // Polling is inactive — safe to send directly.
             return await this.sendAndWaitResponse(frame, slaveId);
         }
 
@@ -9265,7 +9275,6 @@ class ModbusDashboard {
             // Fan Address (0xD100)
             const fanAddr = await this.readRegisterWithTimeout(device.slaveId, 0xD100);
             if (fanAddr !== null) {
-                device.slaveId = fanAddr;
                 const input = document.getElementById(`fanAddress_${deviceId}`);
                 if (input) input.value = fanAddr;
                 const s = document.getElementById(`fanAddress_${deviceId}_status`);

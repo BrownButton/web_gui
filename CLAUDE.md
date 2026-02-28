@@ -17,7 +17,8 @@ Modbus RTU/RS-485 Dashboard 웹앱.
 |------|------------|
 | 레지스터 쓰기 | `writeRegister(slaveId, address, value)` |
 | 파라미터 읽기 | `readParameterByAddress(param)` |
-| 폴링 내부 읽기 | `readRegisterWithTimeout()` / `readInputRegisterWithTimeout()` |
+| 홀딩 레지스터 읽기 | `readRegisterWithTimeout(slaveId, address)` |
+| 입력 레지스터 읽기 | `readInputRegisterWithTimeout(slaveId, address)` |
 
 ### 이유
 polling 중 직접 `writer.write()`를 호출하면 485 버스 충돌 발생:
@@ -33,11 +34,15 @@ polling 중 직접 `writer.write()`를 호출하면 485 버스 충돌 발생:
 - Queue 처리: `pollNextDeviceSequential()` — 폴링 사이클 사이에 소진
 
 ### 새 기능에서 TX가 필요할 때 체크리스트
-1. `this.autoPollingTimer` 체크
-   - polling 중 → `commandQueue.push(...)` 으로 등록
-   - polling 아님 → `sendAndWaitResponse()` 또는 `sendWriteAndWaitResponse()` 직접 호출
-2. scan처럼 `isScanning=true`로 폴링을 막는 경우라도,
+1. **읽기**: 반드시 `readRegisterWithTimeout()` 또는 `readInputRegisterWithTimeout()` 사용
+   - 두 함수 모두 `autoPollingTimer && !isPolling` 체크로 큐/직접전송 자동 분기
+   - `isPolling=true` = 폴링 루프 내부 → 직접 전송 (안전, 순차 실행)
+   - `isPolling=false + autoPollingTimer 있음` = 루프 외부 → 큐에 등록
+2. **쓰기**: `writeRegister(slaveId, address, value)` 사용 (내부에서 큐 처리)
+3. scan처럼 `isScanning=true`로 폴링을 막는 경우라도,
    이미 진행 중인 사이클이 있을 수 있으니 `while (this.isPolling) await delay(5)` 대기 후 전송
+4. **절대 금지**: `sendAndWaitResponse()`, `sendWriteAndWaitResponse()`, `writer.write()` 직접 호출
+   (폴링 루프 내부 코드에서만 호출 가능)
 
 ---
 
