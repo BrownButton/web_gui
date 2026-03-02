@@ -7838,7 +7838,7 @@ class ModbusDashboard {
         // Manual scan button
         const manualScanBtn = document.getElementById('manualScanBtn');
         if (manualScanBtn) {
-            manualScanBtn.addEventListener('click', () => this.startDeviceScan());
+            manualScanBtn.addEventListener('click', () => this.startDeviceScan(true));
         }
 
         // Stop scan button
