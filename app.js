@@ -7974,6 +7974,32 @@ class ModbusDashboard {
             ? `탐색 중단: ${foundDevices.length}개 발견`
             : `탐색 완료: ${foundDevices.length}개 발견${autoAddMsg}`;
         scanToast.dismiss(finalMsg);
+
+        // 스캔 완료 후 Device 탭이 열려있으면 파라미터 자동 읽기
+        // readRegisterWithTimeout / readParameterByAddress 는 내부에서 큐 처리하므로
+        // 폴링 재개 이후 안전하게 순차 실행됨
+        this._autoReadAfterScan();
+    }
+
+    /**
+     * 스캔 완료 직후 Configuration / Parameters 탭이 활성화된 경우 자동으로 값을 읽어옴.
+     * 폴링이 재개될 시간을 확보하기 위해 300ms 지연 후 실행.
+     */
+    _autoReadAfterScan() {
+        if (this.currentPage !== 'device-setup') return;
+
+        const activeTab = sessionStorage.getItem('deviceSetupTab') || 'configuration';
+
+        if (activeTab === 'configuration') {
+            if (!this.currentSetupDeviceId) return;
+            const device = this.devices.find(d => d.id === this.currentSetupDeviceId);
+            if (!device || device.slaveId === 0) return;
+            setTimeout(() => this.refreshDevice(this.currentSetupDeviceId), 300);
+
+        } else if (activeTab === 'parameters') {
+            if (!this.selectedParamDeviceId) return;
+            setTimeout(() => this.readAllParameters(), 300);
+        }
     }
 
     /**
