@@ -5357,11 +5357,6 @@ class ModbusDashboard {
             startAutoAssignBtn.addEventListener('click', () => this.startAutoAssign());
         }
 
-        // Refresh All button
-        const refreshAllBtn = document.getElementById('refreshAllBtn');
-        if (refreshAllBtn) {
-            refreshAllBtn.addEventListener('click', () => this.refreshAllDevices());
-        }
 
         // Select/Deselect All buttons
         const selectAllDevices = document.getElementById('selectAllDevices');
