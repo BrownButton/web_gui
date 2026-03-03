@@ -834,13 +834,385 @@
                             </div>
 
                             <!-- Hardware Test Sub-tab -->
-                            <div class="manufacture-subtab-content active" id="manufactureHardwareTest" style="display: block; padding: 32px;">
-                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
-                                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">🔧</div>
-                                            <p style="font-size: 15px; font-weight: 500; color: #404040;">Hardware Test</p>
-                                            <p style="font-size: 13px; margin-top: 6px; color: #999;">하드웨어 검사 기능 (준비 중)</p>
+                            <div class="manufacture-subtab-content active" id="manufactureHardwareTest" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+
+                                <!-- Progress Summary -->
+                                <div style="padding: 20px 32px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; flex-shrink: 0;">
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 28px; font-weight: 700; color: #1a1a1a;" id="hwTestTotal">8</div>
+                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Total Tests</div>
+                                        </div>
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 28px; font-weight: 700; color: #28a745;" id="hwTestPassed">0</div>
+                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Passed</div>
+                                        </div>
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 28px; font-weight: 700; color: #dc3545;" id="hwTestFailed">0</div>
+                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Failed</div>
+                                        </div>
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 28px; font-weight: 700; color: #6c757d;" id="hwTestPending">8</div>
+                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Pending</div>
+                                        </div>
+                                        <div style="text-align: center;">
+                                            <div style="font-size: 28px; font-weight: 700; color: #667eea;" id="hwTestProgress">0%</div>
+                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Progress</div>
                                         </div>
                                     </div>
+                                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                        <button class="btn btn-primary btn-sm" id="hwTestRunAll" onclick="app.runAllHardwareTests()">▶ Run All Tests</button>
+                                        <button class="btn btn-secondary btn-sm" id="hwTestResetAll" onclick="app.resetAllHardwareTests()">↺ Reset All</button>
+                                    </div>
+                                </div>
+
+                                <!-- Test List -->
+                                <div style="flex: 1; overflow-y: auto; padding: 24px 32px;">
+
+                                    <!-- Section 1: INVERTER MCU -->
+                                    <section style="margin-bottom: 28px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">1. INVERTER MCU</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">1 test</span>
+                                        </div>
+                                        <div style="display: grid; gap: 10px;">
+
+                                            <!-- HW-1: INVERTER OS 버전 -->
+                                            <div class="hw-test-item" data-test-id="hw-inv-os" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-1 &nbsp; INVERTER MCU OS 버전 확인</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">레지스터 0x100A (FC03) 읽기 → 기준 버전과 일치 여부</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px;">
+                                                        <div><span style="color: #6c757d;">레지스터</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">0x100A (Holding, FC03)</div></div>
+                                                        <div><span style="color: #6c757d;">판정 방법</span><div style="font-weight: 500; margin-top: 2px;">설비 자동 (일치 여부)</div></div>
+                                                        <div style="grid-column: 1/-1;">
+                                                            <span style="color: #6c757d;">기준 버전 (예상값)</span>
+                                                            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                                                <input type="text" id="hwInvOsExpected" placeholder="예: 0x0100" style="flex: 1; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; font-family: monospace;">
+                                                                <span style="font-size: 11px; color: #6c757d; align-self: center;">현재 읽은 값: <strong id="hwInvOsActual" style="color: #1a1a1a;">-</strong></span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> PC가 가지고 있는 PCBA 코드 정보와 프로그램 버전 정보 일치 여부 자동 합부 판정
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-inv-os')">▶ Start</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </section>
+
+                                    <!-- Section 2: MAIN MCU -->
+                                    <section style="margin-bottom: 28px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">2. MAIN MCU</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">3 tests</span>
+                                        </div>
+                                        <div style="display: grid; gap: 10px;">
+
+                                            <!-- HW-2: MAIN MCU OS 버전 -->
+                                            <div class="hw-test-item" data-test-id="hw-main-os" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-2 &nbsp; MAIN MCU OS 버전 확인</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">레지스터 0x2613 (FC03) 읽기 → 기준 버전과 일치 여부</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px;">
+                                                        <div><span style="color: #6c757d;">레지스터</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">0x2613 (Holding, FC03)</div></div>
+                                                        <div><span style="color: #6c757d;">판정 방법</span><div style="font-weight: 500; margin-top: 2px;">설비 자동 (일치 여부)</div></div>
+                                                        <div style="grid-column: 1/-1;">
+                                                            <span style="color: #6c757d;">기준 버전 (예상값)</span>
+                                                            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                                                <input type="text" id="hwMainOsExpected" placeholder="예: 0x0100" style="flex: 1; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; font-family: monospace;">
+                                                                <span style="font-size: 11px; color: #6c757d; align-self: center;">현재 읽은 값: <strong id="hwMainOsActual" style="color: #1a1a1a;">-</strong></span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> PC가 가지고 있는 PCBA 코드 정보와 프로그램 버전 정보 일치 여부 자동 합부 판정
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-main-os')">▶ Start</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- HW-3: 모터 ID -->
+                                            <div class="hw-test-item" data-test-id="hw-motor-id" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-3 &nbsp; 모터 ID 확인</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">레지스터 0x2000 (FC03) 읽기 → 기준 모터 ID와 일치 여부</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px;">
+                                                        <div><span style="color: #6c757d;">레지스터</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">0x2000 (Holding, FC03)</div></div>
+                                                        <div><span style="color: #6c757d;">판정 방법</span><div style="font-weight: 500; margin-top: 2px;">설비 자동 (일치 여부)</div></div>
+                                                        <div style="grid-column: 1/-1;">
+                                                            <span style="color: #6c757d;">기준 모터 ID (예상값)</span>
+                                                            <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                                                <input type="text" id="hwMotorIdExpected" placeholder="예: 0x0001" style="flex: 1; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; font-family: monospace;">
+                                                                <span style="font-size: 11px; color: #6c757d; align-self: center;">현재 읽은 값: <strong id="hwMotorIdActual" style="color: #1a1a1a;">-</strong></span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> PC가 가지고 있는 PCBA 코드 정보와 모터 ID 비교 후 일치 여부 자동 합부 판정<br>
+                                                        <span style="color: #6c757d; font-size: 11px;">※ LQC 설비 도입 및 모터 ID EEPROM 입력 방식 적용 시 검사항목 SKIP</span>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-motor-id')">▶ Start</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- HW-4: EEPROM -->
+                                            <div class="hw-test-item" data-test-id="hw-eeprom" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-4 &nbsp; EEPROM Read / Write 검증</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">0x2002에 110 쓰기 → EEPROM 저장 → 전원 재투입 → 0x2002 읽기 = 110</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px;">
+                                                        <div style="font-weight: 500; margin-bottom: 8px; color: #1a1a1a;">검사 순서</div>
+                                                        <ol style="margin: 0; padding-left: 18px; line-height: 1.8; color: #404040;">
+                                                            <li>미사용 파라미터 <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2002</code> = <strong>110</strong> 쓰기</li>
+                                                            <li>EEPROM Save (Store Parameters <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x1010:01</code> = 0x65766173)</li>
+                                                            <li>전원 재투입 후 <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2002</code> 읽기</li>
+                                                            <li>읽은 값 = 110 확인</li>
+                                                        </ol>
+                                                        <div style="margin-top: 10px; display: flex; gap: 24px;">
+                                                            <span>기록 값: <strong>110</strong></span>
+                                                            <span>현재 읽은 값: <strong id="hwEepromActual" style="color: #1a1a1a;">-</strong></span>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> Write 한 값(110)과 Read 한 값이 동일하면 합격 / 상이한 경우 Fail
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-eeprom')">▶ Start</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </section>
+
+                                    <!-- Section 3: Power Stack -->
+                                    <section style="margin-bottom: 28px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">3. Power Stack</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">3 tests</span>
+                                        </div>
+                                        <div style="display: grid; gap: 10px;">
+
+                                            <!-- HW-5: INVERTER 출력 및 전류 센싱 -->
+                                            <div class="hw-test-item" data-test-id="hw-current" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-5 &nbsp; INVERTER 출력 및 전류 센싱</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">Aging 동작 후 3상 전류 IU·IV·IW 읽기 → 정격 30% 기준 ±10% 이내</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px;">
+                                                        <div style="font-weight: 500; margin-bottom: 8px; color: #1a1a1a;">검사 순서 (Password = 2012 먼저 설정 필요)</div>
+                                                        <ol style="margin: 0; padding-left: 18px; line-height: 1.8; color: #404040;">
+                                                            <li>모터 출력단(U_TP, V_TP, W_TP)에 1kW급 Stator 연결</li>
+                                                            <li>Aging Overload 설정: <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4004</code>=30, <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4005</code>=5, <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4006</code>=1</li>
+                                                            <li>Overload 동작 명령: <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2701</code>=1, <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2700</code>=0x1000</li>
+                                                            <li>3상 전류 읽기: IU[<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2610</code>], IV[<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2611</code>], IW[<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2612</code>]</li>
+                                                        </ol>
+                                                        <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                                                            <div style="text-align: center; padding: 8px; background: white; border: 1px solid #dee2e6; border-radius: 6px;">
+                                                                <div style="font-size: 10px; color: #6c757d; margin-bottom: 4px;">IU (0x2610)</div>
+                                                                <div style="font-size: 16px; font-weight: 700; color: #1a1a1a;" id="hwCurrentIU">-</div>
+                                                            </div>
+                                                            <div style="text-align: center; padding: 8px; background: white; border: 1px solid #dee2e6; border-radius: 6px;">
+                                                                <div style="font-size: 10px; color: #6c757d; margin-bottom: 4px;">IV (0x2611)</div>
+                                                                <div style="font-size: 16px; font-weight: 700; color: #1a1a1a;" id="hwCurrentIV">-</div>
+                                                            </div>
+                                                            <div style="text-align: center; padding: 8px; background: white; border: 1px solid #dee2e6; border-radius: 6px;">
+                                                                <div style="font-size: 10px; color: #6c757d; margin-bottom: 4px;">IW (0x2612)</div>
+                                                                <div style="font-size: 16px; font-weight: 700; color: #1a1a1a;" id="hwCurrentIW">-</div>
+                                                            </div>
+                                                        </div>
+                                                        <div style="margin-top: 8px; display: flex; align-items: center; gap: 12px; font-size: 11px; color: #6c757d;">
+                                                            <span>정격 전류:</span>
+                                                            <input type="number" id="hwCurrentRated" placeholder="A (정격)" style="width: 80px; padding: 4px 8px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 11px;">
+                                                            <span>목표: 정격 × 30% ±10%</span>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> 3상 전류 모두 정격대비 30% 기준 ±10% 이내면 합격<br>
+                                                        <span style="color: #6c757d; font-size: 11px;">(설비오차, 접촉저항 고려 변경 가능)</span>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-current')">▶ Start</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- HW-6: IGBT 온도 센싱 -->
+                                            <div class="hw-test-item" data-test-id="hw-igbt-temp" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-6 &nbsp; IGBT 모듈 온도 센싱</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">레지스터 0x260B (FC04) 읽기 → 0~35℃ 이내</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; font-size: 12px; align-items: center;">
+                                                        <div><span style="color: #6c757d;">레지스터</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">0x260B (Input, FC04)</div></div>
+                                                        <div><span style="color: #6c757d;">허용 범위</span><div style="font-weight: 500; margin-top: 2px;">0℃ ~ 35℃</div></div>
+                                                        <div><span style="color: #6c757d;">현재 읽은 값</span><div style="font-size: 20px; font-weight: 700; color: #1a1a1a; margin-top: 2px;" id="hwIgbtTempActual">-</div></div>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> 온도가 0℃ ~ 35℃ 이내의 경우 합격
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-igbt-temp')">▶ Start</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- HW-7: Hall Sensing -->
+                                            <div class="hw-test-item" data-test-id="hw-hall" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-7 &nbsp; Hall Sensing</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">HALL 1·2·3 레지스터 읽기 → 기준값 1100~2000 범위 내</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px;">
+                                                        <div style="font-weight: 500; margin-bottom: 8px; color: #1a1a1a;">검사 방법</div>
+                                                        <ul style="margin: 0; padding-left: 18px; line-height: 1.8; color: #404040;">
+                                                            <li>PCB 바닥면 정중앙에 10mm 원형 N극 자석 설비 고정</li>
+                                                            <li>이격 거리: 마스터 샘플 이용하여 센싱 data 1500~1600 사이 되도록 조정</li>
+                                                        </ul>
+                                                        <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                                                            <div style="text-align: center; padding: 8px; background: white; border: 1px solid #dee2e6; border-radius: 6px;">
+                                                                <div style="font-size: 10px; color: #6c757d; margin-bottom: 4px;">HALL 1 (0x2613)</div>
+                                                                <div style="font-size: 16px; font-weight: 700; color: #1a1a1a;" id="hwHall1">-</div>
+                                                            </div>
+                                                            <div style="text-align: center; padding: 8px; background: white; border: 1px solid #dee2e6; border-radius: 6px;">
+                                                                <div style="font-size: 10px; color: #6c757d; margin-bottom: 4px;">HALL 2 (0x2614)</div>
+                                                                <div style="font-size: 16px; font-weight: 700; color: #1a1a1a;" id="hwHall2">-</div>
+                                                            </div>
+                                                            <div style="text-align: center; padding: 8px; background: white; border: 1px solid #dee2e6; border-radius: 6px;">
+                                                                <div style="font-size: 10px; color: #6c757d; margin-bottom: 4px;">HALL 3 (0x2615)</div>
+                                                                <div style="font-size: 16px; font-weight: 700; color: #1a1a1a;" id="hwHall3">-</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> 3채널 모두 1100 ~ 2000 범위 만족 시 합격<br>
+                                                        <span style="color: #6c757d; font-size: 11px;">(이격 거리 공차, 센서 정확도 고려 변경 가능)</span>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-hall')">▶ Start</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </section>
+
+                                    <!-- Section 4: 초기화 -->
+                                    <section style="margin-bottom: 28px;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">4. 초기화</h3>
+                                            <span style="font-size: 12px; color: #6c757d;">1 test</span>
+                                        </div>
+                                        <div style="display: grid; gap: 10px;">
+
+                                            <!-- HW-8: 파라미터 초기화 -->
+                                            <div class="hw-test-item" data-test-id="hw-factory-reset" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-8 &nbsp; 검사 파라미터 초기화 (Factory Reset)</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">검사 중 변경된 파라미터를 Factory Reset 후 저장</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px;">
+                                                        <div style="font-weight: 500; margin-bottom: 8px; color: #1a1a1a;">실행 순서</div>
+                                                        <ol style="margin: 0; padding-left: 18px; line-height: 1.8; color: #404040;">
+                                                            <li>Password 설정: <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4009</code> = <strong>2012</strong></li>
+                                                            <li>Factory Reset 명령: <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2701</code>=1, <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2700</code>=0x1002</li>
+                                                            <li>파라미터 저장: <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x1010:01</code> = 0x65766173 ("evas")</li>
+                                                        </ol>
+                                                        <div style="margin-top: 8px; padding: 8px; background: #fff3cd; border-radius: 4px; color: #856404; font-size: 11px;">
+                                                            ※ 파라미터 체계 변경에 따라 내용 수정 예정
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> Factory Reset 명령 정상 송신 및 파라미터 저장 완료
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-factory-reset')">▶ Start</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </section>
+
+                                </div>
+                            </div>
 
                                     <!-- Tuning Sub-tab -->
                                     <div class="manufacture-subtab-content" id="manufactureTuning" style="display: none; padding: 32px;">

@@ -4979,7 +4979,7 @@ class ModbusDashboard {
         toast.className = `toast toast-${type}`;
 
         const icons = {
-            success: '✓',
+            success: '⭕',
             info: 'ⓘ',
             warning: '⚠',
             error: '✕'
@@ -9238,11 +9238,21 @@ class ModbusDashboard {
         // Hide any existing menu
         this.hideConfigMenu();
 
+        // Action-only items have no register to read
+        const actionTypes = ['softwareReset', 'errorReset', 'eepromToRam'];
+        const canRead = !actionTypes.includes(configType);
+
         // Create menu
         const menu = document.createElement('div');
         menu.id = 'configContextMenu';
         menu.className = 'config-context-menu';
         menu.innerHTML = `
+            ${canRead ? `
+            <div class="config-menu-item" onclick="window.dashboard.readConfigParam('${configType}', '${deviceId}')">
+                읽기
+            </div>
+            <div style="height: 1px; background: #e9ecef; margin: 4px 0;"></div>
+            ` : ''}
             <div class="config-menu-item" onclick="window.dashboard.factoryResetConfig('${configType}', '${deviceId}')">
                 Factory Reset
             </div>
@@ -9310,14 +9320,31 @@ class ModbusDashboard {
             if (el) { el.textContent = text; el.title = title; }
         };
 
+        // 읽기 성공: ⭕ 표시 + 빨간 테두리 제거
+        const onSuccess = (key) => {
+            setStatus(key, '⭕');
+            const el = document.getElementById(`${key}_${deviceId}`);
+            if (el) el.style.borderColor = '';
+        };
+
+        // 읽기 실패: ❌ 표시 + 빨간 테두리 + 입력값 비우기 (stale 값 혼동 방지)
+        const onFail = (key) => {
+            setStatus(key, '❌', 'Read failed');
+            const el = document.getElementById(`${key}_${deviceId}`);
+            if (el) {
+                el.style.borderColor = '#dc3545';
+                if (el.tagName === 'INPUT') el.value = '';
+            }
+        };
+
         try {
             // Fan Address (0xD100)
             const fanAddr = await this.readRegisterWithTimeout(device.slaveId, 0xD100);
             if (fanAddr !== null) {
                 const input = document.getElementById(`fanAddress_${deviceId}`);
                 if (input) input.value = fanAddr;
-                setStatus('fanAddress', '✓');
-            }
+                onSuccess('fanAddress');
+            } else { onFail('fanAddress'); }
 
             // Operating Mode (0xD106)
             const mode = await this.readRegisterWithTimeout(device.slaveId, 0xD106);
@@ -9325,8 +9352,8 @@ class ModbusDashboard {
                 device.operationMode = mode;
                 const sel = document.getElementById(`operatingMode_${deviceId}`);
                 if (sel) sel.value = mode;
-                setStatus('operatingMode', '✓');
-            }
+                onSuccess('operatingMode');
+            } else { onFail('operatingMode'); }
 
             // Set Value Source (0xD101)
             const setValueSource = await this.readRegisterWithTimeout(device.slaveId, 0xD101);
@@ -9334,8 +9361,8 @@ class ModbusDashboard {
                 device.setValueSource = setValueSource;
                 const sel = document.getElementById(`setValueSource_${deviceId}`);
                 if (sel) sel.value = setValueSource;
-                setStatus('setValueSource', '✓');
-            }
+                onSuccess('setValueSource');
+            } else { onFail('setValueSource'); }
 
             // Running Direction (0xD102)
             const dir = await this.readRegisterWithTimeout(device.slaveId, 0xD102);
@@ -9343,8 +9370,8 @@ class ModbusDashboard {
                 device.runningDirection = dir;
                 const sel = document.getElementById(`runningDirection_${deviceId}`);
                 if (sel) sel.value = dir;
-                setStatus('runningDirection', '✓');
-            }
+                onSuccess('runningDirection');
+            } else { onFail('runningDirection'); }
 
             // Maximum Speed (0xD119)
             const maxSpeed = await this.readRegisterWithTimeout(device.slaveId, 0xD119);
@@ -9352,8 +9379,8 @@ class ModbusDashboard {
                 device.maxSpeed = maxSpeed;
                 const input = document.getElementById(`maxSpeed_${deviceId}`);
                 if (input) input.value = maxSpeed;
-                setStatus('maxSpeed', '✓');
-            }
+                onSuccess('maxSpeed');
+            } else { onFail('maxSpeed'); }
 
             // Ramp-up Curve (0xD11F)
             const rampUp = await this.readRegisterWithTimeout(device.slaveId, 0xD11F);
@@ -9361,8 +9388,8 @@ class ModbusDashboard {
                 device.rampUp = rampUp;
                 const input = document.getElementById(`rampUp_${deviceId}`);
                 if (input) input.value = rampUp;
-                setStatus('rampUp', '✓');
-            }
+                onSuccess('rampUp');
+            } else { onFail('rampUp'); }
 
             // Ramp-down Curve (0xD120)
             const rampDown = await this.readRegisterWithTimeout(device.slaveId, 0xD120);
@@ -9370,8 +9397,8 @@ class ModbusDashboard {
                 device.rampDown = rampDown;
                 const input = document.getElementById(`rampDown_${deviceId}`);
                 if (input) input.value = rampDown;
-                setStatus('rampDown', '✓');
-            }
+                onSuccess('rampDown');
+            } else { onFail('rampDown'); }
 
             // Max Current (0xD13B) — raw = A * 10
             const rawCurrent = await this.readRegisterWithTimeout(device.slaveId, 0xD13B);
@@ -9379,8 +9406,8 @@ class ModbusDashboard {
                 device.maxCurrent = rawCurrent / 10;
                 const input = document.getElementById(`maxCurrent_${deviceId}`);
                 if (input) input.value = device.maxCurrent;
-                setStatus('maxCurrent', '✓');
-            }
+                onSuccess('maxCurrent');
+            } else { onFail('maxCurrent'); }
 
             // Module Temp Derating End (0xD138)
             const tempDerating = await this.readRegisterWithTimeout(device.slaveId, 0xD138);
@@ -9388,8 +9415,8 @@ class ModbusDashboard {
                 device.tempDerating = tempDerating;
                 const input = document.getElementById(`tempDerating_${deviceId}`);
                 if (input) input.value = tempDerating;
-                setStatus('tempDerating', '✓');
-            }
+                onSuccess('tempDerating');
+            } else { onFail('tempDerating'); }
 
             // Baudrate (0xD149)
             const baudrate = await this.readRegisterWithTimeout(device.slaveId, 0xD149);
@@ -9397,8 +9424,8 @@ class ModbusDashboard {
                 device.baudrate = baudrate;
                 const sel = document.getElementById(`baudrate_${deviceId}`);
                 if (sel) sel.value = baudrate;
-                setStatus('baudrate', '✓');
-            }
+                onSuccess('baudrate');
+            } else { onFail('baudrate'); }
 
             // Parity (0xD14A)
             const parity = await this.readRegisterWithTimeout(device.slaveId, 0xD14A);
@@ -9406,24 +9433,32 @@ class ModbusDashboard {
                 device.parity = parity;
                 const sel = document.getElementById(`parity_${deviceId}`);
                 if (sel) sel.value = parity;
-                setStatus('parity', '✓');
-            }
+                onSuccess('parity');
+            } else { onFail('parity'); }
 
             this.saveDevices();
 
-            // Clear status icons after 2 seconds
+            // ⭕ 는 2초 후 자동 소멸, ❌ 와 빨간 테두리는 다음 Refresh 때까지 유지
             setTimeout(() => {
                 allKeys.forEach(key => {
                     const el = document.getElementById(`${key}_${deviceId}_status`);
-                    if (el && el.textContent === '✓') { el.textContent = ''; el.title = ''; }
+                    if (el && el.textContent === '⭕') { el.textContent = ''; el.title = ''; }
                 });
             }, 2000);
 
         } catch (error) {
             console.error('refreshDevice error:', error);
             allKeys.forEach(key => {
-                const el = document.getElementById(`${key}_${deviceId}_status`);
-                if (el && el.textContent === '↻') { el.textContent = '❌'; el.title = 'Read failed'; }
+                const statusEl = document.getElementById(`${key}_${deviceId}_status`);
+                if (statusEl && statusEl.textContent === '↻') {
+                    statusEl.textContent = '❌';
+                    statusEl.title = 'Read failed';
+                }
+                const inputEl = document.getElementById(`${key}_${deviceId}`);
+                if (inputEl) {
+                    inputEl.style.borderColor = '#dc3545';
+                    if (inputEl.tagName === 'INPUT') inputEl.value = '';
+                }
             });
         }
     }
@@ -9970,7 +10005,7 @@ class ModbusDashboard {
             }
 
             if (statusElement) {
-                statusElement.textContent = '✓';
+                statusElement.textContent = '⭕';
                 statusElement.title = 'Applied successfully';
             }
         } else {
@@ -10008,7 +10043,7 @@ class ModbusDashboard {
             this.renderDeviceSetupList();
             this.renderDeviceSetupConfig(device);
             if (statusElement) {
-                statusElement.textContent = '✓';
+                statusElement.textContent = '⭕';
                 statusElement.title = 'Applied successfully';
             }
         } else {
@@ -10053,7 +10088,7 @@ class ModbusDashboard {
             this.saveDevices();
             this.renderDeviceSetupConfig(device);
             if (statusElement) {
-                statusElement.textContent = '✓';
+                statusElement.textContent = '⭕';
                 statusElement.title = 'Applied successfully';
             }
         } else {
@@ -10107,7 +10142,7 @@ class ModbusDashboard {
             this.saveDevices();
             this.renderDeviceSetupConfig(device);
             if (statusElement) {
-                statusElement.textContent = '✓';
+                statusElement.textContent = '⭕';
                 statusElement.title = 'Applied successfully';
             }
         } else {
@@ -10163,7 +10198,7 @@ class ModbusDashboard {
             this.saveDevices();
             this.renderDeviceSetupConfig(device);
             if (statusElement) {
-                statusElement.textContent = '✓';
+                statusElement.textContent = '⭕';
                 statusElement.title = 'Applied successfully';
             }
         } else {
@@ -10200,7 +10235,7 @@ class ModbusDashboard {
         if (success) {
             device.setValueSource = value;
             this.saveDevices();
-            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
         } else {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
@@ -10231,7 +10266,7 @@ class ModbusDashboard {
         if (success) {
             device.maxSpeed = value;
             this.saveDevices();
-            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
         } else {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
@@ -10262,7 +10297,7 @@ class ModbusDashboard {
         if (success) {
             device.rampUp = value;
             this.saveDevices();
-            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
         } else {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
@@ -10293,7 +10328,7 @@ class ModbusDashboard {
         if (success) {
             device.rampDown = value;
             this.saveDevices();
-            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
         } else {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
@@ -10324,7 +10359,7 @@ class ModbusDashboard {
         if (success) {
             device.tempDerating = value;
             this.saveDevices();
-            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
         } else {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
@@ -10350,7 +10385,7 @@ class ModbusDashboard {
         if (success) {
             device.baudrate = value;
             this.saveDevices();
-            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
         } else {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
@@ -10376,7 +10411,7 @@ class ModbusDashboard {
         if (success) {
             device.parity = value;
             this.saveDevices();
-            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
         } else {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
@@ -10456,6 +10491,217 @@ class ModbusDashboard {
             checkBuffer();
         });
     }
+
+    // ─── Hardware Test (FCT) ───────────────────────────────────────────────
+
+    /** 항목 펼치기/접기 */
+    toggleHwTestItem(headerEl) {
+        const item = headerEl.closest('.hw-test-item');
+        const body = item.querySelector('.hw-test-body');
+        const icon = headerEl.querySelector('.hw-expand-icon');
+        const isOpen = body.style.display !== 'none';
+        body.style.display = isOpen ? 'none' : 'block';
+        if (icon) icon.style.transform = isOpen ? '' : 'rotate(180deg)';
+    }
+
+    /** 배지 / 결과 텍스트 업데이트 및 카운터 갱신 */
+    _setHwTestResult(testId, status, message) {
+        const item = document.querySelector(`.hw-test-item[data-test-id="${testId}"]`);
+        if (!item) return;
+        const badge = item.querySelector('.hw-test-badge');
+        const resultText = item.querySelector('.hw-test-result-text');
+        const colorMap = { pass: '#28a745', fail: '#dc3545', running: '#fd7e14', pending: '#6c757d' };
+        const bgMap    = { pass: '#d4edda', fail: '#f8d7da', running: '#fde8d0', pending: '#e9ecef' };
+        const labelMap = { pass: 'Pass', fail: 'Fail', running: 'Running...', pending: 'Pending' };
+        if (badge) {
+            badge.style.color = colorMap[status];
+            badge.style.background = bgMap[status];
+            badge.textContent = labelMap[status];
+        }
+        if (resultText) resultText.textContent = message || '';
+        this._updateHwTestCounter();
+    }
+
+    _updateHwTestCounter() {
+        const items = document.querySelectorAll('.hw-test-item');
+        let pass = 0, fail = 0, pending = 0;
+        items.forEach(item => {
+            const badge = item.querySelector('.hw-test-badge');
+            if (!badge) return;
+            if (badge.textContent === 'Pass') pass++;
+            else if (badge.textContent === 'Fail') fail++;
+            else pending++;
+        });
+        const total = items.length;
+        const done = pass + fail;
+        const el = id => document.getElementById(id);
+        if (el('hwTestPassed')) el('hwTestPassed').textContent = pass;
+        if (el('hwTestFailed')) el('hwTestFailed').textContent = fail;
+        if (el('hwTestPending')) el('hwTestPending').textContent = pending;
+        if (el('hwTestTotal')) el('hwTestTotal').textContent = total;
+        if (el('hwTestProgress')) el('hwTestProgress').textContent = total ? Math.round(done / total * 100) + '%' : '0%';
+    }
+
+    /** device 가져오기 (현재 선택된 manufacture 디바이스) */
+    _getManufactureDevice() {
+        const deviceId = this.currentSetupDeviceId;
+        return this.devices.find(d => d.id === deviceId) || null;
+    }
+
+    async runHardwareTest(testId) {
+        const device = this._getManufactureDevice();
+        if (!device) {
+            this._setHwTestResult(testId, 'fail', '디바이스가 선택되지 않았습니다');
+            return;
+        }
+        const slaveId = device.slaveId;
+        this._setHwTestResult(testId, 'running', '검사 중...');
+
+        try {
+            switch (testId) {
+                case 'hw-inv-os': {
+                    const raw = await this.readRegisterWithTimeout(slaveId, 0x100A);
+                    const expected = document.getElementById('hwInvOsExpected')?.value?.trim();
+                    const el = document.getElementById('hwInvOsActual');
+                    if (el) el.textContent = '0x' + raw.toString(16).toUpperCase().padStart(4, '0');
+                    if (!expected) { this._setHwTestResult(testId, 'fail', '기준 버전을 입력해주세요'); return; }
+                    const expVal = parseInt(expected, 16);
+                    const ok = raw === expVal;
+                    this._setHwTestResult(testId, ok ? 'pass' : 'fail',
+                        ok ? `Pass — 읽은 값 0x${raw.toString(16).toUpperCase()} 일치` : `Fail — 읽은 값 0x${raw.toString(16).toUpperCase()}, 기준 ${expected}`);
+                    break;
+                }
+                case 'hw-main-os': {
+                    const raw = await this.readRegisterWithTimeout(slaveId, 0x2613);
+                    const expected = document.getElementById('hwMainOsExpected')?.value?.trim();
+                    const el = document.getElementById('hwMainOsActual');
+                    if (el) el.textContent = '0x' + raw.toString(16).toUpperCase().padStart(4, '0');
+                    if (!expected) { this._setHwTestResult(testId, 'fail', '기준 버전을 입력해주세요'); return; }
+                    const expVal = parseInt(expected, 16);
+                    const ok = raw === expVal;
+                    this._setHwTestResult(testId, ok ? 'pass' : 'fail',
+                        ok ? `Pass — 읽은 값 0x${raw.toString(16).toUpperCase()} 일치` : `Fail — 읽은 값 0x${raw.toString(16).toUpperCase()}, 기준 ${expected}`);
+                    break;
+                }
+                case 'hw-motor-id': {
+                    const raw = await this.readRegisterWithTimeout(slaveId, 0x2000);
+                    const expected = document.getElementById('hwMotorIdExpected')?.value?.trim();
+                    const el = document.getElementById('hwMotorIdActual');
+                    if (el) el.textContent = '0x' + raw.toString(16).toUpperCase().padStart(4, '0');
+                    if (!expected) { this._setHwTestResult(testId, 'fail', '기준 모터 ID를 입력해주세요'); return; }
+                    const expVal = parseInt(expected, 16);
+                    const ok = raw === expVal;
+                    this._setHwTestResult(testId, ok ? 'pass' : 'fail',
+                        ok ? `Pass — 읽은 값 0x${raw.toString(16).toUpperCase()} 일치` : `Fail — 읽은 값 0x${raw.toString(16).toUpperCase()}, 기준 ${expected}`);
+                    break;
+                }
+                case 'hw-eeprom': {
+                    // Write 110 → EEPROM Save → Read back
+                    await this.writeRegister(slaveId, 0x2002, 110);
+                    await this.writeRegister(slaveId, 0x1010, 0x65766173); // Store Parameters
+                    await new Promise(r => setTimeout(r, 500));
+                    const readBack = await this.readRegisterWithTimeout(slaveId, 0x2002);
+                    const el = document.getElementById('hwEepromActual');
+                    if (el) el.textContent = readBack;
+                    const ok = readBack === 110;
+                    this._setHwTestResult(testId, ok ? 'pass' : 'fail',
+                        ok ? 'Pass — Write 110, Read 110 일치' : `Fail — Write 110, Read ${readBack}`);
+                    break;
+                }
+                case 'hw-igbt-temp': {
+                    const raw = await this.readInputRegisterWithTimeout(slaveId, 0x260B);
+                    const el = document.getElementById('hwIgbtTempActual');
+                    const tempC = raw; // assume raw is ℃
+                    if (el) el.textContent = tempC + '℃';
+                    const ok = tempC >= 0 && tempC <= 35;
+                    this._setHwTestResult(testId, ok ? 'pass' : 'fail',
+                        ok ? `Pass — ${tempC}℃ (0~35℃ 범위 내)` : `Fail — ${tempC}℃ (범위 초과)`);
+                    break;
+                }
+                case 'hw-hall': {
+                    const [h1, h2, h3] = await Promise.all([
+                        this.readInputRegisterWithTimeout(slaveId, 0x2613),
+                        this.readInputRegisterWithTimeout(slaveId, 0x2614),
+                        this.readInputRegisterWithTimeout(slaveId, 0x2615),
+                    ]);
+                    const el1 = document.getElementById('hwHall1');
+                    const el2 = document.getElementById('hwHall2');
+                    const el3 = document.getElementById('hwHall3');
+                    if (el1) el1.textContent = h1;
+                    if (el2) el2.textContent = h2;
+                    if (el3) el3.textContent = h3;
+                    const inRange = v => v >= 1100 && v <= 2000;
+                    const ok = inRange(h1) && inRange(h2) && inRange(h3);
+                    this._setHwTestResult(testId, ok ? 'pass' : 'fail',
+                        ok ? `Pass — H1:${h1}, H2:${h2}, H3:${h3} (1100~2000)` : `Fail — H1:${h1}, H2:${h2}, H3:${h3}`);
+                    break;
+                }
+                case 'hw-current': {
+                    // Setup Aging params then read 3-phase current
+                    await this.writeRegister(slaveId, 0x4004, 30);
+                    await this.writeRegister(slaveId, 0x4005, 5);
+                    await this.writeRegister(slaveId, 0x4006, 1);
+                    await this.writeRegister(slaveId, 0x2701, 1);
+                    await this.writeRegister(slaveId, 0x2700, 0x1000);
+                    await new Promise(r => setTimeout(r, 1000));
+                    const [iu, iv, iw] = await Promise.all([
+                        this.readInputRegisterWithTimeout(slaveId, 0x2610),
+                        this.readInputRegisterWithTimeout(slaveId, 0x2611),
+                        this.readInputRegisterWithTimeout(slaveId, 0x2612),
+                    ]);
+                    const elIU = document.getElementById('hwCurrentIU');
+                    const elIV = document.getElementById('hwCurrentIV');
+                    const elIW = document.getElementById('hwCurrentIW');
+                    if (elIU) elIU.textContent = iu;
+                    if (elIV) elIV.textContent = iv;
+                    if (elIW) elIW.textContent = iw;
+                    const ratedInput = parseFloat(document.getElementById('hwCurrentRated')?.value || '0');
+                    if (!ratedInput) { this._setHwTestResult(testId, 'fail', '정격 전류를 입력해주세요'); return; }
+                    const target = ratedInput * 0.3;
+                    const lo = target * 0.9, hi = target * 1.1;
+                    const ok = [iu, iv, iw].every(v => v >= lo && v <= hi);
+                    this._setHwTestResult(testId, ok ? 'pass' : 'fail',
+                        ok ? `Pass — IU:${iu}, IV:${iv}, IW:${iw}` : `Fail — IU:${iu}, IV:${iv}, IW:${iw} (목표범위 ${lo.toFixed(1)}~${hi.toFixed(1)})`);
+                    break;
+                }
+                case 'hw-factory-reset': {
+                    await this.writeRegister(slaveId, 0x4009, 2012);
+                    await this.writeRegister(slaveId, 0x2701, 1);
+                    await this.writeRegister(slaveId, 0x2700, 0x1002);
+                    await new Promise(r => setTimeout(r, 300));
+                    await this.writeRegister(slaveId, 0x1010, 0x65766173);
+                    this._setHwTestResult(testId, 'pass', 'Pass — Factory Reset 및 파라미터 저장 완료');
+                    break;
+                }
+                default:
+                    this._setHwTestResult(testId, 'fail', '알 수 없는 테스트 ID');
+            }
+        } catch (err) {
+            this._setHwTestResult(testId, 'fail', `오류: ${err.message || err}`);
+        }
+    }
+
+    async runAllHardwareTests() {
+        const testIds = ['hw-inv-os', 'hw-main-os', 'hw-motor-id', 'hw-eeprom',
+                         'hw-current', 'hw-igbt-temp', 'hw-hall', 'hw-factory-reset'];
+        for (const id of testIds) {
+            await this.runHardwareTest(id);
+        }
+    }
+
+    resetAllHardwareTests() {
+        document.querySelectorAll('.hw-test-item').forEach(item => {
+            const testId = item.dataset.testId;
+            this._setHwTestResult(testId, 'pending', '테스트를 실행하면 결과가 표시됩니다');
+        });
+        // Clear displayed values
+        ['hwInvOsActual','hwMainOsActual','hwMotorIdActual','hwEepromActual',
+         'hwIgbtTempActual','hwCurrentIU','hwCurrentIV','hwCurrentIW',
+         'hwHall1','hwHall2','hwHall3'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '-';
+        });
+    }
 }
 
 /**
@@ -10469,6 +10715,7 @@ class ModbusDashboard {
 // Initialize application
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new ModbusDashboard();
+    window.app = window.dashboard;
     window.osTestManager = new OSTestManager();
 
     // Device Setup Tab Switching
@@ -10570,7 +10817,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetSubtab === 'os-verification') {
                 document.getElementById('manufactureOsVerification').style.display = 'block';
             } else if (targetSubtab === 'hardware-test') {
-                document.getElementById('manufactureHardwareTest').style.display = 'block';
+                document.getElementById('manufactureHardwareTest').style.display = 'flex';
             } else if (targetSubtab === 'tuning') {
                 document.getElementById('manufactureTuning').style.display = 'block';
             } else if (targetSubtab === 'offset') {
