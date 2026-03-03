@@ -41,7 +41,7 @@ EC-FAN 모터 드라이브를 PC 브라우저에서 실시간으로 모니터링
 ## 지원 환경
 
 - **브라우저**: Google Chrome 89+, Microsoft Edge 89+
-- **OS**: Windows 10/11 (Web Serial API 지원 필수)
+- **OS**: Windows / macOS / Linux / ChromeOS + Android Chrome (USB OTG 환경). iOS 미지원
 - **연결**: USB-RS485 변환기 또는 RS-485 직접 포트
 
 ---

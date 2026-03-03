@@ -212,7 +212,9 @@ EC-FAN 기본 설정: **9600 baud, 8N1** (8 data bits, No parity, 1 stop bit)
 
 ---
 
-## 8. 지원 브라우저
+## 8. 지원 환경
+
+### 브라우저 지원 여부
 
 | 브라우저 | Web Serial 지원 | 비고 |
 |---------|----------------|------|
@@ -223,6 +225,22 @@ EC-FAN 기본 설정: **9600 baud, 8N1** (8 data bits, No parity, 1 stop bit)
 | Safari | ✗ 미지원 | 사용 불가 |
 
 > **주의**: 반드시 Chrome 또는 Edge를 사용해야 합니다.
+
+### OS 지원 여부
+
+Web Serial API의 제약은 **브라우저 종류**이지 OS가 아닙니다.
+지원되는 브라우저(Chrome/Edge 89+)만 있으면 아래 OS 모두 동작합니다:
+
+| OS | 지원 여부 | 비고 |
+|----|----------|------|
+| Windows 10/11 | ✓ | COM 포트 그대로 사용 |
+| macOS | ✓ | `/dev/tty.*` 장치로 접근 |
+| Linux | ✓ | `/dev/ttyUSB0` 등, `dialout` 그룹 권한 필요할 수 있음 |
+| ChromeOS | ✓ | |
+| Android (모바일) | △ | Chrome 최신 버전에서 포트 선택 다이얼로그 동작 확인. USB OTG + Serial Converter 인식 필요 |
+| iOS | ✗ | Safari/Chrome 모두 미지원 (WebKit 엔진 강제) |
+
+> 요약: **데스크톱은 OS 무관 지원. Android는 최신 Chrome + USB OTG 환경에서 동작 가능. iOS는 사용 불가**
 
 ---
 
