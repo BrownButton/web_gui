@@ -4979,7 +4979,7 @@ class ModbusDashboard {
         toast.className = `toast toast-${type}`;
 
         const icons = {
-            success: '⭕',
+            success: '✅',
             info: 'ⓘ',
             warning: '⚠',
             error: '✕'
@@ -9281,6 +9281,114 @@ class ModbusDashboard {
             menu.remove();
         }
         document.removeEventListener('click', this.hideConfigMenu.bind(this));
+    }
+
+    /**
+     * Read a single configuration parameter from the device
+     */
+    async readConfigParam(configType, deviceId) {
+        this.hideConfigMenu();
+
+        const device = this.devices.find(d => d.id === parseInt(deviceId));
+        if (!device || device.slaveId === 0) return;
+
+        if (!this.writer && !this.simulatorEnabled) {
+            this.showToast('연결되지 않은 상태에서는 읽을 수 없습니다', 'warning');
+            return;
+        }
+
+        // configType → { Modbus 주소, 읽은 값으로 device 속성·UI 업데이트하는 함수 }
+        const paramMap = {
+            fanAddress:       { address: 0xD100, apply: (raw) => {
+                const el = document.getElementById(`fanAddress_${deviceId}`);
+                if (el) el.value = raw;
+            }},
+            operatingMode:    { address: 0xD106, apply: (raw) => {
+                device.operationMode = raw;
+                const el = document.getElementById(`operatingMode_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            setValueSource:   { address: 0xD101, apply: (raw) => {
+                device.setValueSource = raw;
+                const el = document.getElementById(`setValueSource_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            runningDirection: { address: 0xD102, apply: (raw) => {
+                device.runningDirection = raw;
+                const el = document.getElementById(`runningDirection_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            maxSpeed:         { address: 0xD119, apply: (raw) => {
+                device.maxSpeed = raw;
+                const el = document.getElementById(`maxSpeed_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            rampUp:           { address: 0xD11F, apply: (raw) => {
+                device.rampUp = raw;
+                const el = document.getElementById(`rampUp_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            rampDown:         { address: 0xD120, apply: (raw) => {
+                device.rampDown = raw;
+                const el = document.getElementById(`rampDown_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            maxCurrent:       { address: 0xD13B, apply: (raw) => {
+                device.maxCurrent = raw / 10;
+                const el = document.getElementById(`maxCurrent_${deviceId}`);
+                if (el) el.value = device.maxCurrent;
+                this.saveDevices();
+            }},
+            tempDerating:     { address: 0xD138, apply: (raw) => {
+                device.tempDerating = raw;
+                const el = document.getElementById(`tempDerating_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            baudrate:         { address: 0xD149, apply: (raw) => {
+                device.baudrate = raw;
+                const el = document.getElementById(`baudrate_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            parity:           { address: 0xD14A, apply: (raw) => {
+                device.parity = raw;
+                const el = document.getElementById(`parity_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+        };
+
+        const entry = paramMap[configType];
+        if (!entry) return;
+
+        const statusEl = document.getElementById(`${configType}_${deviceId}_status`);
+        const inputEl  = document.getElementById(`${configType}_${deviceId}`);
+
+        if (statusEl) { statusEl.textContent = '↻'; statusEl.title = 'Reading...'; }
+
+        const raw = await this.readRegisterWithTimeout(device.slaveId, entry.address);
+
+        if (raw !== null) {
+            entry.apply(raw);
+            if (statusEl) { statusEl.textContent = '⭕'; statusEl.title = ''; }
+            if (inputEl)  { inputEl.style.borderColor = ''; }
+            setTimeout(() => {
+                if (statusEl && statusEl.textContent === '⭕') { statusEl.textContent = ''; statusEl.title = ''; }
+            }, 2000);
+        } else {
+            if (statusEl) { statusEl.textContent = '❌'; statusEl.title = 'Read failed'; }
+            if (inputEl)  {
+                inputEl.style.borderColor = '#dc3545';
+                if (inputEl.tagName === 'INPUT') inputEl.value = '';
+            }
+        }
     }
 
     /**
