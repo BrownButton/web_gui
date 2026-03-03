@@ -1075,6 +1075,9 @@ class ModbusDashboard {
         // Device Setup auto-apply debounce timers
         this.applyDebounceTimers = {};
 
+        // Active category in Configuration panel
+        this.activeConfigCategory = 'motor';
+
         this.initializeUI();
         this.loadParameters();
         this.loadSettings();
@@ -9265,11 +9268,21 @@ class ModbusDashboard {
             return;
         }
 
-        // Show loading on all status spans
-        ['fanAddress', 'operatingMode', 'runningDirection', 'maxCurrent'].forEach(key => {
+        const allKeys = [
+            'fanAddress', 'operatingMode', 'setValueSource', 'runningDirection', 'maxSpeed',
+            'rampUp', 'rampDown', 'maxCurrent', 'tempDerating', 'baudrate', 'parity'
+        ];
+
+        // Show loading on status spans that currently exist in the DOM
+        allKeys.forEach(key => {
             const el = document.getElementById(`${key}_${deviceId}_status`);
             if (el) { el.textContent = '↻'; el.title = 'Reading...'; }
         });
+
+        const setStatus = (key, text, title = '') => {
+            const el = document.getElementById(`${key}_${deviceId}_status`);
+            if (el) { el.textContent = text; el.title = title; }
+        };
 
         try {
             // Fan Address (0xD100)
@@ -9277,8 +9290,7 @@ class ModbusDashboard {
             if (fanAddr !== null) {
                 const input = document.getElementById(`fanAddress_${deviceId}`);
                 if (input) input.value = fanAddr;
-                const s = document.getElementById(`fanAddress_${deviceId}_status`);
-                if (s) { s.textContent = '✓'; s.title = ''; }
+                setStatus('fanAddress', '✓');
             }
 
             // Operating Mode (0xD106)
@@ -9287,8 +9299,16 @@ class ModbusDashboard {
                 device.operationMode = mode;
                 const sel = document.getElementById(`operatingMode_${deviceId}`);
                 if (sel) sel.value = mode;
-                const s = document.getElementById(`operatingMode_${deviceId}_status`);
-                if (s) { s.textContent = '✓'; s.title = ''; }
+                setStatus('operatingMode', '✓');
+            }
+
+            // Set Value Source (0xD101)
+            const setValueSource = await this.readRegisterWithTimeout(device.slaveId, 0xD101);
+            if (setValueSource !== null) {
+                device.setValueSource = setValueSource;
+                const sel = document.getElementById(`setValueSource_${deviceId}`);
+                if (sel) sel.value = setValueSource;
+                setStatus('setValueSource', '✓');
             }
 
             // Running Direction (0xD102)
@@ -9297,8 +9317,34 @@ class ModbusDashboard {
                 device.runningDirection = dir;
                 const sel = document.getElementById(`runningDirection_${deviceId}`);
                 if (sel) sel.value = dir;
-                const s = document.getElementById(`runningDirection_${deviceId}_status`);
-                if (s) { s.textContent = '✓'; s.title = ''; }
+                setStatus('runningDirection', '✓');
+            }
+
+            // Maximum Speed (0xD119)
+            const maxSpeed = await this.readRegisterWithTimeout(device.slaveId, 0xD119);
+            if (maxSpeed !== null) {
+                device.maxSpeed = maxSpeed;
+                const input = document.getElementById(`maxSpeed_${deviceId}`);
+                if (input) input.value = maxSpeed;
+                setStatus('maxSpeed', '✓');
+            }
+
+            // Ramp-up Curve (0xD11F)
+            const rampUp = await this.readRegisterWithTimeout(device.slaveId, 0xD11F);
+            if (rampUp !== null) {
+                device.rampUp = rampUp;
+                const input = document.getElementById(`rampUp_${deviceId}`);
+                if (input) input.value = rampUp;
+                setStatus('rampUp', '✓');
+            }
+
+            // Ramp-down Curve (0xD120)
+            const rampDown = await this.readRegisterWithTimeout(device.slaveId, 0xD120);
+            if (rampDown !== null) {
+                device.rampDown = rampDown;
+                const input = document.getElementById(`rampDown_${deviceId}`);
+                if (input) input.value = rampDown;
+                setStatus('rampDown', '✓');
             }
 
             // Max Current (0xD13B) — raw = A * 10
@@ -9307,15 +9353,41 @@ class ModbusDashboard {
                 device.maxCurrent = rawCurrent / 10;
                 const input = document.getElementById(`maxCurrent_${deviceId}`);
                 if (input) input.value = device.maxCurrent;
-                const s = document.getElementById(`maxCurrent_${deviceId}_status`);
-                if (s) { s.textContent = '✓'; s.title = ''; }
+                setStatus('maxCurrent', '✓');
+            }
+
+            // Module Temp Derating End (0xD138)
+            const tempDerating = await this.readRegisterWithTimeout(device.slaveId, 0xD138);
+            if (tempDerating !== null) {
+                device.tempDerating = tempDerating;
+                const input = document.getElementById(`tempDerating_${deviceId}`);
+                if (input) input.value = tempDerating;
+                setStatus('tempDerating', '✓');
+            }
+
+            // Baudrate (0xD149)
+            const baudrate = await this.readRegisterWithTimeout(device.slaveId, 0xD149);
+            if (baudrate !== null) {
+                device.baudrate = baudrate;
+                const sel = document.getElementById(`baudrate_${deviceId}`);
+                if (sel) sel.value = baudrate;
+                setStatus('baudrate', '✓');
+            }
+
+            // Parity (0xD14A)
+            const parity = await this.readRegisterWithTimeout(device.slaveId, 0xD14A);
+            if (parity !== null) {
+                device.parity = parity;
+                const sel = document.getElementById(`parity_${deviceId}`);
+                if (sel) sel.value = parity;
+                setStatus('parity', '✓');
             }
 
             this.saveDevices();
 
             // Clear status icons after 2 seconds
             setTimeout(() => {
-                ['fanAddress', 'operatingMode', 'runningDirection', 'maxCurrent'].forEach(key => {
+                allKeys.forEach(key => {
                     const el = document.getElementById(`${key}_${deviceId}_status`);
                     if (el && el.textContent === '✓') { el.textContent = ''; el.title = ''; }
                 });
@@ -9323,7 +9395,7 @@ class ModbusDashboard {
 
         } catch (error) {
             console.error('refreshDevice error:', error);
-            ['fanAddress', 'operatingMode', 'runningDirection', 'maxCurrent'].forEach(key => {
+            allKeys.forEach(key => {
                 const el = document.getElementById(`${key}_${deviceId}_status`);
                 if (el && el.textContent === '↻') { el.textContent = '❌'; el.title = 'Read failed'; }
             });
@@ -9334,7 +9406,18 @@ class ModbusDashboard {
         const configContainer = document.getElementById('deviceSetupConfig');
         if (!configContainer) return;
 
-        const modeText = device.operationMode === 0 ? 'Speed Control (RPM)' : 'Open-loop Control (%)';
+        // Track current device for switchConfigCategory
+        this.currentSetupDeviceId = device.id;
+
+        // 'ramp' category was merged into 'motor'
+        if (this.activeConfigCategory === 'ramp') this.activeConfigCategory = 'motor';
+        const activeCategory = this.activeConfigCategory || 'motor';
+        const categories = [
+            { id: 'motor',         label: '모터 제어' },
+            { id: 'protection',    label: '보호 설정' },
+            { id: 'communication', label: '통신 설정' },
+            { id: 'system',        label: '시스템' },
+        ];
 
         configContainer.innerHTML = `
             <div style="display: block; position: relative;">
@@ -9362,148 +9445,21 @@ class ModbusDashboard {
                 </div>
 
                 <!-- Category Layout -->
-                <div style="display: flex; gap: 20px;">
-                    <!-- Category Selector -->
-                    <div style="width: 140px; flex-shrink: 0; border: 1px solid #e9ecef; border-radius: 8px; padding: 8px; background: #fafafa;">
-                        <div class="config-category-item config-category-active" data-category="general">
-                            일반
-                        </div>
+                <div style="display: flex; gap: 20px; height: 440px; align-items: stretch;">
+                    <!-- Category Sidebar -->
+                    <div style="width: 140px; flex-shrink: 0; border: 1px solid #e9ecef; border-radius: 8px; padding: 8px; background: #fafafa; display: flex; flex-direction: column; gap: 6px;">
+                        ${categories.map(cat => `
+                            <div class="config-category-item ${activeCategory === cat.id ? 'config-category-active' : ''}"
+                                 data-category="${cat.id}"
+                                 onclick="window.dashboard.switchConfigCategory('${cat.id}')">
+                                ${cat.label}
+                            </div>
+                        `).join('')}
                     </div>
 
                     <!-- Category Content -->
-                    <div style="flex: 1; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; background: white;">
-                        <!-- Settings List -->
-                        <div style="margin-top: 0;">
-                            <!-- Fan Address -->
-                    <div class="config-item" data-config="fanAddress" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
-                        <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
-                            <span onclick="window.dashboard.showConfigMenu(event, 'fanAddress', '${device.id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
-                        </div>
-                        <div style="flex: 1; padding-right: 20px;">
-                            <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Fan Address</div>
-                            <div style="font-size: 12px; color: #6c757d;">Modbus device address (0xD100)</div>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center; width: 220px; justify-content: flex-end;">
-                            <input type="number" id="fanAddress_${device.id}"
-                                value="${device.slaveId}"
-                                min="1" max="247"
-                                style="width: 180px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px; background: white;"
-                                onchange="window.dashboard.debouncedApply('fanAddress', ${device.id})"
-                                onclick="event.stopPropagation()">
-                            <span id="fanAddress_${device.id}_status" style="width: 24px; font-size: 13px; color: #6c757d; text-align: center;"></span>
-                        </div>
-                    </div>
-
-                    <!-- Operating Mode -->
-                    <div class="config-item" data-config="operatingMode" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
-                        <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
-                            <span onclick="window.dashboard.showConfigMenu(event, 'operatingMode', '${device.id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
-                        </div>
-                        <div style="flex: 1; padding-right: 20px;">
-                            <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Operating Mode</div>
-                            <div style="font-size: 12px; color: #6c757d;">Motor control method (0xD106)</div>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center; width: 220px; justify-content: flex-end;">
-                            <select id="operatingMode_${device.id}"
-                                style="width: 180px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px; background: white;"
-                                onchange="window.dashboard.applyOperatingMode(${device.id})"
-                                onclick="event.stopPropagation()">
-                                <option value="0" ${device.operationMode === 0 ? 'selected' : ''}>Speed Control</option>
-                                <option value="2" ${device.operationMode === 2 ? 'selected' : ''}>Open-loop</option>
-                            </select>
-                            <span id="operatingMode_${device.id}_status" style="width: 24px; font-size: 13px; color: #6c757d; text-align: center;"></span>
-                        </div>
-                    </div>
-
-                    <!-- Running Direction -->
-                    <div class="config-item" data-config="runningDirection" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
-                        <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
-                            <span onclick="window.dashboard.showConfigMenu(event, 'runningDirection', '${device.id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
-                        </div>
-                        <div style="flex: 1; padding-right: 20px;">
-                            <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Running Direction</div>
-                            <div style="font-size: 12px; color: #6c757d;">Motor rotation direction (0xD102)</div>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center; width: 220px; justify-content: flex-end;">
-                            <select id="runningDirection_${device.id}"
-                                style="width: 180px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px; background: white;"
-                                onchange="window.dashboard.applyRunningDirection(${device.id})"
-                                onclick="event.stopPropagation()">
-                                <option value="0" ${device.runningDirection === 0 ? 'selected' : ''}>CCW</option>
-                                <option value="1" ${device.runningDirection === 1 ? 'selected' : ''}>CW</option>
-                            </select>
-                            <span id="runningDirection_${device.id}_status" style="width: 24px; font-size: 13px; color: #6c757d; text-align: center;"></span>
-                        </div>
-                    </div>
-
-                    <!-- Maximum Coil Current -->
-                    <div class="config-item" data-config="maxCurrent" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
-                        <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
-                            <span onclick="window.dashboard.showConfigMenu(event, 'maxCurrent', '${device.id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
-                        </div>
-                        <div style="flex: 1; padding-right: 20px;">
-                            <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Maximum Coil Current (A)</div>
-                            <div style="font-size: 12px; color: #6c757d;">Current limit in Amperes (0xD13B)</div>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center; width: 220px; justify-content: flex-end;">
-                            <input type="number" id="maxCurrent_${device.id}"
-                                value="${device.maxCurrent || 0}"
-                                min="0" max="100" step="0.1"
-                                style="width: 180px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px; background: white;"
-                                onchange="window.dashboard.debouncedApply('maxCurrent', ${device.id})"
-                                onclick="event.stopPropagation()">
-                            <span id="maxCurrent_${device.id}_status" style="width: 24px; font-size: 13px; color: #6c757d; text-align: center;"></span>
-                        </div>
-                    </div>
-
-                    <!-- Software Reset -->
-                    <div class="config-item" data-config="softwareReset" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
-                        <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
-                            <span onclick="window.dashboard.showConfigMenu(event, 'softwareReset', '${device.id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
-                        </div>
-                        <div style="flex: 1; padding-right: 20px;">
-                            <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Software Reset</div>
-                            <div style="font-size: 12px; color: #6c757d;">Restart the device software (0xD000)</div>
-                        </div>
-                        <div style="display: flex; gap: 8px; width: 220px; justify-content: flex-end;">
-                            <button class="btn btn-warning btn-sm"
-                                onclick="event.stopPropagation(); window.dashboard.resetDevice(${device.id}, 'software')">Reset</button>
-                            <span style="width: 24px;"></span>
-                        </div>
-                    </div>
-
-                    <!-- Error Reset -->
-                    <div class="config-item" data-config="errorReset" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
-                        <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
-                            <span onclick="window.dashboard.showConfigMenu(event, 'errorReset', '${device.id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
-                        </div>
-                        <div style="flex: 1; padding-right: 20px;">
-                            <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Error Reset</div>
-                            <div style="font-size: 12px; color: #6c757d;">Clear error status and flags (0xD000)</div>
-                        </div>
-                        <div style="display: flex; gap: 8px; width: 220px; justify-content: flex-end;">
-                            <button class="btn btn-warning btn-sm"
-                                onclick="event.stopPropagation(); window.dashboard.resetDevice(${device.id}, 'error')">Reset</button>
-                            <span style="width: 24px;"></span>
-                        </div>
-                    </div>
-
-                    <!-- EEPROM to RAM -->
-                    <div class="config-item" data-config="eepromToRam" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
-                        <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
-                            <span onclick="window.dashboard.showConfigMenu(event, 'eepromToRam', '${device.id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
-                        </div>
-                        <div style="flex: 1; padding-right: 20px;">
-                            <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">EEPROM to RAM</div>
-                            <div style="font-size: 12px; color: #6c757d;">Load settings from EEPROM to RAM (0xD000)</div>
-                        </div>
-                        <div style="display: flex; gap: 8px; width: 220px; justify-content: flex-end;">
-                            <button class="btn btn-info btn-sm"
-                                onclick="event.stopPropagation(); window.dashboard.resetDevice(${device.id}, 'eeprom')">Load</button>
-                            <span style="width: 24px;"></span>
-                        </div>
-                    </div>
-                        </div>
+                    <div id="configContent" style="flex: 1; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; background: white; overflow-y: auto;">
+                        ${this.getConfigCategoryHTML(device, activeCategory)}
                     </div>
                 </div>
             </div>
@@ -9515,6 +9471,189 @@ class ModbusDashboard {
             deviceNameSpan.addEventListener('click', () => {
                 this.startEditDeviceName(device.id, deviceNameSpan);
             });
+        }
+    }
+
+    /**
+     * Returns HTML for the given configuration category
+     */
+    getConfigCategoryHTML(device, category) {
+        const id = device.id;
+        const iStyle = 'width: 180px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px; background: white;';
+
+        const row = (key, label, desc, inputHTML) => `
+            <div class="config-item" data-config="${key}" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
+                <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
+                    <span onclick="window.dashboard.showConfigMenu(event, '${key}', '${id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
+                </div>
+                <div style="flex: 1; padding-right: 20px;">
+                    <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">${label}</div>
+                    <div style="font-size: 12px; color: #6c757d;">${desc}</div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; width: 220px; justify-content: flex-end;">
+                    ${inputHTML}
+                    <span id="${key}_${id}_status" style="width: 24px; font-size: 13px; color: #6c757d; text-align: center;"></span>
+                </div>
+            </div>`;
+
+        const actionRow = (key, label, desc, btnHTML) => `
+            <div class="config-item" data-config="${key}" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
+                <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
+                    <span onclick="window.dashboard.showConfigMenu(event, '${key}', '${id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
+                </div>
+                <div style="flex: 1; padding-right: 20px;">
+                    <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">${label}</div>
+                    <div style="font-size: 12px; color: #6c757d;">${desc}</div>
+                </div>
+                <div style="display: flex; gap: 8px; width: 220px; justify-content: flex-end;">
+                    ${btnHTML}
+                    <span style="width: 24px;"></span>
+                </div>
+            </div>`;
+
+        switch (category) {
+            case 'motor':
+                return `<div style="margin-top: 0;">
+                    ${row('operatingMode', '동작 모드', '모터 제어 방식 설정 (0xD106)', `
+                        <select id="operatingMode_${id}" style="${iStyle}"
+                            onchange="window.dashboard.applyOperatingMode(${id})"
+                            onclick="event.stopPropagation()">
+                            <option value="0" ${device.operationMode === 0 ? 'selected' : ''}>Speed Control</option>
+                            <option value="2" ${device.operationMode === 2 ? 'selected' : ''}>Open-loop</option>
+                        </select>`)}
+                    ${row('setValueSource', 'Setpoint 입력 소스', 'Setpoint를 수신하는 입력 수단 (0xD101)', `
+                        <select id="setValueSource_${id}" style="${iStyle}"
+                            onchange="window.dashboard.applySetValueSource(${id})"
+                            onclick="event.stopPropagation()">
+                            <option value="0" ${(device.setValueSource ?? 1) === 0 ? 'selected' : ''}>AIN1</option>
+                            <option value="1" ${(device.setValueSource ?? 1) === 1 ? 'selected' : ''}>RS485</option>
+                            <option value="2" ${(device.setValueSource ?? 1) === 2 ? 'selected' : ''}>AIN2</option>
+                            <option value="3" ${(device.setValueSource ?? 1) === 3 ? 'selected' : ''}>PWM</option>
+                        </select>`)}
+                    ${row('runningDirection', '회전 방향', '팬 구동 방향 설정 (0xD102)', `
+                        <select id="runningDirection_${id}" style="${iStyle}"
+                            onchange="window.dashboard.applyRunningDirection(${id})"
+                            onclick="event.stopPropagation()">
+                            <option value="0" ${device.runningDirection === 0 ? 'selected' : ''}>CCW (반시계)</option>
+                            <option value="1" ${device.runningDirection === 1 ? 'selected' : ''}>CW (시계)</option>
+                        </select>`)}
+                    ${row('maxSpeed', '최대 속도 (RPM)', '속도 제어 모드에서의 상한 속도 (0xD119)', `
+                        <input type="number" id="maxSpeed_${id}"
+                            value="${device.maxSpeed ?? 1600}"
+                            min="0" max="65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('maxSpeed', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('rampUp', '가속 시간', '정지에서 목표 속도까지 가속하는 시간 (0xD11F)', `
+                        <input type="number" id="rampUp_${id}"
+                            value="${device.rampUp ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('rampUp', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('rampDown', '감속 시간', '목표 속도에서 정지까지 감속하는 시간 (0xD120)', `
+                        <input type="number" id="rampDown_${id}"
+                            value="${device.rampDown ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('rampDown', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                </div>`;
+
+            case 'protection':
+                return `<div style="margin-top: 0;">
+                    ${row('maxCurrent', '최대 코일 전류 (A)', '전류 제한 활성화 시 최대 코일 전류(rms) (0xD13B)', `
+                        <input type="number" id="maxCurrent_${id}"
+                            value="${device.maxCurrent || 0}"
+                            min="0" max="100" step="0.1"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('maxCurrent', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('tempDerating', '온도 디레이팅 종료점 (°C)', '모듈 온도 파워 디레이팅이 완료되는 온도 (0xD138)', `
+                        <input type="number" id="tempDerating_${id}"
+                            value="${device.tempDerating ?? ''}"
+                            min="0" max="200"
+                            placeholder="0–200"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('tempDerating', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                </div>`;
+
+            case 'communication':
+                return `<div style="margin-top: 0;">
+                    ${row('fanAddress', 'Fan Address', 'Modbus Slave ID (0xD100)', `
+                        <input type="number" id="fanAddress_${id}"
+                            value="${device.slaveId}"
+                            min="1" max="247"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('fanAddress', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('baudrate', 'Baudrate', 'RS-485 통신 속도 — 드라이브 재시작 후 적용 (0xD149)', `
+                        <select id="baudrate_${id}" style="${iStyle}"
+                            onchange="window.dashboard.applyBaudrate(${id})"
+                            onclick="event.stopPropagation()">
+                            <option value="0" ${(device.baudrate ?? 4) === 0 ? 'selected' : ''}>1200 bps</option>
+                            <option value="1" ${(device.baudrate ?? 4) === 1 ? 'selected' : ''}>2400 bps</option>
+                            <option value="2" ${(device.baudrate ?? 4) === 2 ? 'selected' : ''}>4800 bps</option>
+                            <option value="3" ${(device.baudrate ?? 4) === 3 ? 'selected' : ''}>9600 bps</option>
+                            <option value="4" ${(device.baudrate ?? 4) === 4 ? 'selected' : ''}>19200 bps (기본값)</option>
+                            <option value="5" ${(device.baudrate ?? 4) === 5 ? 'selected' : ''}>38400 bps</option>
+                            <option value="6" ${(device.baudrate ?? 4) === 6 ? 'selected' : ''}>57600 bps</option>
+                            <option value="7" ${(device.baudrate ?? 4) === 7 ? 'selected' : ''}>115200 bps</option>
+                        </select>`)}
+                    ${row('parity', 'Parity', '시리얼 데이터 비트/패리티/스톱 비트 — 드라이브 재시작 후 적용 (0xD14A)', `
+                        <select id="parity_${id}" style="${iStyle}"
+                            onchange="window.dashboard.applyParity(${id})"
+                            onclick="event.stopPropagation()">
+                            <option value="0" ${(device.parity ?? 0) === 0 ? 'selected' : ''}>Data8 / Even / Stop1 (기본값)</option>
+                            <option value="1" ${(device.parity ?? 0) === 1 ? 'selected' : ''}>Data8 / Odd / Stop1</option>
+                            <option value="2" ${(device.parity ?? 0) === 2 ? 'selected' : ''}>Data8 / None / Stop2</option>
+                            <option value="3" ${(device.parity ?? 0) === 3 ? 'selected' : ''}>Data8 / None / Stop1</option>
+                        </select>`)}
+                </div>`;
+
+            case 'system':
+                return `<div style="margin-top: 0;">
+                    ${actionRow('softwareReset', '소프트웨어 리셋', '디바이스 소프트웨어를 재시작합니다 (0xD000)', `
+                        <button class="btn btn-warning btn-sm"
+                            onclick="event.stopPropagation(); window.dashboard.resetDevice(${id}, 'software')">Reset</button>`)}
+                    ${actionRow('errorReset', '오류 리셋', '모든 오류 상태와 플래그를 초기화합니다 (0xD000)', `
+                        <button class="btn btn-warning btn-sm"
+                            onclick="event.stopPropagation(); window.dashboard.resetDevice(${id}, 'error')">Reset</button>`)}
+                    ${actionRow('eepromToRam', 'EEPROM → RAM 로드', 'EEPROM에 저장된 설정을 RAM으로 불러옵니다 (0xD000)', `
+                        <button class="btn btn-info btn-sm"
+                            onclick="event.stopPropagation(); window.dashboard.resetDevice(${id}, 'eeprom')">Load</button>`)}
+                </div>`;
+
+            default:
+                return '';
+        }
+    }
+
+    /**
+     * Switch active configuration category and re-render the content area
+     */
+    switchConfigCategory(categoryName) {
+        this.activeConfigCategory = categoryName;
+
+        // Update sidebar active state
+        document.querySelectorAll('.config-category-item').forEach(item => {
+            if (item.dataset.category === categoryName) {
+                item.classList.add('config-category-active');
+            } else {
+                item.classList.remove('config-category-active');
+            }
+        });
+
+        // Re-render content area using stored device properties
+        const device = this.devices.find(d => d.id === this.currentSetupDeviceId);
+        if (!device) return;
+
+        const contentArea = document.getElementById('configContent');
+        if (contentArea) {
+            contentArea.innerHTML = this.getConfigCategoryHTML(device, categoryName);
         }
     }
 
@@ -9728,6 +9867,22 @@ class ModbusDashboard {
                         break;
                     case 'maxCurrent':
                         await this.applyMaxCurrent(deviceId);
+                        success = true;
+                        break;
+                    case 'maxSpeed':
+                        await this.applyMaxSpeed(deviceId);
+                        success = true;
+                        break;
+                    case 'rampUp':
+                        await this.applyRampUp(deviceId);
+                        success = true;
+                        break;
+                    case 'rampDown':
+                        await this.applyRampDown(deviceId);
+                        success = true;
+                        break;
+                    case 'tempDerating':
+                        await this.applyTempDerating(deviceId);
                         success = true;
                         break;
                 }
@@ -9999,6 +10154,208 @@ class ModbusDashboard {
                 statusElement.title = '';
             }, 2000);
         }
+    }
+
+    /**
+     * Apply Set Value Source (0xD101)
+     */
+    async applySetValueSource(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const sel = document.getElementById(`setValueSource_${deviceId}`);
+        const status = document.getElementById(`setValueSource_${deviceId}_status`);
+        if (!sel) return;
+
+        const value = parseInt(sel.value);
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD101, value);
+        if (success) {
+            device.setValueSource = value;
+            this.saveDevices();
+            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Apply Maximum Speed (0xD119)
+     */
+    async applyMaxSpeed(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const input = document.getElementById(`maxSpeed_${deviceId}`);
+        const status = document.getElementById(`maxSpeed_${deviceId}_status`);
+        if (!input) return;
+
+        const value = parseInt(input.value);
+        if (isNaN(value) || value < 0 || value > 65535) {
+            if (status) { status.textContent = '❌'; status.title = 'Invalid value (0–65535)'; }
+            return;
+        }
+
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD119, value);
+        if (success) {
+            device.maxSpeed = value;
+            this.saveDevices();
+            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Apply Ramp-up Curve (0xD11F)
+     */
+    async applyRampUp(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const input = document.getElementById(`rampUp_${deviceId}`);
+        const status = document.getElementById(`rampUp_${deviceId}_status`);
+        if (!input) return;
+
+        const value = parseInt(input.value);
+        if (isNaN(value) || value < 0 || value > 65535) {
+            if (status) { status.textContent = '❌'; status.title = 'Invalid value (0–65535)'; }
+            return;
+        }
+
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD11F, value);
+        if (success) {
+            device.rampUp = value;
+            this.saveDevices();
+            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Apply Ramp-down Curve (0xD120)
+     */
+    async applyRampDown(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const input = document.getElementById(`rampDown_${deviceId}`);
+        const status = document.getElementById(`rampDown_${deviceId}_status`);
+        if (!input) return;
+
+        const value = parseInt(input.value);
+        if (isNaN(value) || value < 0 || value > 65535) {
+            if (status) { status.textContent = '❌'; status.title = 'Invalid value (0–65535)'; }
+            return;
+        }
+
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD120, value);
+        if (success) {
+            device.rampDown = value;
+            this.saveDevices();
+            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Apply Module Temp Derating End (0xD138)
+     */
+    async applyTempDerating(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const input = document.getElementById(`tempDerating_${deviceId}`);
+        const status = document.getElementById(`tempDerating_${deviceId}_status`);
+        if (!input) return;
+
+        const value = parseInt(input.value);
+        if (isNaN(value) || value < 0 || value > 200) {
+            if (status) { status.textContent = '❌'; status.title = 'Invalid value (0–200°C)'; }
+            return;
+        }
+
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD138, value);
+        if (success) {
+            device.tempDerating = value;
+            this.saveDevices();
+            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Apply Baudrate (0xD149)
+     */
+    async applyBaudrate(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const sel = document.getElementById(`baudrate_${deviceId}`);
+        const status = document.getElementById(`baudrate_${deviceId}_status`);
+        if (!sel) return;
+
+        const value = parseInt(sel.value);
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD149, value);
+        if (success) {
+            device.baudrate = value;
+            this.saveDevices();
+            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Apply Parity configuration (0xD14A)
+     */
+    async applyParity(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const sel = document.getElementById(`parity_${deviceId}`);
+        const status = document.getElementById(`parity_${deviceId}_status`);
+        if (!sel) return;
+
+        const value = parseInt(sel.value);
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD14A, value);
+        if (success) {
+            device.parity = value;
+            this.saveDevices();
+            if (status) { status.textContent = '✓'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
     }
 
     /**
