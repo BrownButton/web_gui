@@ -11,7 +11,7 @@ holding,0xD101,Set value source,N,"Setpoint를 어떤 수단으로 사용할 것
 holding,0xD102,Preferred running direction,Y,"구동 방향 결정 (0:CCW, 1:CW)"
 holding,0xD106,Operating mode,Y,"모터 제어 방식을 설정합니다. | 0:Speed Control, 2:Open-loop control"
 holding,0xD112,Motor stop enable,N,"0: set value가 0이더라도 모터 항상 SVON, 1: set value가 0일 경우 모터 SVOFF"
-holding,0xD119,Maximum speed,N,센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)
+holding,0xD119,Maximum speed,Y,센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)
 holding,0xD11A,Maximum permissible speed,N,최대 속도의 상한치를 설정 (모터 최대 속도)
 holding,0xD11F,Ramp-up curve,N,"가/감속도 조정 파라미터, 알람 등 모터 정지조건이 감지되면 감속없이 정지함"
 holding,0xD120,Ramp-down curve,N,감속 곡선 설정

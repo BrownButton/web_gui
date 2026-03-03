@@ -1,3 +1,5 @@
+- Dashboard에 체크박스를 체크하고 polling 파라미터를 삭제하면 삭제가 되지않음
+- Dashboard 폴링 파라미터 박스 크기 조절
 - Auto scan 디폴트는 활성화
 - Velocity mode로 동작할때, 최대속도를 읽어와야함
 
