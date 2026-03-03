@@ -129,6 +129,15 @@ class OSTestManager {
             this.isTestRunning    = false;
             this.shouldStopTest   = false;
 
+            // JS 정의에서 info/criteria 필드 자동 주입 (HTML에 placeholder '-' 가 있을 때)
+            const set = (cls, val) => { const el = testItem.querySelector(cls); if (el && val) el.textContent = val; };
+            set('.test-category', test.category);
+            set('.test-number',   test.number);
+            set('.test-purpose',  test.purpose);
+            set('.test-model',    test.model);
+            set('.test-equipment', test.equipment);
+            set('.test-criteria', test.criteria);
+
             // 단계 목록 렌더링 (string | object 모두 지원)
             const stepsList = testItem.querySelector('.test-steps-list');
             if (stepsList) {
