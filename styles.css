@@ -3735,6 +3735,55 @@ select:focus {
     right: 20px;
 }
 
+.live-watch-toggle-btn {
+    position: absolute;
+    top: 16px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    border: 1px solid #ced4da;
+    border-radius: 20px;
+    background: white;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.live-watch-toggle-btn:hover {
+    border-color: #adb5bd;
+    background: #f8f9fa;
+}
+
+.live-watch-toggle-btn.active {
+    border-color: #28a745;
+    background: #f0fff4;
+    color: #28a745;
+}
+
+.live-watch-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ced4da;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.live-watch-toggle-btn.active .live-watch-indicator {
+    background: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+    animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2); }
+    50%       { box-shadow: 0 0 0 6px rgba(40, 167, 69, 0.05); }
+}
+
 .device-list-section .device-placeholder {
     margin: 0;
     border-radius: 8px;
