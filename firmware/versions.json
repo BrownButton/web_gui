@@ -3,8 +3,15 @@
     {
       "version": "v1.0.0",
       "date": "2026-03-07",
-      "size": 0,
-      "filename": "v1.0.0.bin",
+      "size": 114,
+      "filename": "test1.bin",
+      "changelog": "초기 릴리즈"
+    },
+    {
+      "version": "v1.0.1",
+      "date": "2026-03-09",
+      "size": 123,
+      "filename": "test2.bin",
       "changelog": "초기 릴리즈"
     }
   ]
