@@ -8370,30 +8370,67 @@ class ModbusDashboard {
         if (!tbody) return;
 
         tbody.innerHTML = versions.map((v, idx) => {
-            const isLatest   = idx === 0;
+            const isLatest    = idx === 0;
             const latestBadge = isLatest ? '<span class="fw-version-badge-latest">최신</span>' : '';
-            const rowClass   = isLatest ? 'fw-version-row-latest' : '';
-            const sizeStr    = v.size > 0 ? this.formatFileSize(v.size) : '-';
+            const rowClass    = isLatest ? 'fw-version-row-latest' : '';
+            const sizeStr     = v.size > 0 ? this.formatFileSize(v.size) : '-';
+            const changelog   = v.changelog || '-';
 
             return `
                 <tr class="${rowClass}" data-version-idx="${idx}">
-                    <td><span class="fw-version-number">${v.version}</span>${latestBadge}</td>
+                    <td>
+                        <label class="fw-radio-label">
+                            <input type="radio" name="fwVersionRadio" class="fw-version-radio" value="${idx}">
+                            <span class="fw-version-number">${v.version}</span>${latestBadge}
+                        </label>
+                    </td>
                     <td class="fw-version-date">${v.date}</td>
                     <td class="fw-version-size">${sizeStr}</td>
-                    <td class="fw-version-changelog">${v.changelog || '-'}</td>
-                    <td>
-                        <button class="btn btn-primary fw-btn-sm fw-select-version-btn" data-version-idx="${idx}">
-                            이 버전 선택
+                    <td class="fw-version-changelog-cell">
+                        <button class="fw-changelog-toggle" data-idx="${idx}" title="변경사항 보기">
+                            <span class="fw-changelog-preview">${changelog.substring(0, 30)}${changelog.length > 30 ? '...' : ''}</span>
+                            <span class="fw-changelog-arrow">▼</span>
                         </button>
+                        <div class="fw-changelog-detail" id="fwChangelog${idx}" style="display:none;">
+                            ${changelog.replace(/\n/g, '<br>')}
+                        </div>
                     </td>
                 </tr>
             `;
         }).join('');
 
-        tbody.querySelectorAll('.fw-select-version-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const idx = parseInt(btn.dataset.versionIdx);
-                this.selectOnlineFirmwareVersion(this._fwVersionList[idx]);
+        // 라디오 버튼 변경 시 버전 선택
+        tbody.querySelectorAll('.fw-version-radio').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.checked) {
+                    const idx = parseInt(radio.value);
+                    tbody.querySelectorAll('tr').forEach(tr => tr.classList.remove('fw-version-row-selected'));
+                    radio.closest('tr').classList.add('fw-version-row-selected');
+                    this.selectOnlineFirmwareVersion(this._fwVersionList[idx]);
+                }
+            });
+        });
+
+        // 행 클릭 시 라디오 선택
+        tbody.querySelectorAll('tr').forEach(tr => {
+            tr.addEventListener('click', (e) => {
+                if (e.target.closest('.fw-changelog-toggle')) return;
+                const radio = tr.querySelector('.fw-version-radio');
+                if (radio && !radio.checked) radio.click();
+            });
+        });
+
+        // 변경사항 아코디언 토글
+        tbody.querySelectorAll('.fw-changelog-toggle').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idx    = btn.dataset.idx;
+                const detail = document.getElementById(`fwChangelog${idx}`);
+                const arrow  = btn.querySelector('.fw-changelog-arrow');
+                const isOpen = detail.style.display !== 'none';
+                detail.style.display = isOpen ? 'none' : 'block';
+                arrow.textContent    = isOpen ? '▼' : '▲';
+                btn.classList.toggle('fw-changelog-open', !isOpen);
             });
         });
     }
@@ -8419,14 +8456,7 @@ class ModbusDashboard {
         if (fetchFill)     fetchFill.style.width       = '0%';
         if (fetchLabel)    fetchLabel.textContent      = '다운로드 중...';
 
-        // 선택된 행 강조
-        document.querySelectorAll('#fwVersionTableBody tr').forEach(tr => tr.classList.remove('fw-version-row-selected'));
-        const idx = this._fwVersionList?.indexOf(version);
-        const rows = document.querySelectorAll('#fwVersionTableBody tr');
-        if (idx >= 0 && rows[idx]) rows[idx].classList.add('fw-version-row-selected');
-
-        // 다운로드 중 버튼 비활성
-        document.querySelectorAll('.fw-select-version-btn').forEach(b => b.disabled = true);
+        // 라디오/행 선택 상태는 _renderVersionTable에서 처리됨
 
         try {
             const url  = `./firmware/${version.filename}`;
@@ -8483,7 +8513,7 @@ class ModbusDashboard {
             this.updateFirmwareButtons();
             this.showToast(`펌웨어 다운로드 실패: ${err.message}`, 'error');
         } finally {
-            document.querySelectorAll('.fw-select-version-btn').forEach(b => b.disabled = false);
+            // (버튼 비활성 없음 — 라디오 방식으로 변경됨)
         }
     }
 
@@ -8496,6 +8526,7 @@ class ModbusDashboard {
         const selectedInfo = document.getElementById('fwOnlineSelectedInfo');
         if (selectedInfo) selectedInfo.style.display = 'none';
         document.querySelectorAll('#fwVersionTableBody tr').forEach(tr => tr.classList.remove('fw-version-row-selected'));
+        document.querySelectorAll('.fw-version-radio').forEach(r => r.checked = false);
         this.updateFirmwareButtons();
     }
 
