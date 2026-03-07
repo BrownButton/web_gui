@@ -1550,9 +1550,11 @@ class ModbusDashboard {
                     clearTimeout(clickTimer);
                 }
 
-                // If 5 clicks within 2 seconds, activate developer mode
+                // If 5 clicks within 2 seconds, toggle developer mode
                 if (clickCount >= 5) {
-                    if (sessionStorage.getItem('developerMode') !== 'true') {
+                    if (sessionStorage.getItem('developerMode') === 'true') {
+                        disableDevModeBtn && disableDevModeBtn.click();
+                    } else {
                         sessionStorage.setItem('developerMode', 'true');
                         this.enableDeveloperMode();
                         this.showToast('🔧 Developer Mode Activated!', 'success');
