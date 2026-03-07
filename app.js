@@ -5343,31 +5343,17 @@ class ModbusDashboard {
             allDeviceModePct.addEventListener('click', () => this.setAllDeviceMode(1));
         }
 
-        // All device setpoint input and slider sync
+        // All device setpoint input
         const allDeviceSetpoint = document.getElementById('allDeviceSetpoint');
-        const allDeviceSetpointSlider = document.getElementById('allDeviceSetpointSlider');
-        if (allDeviceSetpoint && allDeviceSetpointSlider) {
-            allDeviceSetpoint.addEventListener('input', () => {
-                allDeviceSetpointSlider.value = allDeviceSetpoint.value;
-                this.updateSliderBackground(allDeviceSetpointSlider);
-            });
-            allDeviceSetpointSlider.addEventListener('input', () => {
-                allDeviceSetpoint.value = allDeviceSetpointSlider.value;
-                this.updateSliderBackground(allDeviceSetpointSlider);
-            });
-        }
 
         // Quick preset buttons (all device control)
-        document.querySelectorAll('.preset-btn').forEach(btn => {
+        document.querySelectorAll('#allDevicePresetBtns .preset-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const percent = parseInt(btn.dataset.percent);
-                const maxValue = parseInt(allDeviceSetpointSlider?.max || 1600);
+                const isRpm = document.getElementById('allDeviceModeRpm')?.classList.contains('active');
+                const maxValue = isRpm ? (this.devices[0]?.maxSpeed || 1600) : 100;
                 const value = Math.round((percent / 100) * maxValue);
                 if (allDeviceSetpoint) allDeviceSetpoint.value = value;
-                if (allDeviceSetpointSlider) {
-                    allDeviceSetpointSlider.value = value;
-                    this.updateSliderBackground(allDeviceSetpointSlider);
-                }
             });
         });
 

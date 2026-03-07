@@ -191,31 +191,31 @@
                         </div>
                         <div class="all-device-control-content collapsed">
                             <div class="all-device-control-row">
-                                <div class="all-device-control-item">
-                                    <label>Setpoint</label>
-                                    <div class="all-device-setpoint-wrapper">
-                                        <input type="number" id="allDeviceSetpoint" min="0" max="10000" value="0" class="all-device-setpoint-input">
-                                        <span class="all-device-setpoint-unit" id="allDeviceSetpointUnit">RPM</span>
-                                        <input type="range" id="allDeviceSetpointSlider" min="0" max="10000" value="0" class="all-device-setpoint-slider">
-                                    </div>
+                                <span class="all-device-control-label">Mode</span>
+                                <div class="all-device-mode-toggle">
+                                    <button class="mode-btn active" data-mode="0" id="allDeviceModeRpm">RPM</button>
+                                    <button class="mode-btn" data-mode="1" id="allDeviceModePct">%</button>
                                 </div>
-                                <div class="all-device-control-item">
-                                    <label>모드</label>
-                                    <div class="all-device-mode-toggle">
-                                        <button class="mode-btn active" data-mode="0" id="allDeviceModeRpm">RPM</button>
-                                        <button class="mode-btn" data-mode="1" id="allDeviceModePct">%</button>
+                                <div class="all-device-control-divider"></div>
+                                <span class="all-device-control-label">Setpoint</span>
+                                <div class="all-device-setpoint-wrapper">
+                                    <div class="all-device-preset-btns" id="allDevicePresetBtns">
+                                        <button class="preset-btn" data-percent="0">0</button>
+                                        <button class="preset-btn" data-percent="25">25</button>
+                                        <button class="preset-btn" data-percent="50">50</button>
+                                        <button class="preset-btn" data-percent="75">75</button>
+                                        <button class="preset-btn" data-percent="100">100</button>
                                     </div>
+                                    <input type="number" id="allDeviceSetpoint" min="0" max="10000" value="0" class="all-device-setpoint-input">
+                                    <span class="all-device-setpoint-unit" id="allDeviceSetpointUnit">RPM</span>
                                 </div>
-                                <div class="all-device-control-item all-device-control-actions">
-                                    <label>&nbsp;</label>
-                                    <div class="all-device-action-btns">
-                                        <button id="allDeviceApplyBtn" class="btn btn-success" disabled>
-                                            <span>▶</span> 적용
-                                        </button>
-                                        <button id="allDeviceStopBtn" class="btn btn-danger" disabled>
-                                            <span>■</span> 정지
-                                        </button>
-                                    </div>
+                                <div class="all-device-action-btns">
+                                    <button id="allDeviceApplyBtn" class="btn btn-success" disabled>
+                                        <span>▶</span> 적용
+                                    </button>
+                                    <button id="allDeviceStopBtn" class="btn btn-danger" disabled>
+                                        <span>■</span> 정지
+                                    </button>
                                 </div>
                             </div>
                         </div>

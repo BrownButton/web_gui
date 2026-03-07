@@ -3787,28 +3787,38 @@ select:focus {
 
 .all-device-control-row {
     display: flex;
-    align-items: flex-end;
-    gap: 24px;
+    align-items: center;
+    gap: 12px;
     flex-wrap: wrap;
 }
 
-.all-device-control-item {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.all-device-control-divider {
+    width: 1px;
+    height: 28px;
+    background: #dee2e6;
+    margin: 0 8px;
+    flex-shrink: 0;
 }
 
-.all-device-control-item label {
+.all-device-control-label {
     font-size: 12px;
     font-weight: 600;
     color: #6c757d;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
-.all-device-control-item:first-child {
-    flex: 1;
-    min-width: 200px;
+.all-device-preset-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.all-device-preset-btns .preset-btn {
+    flex: none;
+    width: 48px;
+    padding: 8px 0;
+    text-align: center;
 }
 
 .selected-devices-chips {
@@ -3851,6 +3861,8 @@ select:focus {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex: 1;
+    min-width: 160px;
 }
 
 .all-device-setpoint-input {
@@ -3921,9 +3933,12 @@ select:focus {
     border: 1px solid #ced4da;
     border-radius: 6px;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .all-device-mode-toggle .mode-btn {
+    flex: 1 1 0;
+    min-width: 0;
     padding: 8px 16px;
     border: none;
     background: transparent;
@@ -3932,6 +3947,9 @@ select:focus {
     cursor: pointer;
     color: #6c757d;
     transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .all-device-mode-toggle .mode-btn.active {
