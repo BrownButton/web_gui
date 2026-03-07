@@ -1854,30 +1854,116 @@
                             <p class="firmware-subtitle">Modbus Function Code 0x66을 사용하여 장치에 펌웨어를 업로드합니다</p>
                         </div>
 
-                        <!-- File Upload Section -->
-                        <div class="firmware-upload-section">
-                            <div class="firmware-dropzone" id="firmwareDropzone">
-                                <div class="dropzone-content">
-                                    <div class="dropzone-icon">📁</div>
-                                    <div class="dropzone-text">
-                                        <p class="dropzone-main">파일을 여기에 드래그하거나 클릭하여 선택하세요</p>
-                                        <p class="dropzone-sub">지원 형식: .bin, .hex, .fw</p>
+                        <!-- Firmware Source Selector -->
+                        <div class="firmware-source-selector" id="firmwareSourceSelector">
+                            <button class="fw-source-btn active" id="fwSourceLocalBtn" data-source="local">
+                                <span class="fw-source-icon">📁</span>
+                                <span class="fw-source-label">로컬 파일</span>
+                            </button>
+                            <button class="fw-source-btn" id="fwSourceOnlineBtn" data-source="online">
+                                <span class="fw-source-icon">🌐</span>
+                                <span class="fw-source-label">온라인 업데이트</span>
+                            </button>
+                        </div>
+
+                        <!-- Panel A: Local File -->
+                        <div id="fwPanelLocal" class="fw-source-panel">
+                            <!-- File Upload Section -->
+                            <div class="firmware-upload-section">
+                                <div class="firmware-dropzone" id="firmwareDropzone">
+                                    <div class="dropzone-content">
+                                        <div class="dropzone-icon">📁</div>
+                                        <div class="dropzone-text">
+                                            <p class="dropzone-main">파일을 여기에 드래그하거나 클릭하여 선택하세요</p>
+                                            <p class="dropzone-sub">지원 형식: .bin, .hex, .fw</p>
+                                        </div>
+                                        <input type="file" id="firmwareFileInput" accept=".bin,.hex,.fw" hidden>
+                                        <button class="btn btn-primary" id="firmwareSelectBtn">파일 선택</button>
                                     </div>
-                                    <input type="file" id="firmwareFileInput" accept=".bin,.hex,.fw" hidden>
-                                    <button class="btn btn-primary" id="firmwareSelectBtn">파일 선택</button>
+                                </div>
+                            </div>
+
+                            <!-- Selected File Info -->
+                            <div class="firmware-file-info" id="firmwareFileInfo" style="display: none;">
+                                <div class="file-info-header">
+                                    <span class="file-icon">📄</span>
+                                    <div class="file-details">
+                                        <span class="file-name" id="firmwareFileName">-</span>
+                                        <span class="file-size" id="firmwareFileSize">-</span>
+                                    </div>
+                                    <button class="file-remove-btn" id="firmwareRemoveBtn" title="파일 제거">×</button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Selected File Info -->
-                        <div class="firmware-file-info" id="firmwareFileInfo" style="display: none;">
-                            <div class="file-info-header">
-                                <span class="file-icon">📄</span>
-                                <div class="file-details">
-                                    <span class="file-name" id="firmwareFileName">-</span>
-                                    <span class="file-size" id="firmwareFileSize">-</span>
+                        <!-- Panel B: Online Update -->
+                        <div id="fwPanelOnline" class="fw-source-panel" style="display: none;">
+
+                            <!-- 로컬 환경 비활성 메시지 -->
+                            <div class="fw-online-disabled" id="fwOnlineDisabled" style="display: none;">
+                                <div class="fw-online-disabled-icon">🔒</div>
+                                <p class="fw-online-disabled-msg">로컬 환경에서는 온라인 펌웨어 기능을 사용할 수 없습니다</p>
+                                <p class="fw-online-disabled-sub">GitHub Pages 배포 환경에서 이 기능을 사용하세요.</p>
+                            </div>
+
+                            <!-- 온라인 콘텐츠 (http/https 시 표시) -->
+                            <div class="fw-online-content" id="fwOnlineContent" style="display: none;">
+                                <div class="fw-online-toolbar">
+                                    <h3 class="fw-online-title">온라인 펌웨어 버전 목록</h3>
+                                    <button class="btn btn-secondary fw-btn-sm" id="fwRefreshVersionsBtn">
+                                        <span id="fwRefreshIcon">↻</span> 버전 목록 새로고침
+                                    </button>
                                 </div>
-                                <button class="file-remove-btn" id="firmwareRemoveBtn" title="파일 제거">×</button>
+
+                                <!-- 로딩 상태 -->
+                                <div class="fw-online-loading" id="fwOnlineLoading" style="display: none;">
+                                    <div class="fw-online-spinner"></div>
+                                    <span>버전 목록을 불러오는 중...</span>
+                                </div>
+
+                                <!-- 오류 상태 -->
+                                <div class="fw-online-error" id="fwOnlineError" style="display: none;">
+                                    <span class="fw-online-error-icon">⚠</span>
+                                    <span id="fwOnlineErrorMsg">버전 목록을 불러올 수 없습니다.</span>
+                                </div>
+
+                                <!-- 버전 목록 테이블 -->
+                                <div class="fw-version-table-wrapper" id="fwVersionTableWrapper" style="display: none;">
+                                    <table class="fw-version-table">
+                                        <thead>
+                                            <tr>
+                                                <th>버전</th>
+                                                <th>배포일</th>
+                                                <th>파일 크기</th>
+                                                <th>변경사항</th>
+                                                <th>선택</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="fwVersionTableBody">
+                                            <!-- JS에서 동적 렌더링 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- 선택된 온라인 펌웨어 정보 -->
+                                <div class="firmware-file-info fw-online-selected-info" id="fwOnlineSelectedInfo" style="display: none;">
+                                    <div class="file-info-header">
+                                        <span class="file-icon">🌐</span>
+                                        <div class="file-details">
+                                            <span class="file-name" id="fwOnlineSelectedName">-</span>
+                                            <span class="file-size" id="fwOnlineSelectedSize">-</span>
+                                        </div>
+                                        <span class="fw-online-dl-status" id="fwOnlineDlStatus"></span>
+                                        <button class="file-remove-btn" id="fwOnlineClearBtn" title="선택 해제">×</button>
+                                    </div>
+                                    <!-- bin 파일 fetch 진행률 바 -->
+                                    <div class="fw-online-fetch-progress" id="fwOnlineFetchProgress" style="display: none;">
+                                        <div class="fw-fetch-bar-track">
+                                            <div class="fw-fetch-bar-fill" id="fwOnlineFetchFill"></div>
+                                        </div>
+                                        <span class="fw-fetch-bar-label" id="fwOnlineFetchLabel">다운로드 중...</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

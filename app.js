@@ -8252,6 +8252,251 @@ class ModbusDashboard {
                 this.cancelFirmwareDownload();
             });
         }
+
+        // Initialize firmware state - online source additions
+        this.firmwareSource = 'local';
+        this._fwVersionsLoaded = false;
+        this._fwVersionList = [];
+
+        // Initialize source selector
+        this.initFirmwareSourceSelector();
+    }
+
+    /**
+     * Initialize firmware source selector (로컬 파일 / 온라인 업데이트 탭)
+     */
+    initFirmwareSourceSelector() {
+        const localBtn  = document.getElementById('fwSourceLocalBtn');
+        const onlineBtn = document.getElementById('fwSourceOnlineBtn');
+        if (!localBtn || !onlineBtn) return;
+
+        const switchSource = (source) => {
+            this.firmwareSource = source;
+
+            localBtn.classList.toggle('active',  source === 'local');
+            onlineBtn.classList.toggle('active', source === 'online');
+
+            document.getElementById('fwPanelLocal').style.display  = source === 'local'  ? 'block' : 'none';
+            document.getElementById('fwPanelOnline').style.display = source === 'online' ? 'block' : 'none';
+
+            if (source === 'online') {
+                this._initOnlinePanel();
+            } else {
+                this._clearOnlineSelection();
+            }
+
+            this.updateFirmwareButtons();
+        };
+
+        localBtn.addEventListener('click',  () => switchSource('local'));
+        onlineBtn.addEventListener('click', () => switchSource('online'));
+
+        const refreshBtn = document.getElementById('fwRefreshVersionsBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.loadFirmwareVersionList());
+        }
+
+        const clearBtn = document.getElementById('fwOnlineClearBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this._clearOnlineSelection());
+        }
+    }
+
+    /**
+     * 온라인 패널 초기화 — 환경 감지 후 UI 분기
+     */
+    _initOnlinePanel() {
+        const isLocalFile = window.location.protocol === 'file:';
+        const disabledDiv = document.getElementById('fwOnlineDisabled');
+        const contentDiv  = document.getElementById('fwOnlineContent');
+
+        if (isLocalFile) {
+            if (disabledDiv) disabledDiv.style.display = 'flex';
+            if (contentDiv)  contentDiv.style.display  = 'none';
+        } else {
+            if (disabledDiv) disabledDiv.style.display = 'none';
+            if (contentDiv)  contentDiv.style.display  = 'block';
+            if (!this._fwVersionsLoaded) {
+                this.loadFirmwareVersionList();
+            }
+        }
+    }
+
+    /**
+     * 온라인 버전 목록 로드 (versions.json fetch)
+     */
+    async loadFirmwareVersionList() {
+        const loadingEl    = document.getElementById('fwOnlineLoading');
+        const errorEl      = document.getElementById('fwOnlineError');
+        const errorMsgEl   = document.getElementById('fwOnlineErrorMsg');
+        const tableWrapper = document.getElementById('fwVersionTableWrapper');
+        const refreshIcon  = document.getElementById('fwRefreshIcon');
+
+        if (loadingEl)    loadingEl.style.display    = 'flex';
+        if (errorEl)      errorEl.style.display      = 'none';
+        if (tableWrapper) tableWrapper.style.display = 'none';
+        if (refreshIcon)  refreshIcon.textContent    = '⌛';
+
+        try {
+            const resp = await fetch('./firmware/versions.json', { cache: 'no-cache' });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+
+            const json = await resp.json();
+            if (!Array.isArray(json.versions) || json.versions.length === 0) {
+                throw new Error('버전 목록이 비어있습니다');
+            }
+
+            this._fwVersionsLoaded = true;
+            this._fwVersionList = json.versions;
+            this._renderVersionTable(json.versions);
+
+            if (loadingEl)    loadingEl.style.display    = 'none';
+            if (tableWrapper) tableWrapper.style.display = 'block';
+        } catch (err) {
+            if (loadingEl)   loadingEl.style.display = 'none';
+            if (errorEl)     errorEl.style.display   = 'flex';
+            if (errorMsgEl)  errorMsgEl.textContent  = `버전 목록을 불러올 수 없습니다: ${err.message}`;
+            this._fwVersionsLoaded = false;
+        } finally {
+            if (refreshIcon) refreshIcon.textContent = '↻';
+        }
+    }
+
+    /**
+     * 버전 목록 테이블 렌더링
+     */
+    _renderVersionTable(versions) {
+        const tbody = document.getElementById('fwVersionTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = versions.map((v, idx) => {
+            const isLatest   = idx === 0;
+            const latestBadge = isLatest ? '<span class="fw-version-badge-latest">최신</span>' : '';
+            const rowClass   = isLatest ? 'fw-version-row-latest' : '';
+            const sizeStr    = v.size > 0 ? this.formatFileSize(v.size) : '-';
+
+            return `
+                <tr class="${rowClass}" data-version-idx="${idx}">
+                    <td><span class="fw-version-number">${v.version}</span>${latestBadge}</td>
+                    <td class="fw-version-date">${v.date}</td>
+                    <td class="fw-version-size">${sizeStr}</td>
+                    <td class="fw-version-changelog">${v.changelog || '-'}</td>
+                    <td>
+                        <button class="btn btn-primary fw-btn-sm fw-select-version-btn" data-version-idx="${idx}">
+                            이 버전 선택
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        tbody.querySelectorAll('.fw-select-version-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.versionIdx);
+                this.selectOnlineFirmwareVersion(this._fwVersionList[idx]);
+            });
+        });
+    }
+
+    /**
+     * 온라인 펌웨어 버전 선택 — bin 파일 fetch 후 메모리 로드
+     */
+    async selectOnlineFirmwareVersion(version) {
+        const selectedInfo  = document.getElementById('fwOnlineSelectedInfo');
+        const selectedName  = document.getElementById('fwOnlineSelectedName');
+        const selectedSize  = document.getElementById('fwOnlineSelectedSize');
+        const dlStatus      = document.getElementById('fwOnlineDlStatus');
+        const fetchProgress = document.getElementById('fwOnlineFetchProgress');
+        const fetchFill     = document.getElementById('fwOnlineFetchFill');
+        const fetchLabel    = document.getElementById('fwOnlineFetchLabel');
+
+        // 정보 바 즉시 표시
+        if (selectedInfo)  selectedInfo.style.display  = 'block';
+        if (selectedName)  selectedName.textContent    = version.filename;
+        if (selectedSize)  selectedSize.textContent    = version.size > 0 ? this.formatFileSize(version.size) : '-';
+        if (dlStatus)      dlStatus.textContent        = '';
+        if (fetchProgress) fetchProgress.style.display = 'flex';
+        if (fetchFill)     fetchFill.style.width       = '0%';
+        if (fetchLabel)    fetchLabel.textContent      = '다운로드 중...';
+
+        // 선택된 행 강조
+        document.querySelectorAll('#fwVersionTableBody tr').forEach(tr => tr.classList.remove('fw-version-row-selected'));
+        const idx = this._fwVersionList?.indexOf(version);
+        const rows = document.querySelectorAll('#fwVersionTableBody tr');
+        if (idx >= 0 && rows[idx]) rows[idx].classList.add('fw-version-row-selected');
+
+        // 다운로드 중 버튼 비활성
+        document.querySelectorAll('.fw-select-version-btn').forEach(b => b.disabled = true);
+
+        try {
+            const url  = `./firmware/${version.filename}`;
+            const resp = await fetch(url, { cache: 'no-cache' });
+
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+
+            const contentLength = resp.headers.get('Content-Length');
+            let arrayBuffer;
+
+            if (contentLength && resp.body) {
+                const total  = parseInt(contentLength);
+                let received = 0;
+                const reader = resp.body.getReader();
+                const chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    received += value.length;
+                    const pct = Math.round(received / total * 100);
+                    if (fetchFill)  fetchFill.style.width  = pct + '%';
+                    if (fetchLabel) fetchLabel.textContent = `다운로드 중... ${pct}%`;
+                }
+
+                const combined = new Uint8Array(received);
+                let offset = 0;
+                for (const chunk of chunks) { combined.set(chunk, offset); offset += chunk.length; }
+                arrayBuffer = combined.buffer;
+            } else {
+                if (fetchLabel) fetchLabel.textContent = '다운로드 중... (크기 미확인)';
+                arrayBuffer = await resp.arrayBuffer();
+                if (fetchFill) fetchFill.style.width = '100%';
+            }
+
+            // 기존 firmwareData/firmwareFile 인터페이스에 맞게 저장
+            this.firmwareData = new Uint8Array(arrayBuffer);
+            this.firmwareFile = { name: version.filename, size: this.firmwareData.length, _onlineVersion: version.version };
+
+            if (fetchLabel)  fetchLabel.textContent  = '완료';
+            if (dlStatus)    dlStatus.textContent    = '✔ 준비됨';
+            if (selectedSize) selectedSize.textContent = this.formatFileSize(this.firmwareData.length);
+
+            this.updateFirmwareButtons();
+            this.showToast(`${version.version} 펌웨어 로드 완료`, 'success');
+
+        } catch (err) {
+            if (dlStatus)   dlStatus.textContent        = '⚠ 실패';
+            if (fetchLabel) fetchLabel.textContent      = `오류: ${err.message}`;
+            if (fetchFill)  fetchFill.style.background  = '#dc3545';
+            this.firmwareData = null;
+            this.firmwareFile = null;
+            this.updateFirmwareButtons();
+            this.showToast(`펌웨어 다운로드 실패: ${err.message}`, 'error');
+        } finally {
+            document.querySelectorAll('.fw-select-version-btn').forEach(b => b.disabled = false);
+        }
+    }
+
+    /**
+     * 온라인 선택 상태 초기화
+     */
+    _clearOnlineSelection() {
+        this.firmwareData = null;
+        this.firmwareFile = null;
+        const selectedInfo = document.getElementById('fwOnlineSelectedInfo');
+        if (selectedInfo) selectedInfo.style.display = 'none';
+        document.querySelectorAll('#fwVersionTableBody tr').forEach(tr => tr.classList.remove('fw-version-row-selected'));
+        this.updateFirmwareButtons();
     }
 
     /**

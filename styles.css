@@ -6383,6 +6383,282 @@ select:focus {
     font-weight: 500;
 }
 
+/* ===== Online Firmware Update Styles ===== */
+
+/* 소스 선택 탭 */
+.firmware-source-selector {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    width: fit-content;
+}
+
+.fw-source-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: #f8f9fa;
+    border: none;
+    border-right: 1px solid #dee2e6;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6c757d;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.fw-source-btn:last-child {
+    border-right: none;
+}
+
+.fw-source-btn:hover:not(.active) {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.fw-source-btn.active {
+    background: #007bff;
+    color: white;
+}
+
+.fw-source-icon {
+    font-size: 16px;
+}
+
+/* 로컬 환경 비활성 메시지 */
+.fw-online-disabled {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 48px 20px;
+    text-align: center;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.fw-online-disabled-icon {
+    font-size: 40px;
+    opacity: 0.45;
+}
+
+.fw-online-disabled-msg {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.fw-online-disabled-sub {
+    margin: 0;
+    font-size: 13px;
+    color: #6c757d;
+}
+
+/* 온라인 콘텐츠 영역 */
+.fw-online-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.fw-online-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.fw-btn-sm {
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+/* 로딩 상태 */
+.fw-online-loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.fw-online-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #dee2e6;
+    border-top-color: #007bff;
+    border-radius: 50%;
+    animation: fw-spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes fw-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 오류 상태 */
+.fw-online-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: #fff3f3;
+    border: 1px solid #f5c6c6;
+    border-radius: 8px;
+    color: #dc3545;
+    font-size: 14px;
+    margin-bottom: 14px;
+}
+
+.fw-online-error-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+/* 버전 목록 테이블 */
+.fw-version-table-wrapper {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.fw-version-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.fw-version-table thead th {
+    background: #f8f9fa;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 13px;
+}
+
+.fw-version-table tbody tr {
+    border-bottom: 1px solid #e9ecef;
+    transition: background 0.15s;
+}
+
+.fw-version-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.fw-version-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.fw-version-table td {
+    padding: 12px 14px;
+    color: #495057;
+    vertical-align: middle;
+}
+
+/* 최신 버전 행 강조 */
+.fw-version-row-latest {
+    background: #f0f7ff;
+}
+
+.fw-version-row-latest:hover {
+    background: #e3f0ff !important;
+}
+
+.fw-version-badge-latest {
+    display: inline-block;
+    background: #28a745;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.fw-version-number {
+    font-weight: 600;
+    color: #2c3e50;
+    font-family: 'Consolas', monospace;
+    font-size: 15px;
+}
+
+.fw-version-date {
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.fw-version-size {
+    color: #6c757d;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.fw-version-changelog {
+    max-width: 260px;
+    color: #495057;
+    font-size: 13px;
+}
+
+/* 선택된 행 강조 */
+.fw-version-row-selected {
+    background: #e3f2fd !important;
+    outline: 2px solid #007bff;
+    outline-offset: -2px;
+}
+
+/* 온라인 선택 상태 표시 */
+.fw-online-dl-status {
+    font-size: 13px;
+    color: #28a745;
+    font-weight: 500;
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+/* bin 파일 fetch 진행률 바 */
+.fw-online-fetch-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    padding: 0 4px;
+}
+
+.fw-fetch-bar-track {
+    flex: 1;
+    height: 6px;
+    background: #dee2e6;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.fw-fetch-bar-fill {
+    height: 100%;
+    background: #007bff;
+    border-radius: 3px;
+    transition: width 0.2s ease;
+    width: 0%;
+}
+
+.fw-fetch-bar-label {
+    font-size: 12px;
+    color: #6c757d;
+    white-space: nowrap;
+}
+
 /* ============================================
    Chart Page Styles
    ============================================ */
