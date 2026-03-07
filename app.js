@@ -5454,6 +5454,7 @@ class ModbusDashboard {
         // Update selected count badge
         if (selectedCountEl) {
             selectedCountEl.textContent = `${this.selectedDevices.size}개 선택`;
+            selectedCountEl.classList.toggle('has-devices', this.selectedDevices.size > 0);
         }
 
         // Update section style based on selection, and collapse content when nothing selected
@@ -5512,8 +5513,13 @@ class ModbusDashboard {
      */
     updateTotalDeviceCount() {
         const badge = document.getElementById('totalDeviceCount');
+        const grid = document.getElementById('deviceGrid');
         if (badge) {
             badge.textContent = `${this.devices.length}개`;
+            badge.classList.toggle('has-devices', this.devices.length > 0);
+        }
+        if (grid) {
+            grid.classList.toggle('collapsed', this.devices.length === 0);
         }
     }
 

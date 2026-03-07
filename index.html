@@ -245,17 +245,17 @@
                                 <button id="addDeviceBtn" class="btn btn-success btn-sm">
                                     <span>+</span> Add Device
                                 </button>
-                                <div class="view-mode-toggle">
-                                    <button class="view-mode-btn" data-view="card" id="viewModeCard" title="카드형 보기">
-                                        <span>▦</span>
-                                    </button>
-                                    <button class="view-mode-btn active" data-view="list" id="viewModeList" title="목록형 보기">
-                                        <span>☰</span>
-                                    </button>
-                                </div>
                             </div>
                         </div>
-                        <div class="device-grid" id="deviceGrid">
+                        <div class="device-grid collapsed" id="deviceGrid">
+                            <div class="view-mode-toggle">
+                                <button class="view-mode-btn" data-view="card" id="viewModeCard" title="카드형 보기">
+                                    <span>▦</span>
+                                </button>
+                                <button class="view-mode-btn active" data-view="list" id="viewModeList" title="목록형 보기">
+                                    <span>☰</span>
+                                </button>
+                            </div>
                             <!-- Device cards will be dynamically added here -->
                             <div class="device-placeholder" id="devicePlaceholder">
                                 <div class="placeholder-icon">📦</div>
