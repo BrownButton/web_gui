@@ -1258,6 +1258,9 @@ class ModbusDashboard {
                 e.target.classList.add('active');
                 this.paramTypeFilter = e.target.dataset.filter;
                 this.renderParameters();
+                if (this.selectedParamDeviceId && (this.writer || this.simulatorEnabled)) {
+                    this.readAllParameters();
+                }
             });
         });
 
@@ -1267,12 +1270,22 @@ class ModbusDashboard {
                 e.target.classList.add('active');
                 this.paramImplementedFilter = e.target.dataset.implemented;
                 this.renderParameters();
+                if (this.selectedParamDeviceId && (this.writer || this.simulatorEnabled)) {
+                    this.readAllParameters();
+                }
             });
         });
 
+        let paramSearchDebounce = null;
         document.getElementById('paramSearchInput').addEventListener('input', (e) => {
             this.paramSearchText = e.target.value.toLowerCase();
             this.renderParameters();
+            clearTimeout(paramSearchDebounce);
+            paramSearchDebounce = setTimeout(() => {
+                if (this.selectedParamDeviceId && (this.writer || this.simulatorEnabled)) {
+                    this.readAllParameters();
+                }
+            }, 500);
         });
 
         // Close modal on outside click (with drag protection)
@@ -4067,7 +4080,20 @@ class ModbusDashboard {
             return;
         }
 
-        const implementedParams = this.parameters.filter(p => p.implemented === 'Y');
+        // 현재 필터 조건에 맞는 파라미터만 읽기 (implemented === 'Y' 필수)
+        const implementedParams = this.parameters.filter(p => {
+            if (p.implemented !== 'Y') return false;
+            if (this.paramTypeFilter !== 'all' && p.type !== this.paramTypeFilter) return false;
+            if (this.paramImplementedFilter !== 'all' && p.implemented !== this.paramImplementedFilter) return false;
+            if (this.paramSearchText) {
+                const s = this.paramSearchText.toLowerCase();
+                const nameMatch = p.name.toLowerCase().includes(s);
+                const addressMatch = p.address.toLowerCase().includes(s);
+                const descMatch = p.description && p.description.toLowerCase().includes(s);
+                if (!nameMatch && !addressMatch && !descMatch) return false;
+            }
+            return true;
+        });
         if (implementedParams.length === 0) {
             this.showToast('읽을 수 있는 파라미터가 없습니다', 'info');
             return;
@@ -9861,7 +9887,9 @@ class ModbusDashboard {
                                   onmouseover="this.style.background='#f0f0f0'"
                                   onmouseout="this.style.background='transparent'">${device.name}</span>
                         </h2>
-                        <div style="font-size: 13px; color: #6c757d; line-height: 1.4;">Slave ID: ${device.slaveId === 0 ? 'Not Assigned' : device.slaveId}</div>
+                        <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
+                            ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
+                        </span>
                     </div>
                     <div style="display: flex; gap: 10px; width: 220px; justify-content: flex-end; padding-right: 32px;">
                         <button onclick="window.dashboard.refreshDevice(${device.id})" class="btn btn-secondary btn-sm">
@@ -11135,6 +11163,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else if (targetTab === 'parameters') {
                 document.getElementById('deviceSetupParamsTab').style.display = 'block';
+                // Auto-read parameters from device if connected
+                if (this.selectedParamDeviceId && (this.writer || this.simulatorEnabled)) {
+                    this.readAllParameters();
+                }
             } else if (targetTab === 'manufacture') {
                 document.getElementById('deviceSetupManufactureTab').style.display = 'flex';
             }
