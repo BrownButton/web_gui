@@ -3788,20 +3788,20 @@ select:focus {
 .all-device-control-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 20px;
     flex-wrap: wrap;
 }
 
 .all-device-control-divider {
     width: 1px;
-    height: 28px;
+    height: 52px;
     background: #dee2e6;
-    margin: 0 8px;
+    margin: 0 12px;
     flex-shrink: 0;
 }
 
 .all-device-control-label {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
     color: #6c757d;
     text-transform: uppercase;
@@ -3811,14 +3811,15 @@ select:focus {
 
 .all-device-preset-btns {
     display: flex;
-    gap: 4px;
+    gap: 8px;
 }
 
 .all-device-preset-btns .preset-btn {
     flex: none;
-    width: 48px;
-    padding: 8px 0;
+    width: 72px;
+    padding: 11px 0;
     text-align: center;
+    font-size: 15px;
 }
 
 .selected-devices-chips {
@@ -3860,17 +3861,17 @@ select:focus {
 .all-device-setpoint-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     flex: 1;
     min-width: 160px;
 }
 
 .all-device-setpoint-input {
-    width: 100px;
-    padding: 8px 12px;
+    width: 140px;
+    padding: 11px 18px;
     border: 1px solid #ced4da;
     border-radius: 6px;
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     text-align: right;
     cursor: text !important;
@@ -3889,10 +3890,10 @@ select:focus {
 }
 
 .all-device-setpoint-unit {
-    font-size: 14px;
+    font-size: 16px;
     color: #6c757d;
     font-weight: 500;
-    min-width: 35px;
+    min-width: 45px;
     pointer-events: none;
 }
 
@@ -3939,10 +3940,10 @@ select:focus {
 .all-device-mode-toggle .mode-btn {
     flex: 1 1 0;
     min-width: 0;
-    padding: 8px 16px;
+    padding: 11px 28px;
     border: none;
     background: transparent;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     cursor: pointer;
     color: #6c757d;
@@ -3975,8 +3976,9 @@ select:focus {
 .all-device-action-btns .btn {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
+    gap: 8px;
+    padding: 11px 28px;
+    font-size: 15px;
     font-weight: 500;
 }
 
