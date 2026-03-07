@@ -7285,7 +7285,7 @@ class ModbusDashboard {
         device.monitoringExpanded = !device.monitoringExpanded;
         this.saveDevices();
 
-        const element = document.querySelector(`[data-device-id="${deviceId}"]`);
+        const element = document.querySelector(`.device-card[data-device-id="${deviceId}"], .device-list-item[data-device-id="${deviceId}"]`);
         if (!element) return;
 
         const header = element.querySelector('.monitoring-header');
@@ -7448,7 +7448,7 @@ class ModbusDashboard {
         const device = this.devices.find(d => d.id === deviceId);
         if (!device) return;
 
-        const element = document.querySelector(`[data-device-id="${deviceId}"]`);
+        const element = document.querySelector(`.device-card[data-device-id="${deviceId}"], .device-list-item[data-device-id="${deviceId}"]`);
         if (!element) return;
 
         const listContainer = element.querySelector('.monitoring-params-list');
