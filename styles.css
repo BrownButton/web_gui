@@ -6569,11 +6569,11 @@ select:focus {
 
 /* 최신 버전 행 강조 */
 .fw-version-row-latest {
-    background: #f0f7ff;
+    /* 배경색 제거 — '최신' 배지로만 표시, 선택 상태와 혼동 방지 */
 }
 
 .fw-version-row-latest:hover {
-    background: #e3f0ff !important;
+    background: #f8f9fa;
 }
 
 .fw-version-badge-latest {
