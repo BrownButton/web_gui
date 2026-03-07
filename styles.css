@@ -4744,15 +4744,11 @@ select:focus {
     padding: 15px 18px;
     background: #fafbfc;
     border-top: 1px solid #e0e6ed;
-    max-height: 400px;
-    overflow-y: auto;
 }
 
 /* Monitoring Parameters List */
 .monitoring-params-list {
     margin-bottom: 15px;
-    height: 200px;
-    overflow-y: auto;
 }
 
 .monitoring-param-item {
@@ -4926,7 +4922,7 @@ select:focus {
 
 /* Empty State */
 .monitoring-empty {
-    height: 100%;
+    padding: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
