@@ -5279,6 +5279,12 @@ class ModbusDashboard {
      * Initialize Dashboard UI event listeners
      */
     initDashboardUI() {
+        // Auto Scan button (Dashboard)
+        const dashboardAutoScanBtn = document.getElementById('dashboardAutoScanBtn');
+        if (dashboardAutoScanBtn) {
+            dashboardAutoScanBtn.addEventListener('click', () => this.startDeviceScan(true));
+        }
+
         // Add Device button
         const addDeviceBtn = document.getElementById('addDeviceBtn');
         if (addDeviceBtn) {

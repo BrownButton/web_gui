@@ -721,6 +721,7 @@ select:focus {
     border-radius: 4px;
     font-size: 13px;
     font-weight: 500;
+    line-height: 1;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -3690,7 +3691,8 @@ select:focus {
     gap: 10px;
 }
 
-.section-header #addDeviceBtn {
+.section-header #addDeviceBtn,
+.section-header #dashboardAutoScanBtn {
     padding: 6px 12px;
     font-size: 13px;
 }
