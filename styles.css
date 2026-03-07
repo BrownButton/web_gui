@@ -6557,8 +6557,16 @@ select:focus {
     border-bottom: none;
 }
 
-.fw-version-table tbody tr:hover {
+.fw-version-main-row {
+    cursor: pointer;
+}
+
+.fw-version-main-row:hover {
     background: #f8f9fa;
+}
+
+.fw-changelog-row:hover {
+    background: #f8f9fa !important;
 }
 
 .fw-version-table td {
@@ -6636,44 +6644,60 @@ select:focus {
     flex-shrink: 0;
 }
 
-/* 변경사항 아코디언 */
-.fw-version-changelog-cell {
-    max-width: 260px;
-}
-
-.fw-changelog-toggle {
+/* 변경사항 펼침 화살표 (파일 크기 셀 우측) */
+.fw-version-size {
     display: flex;
     align-items: center;
-    gap: 6px;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    text-align: left;
-    width: 100%;
-    color: #495057;
-    font-size: 13px;
-}
-
-.fw-changelog-toggle:hover .fw-changelog-preview {
-    color: #007bff;
+    justify-content: space-between;
+    gap: 8px;
+    white-space: nowrap;
 }
 
 .fw-changelog-arrow {
     font-size: 10px;
-    color: #6c757d;
+    color: #adb5bd;
+    cursor: pointer;
+    transition: color 0.15s;
     flex-shrink: 0;
 }
 
-.fw-changelog-detail {
-    margin-top: 8px;
-    padding: 8px 10px;
+.fw-version-main-row:hover .fw-changelog-arrow {
+    color: #6c757d;
+}
+
+.fw-changelog-arrow.fw-arrow-open {
+    color: #007bff;
+}
+
+/* 변경사항 서브 행 (게시판 스타일) */
+.fw-changelog-row {
     background: #f8f9fa;
+}
+
+.fw-changelog-detail-cell {
+    padding: 0 !important;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.fw-changelog-detail-inner {
+    display: flex;
+    gap: 16px;
+    padding: 14px 20px;
     border-left: 3px solid #007bff;
-    border-radius: 0 4px 4px 0;
+}
+
+.fw-changelog-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #007bff;
+    white-space: nowrap;
+    padding-top: 1px;
+}
+
+.fw-changelog-content {
     font-size: 13px;
     color: #495057;
-    line-height: 1.6;
+    line-height: 1.7;
     white-space: pre-wrap;
 }
 
