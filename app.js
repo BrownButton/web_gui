@@ -5454,12 +5454,15 @@ class ModbusDashboard {
             selectedCountEl.textContent = `${this.selectedDevices.size}개 선택`;
         }
 
-        // Update section style based on selection
+        // Update section style based on selection, and collapse content when nothing selected
         if (allDeviceControlSection) {
+            const content = allDeviceControlSection.querySelector('.all-device-control-content');
             if (this.selectedDevices.size > 0) {
                 allDeviceControlSection.classList.add('has-selection');
+                if (content) content.classList.remove('collapsed');
             } else {
                 allDeviceControlSection.classList.remove('has-selection');
+                if (content) content.classList.add('collapsed');
             }
         }
 

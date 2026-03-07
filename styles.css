@@ -3766,6 +3766,15 @@ select:focus {
     padding: 20px;
     background: #fbfcff;
     border-radius: 0 0 8px 8px;
+    overflow: hidden;
+    max-height: 200px;
+    transition: max-height 0.25s ease, padding 0.25s ease;
+}
+
+.all-device-control-content.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 .all-device-control-row {
