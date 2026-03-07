@@ -1557,7 +1557,7 @@ class ModbusDashboard {
                     } else {
                         sessionStorage.setItem('developerMode', 'true');
                         this.enableDeveloperMode();
-                        this.showToast('🔧 Developer Mode Activated!', 'success');
+                        this.showToast('🔧 개발자 모드가 활성화되었습니다', 'success');
                     }
                     clickCount = 0;
                 } else {
@@ -1589,7 +1589,7 @@ class ModbusDashboard {
                     navbarStats.style.display = 'none';
                 }
 
-                this.showToast('🔧 Developer Mode Disabled', 'error');
+                this.showToast('🔧 개발자 모드가 비활성화되었습니다', 'error');
                 // Switch to dashboard if currently on manufacture page
                 if (this.currentPage === 'manufacture') {
                     this.switchPage('dashboard');
@@ -1752,7 +1752,7 @@ class ModbusDashboard {
                 navigator.clipboard.writeText(rawData).then(() => {
                     this.showToast('Raw 데이터가 클립보드에 복사되었습니다', 'success');
                 }).catch(() => {
-                    this.showToast('복사 실패', 'error');
+                    this.showToast('복사에 실패했습니다', 'error');
                 });
             }
         });
@@ -2101,7 +2101,7 @@ class ModbusDashboard {
 
         this.savePollingSettings();
         this.updatePollingEstimate();
-        this.showToast('Polling settings applied', 'success');
+        this.showToast('폴링 설정이 적용되었습니다', 'success');
     }
 
     /**
@@ -2268,7 +2268,7 @@ class ModbusDashboard {
 
             const settingsStr = `${baudRate} baud, ${dataBits}${parity.charAt(0).toUpperCase()}${stopBits}`;
             this.addMonitorEntry('received', `Connected: ${settingsStr}`);
-            this.showToast(`시리얼 포트 연결됨 (${settingsStr})`, 'success');
+            this.showToast(`시리얼 포트가 연결되었습니다 (${settingsStr})`, 'success');
 
             // Auto scan if enabled
             if (this.autoScanEnabled) {
@@ -2284,7 +2284,7 @@ class ModbusDashboard {
         } catch (error) {
             console.error('Connection error:', error);
             this.addMonitorEntry('error', `Connection failed: ${error.message}`);
-            this.showToast(`연결 실패: ${error.message}`, 'error');
+            this.showToast(`연결에 실패했습니다: ${error.message}`, 'error');
         }
     }
 
@@ -2355,7 +2355,7 @@ class ModbusDashboard {
             }
 
             this.addMonitorEntry('received', 'Disconnected from serial port');
-            this.showToast('시리얼 포트 연결 해제됨', 'info');
+            this.showToast('시리얼 포트 연결이 해제되었습니다', 'info');
 
         } catch (error) {
             this.addMonitorEntry('error', `Disconnect error: ${error.message}`);
@@ -2387,7 +2387,7 @@ class ModbusDashboard {
                 setTimeout(() => {
                     if (this.isConnected) {
                         this.addMonitorEntry('error', 'Serial port physically removed - auto disconnecting');
-                        this.showToast('시리얼 포트가 물리적으로 제거됨 - 자동 연결 해제', 'error');
+                        this.showToast('시리얼 포트가 제거되어 연결이 해제되었습니다', 'error');
                         this.disconnect();
                     }
                 }, 0);
@@ -3419,9 +3419,9 @@ class ModbusDashboard {
                 if (copyableRow) {
                     const value = copyableRow.dataset.copyValue;
                     navigator.clipboard.writeText(value).then(() => {
-                        this.showToast(`복사됨: ${value}`, 'success');
+                        this.showToast(`복사되었습니다: ${value}`, 'success');
                     }).catch(() => {
-                        this.showToast('복사 실패', 'error');
+                        this.showToast('복사에 실패했습니다', 'error');
                     });
                 }
             });
@@ -4039,18 +4039,18 @@ class ModbusDashboard {
      */
     async readAllParameters() {
         if (!this.selectedParamDeviceId) {
-            this.showToast('Please select a device first', 'warning');
+            this.showToast('디바이스를 먼저 선택하세요', 'warning');
             return;
         }
 
         if (!this.writer && !this.simulatorEnabled) {
-            this.showToast('Please connect to serial port or enable simulator', 'warning');
+            this.showToast('시리얼 포트에 연결하거나 시뮬레이터를 활성화하세요', 'warning');
             return;
         }
 
         const implementedParams = this.parameters.filter(p => p.implemented === 'Y');
         if (implementedParams.length === 0) {
-            this.showToast('No implemented parameters to read', 'info');
+            this.showToast('읽을 수 있는 파라미터가 없습니다', 'info');
             return;
         }
 
@@ -4582,7 +4582,7 @@ class ModbusDashboard {
      */
     async readParameterByAddress(param, silent = false) {
         if (!this.writer && !this.simulatorEnabled) {
-            if (!silent) this.showToast('먼저 연결하거나 시뮬레이터를 활성화하세요', 'warning');
+            if (!silent) this.showToast('시리얼 포트에 연결하거나 시뮬레이터를 활성화하세요', 'warning');
             return;
         }
 
@@ -4630,7 +4630,7 @@ class ModbusDashboard {
                 return true;
             } else {
                 this.updateStats(false);
-                if (!silent) this.showToast(`${param.name} 읽기 실패`, 'error');
+                if (!silent) this.showToast(`${param.name} 읽기에 실패했습니다`, 'error');
                 return false;
             }
         } else if (this.writer) {
@@ -4651,7 +4651,7 @@ class ModbusDashboard {
                 if (!silent) this.showToast(`${param.name}: ${value} (0x${value.toString(16).toUpperCase()})`, 'success');
                 return true;
             } else {
-                if (!silent) this.showToast(`${param.name} 읽기 실패`, 'error');
+                if (!silent) this.showToast(`${param.name} 읽기에 실패했습니다`, 'error');
                 return false;
             }
         }
@@ -4756,7 +4756,7 @@ class ModbusDashboard {
             // Enable virtual connection
             this.updateConnectionStatus(true);
             this.addMonitorEntry('received', 'Virtual Modbus Slave Simulator activated');
-            this.showToast('가상 시뮬레이터 활성화됨', 'success');
+            this.showToast('가상 시뮬레이터가 활성화되었습니다', 'success');
 
             // Auto scan if enabled
             if (this.autoScanEnabled) {
@@ -4786,7 +4786,7 @@ class ModbusDashboard {
                 this.updateConnectionStatus(false);
             }
             this.addMonitorEntry('received', 'Virtual Modbus Slave Simulator deactivated');
-            this.showToast('가상 시뮬레이터 비활성화됨', 'info');
+            this.showToast('가상 시뮬레이터가 비활성화되었습니다', 'info');
         }
 
         // Update modal simulator display
@@ -5922,7 +5922,7 @@ class ModbusDashboard {
                 device.name = newName;
                 this.saveDevices();
                 nameSpan.textContent = newName;
-                this.showToast(`Device name changed to "${newName}"`, 'success');
+                this.showToast(`장치 이름이 "${newName}"으로 변경되었습니다`, 'success');
 
                 // Update Device List in Device Setup page
                 this.renderDeviceSetupList();
@@ -6437,9 +6437,9 @@ class ModbusDashboard {
             this.renderDeviceGrid();
 
             const unit = device.operationMode === 0 ? 'RPM' : '%';
-            if (!silent) this.showToast(`${device.name}: Setpoint ${setpoint}${unit} (raw: ${rawSetpoint}) 적용`, 'success');
+            if (!silent) this.showToast(`${device.name}: Setpoint ${setpoint}${unit} 적용되었습니다`, 'success');
         } catch (error) {
-            if (!silent) this.showToast(`${device.name}: 설정 실패 - ${error.message}`, 'error');
+            if (!silent) this.showToast(`${device.name}: 설정에 실패했습니다`, 'error');
         }
     }
 
@@ -6458,14 +6458,14 @@ class ModbusDashboard {
         try {
             // Send alarm reset command (write 1 to ALARM_RESET register)
             await this.writeRegister(device.slaveId, this.REGISTERS.ALARM_RESET, 1);
-            this.showToast(`${device.name}: 알람 리셋 완료`, 'success');
+            this.showToast(`${device.name}: 알람이 리셋되었습니다`, 'success');
 
             // Read device status after reset to update UI
             setTimeout(() => {
                 this.readDeviceStatus(deviceId);
             }, 500);
         } catch (error) {
-            this.showToast(`${device.name}: 알람 리셋 실패 - ${error.message}`, 'error');
+            this.showToast(`${device.name}: 알람 리셋에 실패했습니다`, 'error');
         }
     }
 
@@ -6495,7 +6495,7 @@ class ModbusDashboard {
         try {
             // Send software reset command (write 1 to SOFTWARE_RESET register)
             await this.writeRegister(device.slaveId, this.REGISTERS.SOFTWARE_RESET, 1);
-            this.showToast(`${device.name}: 소프트웨어 리셋 완료`, 'success');
+            this.showToast(`${device.name}: 소프트웨어 리셋이 완료되었습니다`, 'success');
 
             // Mark device as offline temporarily
             device.online = false;
@@ -6507,7 +6507,7 @@ class ModbusDashboard {
                 this.readDeviceStatus(deviceId);
             }, 3000);
         } catch (error) {
-            this.showToast(`${device.name}: 소프트웨어 리셋 실패 - ${error.message}`, 'error');
+            this.showToast(`${device.name}: 소프트웨어 리셋에 실패했습니다`, 'error');
         }
     }
 
@@ -6551,10 +6551,10 @@ class ModbusDashboard {
             this.saveDevices();
             this.renderDeviceGrid();
 
-            this.showToast(`${device.name}: 상태 읽기 완료`, 'success');
+            this.showToast(`${device.name}: 상태 읽기가 완료되었습니다`, 'success');
         } catch (error) {
             device.online = false;
-            this.showToast(`${device.name}: 읽기 실패 - ${error.message}`, 'error');
+            this.showToast(`${device.name}: 읽기에 실패했습니다`, 'error');
         }
     }
 
@@ -6634,9 +6634,9 @@ class ModbusDashboard {
             this.renderDeviceGrid();
 
             const modeText = newMode === 0 ? 'Speed Control (RPM)' : 'Open-loop Control (%)';
-            this.showToast(`${device.name}: ${modeText} 모드로 변경`, 'success');
+            this.showToast(`${device.name}: ${modeText} 모드로 변경되었습니다`, 'success');
         } catch (error) {
-            this.showToast(`${device.name}: 모드 변경 실패 - ${error.message}`, 'error');
+            this.showToast(`${device.name}: 모드 변경에 실패했습니다`, 'error');
             this.renderDeviceGrid(); // Reset toggle state
         }
     }
@@ -6665,7 +6665,7 @@ class ModbusDashboard {
         }
 
         const unit = mode === 0 ? 'RPM' : '%';
-        this.showToast(`${successCount}개 장치에 Setpoint ${setpoint}${unit} 적용 완료`, 'success');
+        this.showToast(`${successCount}개 장치에 Setpoint ${setpoint}${unit}이 적용되었습니다`, 'success');
     }
 
     /**
@@ -6683,14 +6683,14 @@ class ModbusDashboard {
             successCount++;
         }
 
-        this.showToast(`${successCount}개 장치 정지 완료`, 'info');
+        this.showToast(`${successCount}개 장치가 정지되었습니다`, 'info');
     }
 
     /**
      * Refresh all devices
      */
     async refreshAllDevices() {
-        this.showToast('모든 장치 상태 읽는 중...', 'info');
+        this.showToast('모든 장치 상태를 읽는 중입니다...', 'info');
 
         for (const device of this.devices) {
             if (device.slaveId !== 0) {
@@ -6698,7 +6698,7 @@ class ModbusDashboard {
             }
         }
 
-        this.showToast('모든 장치 상태 업데이트 완료', 'success');
+        this.showToast('모든 장치 상태가 업데이트되었습니다', 'success');
     }
 
     /**
@@ -7397,7 +7397,7 @@ class ModbusDashboard {
 
         // Check for duplicates
         if (device.monitoringParams.some(p => p.type === type && p.address === address)) {
-            this.showToast('Parameter already exists', 'warning');
+            this.showToast('이미 존재하는 파라미터입니다', 'warning');
             return;
         }
 
@@ -7419,7 +7419,7 @@ class ModbusDashboard {
         device.monitoringParams.push(newParam);
         this.saveDevices();
         this.renderMonitoringParams(deviceId);
-        this.showToast(`${newParam.name} added`, 'success');
+        this.showToast(`${newParam.name} 추가되었습니다`, 'success');
     }
 
     /**
@@ -7431,7 +7431,7 @@ class ModbusDashboard {
 
         const address = this.parseMonitoringAddress(addressStr);
         if (isNaN(address)) {
-            this.showToast('Invalid address format', 'error');
+            this.showToast('주소 형식이 올바르지 않습니다', 'error');
             return;
         }
 
@@ -7441,7 +7441,7 @@ class ModbusDashboard {
 
         // Check for duplicates
         if (device.monitoringParams.some(p => p.type === type && p.address === address)) {
-            this.showToast('Parameter already exists', 'warning');
+            this.showToast('이미 존재하는 파라미터입니다', 'warning');
             return;
         }
 
@@ -7458,7 +7458,7 @@ class ModbusDashboard {
         device.monitoringParams.push(newParam);
         this.saveDevices();
         this.renderMonitoringParams(deviceId);
-        this.showToast(`${newParam.name} added`, 'success');
+        this.showToast(`${newParam.name} 추가되었습니다`, 'success');
     }
 
     /**
@@ -7476,7 +7476,7 @@ class ModbusDashboard {
 
         this.saveDevices();
         this.renderMonitoringParams(deviceId);
-        this.showToast(`${paramName} removed`, 'info');
+        this.showToast(`${paramName} 삭제되었습니다`, 'info');
     }
 
     /**
@@ -7770,7 +7770,7 @@ class ModbusDashboard {
         this.renderDeviceGrid();
 
         progressText.textContent = '할당 완료!';
-        this.showToast(`${unassignedDevices.length}개 장치에 ID 할당 완료`, 'success');
+        this.showToast(`${unassignedDevices.length}개 장치에 ID가 할당되었습니다`, 'success');
 
         setTimeout(() => {
             this.hideAutoAssignModal();
@@ -8162,7 +8162,7 @@ class ModbusDashboard {
         }
 
         if (!silent) {
-            this.showToast(`Device ${slaveId} 추가됨`, 'success');
+            this.showToast(`장치 ${slaveId}가 추가되었습니다`, 'success');
         }
         return true;
     }
@@ -8510,7 +8510,7 @@ class ModbusDashboard {
             if (selectedSize) selectedSize.textContent = this.formatFileSize(this.firmwareData.length);
 
             this.updateFirmwareButtons();
-            this.showToast(`${version.version} 펌웨어 로드 완료`, 'success');
+            this.showToast(`${version.version} 펌웨어 로드가 완료되었습니다`, 'success');
 
         } catch (err) {
             if (dlStatus)   dlStatus.textContent        = '⚠ 실패';
@@ -8519,7 +8519,7 @@ class ModbusDashboard {
             this.firmwareData = null;
             this.firmwareFile = null;
             this.updateFirmwareButtons();
-            this.showToast(`펌웨어 다운로드 실패: ${err.message}`, 'error');
+            this.showToast(`펌웨어 다운로드에 실패했습니다: ${err.message}`, 'error');
         } finally {
             // (버튼 비활성 없음 — 라디오 방식으로 변경됨)
         }
@@ -8675,7 +8675,7 @@ class ModbusDashboard {
         this.addFirmwareLog(`파일 크기: ${this.formatFileSize(size)}`);
         this.addFirmwareLog(`체크섬: 0x${checksum.toString(16).toUpperCase().padStart(4, '0')}`, 'success');
 
-        this.showToast('펌웨어 검증 완료', 'success');
+        this.showToast('펌웨어 검증이 완료되었습니다', 'success');
     }
 
     /**
@@ -8871,11 +8871,11 @@ class ModbusDashboard {
             this.addFirmwareLog('[0x99] 펌웨어 업데이트 완료 - Flash Lock', 'success');
 
             this.addFirmwareLog('펌웨어 다운로드 성공!', 'success');
-            this.showToast('펌웨어 다운로드 완료', 'success');
+            this.showToast('펌웨어 다운로드가 완료되었습니다', 'success');
 
         } catch (error) {
             this.addFirmwareLog(`에러: ${error.message}`, 'error');
-            this.showToast(`펌웨어 다운로드 실패: ${error.message}`, 'error');
+            this.showToast(`펌웨어 다운로드에 실패했습니다: ${error.message}`, 'error');
 
             // Mark current active step as error
             document.querySelectorAll('.firmware-step.active').forEach(step => {
@@ -10219,13 +10219,13 @@ class ModbusDashboard {
                 if (inputElement) {
                     inputElement.value = value;
                 }
-                this.showToast(`Value read: ${value}`, 'success');
+                this.showToast(`읽은 값: ${value}`, 'success');
             } else {
-                this.showToast('Failed to read parameter', 'error');
+                this.showToast('파라미터 읽기에 실패했습니다', 'error');
             }
         } catch (error) {
             console.error('Read parameter error:', error);
-            this.showToast('Failed to read parameter', 'error');
+            this.showToast('파라미터 읽기에 실패했습니다', 'error');
         }
     }
 
@@ -10241,9 +10241,9 @@ class ModbusDashboard {
 
         const success = await this.writeHoldingRegister(slaveId, address, numValue);
         if (success) {
-            this.showToast('Parameter written successfully', 'success');
+            this.showToast('파라미터 쓰기가 완료되었습니다', 'success');
         } else {
-            this.showToast('Failed to write parameter', 'error');
+            this.showToast('파라미터 쓰기에 실패했습니다', 'error');
         }
     }
 
@@ -10842,14 +10842,14 @@ class ModbusDashboard {
         // Write to 0xD000 (Reset)
         const success = await this.writeHoldingRegister(device.slaveId, 0xD000, resetValue);
         if (success) {
-            this.showToast(`${resetType.charAt(0).toUpperCase() + resetType.slice(1)} reset completed successfully`, 'success');
+            this.showToast(`${resetType.charAt(0).toUpperCase() + resetType.slice(1)} 리셋이 완료되었습니다`, 'success');
 
             // Refresh device status after reset
             setTimeout(() => {
                 this.refreshDevice(deviceId);
             }, 1000);
         } else {
-            this.showToast(`Failed to perform ${resetType} reset`, 'error');
+            this.showToast(`${resetType} 리셋에 실패했습니다`, 'error');
         }
     }
 
