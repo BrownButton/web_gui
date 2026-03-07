@@ -1589,7 +1589,7 @@ class ModbusDashboard {
                     navbarStats.style.display = 'none';
                 }
 
-                this.showToast('Developer Mode Disabled', 'info');
+                this.showToast('🔧 Developer Mode Disabled', 'error');
                 // Switch to dashboard if currently on manufacture page
                 if (this.currentPage === 'manufacture') {
                     this.switchPage('dashboard');
@@ -4982,9 +4982,9 @@ class ModbusDashboard {
 
         const icons = {
             success: '✅',
-            info: 'ⓘ',
-            warning: '⚠',
-            error: '✕'
+            info: 'ℹ️',
+            warning: '⚠️',
+            error: '❌'
         };
 
         toast.innerHTML = `
