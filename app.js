@@ -1044,6 +1044,7 @@ class ModbusDashboard {
         this.scanRangeEnd = 10;
         this.scanTimeout = 200;
         this.scanRegister = 0xD011;
+        this.scanRemoveNotFound = false;
         this.isScanning = false;
         this.scanAborted = false;
         this.scanResolve = null;  // Callback for scan response
@@ -1650,7 +1651,7 @@ class ModbusDashboard {
     /**
      * Switch between pages
      */
-    switchPage(pageName) {
+    async switchPage(pageName) {
         document.querySelectorAll('.page-content').forEach(page => {
             page.classList.remove('active');
         });
@@ -1677,6 +1678,12 @@ class ModbusDashboard {
         } else {
             // Stop polling when leaving Dashboard
             this.stopAutoPolling();
+            // 진행 중인 폴링 사이클이 완전히 끝날 때까지 대기
+            // (isPolling=true 상태에서 refreshDevice가 직접 TX를 쏘면 버스 충돌 발생)
+            const deadline = Date.now() + 1000;
+            while (this.isPolling && Date.now() < deadline) {
+                await this.delay(5);
+            }
         }
 
         // Update firmware device list when switching to firmware page
@@ -2325,8 +2332,8 @@ class ModbusDashboard {
      */
     async disconnect() {
         try {
-            // Stop auto polling
-            this.stopAutoPolling();
+            // Stop auto polling (force=true: 즉시 강제 중단)
+            this.stopAutoPolling(true);
 
             this.readInProgress = false;
 
@@ -3919,6 +3926,7 @@ class ModbusDashboard {
             this.scanRangeEnd = settings.scanRangeEnd || 10;
             this.scanTimeout = settings.scanTimeout || 200;
             this.scanRegister = settings.scanRegister || 0xD011;
+            this.scanRemoveNotFound = settings.scanRemoveNotFound || false;
 
             // Update UI
             const autoScanToggle = document.getElementById('autoScanEnabled');
@@ -3940,6 +3948,16 @@ class ModbusDashboard {
             if (scanRangeEnd) scanRangeEnd.value = this.scanRangeEnd;
             if (scanTimeout) scanTimeout.value = this.scanTimeout;
             if (scanRegister) scanRegister.value = '0x' + this.scanRegister.toString(16).toUpperCase();
+
+            const scanRemoveNotFoundToggle = document.getElementById('scanRemoveNotFound');
+            const scanRemoveNotFoundStatus = document.getElementById('scanRemoveNotFoundStatus');
+            if (scanRemoveNotFoundToggle) {
+                scanRemoveNotFoundToggle.checked = this.scanRemoveNotFound;
+                if (scanRemoveNotFoundStatus) {
+                    scanRemoveNotFoundStatus.textContent = this.scanRemoveNotFound ? '활성' : '비활성';
+                    scanRemoveNotFoundStatus.classList.toggle('active', this.scanRemoveNotFound);
+                }
+            }
         }
 
         // Restore monitor panel state
@@ -3959,7 +3977,8 @@ class ModbusDashboard {
             scanRangeStart: this.scanRangeStart,
             scanRangeEnd: this.scanRangeEnd,
             scanTimeout: this.scanTimeout,
-            scanRegister: this.scanRegister
+            scanRegister: this.scanRegister,
+            scanRemoveNotFound: this.scanRemoveNotFound
         };
         localStorage.setItem('modbusSettings', JSON.stringify(settings));
     }
@@ -4771,8 +4790,8 @@ class ModbusDashboard {
         } else {
             btn.textContent = '시뮬레이터 활성화';
 
-            // Stop auto polling
-            this.stopAutoPolling();
+            // Stop auto polling (force=true: 시뮬레이터 비활성화 시 강제 중단)
+            this.stopAutoPolling(true);
             btn.classList.remove('btn-secondary');
             btn.classList.add('btn-primary');
             status.textContent = '비활성';
@@ -6729,12 +6748,18 @@ class ModbusDashboard {
 
     /**
      * Stop auto polling
+     * @param {boolean} force - true: 연결 해제 등 강제 중단 (pendingResponse 즉시 취소)
+     *                          false(기본): 탭 전환 등 정상 중단 (in-flight 사이클 자연 완료 대기)
      */
-    stopAutoPolling() {
+    stopAutoPolling(force = false) {
         this.autoPollingTimer = null;
-        this.isPolling = false;
-        if (this.pendingResponse) {
-            this.pendingResponse = null;
+        // isPolling은 pollNextDeviceSequential의 finally에서 관리 — 여기서 강제 리셋하지 않음
+        // (강제 리셋 시 in-flight TX가 끝나기 전에 refreshDevice가 직접 TX를 쏴서 버스 충돌 발생)
+        if (force) {
+            this.isPolling = false;
+            if (this.pendingResponse) {
+                this.pendingResponse = null;
+            }
         }
         // 대기 중인 write 명령을 모두 reject (연결 해제 시 caller가 catch 처리 가능)
         while (this.commandQueue.length > 0) {
@@ -7770,6 +7795,20 @@ class ModbusDashboard {
         if (stopScanBtn) {
             stopScanBtn.addEventListener('click', () => this.stopDeviceScan());
         }
+
+        // Remove not-found devices toggle
+        const scanRemoveNotFoundToggle = document.getElementById('scanRemoveNotFound');
+        const scanRemoveNotFoundStatus = document.getElementById('scanRemoveNotFoundStatus');
+        if (scanRemoveNotFoundToggle) {
+            scanRemoveNotFoundToggle.addEventListener('change', () => {
+                this.scanRemoveNotFound = scanRemoveNotFoundToggle.checked;
+                if (scanRemoveNotFoundStatus) {
+                    scanRemoveNotFoundStatus.textContent = this.scanRemoveNotFound ? '활성' : '비활성';
+                    scanRemoveNotFoundStatus.classList.toggle('active', this.scanRemoveNotFound);
+                }
+                this.saveSettings();
+            });
+        }
     }
 
     /**
@@ -7804,6 +7843,7 @@ class ModbusDashboard {
         if (scanResults) scanResults.style.display = 'none';
 
         const foundDevices = [];
+        const respondedSlaveIds = new Set(); // 응답한 모든 slaveId (신규 + 기존 포함)
         const totalToScan = this.scanRangeEnd - this.scanRangeStart + 1;
 
         const scanToast = this.showProgressToast(
@@ -7829,6 +7869,7 @@ class ModbusDashboard {
             const response = await this.scanSlaveId(slaveId);
 
             if (response !== null) {
+                respondedSlaveIds.add(slaveId);
                 // Check if device already exists
                 const alreadyExists = this.devices.some(dev => dev.slaveId === slaveId);
 
@@ -7895,6 +7936,23 @@ class ModbusDashboard {
             ? `탐색 중단: ${foundDevices.length}개 발견`
             : `탐색 완료: ${foundDevices.length}개 발견${autoAddMsg}`;
         scanToast.dismiss(finalMsg);
+
+        // 미발견 디바이스 자동 삭제 (스캔 범위 내, 응답 없는 등록 디바이스)
+        if (this.scanRemoveNotFound && !this.scanAborted) {
+            const toRemove = this.devices.filter(dev =>
+                dev.slaveId >= this.scanRangeStart &&
+                dev.slaveId <= this.scanRangeEnd &&
+                !respondedSlaveIds.has(dev.slaveId)
+            );
+            if (toRemove.length > 0) {
+                toRemove.forEach(dev => {
+                    this.devices = this.devices.filter(d => d.id !== dev.id);
+                });
+                this.saveDevices();
+                this.renderDeviceGrid();
+                this.showToast(`미응답 디바이스 ${toRemove.length}개가 삭제되었습니다`, 'info');
+            }
+        }
 
         // 스캔 완료 후 Device 탭이 열려있으면 파라미터 자동 읽기
         // readRegisterWithTimeout / readParameterByAddress 는 내부에서 큐 처리하므로

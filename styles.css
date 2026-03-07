@@ -3729,16 +3729,16 @@ select:focus {
     padding-bottom: 0;
 }
 
-.device-list-section .device-grid .view-mode-toggle {
+.device-grid-toolbar {
     position: absolute;
     top: 16px;
     right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .live-watch-toggle-btn {
-    position: absolute;
-    top: 16px;
-    left: 20px;
     display: flex;
     align-items: center;
     gap: 7px;

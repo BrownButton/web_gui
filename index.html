@@ -238,6 +238,7 @@
                             </div>
                         </div>
                         <div class="device-grid collapsed" id="deviceGrid">
+                            <div class="device-grid-toolbar">
                             <button id="liveWatchToggleBtn" class="live-watch-toggle-btn" title="Live Watch (Polling) 켜기/끄기">
                                 <span class="live-watch-indicator"></span>
                                 <span class="live-watch-label">Live Watch</span>
@@ -250,6 +251,7 @@
                                     <span>☰</span>
                                 </button>
                             </div>
+                            </div><!-- /.device-grid-toolbar -->
                             <!-- Device cards will be dynamically added here -->
                             <div class="device-placeholder" id="devicePlaceholder">
                                 <div class="placeholder-icon">📦</div>
@@ -2630,6 +2632,20 @@
                             <input type="text" id="scanRegister" value="0xD011" placeholder="0xD011">
                             <small style="color: #6c757d; margin-top: 5px; display: block;">
                                 장치 존재 확인에 사용할 레지스터 주소 (기본: Motor Status)
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>미발견 디바이스 자동 삭제</label>
+                            <div class="toggle-switch-container">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="scanRemoveNotFound">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span id="scanRemoveNotFoundStatus" class="toggle-status">비활성</span>
+                            </div>
+                            <small style="color: #6c757d; margin-top: 5px; display: block;">
+                                탐색 범위 내에서 응답이 없는 등록 디바이스를 스캔 완료 후 자동으로 삭제합니다.
                             </small>
                         </div>
 
