@@ -176,19 +176,6 @@
 
                 <!-- Dashboard Page (Product Test) -->
                 <div id="page-dashboard" class="page-content">
-                    <!-- Dashboard Header -->
-                    <div class="dashboard-header">
-                        <div class="dashboard-title-section">
-                            <h1>Product Test Dashboard</h1>
-                            <p class="dashboard-subtitle">연결된 제품들을 개별 또는 일괄 테스트합니다</p>
-                        </div>
-                        <div class="dashboard-actions">
-                            <button id="autoAssignIdBtn" class="btn btn-info">
-                                <span>⚡</span> Auto Assign IDs
-                            </button>
-                        </div>
-                    </div>
-
                     <!-- All Device Control Section (same style as Device List) -->
                     <section class="device-list-section all-device-control-section">
                         <div class="section-header">
@@ -2842,50 +2829,7 @@
     </div>
 
     <!-- Auto Assign ID Modal -->
-    <div id="autoAssignModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Auto Assign Node IDs</h3>
-                <button class="modal-close" id="closeAutoAssignModalBtn">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
-                    <strong>안내:</strong>
-                    <p style="margin: 10px 0 0 0; color: #856404;">
-                        이 기능은 Slave ID가 0으로 설정된 제품들에게 순차적으로 ID를 할당합니다.<br>
-                        제품은 한 대씩 연결하여 ID를 설정하거나, Broadcast(ID=0)를 사용하여 할당할 수 있습니다.
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label for="startingSlaveId">Starting Slave ID</label>
-                    <input type="number" id="startingSlaveId" min="1" max="247" value="1">
-                </div>
-                <div class="form-group">
-                    <label>할당 방법</label>
-                    <div class="radio-group">
-                        <label class="radio-label">
-                            <input type="radio" name="assignMethod" value="sequential" checked>
-                            <span>순차 할당 (제품 순서대로)</span>
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="assignMethod" value="broadcast">
-                            <span>Broadcast 할당 (한 대씩 연결 필요)</span>
-                        </label>
-                    </div>
-                </div>
-                <div id="autoAssignProgress" style="display: none;">
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" id="assignProgressBar" style="width: 0%"></div>
-                    </div>
-                    <p id="assignProgressText" style="text-align: center; margin-top: 10px; color: #6c757d;"></p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="cancelAutoAssignBtn" class="btn btn-secondary">Cancel</button>
-                <button id="startAutoAssignBtn" class="btn btn-primary">Start Assignment</button>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>

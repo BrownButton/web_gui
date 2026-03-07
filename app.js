@@ -5321,43 +5321,7 @@ class ModbusDashboard {
             });
         }
 
-        // Auto Assign ID button
-        const autoAssignIdBtn = document.getElementById('autoAssignIdBtn');
-        if (autoAssignIdBtn) {
-            autoAssignIdBtn.addEventListener('click', () => this.showAutoAssignModal());
-        }
 
-        // Close auto assign modal
-        const closeAutoAssignModalBtn = document.getElementById('closeAutoAssignModalBtn');
-        if (closeAutoAssignModalBtn) {
-            closeAutoAssignModalBtn.addEventListener('click', () => this.hideAutoAssignModal());
-        }
-
-        const cancelAutoAssignBtn = document.getElementById('cancelAutoAssignBtn');
-        if (cancelAutoAssignBtn) {
-            cancelAutoAssignBtn.addEventListener('click', () => this.hideAutoAssignModal());
-        }
-
-        const autoAssignModal = document.getElementById('autoAssignModal');
-        if (autoAssignModal) {
-            let mouseDownTarget = null;
-
-            autoAssignModal.addEventListener('mousedown', (e) => {
-                mouseDownTarget = e.target;
-            });
-
-            autoAssignModal.addEventListener('click', (e) => {
-                if (e.target.id === 'autoAssignModal' && mouseDownTarget && mouseDownTarget.id === 'autoAssignModal') {
-                    this.hideAutoAssignModal();
-                }
-                mouseDownTarget = null;
-            });
-        }
-
-        const startAutoAssignBtn = document.getElementById('startAutoAssignBtn');
-        if (startAutoAssignBtn) {
-            startAutoAssignBtn.addEventListener('click', () => this.startAutoAssign());
-        }
 
 
         // Select/Deselect All buttons
@@ -7715,73 +7679,6 @@ class ModbusDashboard {
     }
 
     // ==================== End Monitoring Parameters Methods ====================
-
-    /**
-     * Show Auto Assign Modal
-     */
-    showAutoAssignModal() {
-        const modal = document.getElementById('autoAssignModal');
-        if (modal) {
-            modal.classList.add('active');
-            document.getElementById('autoAssignProgress').style.display = 'none';
-        }
-    }
-
-    /**
-     * Hide Auto Assign Modal
-     */
-    hideAutoAssignModal() {
-        const modal = document.getElementById('autoAssignModal');
-        if (modal) {
-            modal.classList.remove('active');
-        }
-    }
-
-    /**
-     * Start auto ID assignment
-     */
-    async startAutoAssign() {
-        const startingId = parseInt(document.getElementById('startingSlaveId').value);
-        const method = document.querySelector('input[name="assignMethod"]:checked').value;
-
-        const unassignedDevices = this.devices.filter(d => d.slaveId === 0);
-
-        if (unassignedDevices.length === 0) {
-            this.showToast('ID를 할당할 장치가 없습니다', 'info');
-            return;
-        }
-
-        const progressDiv = document.getElementById('autoAssignProgress');
-        const progressBar = document.getElementById('assignProgressBar');
-        const progressText = document.getElementById('assignProgressText');
-
-        progressDiv.style.display = 'block';
-
-        for (let i = 0; i < unassignedDevices.length; i++) {
-            const device = unassignedDevices[i];
-            const newId = startingId + i;
-
-            progressBar.style.width = `${((i + 1) / unassignedDevices.length) * 100}%`;
-            progressText.textContent = `${device.name}에 ID ${newId} 할당 중... (${i + 1}/${unassignedDevices.length})`;
-
-            // In real scenario, you would send Modbus command to set the ID
-            // For now, just update the local device
-            device.slaveId = newId;
-
-            // Small delay for visual feedback
-            await new Promise(resolve => setTimeout(resolve, 300));
-        }
-
-        this.saveDevices();
-        this.renderDeviceGrid();
-
-        progressText.textContent = '할당 완료!';
-        this.showToast(`${unassignedDevices.length}개 장치에 ID가 할당되었습니다`, 'success');
-
-        setTimeout(() => {
-            this.hideAutoAssignModal();
-        }, 1000);
-    }
 
     // ========================================
     // Auto Scan Functions
