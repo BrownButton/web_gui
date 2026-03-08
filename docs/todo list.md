@@ -1,55 +1,55 @@
-- Dashboard에 체크박스를 체크하고 polling 파라미터를 삭제하면 삭제가 되지않음
-- Dashboard 폴링 파라미터 박스 크기 조절
-- Auto scan 디폴트는 활성화
-- Velocity mode로 동작할때, 최대속도를 읽어와야함
++ Dashboard에 체크박스를 체크하고 polling 파라미터를 삭제하면 삭제가 되지않음
++ Dashboard 폴링 파라미터 박스 크기 조절
++ Auto scan 디폴트는 활성화
++ Velocity mode로 동작할때, 최대속도를 읽어와야함
 
-1.	통신 및 파라미터 설정 (Setting)
-  A.	Holding/Input Register 구분:
++ 1.	통신 및 파라미터 설정 (Setting)
++  A.	Holding/Input Register 구분:
     Modbus 통신 시 Holding Register(0x03)와 Input Register(0x04) 파라미터를 구분하여 처리할 수 있도록 수정 부탁드립니다.
-  B.	통신 설정 (Baudrate/Parity) 기능 추가:
++  B.	통신 설정 (Baudrate/Parity) 기능 추가:
     Setting 메뉴에서 UART Baudrate 및 Parity를 변경할 수 있는 파라미터를 추가 부탁드립니다. (Drive 측 파라미터 변경 대응)
-  C.	Node ID 설정 유연화:
++  C.	Node ID 설정 유연화:
     기존 Group Control 메뉴에서 NodeID가 1~8으로 고정되어 있는 방식에서, 사용자가 임의의 Node ID를 설정하여 제어할 수 있도록 변경이 필요합니다.
     참고: Drive 펌웨어 내부적으로 ID 0은 Broadcasting용으로 할당 불가(Default 1)하게 처리될 예정이며, GUI에서는 다양한 ID에 접근 가능하도록 열어주시길 부탁드립니다.
-  D.	최소 RPM 파라미터 추가:
++  D.	최소 RPM 파라미터 추가:
     Setting 메뉴에서 최소 RPM을 입력할수있는 파라미터를 추가 부탁드립니다.
-  E.	가속 및 감속시간 설정 파라미터 추가
++  E.	가속 및 감속시간 설정 파라미터 추가
     Setting 메뉴에서 가속 및 감속시간을 설정할 수 있는 파라미터를 추가 부탁드립니다.
 
-2.	제어 및 구동 로직
-  A.	전체 축 일괄 Stop 버튼 추가
++ 2.	제어 및 구동 로직
++  A.	전체 축 일괄 Stop 버튼 추가
     개별 제어 외에 연결된 모든 축을 일괄적으로 정지할 수 있는 버튼을 추가 부탁드립니다.
-  B.	Operating Mode 동기화 (오동작 방지):
++  B.	Operating Mode 동기화 (오동작 방지):
     현상: 500RPM 구동 중 전원 재투입 후, Setpoint 500값 입력 시, 재부팅된 드라이브가 GUI상의 Operation Mode는 속도모드로 보이지만
     드라이브는 Torque 모드로 동작하는 현상 발생 (Mode 불일치)
     수정: GUI가 주기적/연결시 Drive의 현재 Operating Mode를 읽어와(Read), UI 상의 모드와 실제 Drive 모드를 동기화하도록 갱신 로직을 추가해 주세요.
 
-3.	Setting - Auto Calibration (신규 탭 추가)
+- 3.	Setting - Auto Calibration (신규 탭 추가)
   생산 및 LQC 공정, 탑에어 등에서 사용할 Auto Calibration 기능을 단일 프로그램 내에서 수행할 수 있도록 Setting 메뉴에 관련 탭을 추가 부탁드립니다.
-  A.	진입 보안: Setting 메뉴 내에 배치하되, 최초 진입 시 비밀번호를 입력해야 접근 가능하도록 구현 부탁드립니다. (일반 User 사용 방지).
++  A.	진입 보안: Setting 메뉴 내에 배치하되, 최초 진입 시 비밀번호를 입력해야 접근 가능하도록 구현 부탁드립니다. (일반 User 사용 방지).
   B.	결과 표시: Calibration 수행 후 성공/실패 여부(Pass/Fail)를 명확한 인디케이터(Indicator)로 표시부탁드립니다. (LQC 설비 식별 용도)
 
-4.	알람 및 예외 처리
++ 4.	알람 및 예외 처리
   알람 자동 클리어 처리:
   A.	구동 중 전원 Off → 모터가 감속정지 하는 동안 역기전력 공급으로 mcu는 동작 → 결상/저전압 알람 발생 → 전원이 정상 회복되어도 GUI상에서 알람이 계속 표시되는 현상
   알람이 자동으로 클리어되도록 개선이 필요합니다.
 
-- Monitoring Parameters 를 확장하면 다른 디바이스들의 박스 크기도 조정된다
++ Monitoring Parameters 를 확장하면 다른 디바이스들의 박스 크기도 조정된다
 - Monitor 버튼을 클릭하면 카드형 디바이스 들의 사이즈가 툭툭 튀면서 변화된다.
-- All Device Control 좀더 간편하게 수정
++ All Device Control 좀더 간편하게 수정
 
 + Parameters의 Value가 이전 값이 남아있음 -> 장비를 연결하지 않았을때도 문제이지만 장비를 연결하고 나서 값을 읽어오기전에 이값이 실제 장비에 적용된 값이라고 헷갈릴 여지가 있음
 - Parameters에서 장비를 선택하면 자동으로 Read All -> 그런데 값을 읽어오던중 장비를 바꾸면 바꾸기 전 장비를 읽어오던 프로세스 취소하고 현재 장비를 읽어오도록 수정
 - Parameters - Parameter List에서 필터를 바꾸면 값을 다시 refresh 하도록 수정
 - Parameters - Parameter List에서 값을 선택해서 Live Watch 기능 추가
-- Live Watch 폴링 주기 설정에 추가
++ Live Watch 폴링 주기 설정에 추가
 
 + os검증 테스트 추가
 + 비밀 manufacture 탭 추가
 
 + Communication Statistics 값 클리어 기능
 + Communication Statistics에서 Device 이름 부분이 짤림
-- 사이즈가 바뀜
++ 사이즈가 바뀜
 
 + Dashboard에서 Setpoint 를 설정하고 재연결했을때 이전 값이 남아있음
 
@@ -67,17 +67,17 @@
   기존 패킷을 주고받는 구조에 Queue 구조를 추가해야되지않을까 생각해봄
 
 - 전체적인 리팩토링 필요
-- 패킷 접근을 일원화 할필요가 있음 (read/write 부분)
++ 패킷 접근을 일원화 할필요가 있음 (read/write 부분)
 
 + slave id 에 이상한값 (255 초과값)을 넣었을때 등록이 안되도록 예외처리
-- add device부분은 아래 디바이스 개별 제어 부분에 추가
++ add device부분은 아래 디바이스 개별 제어 부분에 추가
 - 디바이스 개별 영역에서 마우스 오른쪽 클릭하면 추가박스 나오도록 기능 추가
 
 + 통신 프레임 success 체크 부분에 마우스 올리면 모두 같이 움직이도록 변경 (단독으로 움직이면 각자가 기능이 있는것처럼 보임)
 
 + 실제 디바이스에서 값을 받아오지 않았는데도 refresh all 하면 정상적으로 값을 받아왔다고 나옴
 + setpoint 부분은 실제로 장비에서 값을 읽어온 값을 표시하도록 변경 (현재는 값을 쓴 command 기준으로 값을 표시함)
-- 길어질때 id 뱃지가 초과되는 ui 부분 수정 (제목이 넘어가서 생기는 문제)
++ 길어질때 id 뱃지가 초과되는 ui 부분 수정 (제목이 넘어가서 생기는 문제)
 
 - 폴링데이터 - manual input에 이상한 주소값, 데이터값을 넣었을때 예외처리가 되어있지않음
 - 디바이스 셋팅에서 설정한 id가 대쉬보드 디바이스카드에 반영이 안됨
@@ -86,3 +86,4 @@
 - 디바이스 카드 바꿀때 빈영역에 놓으면 순서가 맨뒤로 가도록 변경해야함 (현재는 카드끼리 위치 스왑만됨)
 - 디바이스 탭에서 하위에 있는 디바이스 이름을 수정하고나면 최상위 디바이스로 창이 옮겨짐
 - 디바이스 탭에서 디바이스 이름을 수정하면 대쉬보드에 디바이스 카드 이름이 수정되야하는데 바뀌지않음
+
