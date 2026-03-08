@@ -6003,20 +6003,30 @@ class ModbusDashboard {
         const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online);
 
         card.innerHTML = `
+            <div class="card-drag-bar" title="Drag to reorder">
+                <span class="card-drag-dots"></span>
+            </div>
             <div class="device-card-header">
                 <div class="device-select">
-                    <span class="drag-handle" title="Drag to reorder">≡</span>
                     <input type="checkbox" class="device-checkbox" ${this.selectedDevices.has(device.id) ? 'checked' : ''}>
-                    <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
-                        ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
-                    </span>
                     <span class="device-name" title="Click to edit name">${device.name}</span>
                 </div>
                 <div class="device-header-right">
-                    <button class="btn-device-live-watch ${device.liveWatch !== false ? 'active' : ''}" title="Live Watch 켜기/끄기">
-                        <span class="device-lw-indicator"></span>
-                    </button>
+                    <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
+                        ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
+                    </span>
                     <button class="btn-delete-icon" title="Delete device">×</button>
+                </div>
+            </div>
+            <div class="device-action-bar">
+                <button class="btn-device-live-watch ${device.liveWatch !== false ? 'active' : ''}" title="Live Watch 켜기/끄기">
+                    <span class="device-lw-indicator"></span>
+                    <span class="lw-label">Live Watch</span>
+                </button>
+                <div class="action-bar-right">
+                    <button class="btn-action-icon btn-alarm-reset" title="알람 리셋"><svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/></svg></button>
+                    <button class="btn-action-icon btn-software-reset" title="소프트웨어 리셋">↺</button>
+                    <button class="btn-edit" title="설정">⚙</button>
                 </div>
             </div>
             <div class="device-card-body">
@@ -6097,15 +6107,6 @@ class ModbusDashboard {
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="device-card-footer">
-                <div class="device-footer-left">
-                    <button class="btn-action-icon btn-alarm-reset" title="알람 리셋"><svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/></svg></button>
-                    <button class="btn-action-icon btn-software-reset" title="소프트웨어 리셋">↺</button>
-                </div>
-                <div class="device-footer-right">
-                    <button class="btn-edit" title="Edit device">⚙</button>
                 </div>
             </div>
         `;

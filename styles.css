@@ -4309,6 +4309,90 @@ select:focus {
 }
 
 /* Device Card */
+
+/* 카드 상단 드래그 바 */
+.card-drag-bar {
+    height: 6px;
+    background: #f0f2f5;
+    border-bottom: 1px solid #e0e6ed;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.card-drag-bar:hover {
+    background: #dde3ea;
+}
+
+.card-drag-bar:active {
+    cursor: grabbing;
+}
+
+.card-drag-dots {
+    width: 24px;
+    height: 3px;
+    border-radius: 2px;
+    background: repeating-linear-gradient(
+        90deg,
+        #b0b8c1 0px, #b0b8c1 3px,
+        transparent 3px, transparent 6px
+    );
+    opacity: 0.6;
+}
+
+.card-drag-bar:hover .card-drag-dots {
+    opacity: 1;
+}
+
+/* 액션 바 */
+.device-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e0e6ed;
+    gap: 8px;
+}
+
+.action-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.device-action-bar .btn-device-live-watch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    background: white;
+    font-size: 12px;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.device-action-bar .btn-device-live-watch:hover {
+    border-color: #adb5bd;
+    background: #f1f3f5;
+}
+
+.device-action-bar .btn-device-live-watch.active {
+    border-color: #28a745;
+    background: #f0fff4;
+    color: #28a745;
+}
+
+.lw-label {
+    font-weight: 500;
+}
+
 .device-card {
     background: white;
     border: 1px solid #d8dee6;
@@ -4464,24 +4548,12 @@ select:focus {
     box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.2);
 }
 
-/* Per-device Live Watch lamp button */
+/* Per-device Live Watch lamp button (base — overridden by .device-action-bar context) */
 .btn-device-live-watch {
-    width: 22px;
-    height: 22px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    padding: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: background 0.15s;
+    cursor: pointer;
     flex-shrink: 0;
-}
-
-.btn-device-live-watch:hover {
-    background: rgba(0, 0, 0, 0.06);
 }
 
 .device-lw-indicator {
