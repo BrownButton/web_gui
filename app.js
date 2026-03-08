@@ -5993,7 +5993,7 @@ class ModbusDashboard {
         const card = document.createElement('div');
         card.className = 'device-card';
         card.dataset.deviceId = device.id;
-        card.draggable = true;
+        card.draggable = false; // 드래그 바 mousedown 시에만 활성화
 
         if (this.selectedDevices.has(device.id)) {
             card.classList.add('selected');
@@ -6189,6 +6189,14 @@ class ModbusDashboard {
 
         // Drag and drop event listeners
         this.addDragEventListeners(card);
+
+        // 드래그 바에서만 드래그 가능하도록 제한
+        const dragBar = card.querySelector('.card-drag-bar');
+        dragBar.addEventListener('mousedown', () => {
+            card.draggable = true;
+            document.addEventListener('mouseup', () => { card.draggable = false; }, { once: true });
+        });
+        card.addEventListener('dragend', () => { card.draggable = false; });
 
         // Monitoring section event listeners
         this.setupMonitoringEventListeners(card, device.id);
