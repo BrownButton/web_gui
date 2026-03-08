@@ -4040,6 +4040,13 @@ class ModbusDashboard {
             }
         }
 
+        // 선택된 디바이스가 없으면 첫 번째 디바이스 자동 선택
+        if (!this.selectedParamDeviceId && validDevices.length > 0) {
+            this.selectedParamDeviceId = validDevices[0].slaveId;
+            const firstRadio = radioGroup.querySelector('.param-device-radio');
+            if (firstRadio) firstRadio.checked = true;
+        }
+
         this.updateParamDeviceStatus();
     }
 
@@ -11155,17 +11162,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             // Show selected tab content
+            const db = window.dashboard;
             if (targetTab === 'configuration') {
                 document.getElementById('deviceSetupConfigTab').style.display = 'block';
                 // Auto-read config values from device if connected
-                if (this.currentSetupDeviceId && (this.writer || this.simulatorEnabled)) {
-                    this.refreshDevice(this.currentSetupDeviceId);
+                if (db.currentSetupDeviceId && (db.writer || db.simulatorEnabled)) {
+                    db.refreshDevice(db.currentSetupDeviceId);
                 }
             } else if (targetTab === 'parameters') {
                 document.getElementById('deviceSetupParamsTab').style.display = 'block';
                 // Auto-read parameters from device if connected
-                if (this.selectedParamDeviceId && (this.writer || this.simulatorEnabled)) {
-                    this.readAllParameters();
+                if (db.selectedParamDeviceId && (db.writer || db.simulatorEnabled)) {
+                    db.readAllParameters();
                 }
             } else if (targetTab === 'manufacture') {
                 document.getElementById('deviceSetupManufactureTab').style.display = 'flex';
@@ -11231,6 +11239,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // OS Test Event Handlers
     // Initialize test status on page load
     window.osTestManager.updateTestStatus();
+
+    document.getElementById('osRunAllTestsBtn')?.addEventListener('click', () => {
+        window.osTestManager.runAllOsTests();
+    });
+
+    document.getElementById('osResetTestsBtn')?.addEventListener('click', () => {
+        window.osTestManager.resetAllTests();
+    });
 
     // Test item header click to expand/collapse
     document.querySelectorAll('.os-test-header').forEach(header => {

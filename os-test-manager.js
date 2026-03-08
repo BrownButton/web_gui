@@ -43,11 +43,13 @@ class OSTestManager {
             Object.assign(this.executors, module.executors || {});
         });
 
-        this.results         = this.loadResults();
-        this.currentTest     = null;
-        this.isTestRunning   = false;
-        this.shouldStopTest  = false;
+        this.results          = this.loadResults();
+        this.currentTest      = null;
+        this.isTestRunning    = false;
+        this.shouldStopTest   = false;
         this.currentStepIndex = 0;
+        this.testLogs         = {}; // { testId: [{message, type, ts}] }
+        this.testStepResults  = {}; // { testId: { index: status } }
     }
 
     // ================================================================
@@ -161,10 +163,27 @@ class OSTestManager {
             const progressTxt = testItem.querySelector('.test-progress-text');
             if (startBtn)    startBtn.style.display    = 'inline-block';
             if (stopBtn)     stopBtn.style.display     = 'none';
-            if (progressBar) progressBar.style.width   = '0%';
-            if (progressTxt) progressTxt.textContent   = '테스트를 시작하려면 Start Test 버튼을 클릭하세요';
 
-            this.clearLog(testId);
+            const hasStoredLog  = this.testLogs[testId]?.length > 0;
+            const hasStoredSteps = this.testStepResults[testId] && Object.keys(this.testStepResults[testId]).length > 0;
+
+            if (hasStoredLog || hasStoredSteps) {
+                // 이전 실행 결과 복원 (Run All 이후 재확장 시)
+                this._restoreLog(testId);
+                if (hasStoredSteps) {
+                    Object.entries(this.testStepResults[testId]).forEach(([idx, status]) => {
+                        this._applyStepStatus(testId, parseInt(idx), status);
+                    });
+                }
+                if (progressBar) progressBar.style.width = this.results[testId] ? '100%' : '0%';
+                if (progressTxt) progressTxt.textContent = this.results[testId]
+                    ? (this.results[testId].result === 'pass' ? '테스트 완료: 합격' : '테스트 완료: 불합격')
+                    : '테스트를 시작하려면 Start Test 버튼을 클릭하세요';
+            } else {
+                if (progressBar) progressBar.style.width   = '0%';
+                if (progressTxt) progressTxt.textContent   = '테스트를 시작하려면 Start Test 버튼을 클릭하세요';
+                this.clearLog(testId);
+            }
 
             const notesTA = testItem.querySelector('.test-notes');
             if (notesTA) notesTA.value = this.results[testId]?.notes || '';
@@ -193,23 +212,44 @@ class OSTestManager {
 
     addLog(message, type = 'info') {
         if (!this.currentTest) return;
-        const logContainer = document.querySelector(`.os-test-item[data-test-id="${this.currentTest}"] .test-log-container`);
-        if (!logContainer) return;
-
-        const MAP = { success: ['#4ade80','[SUCCESS]'], error: ['#f87171','[ERROR]'], warning: ['#fbbf24','[WARNING]'], step: ['#60a5fa','[STEP]'] };
-        const [color, prefix] = MAP[type] || ['#d4d4d4', '[INFO]'];
         const ts = new Date().toLocaleTimeString('ko-KR', { hour12: false });
 
+        // 메모리에 저장 (재확장 시 복원용)
+        if (!this.testLogs[this.currentTest]) this.testLogs[this.currentTest] = [];
+        this.testLogs[this.currentTest].push({ message, type, ts });
+
+        const logContainer = document.querySelector(`.os-test-item[data-test-id="${this.currentTest}"] .test-log-container`);
+        if (!logContainer) return;
+        this._appendLogEntry(logContainer, message, type, ts);
+    }
+
+    _appendLogEntry(container, message, type, ts) {
+        const MAP = { success: ['#4ade80','[SUCCESS]'], error: ['#f87171','[ERROR]'], warning: ['#fbbf24','[WARNING]'], step: ['#60a5fa','[STEP]'] };
+        const [color, prefix] = MAP[type] || ['#d4d4d4', '[INFO]'];
         const entry = document.createElement('div');
         entry.style.marginBottom = '4px';
         entry.innerHTML = `<span style="color:#6c757d;">[${ts}]</span> <span style="color:${color};">${prefix}</span> ${message}`;
-        logContainer.appendChild(entry);
-        logContainer.scrollTop = logContainer.scrollHeight;
+        container.appendChild(entry);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    _restoreLog(testId) {
+        const el = document.querySelector(`.os-test-item[data-test-id="${testId}"] .test-log-container`);
+        if (!el) return;
+        const entries = this.testLogs[testId];
+        if (!entries?.length) {
+            el.innerHTML = '<div style="color:#6c757d;">테스트 로그가 여기에 표시됩니다...</div>';
+            return;
+        }
+        el.innerHTML = '';
+        entries.forEach(({ message, type, ts }) => this._appendLogEntry(el, message, type, ts));
     }
 
     clearLog(testId = null) {
-        const id  = testId || this.currentTest;
-        const el  = document.querySelector(`.os-test-item[data-test-id="${id}"] .test-log-container`);
+        const id = testId || this.currentTest;
+        delete this.testLogs[id];
+        delete this.testStepResults[id];
+        const el = document.querySelector(`.os-test-item[data-test-id="${id}"] .test-log-container`);
         if (el) el.innerHTML = '<div style="color:#6c757d;">테스트 로그가 여기에 표시됩니다...</div>';
     }
 
@@ -219,7 +259,16 @@ class OSTestManager {
 
     updateStepStatus(index, status) {
         if (!this.currentTest) return;
-        const stepEl   = document.getElementById(`test-step-${this.currentTest}-${index}`);
+
+        // 메모리에 저장 (재확장 시 복원용)
+        if (!this.testStepResults[this.currentTest]) this.testStepResults[this.currentTest] = {};
+        this.testStepResults[this.currentTest][index] = status;
+
+        this._applyStepStatus(this.currentTest, index, status);
+    }
+
+    _applyStepStatus(testId, index, status) {
+        const stepEl   = document.getElementById(`test-step-${testId}-${index}`);
         const statusEl = stepEl?.querySelector('.step-status');
         if (!stepEl || !statusEl) return;
 
@@ -229,8 +278,8 @@ class OSTestManager {
             error:   { bg: '#f8d7da', border: '#dc3545', dot: '#dc3545', icon: '✗'  }
         }[status];
         if (!S) return;
-        stepEl.style.background  = S.bg;
-        stepEl.style.borderLeft  = `3px solid ${S.border}`;
+        stepEl.style.background   = S.bg;
+        stepEl.style.borderLeft   = `3px solid ${S.border}`;
         statusEl.style.background = S.dot;
         statusEl.style.color      = 'white';
         statusEl.innerHTML        = S.icon;
@@ -331,6 +380,115 @@ class OSTestManager {
     }
 
     // ================================================================
+    //  Run All / Reset All
+    // ================================================================
+
+    async runAllOsTests() {
+        if (this.isTestRunning) {
+            window.dashboard?.showToast('테스트가 이미 실행 중입니다.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('osRunAllTestsBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 실행 중...'; }
+
+        // 모든 결과·로그·단계 상태 초기화 → Pending
+        this.results = {};
+        this.testLogs = {};
+        this.testStepResults = {};
+        this.saveResults();
+        this.updateTestStatus();
+
+        // 열린 아코디언 모두 닫기 (Run All 중 DOM 간섭 방지)
+        document.querySelectorAll('.os-test-item .os-test-content').forEach(c => { c.style.display = 'none'; });
+        document.querySelectorAll('.os-test-item .test-expand-icon').forEach(i => { i.style.transform = 'rotate(0deg)'; });
+
+        const testIds = Object.keys(this.tests);
+        let passCount = 0, failCount = 0;
+
+        for (const testId of testIds) {
+            // 사용자가 Stop 요청 시 중단
+            if (this.shouldStopTest) break;
+
+            const test = this.tests[testId];
+
+            this._setTestBadge(testId, 'running');
+            await this.delay(20);
+
+            // 모든 테스트를 실제 실행
+            // wait_countdown 유무로 미구현 판정하지 않음 — 현재 등록된 모든 테스트는 구현됨
+            this.currentTest    = testId;
+            this.isTestRunning  = true;
+            this.shouldStopTest = false;
+            this.stepContext    = {};
+
+            try {
+                const executor = this.executors[testId];
+                const result = executor
+                    ? await executor.call(this)
+                    : await this.executeStepDefinitions(test.steps);
+
+                this.results[testId] = {
+                    result: result.status,
+                    notes: result.details || '',
+                    timestamp: new Date().toISOString(),
+                    completedSteps: result.status === 'pass' ? test.steps.length : 0
+                };
+                if (result.status === 'pass') passCount++;
+                else failCount++;
+            } catch (e) {
+                this.results[testId] = {
+                    result: 'fail',
+                    notes: `오류: ${e.message}`,
+                    timestamp: new Date().toISOString(),
+                    completedSteps: 0
+                };
+                failCount++;
+            } finally {
+                this.isTestRunning = false;
+            }
+
+            this._setTestBadge(testId, this.results[testId].result);
+        }
+
+        this.currentTest = null;
+        this.shouldStopTest = false;
+        this.saveResults();
+        this.updateTestStatus();
+
+        if (btn) { btn.disabled = false; btn.textContent = '▶ Run All Tests'; }
+
+        window.dashboard?.showToast(
+            `Run All 완료: ${passCount}/${testIds.length} 합격, ${failCount}개 불합격`,
+            failCount === 0 ? 'success' : 'warning'
+        );
+    }
+
+    resetAllTests() {
+        this.results = {};
+        this.testLogs = {};
+        this.testStepResults = {};
+        this.saveResults();
+        this.updateTestStatus();
+    }
+
+    _setTestBadge(testId, state) {
+        const testItem = document.querySelector(`.os-test-item[data-test-id="${testId}"]`);
+        const badge = testItem?.querySelector('.test-status-badge');
+        if (!badge) return;
+        const S = {
+            running: { text: 'Running...', bg: '#cfe2ff', color: '#084298' },
+            pass:    { text: 'Passed',     bg: '#d4edda', color: '#155724' },
+            fail:    { text: 'Failed',     bg: '#f8d7da', color: '#721c24' },
+            pending: { text: 'Pending',    bg: '#e9ecef', color: '#6c757d' },
+        };
+        const s = S[state] || S.pending;
+        badge.textContent = s.text;
+        badge.style.background = s.bg;
+        badge.style.color = s.color;
+    }
+
+    // ================================================================
     //  선언형 스텝 실행 엔진
     // ================================================================
 
@@ -366,8 +524,13 @@ class OSTestManager {
                         this.updateStepStatus(i, 'error');
                     }
                 } else {
-                    detail = await this._runStep(step, stepNum);
-                    this.updateStepStatus(i, 'success');
+                    try {
+                        detail = await this._runStep(step, stepNum);
+                        this.updateStepStatus(i, 'success');
+                    } catch (e) {
+                        this.updateStepStatus(i, 'error'); // 실패 단계 ✗ 표시
+                        throw e;                           // 상위 catch 로 전달
+                    }
                 }
                 details += detail + '\n';
 
