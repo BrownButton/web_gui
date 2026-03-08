@@ -5097,6 +5097,7 @@ class ModbusDashboard {
                 <span class="toast-ring-pct">0%</span>
             </div>
             <button class="toast-cancel-btn" title="중단">✕</button>
+            <div class="toast-timer-bar" style="display:none;"></div>
         `;
 
         container.appendChild(toast);
@@ -5129,20 +5130,23 @@ class ModbusDashboard {
             dismiss('중단됨');
         });
 
+        const timerBar = toast.querySelector('.toast-timer-bar');
+
+        const removeToast = () => {
+            toast.classList.add('toast-hide');
+            setTimeout(() => {
+                if (container.contains(toast)) container.removeChild(toast);
+            }, 300);
+        };
+
         const dismiss = (finalMsg) => {
             if (finalMsg && !hidden) {
                 progressLabel.textContent = finalMsg;
-                setTimeout(() => {
-                    toast.classList.add('toast-hide');
-                    setTimeout(() => {
-                        if (container.contains(toast)) container.removeChild(toast);
-                    }, 300);
-                }, 800);
+                timerBar.style.animationDuration = '3000ms';
+                timerBar.style.display = 'block';
+                timerBar.addEventListener('animationend', removeToast);
             } else if (!hidden) {
-                toast.classList.add('toast-hide');
-                setTimeout(() => {
-                    if (container.contains(toast)) container.removeChild(toast);
-                }, 300);
+                removeToast();
             }
         };
 
