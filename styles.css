@@ -3753,6 +3753,12 @@ select:focus {
     transition: all 0.2s;
 }
 
+.live-watch-label {
+    display: inline-block;
+    min-width: 96px;
+    text-align: center;
+}
+
 .live-watch-toggle-btn:hover {
     border-color: #adb5bd;
     background: #f8f9fa;
@@ -4398,6 +4404,8 @@ select:focus {
     align-items: center;
     gap: 10px;
     line-height: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .device-header-right {
@@ -4405,6 +4413,7 @@ select:focus {
     align-items: center;
     gap: 8px;
     line-height: 1;
+    flex-shrink: 0;
 }
 
 .device-checkbox {
@@ -4424,8 +4433,13 @@ select:focus {
     border-radius: 4px;
     transition: background-color 0.2s ease;
     line-height: 1.2;
-    display: inline-flex;
-    align-items: center;
+    display: inline-block;
+    vertical-align: middle;
+    min-width: 0;
+    max-width: 160px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .device-name:hover {
@@ -4448,6 +4462,41 @@ select:focus {
 
 .device-name-input:focus {
     box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.2);
+}
+
+/* Per-device Live Watch lamp button */
+.btn-device-live-watch {
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.btn-device-live-watch:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.device-lw-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ced4da;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-device-live-watch.active .device-lw-indicator {
+    background: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+    animation: live-pulse 1.5s ease-in-out infinite;
 }
 
 .device-id-badge {

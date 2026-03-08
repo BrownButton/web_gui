@@ -5336,9 +5336,15 @@ class ModbusDashboard {
         if (liveWatchToggleBtn) {
             liveWatchToggleBtn.addEventListener('click', () => {
                 if (this.autoPollingTimer) {
+                    this.devices.forEach(d => { d.liveWatch = false; });
+                    this.saveDevices();
+                    this._syncAllDeviceLwBtns();
                     this.stopAutoPolling();
                     this.showToast('Live Watch가 중지되었습니다', 'error');
                 } else {
+                    this.devices.forEach(d => { d.liveWatch = true; });
+                    this.saveDevices();
+                    this._syncAllDeviceLwBtns();
                     this.startAutoPolling();
                     this.showToast('Live Watch가 시작되었습니다', 'success');
                 }
@@ -6001,12 +6007,15 @@ class ModbusDashboard {
                 <div class="device-select">
                     <span class="drag-handle" title="Drag to reorder">≡</span>
                     <input type="checkbox" class="device-checkbox" ${this.selectedDevices.has(device.id) ? 'checked' : ''}>
-                    <span class="device-name" title="Click to edit name">${device.name}</span>
-                </div>
-                <div class="device-header-right">
                     <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}">
                         ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
                     </span>
+                    <span class="device-name" title="Click to edit name">${device.name}</span>
+                </div>
+                <div class="device-header-right">
+                    <button class="btn-device-live-watch ${device.liveWatch !== false ? 'active' : ''}" title="Live Watch 켜기/끄기">
+                        <span class="device-lw-indicator"></span>
+                    </button>
                     <button class="btn-delete-icon" title="Delete device">×</button>
                 </div>
             </div>
@@ -6121,6 +6130,13 @@ class ModbusDashboard {
                 this.applyDeviceSetpoint(device.id, parseInt(setpointInput.value));
             });
         }
+
+        // Per-device Live Watch toggle
+        const lwBtn = card.querySelector('.btn-device-live-watch');
+        lwBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleDeviceLiveWatch(device.id);
+        });
 
         // Delete button (X icon in header)
         const deleteBtn = card.querySelector('.btn-delete-icon');
@@ -6799,8 +6815,17 @@ class ModbusDashboard {
             const cmd = this.commandQueue.shift();
             cmd.reject(new Error('Polling stopped (disconnected)'));
         }
+
         this.destroyPollingWorker();
         this.updateLiveWatchToggleBtn();
+    }
+
+    _syncAllDeviceLwBtns() {
+        this.devices.forEach(d => {
+            const card = document.querySelector(`.device-card[data-device-id="${d.id}"]`);
+            const btn = card?.querySelector('.btn-device-live-watch');
+            if (btn) btn.classList.toggle('active', d.liveWatch !== false);
+        });
     }
 
     updateLiveWatchToggleBtn() {
@@ -6809,6 +6834,33 @@ class ModbusDashboard {
         const active = !!this.autoPollingTimer;
         btn.classList.toggle('active', active);
         btn.querySelector('.live-watch-label').textContent = active ? 'Live Watch ON' : 'Live Watch OFF';
+    }
+
+    toggleDeviceLiveWatch(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+        device.liveWatch = device.liveWatch === false ? true : false;
+        this.saveDevices();
+
+        const card = document.querySelector(`.device-card[data-device-id="${deviceId}"]`);
+        const lwBtn = card?.querySelector('.btn-device-live-watch');
+        if (lwBtn) lwBtn.classList.toggle('active', device.liveWatch !== false);
+
+        if (device.liveWatch !== false) {
+            // 켜는 경우: 폴링이 꺼져 있으면 자동 시작
+            if (!this.autoPollingTimer && (this.writer || this.simulatorEnabled)) {
+                this.startAutoPolling();
+            }
+        } else {
+            // 끄는 경우: liveWatch ON인 디바이스가 없으면 폴링 중지
+            const anyOn = this.devices.some(d => d.liveWatch !== false);
+            if (!anyOn) this.stopAutoPolling();
+        }
+
+        this.updateLiveWatchToggleBtn();
+
+        const state = device.liveWatch !== false ? 'ON' : 'OFF';
+        this.showToast(`${device.name} Live Watch ${state}`, device.liveWatch !== false ? 'success' : 'error');
     }
 
     /**
@@ -6912,8 +6964,8 @@ class ModbusDashboard {
             return;
         }
 
-        // Get devices with valid slave IDs
-        const validDevices = this.devices.filter(d => d.slaveId !== 0);
+        // Get devices with valid slave IDs and Live Watch enabled
+        const validDevices = this.devices.filter(d => d.slaveId !== 0 && d.liveWatch !== false);
         if (validDevices.length === 0) {
             this.isPolling = false;
             setTimeout(() => this.pollNextDeviceSequential(), 500);
@@ -7311,7 +7363,6 @@ class ModbusDashboard {
                 this.pendingResponse = null;
 
                 if (response && response.length >= 5 && response[0] === slaveId && (response[1] & 0x80) === 0) {
-                    this.addMonitorEntry('received', response);
                     this.stats.success++;
                     this.updateStatsDisplay();
                     resolve();
