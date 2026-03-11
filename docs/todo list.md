@@ -1,3 +1,39 @@
+20260311 홍수림 매니저 피드백
+- 디바이스 카드에 정지 버튼이 없음
+- modbus id 변경시, modbus 탭으로 진입 -> modbus 탭이름을 변경할 필요가 있음
++ 모달에 익숙하지 않음 (메카피온 UX)
+- 펌웨어다운로드 - 대상장치선택시 체크박스 뿐만아니라 영역을 눌러도 선택되도록
+- 펌웨어다운로드 - Erase 확인 대기시 멈춰있어 진행되는건지 멈춘건지 확인할수가없음 (동작중이라는 인디케이터 표시 필요)
+- ID 뱃지를 눌러서 변경하려고함 -> 넣을지 말지 고민 필요
+- ID 변경시 값 입력보다 눌렀을때 표로 표현해주면 좋을듯 (등록된 Device중, 사용중인 아이디 표시)
+- '+Add Device' 작성 후, 저장시 엔터키 입력 받도록 개선
+- '+Add Device' 0 미설정에 대한 설명 삭제
+
+20260311 도유성 대리님 피드백
+- Serial Port 초기값을 드라이브 초기값으로 변경 - 사용자 편의성 (default : baud 19200, parity even)
+- RPM/% 버튼을 잘 못찾음 - 인지가독성 개선
+- Device 탭에 진입했을때 파라미터를 읽었다는 '○' 아이콘이 메뉴로 전환했을때는 보이지않아 사용자로 하여금 다른 메뉴에서는 파라미터가 갱신되지 않았다는 착각을 일으킴
+- Dashboard, Device - RPM/% , Speed/Open 용어 통일
+- Dashboard - All device control과 개별 디바이스 컨트롤에서 setpoint가 개별 디바이스 컨트롤은 클릭하면 적용, all 디바이스는 적용해야 적용되어 일관되지않음
+- Dashboard - 개별 디바이스 컨트롤에서 정지 버튼이 필요함
+- Dashboard - Device List - Monitoring Parameters - 파라미터들의 카테고리를 나눠서 찾기 편하게 만들자
+- Dashboard - Device List - Monitoring Parameters - Manual Input에서 HEX, DEC 둘다 입력 되도록 & 0x 접두사 생략하는 기능추가
+- Dashboard - Device List - Monitoring Parameters - 추가하는 메뉴를 파라미터 위로 올리자
+- 파라미터 Read/Write시 나오는 아이콘이 비직관적임
+- 전체적으로 파라미터 설명, 단위가 안맞는 부분 수정 필요
+  - Torque Limit 파라미터 단위 변경
+  - Fan Address / Node ID 용어 통일
+  - EEPROM 로드 삭제
+  - 가속시간/감속시간 설명 잘못됨 ( 최대 속도까지 가속하는 시간 )
+  - 시스템 - 0xD000 뒤에 비트 표현 (0xD000:7)
+- 0xD011 자동 스캔 파라미터를 디바이스 식별 id로 변경
+- Settings - Polling - 통신 흐름도 재정비
+- Settings - Polling - 파라미터 이름 및 기능 직관적으로 변경
+- 시리얼 포트를 연결하지 않은채로 디바이스 카드를 접근/조작했다면 시리얼 포트를 연결해달라는 토스트 메세지 출력 필요
+- 시리얼 포트가 연결되지 않았다면, 디바이스 카드 회색 처리
+- Charts - trigger source 로 이름 변경
+
+
 + Dashboard에 체크박스를 체크하고 polling 파라미터를 삭제하면 삭제가 되지않음
 + Dashboard 폴링 파라미터 박스 크기 조절
 + Auto scan 디폴트는 활성화
