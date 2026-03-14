@@ -5632,6 +5632,8 @@ class ModbusDashboard {
         this.applyDeviceViewMode();
         // Update parameter page device selector
         this.updateParamDeviceSelector();
+        // Update firmware device list (initializeUI runs before loadDevices, so update here too)
+        this.updateFirmwareDeviceList();
     }
 
     /**
@@ -8896,8 +8898,8 @@ class ModbusDashboard {
 
         deviceList.innerHTML = this.devices.map(device => `
             <div class="firmware-device-item" data-device-id="${device.id}">
-                <input type="checkbox" id="fw-device-${device.id}">
-                <label class="firmware-device-name" for="fw-device-${device.id}">${device.name}</label>
+                <input type="radio" name="fw-device-radio" id="fw-device-${device.id}" value="${device.slaveId}">
+                <span class="firmware-device-name">${device.name}</span>
                 <span class="firmware-device-id">ID: ${device.slaveId}</span>
             </div>
         `).join('');
@@ -8905,11 +8907,19 @@ class ModbusDashboard {
         // Add click handlers
         deviceList.querySelectorAll('.firmware-device-item').forEach(item => {
             item.addEventListener('click', (e) => {
-                if (e.target.type !== 'checkbox') {
-                    const checkbox = item.querySelector('input[type="checkbox"]');
-                    checkbox.checked = !checkbox.checked;
+                if (e.target.type !== 'radio') {
+                    item.querySelector('input[type="radio"]').checked = true;
                 }
-                item.classList.toggle('selected', item.querySelector('input').checked);
+                // Deselect all, select clicked
+                deviceList.querySelectorAll('.firmware-device-item').forEach(el => {
+                    el.classList.toggle('selected', el === item);
+                });
+                // Sync firmwareSlaveId
+                const device = this.devices.find(d => d.id === parseInt(item.dataset.deviceId));
+                if (device) {
+                    const slaveInput = document.getElementById('firmwareSlaveId');
+                    if (slaveInput) slaveInput.value = device.slaveId;
+                }
             });
         });
     }

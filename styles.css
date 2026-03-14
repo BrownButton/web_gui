@@ -6351,10 +6351,12 @@ select:focus {
     background: #e3f2fd;
 }
 
-.firmware-device-item input[type="checkbox"] {
+.firmware-device-item input[type="radio"] {
     margin-right: 12px;
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
+    accent-color: #0ea5e9;
+    flex-shrink: 0;
 }
 
 .firmware-device-name {
