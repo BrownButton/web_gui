@@ -4581,11 +4581,24 @@ select:focus {
     line-height: 1.2;
     display: inline-flex;
     align-items: center;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.device-id-badge:hover {
+    background: #0ea5e9;
+    color: #fff;
 }
 
 .device-id-badge.unassigned {
     background: #fff3cd;
     color: #856404;
+}
+
+.device-id-badge.unassigned:hover {
+    background: #0ea5e9;
+    color: #fff;
 }
 
 .device-card-body {
@@ -5230,6 +5243,18 @@ select:focus {
     font-size: 11px;
 }
 
+.manual-address-converted {
+    display: block;
+    font-size: 10px;
+    color: #6c757d;
+    min-height: 14px;
+    margin-top: 2px;
+    padding-left: 76px; /* align under address input (type 72px + gap 4px) */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .add-param-btn,
 .add-manual-btn {
     height: 32px;
@@ -5572,11 +5597,24 @@ select:focus {
     font-weight: 600;
     text-align: center;
     justify-self: center;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.device-list-item .device-id-badge:hover {
+    background: #0ea5e9;
+    color: #fff;
 }
 
 .device-list-item .device-id-badge.unassigned {
     background: #fff3cd;
     color: #856404;
+}
+
+.device-list-item .device-id-badge.unassigned:hover {
+    background: #0ea5e9;
+    color: #fff;
 }
 
 .device-list-item .device-status {

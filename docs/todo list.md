@@ -23,9 +23,9 @@
 - Dashboard, Device - RPM/% , Speed/Open 용어 통일
 - Dashboard - All device control과 개별 디바이스 컨트롤에서 setpoint가 개별 디바이스 컨트롤은 클릭하면 적용, all 디바이스는 적용해야 적용되어 일관되지않음
 - Dashboard - 개별 디바이스 컨트롤에서 정지 버튼이 필요함
-- Dashboard - Device List - Monitoring Parameters - 파라미터들의 카테고리를 나눠서 찾기 편하게 만들자
-- Dashboard - Device List - Monitoring Parameters - Manual Input에서 HEX, DEC 둘다 입력 되도록 & 0x 접두사 생략하는 기능추가
-- Dashboard - Device List - Monitoring Parameters - 추가하는 메뉴를 파라미터 위로 올리자
++ Dashboard - Device List - Monitoring Parameters - 파라미터들의 카테고리를 나눠서 찾기 편하게 만들자
++ Dashboard - Device List - Monitoring Parameters - Manual Input에서 HEX, DEC 둘다 입력 되도록 & 0x 접두사 생략하는 기능추가
++ Dashboard - Device List - Monitoring Parameters - 추가하는 메뉴를 파라미터 위로 올리자
 - 파라미터 Read/Write시 나오는 아이콘이 비직관적임
 - 전체적으로 파라미터 설명, 단위가 안맞는 부분 수정 필요
   - Torque Limit 파라미터 단위 변경

@@ -2630,24 +2630,21 @@ class ModbusDashboard {
     }
 
     /**
-     * Update converted value display for an input field
-     * @param {string} inputId - Input element ID
-     * @param {number} min - Minimum value
-     * @param {number} max - Maximum value
+     * Update converted value display — element-based (shared utility)
+     * @param {HTMLElement} inputEl
+     * @param {HTMLElement} convertedEl
+     * @param {number} min
+     * @param {number} max
      */
-    updateConvertedValue(inputId, min = 0, max = 65535) {
-        const input = document.getElementById(inputId);
-        const convertedEl = document.getElementById(`${inputId}-converted`);
+    updateConvertedValueEl(inputEl, convertedEl, min = 0, max = 65535) {
+        if (!inputEl || !convertedEl) return;
 
-        if (!input || !convertedEl) return;
+        const value = inputEl.value.trim();
 
-        const value = input.value.trim();
-
-        // Treat empty or just "0x"/"0X" as empty (no display)
         if (!value || value.toLowerCase() === '0x') {
             convertedEl.textContent = '';
-            input.style.borderColor = '';
-            input.style.background = '';
+            inputEl.style.borderColor = '';
+            inputEl.style.background = '';
             return;
         }
 
@@ -2655,29 +2652,35 @@ class ModbusDashboard {
             const parsed = this.parseModbusValue(value, min, max);
             const isHex = this.isHexadecimal(value);
 
-            // Display the opposite format
-            if (isHex) {
-                convertedEl.textContent = `= ${parsed} (Dec)`;
-            } else {
-                convertedEl.textContent = `= 0x${parsed.toString(16).toUpperCase()} (Hex)`;
-            }
+            convertedEl.textContent = isHex
+                ? `= ${parsed} (Dec)`
+                : `= 0x${parsed.toString(16).toUpperCase()} (Hex)`;
 
-            // Remove error styling
-            input.style.borderColor = '';
-            input.style.background = '';
+            inputEl.style.borderColor = '';
+            inputEl.style.background = '';
             convertedEl.style.color = '';
         } catch (error) {
-            // Show error state
             convertedEl.textContent = `⚠ ${error.message}`;
             convertedEl.style.color = '#dc3545';
-            input.style.borderColor = '#dc3545';
-            input.style.background = '#fff5f5';
+            inputEl.style.borderColor = '#dc3545';
+            inputEl.style.background = '#fff5f5';
 
-            // Reset color after a moment
-            setTimeout(() => {
-                convertedEl.style.color = '';
-            }, 2000);
+            setTimeout(() => { convertedEl.style.color = ''; }, 2000);
         }
+    }
+
+    /**
+     * Update converted value display for an input field (ID-based, for Modbus tab)
+     * @param {string} inputId - Input element ID
+     * @param {number} min - Minimum value
+     * @param {number} max - Maximum value
+     */
+    updateConvertedValue(inputId, min = 0, max = 65535) {
+        this.updateConvertedValueEl(
+            document.getElementById(inputId),
+            document.getElementById(`${inputId}-converted`),
+            min, max
+        );
     }
 
     /**
@@ -5244,11 +5247,19 @@ class ModbusDashboard {
      * Show device edit modal
      * @param {number} deviceId - The device ID to edit
      */
-    showDeviceEditModal(deviceId) {
+    showDeviceEditModal(deviceId, focusField = null) {
         const device = this.devices.find(d => d.id === deviceId);
         if (!device) {
             console.error('Device not found:', deviceId);
             return;
+        }
+
+        // If a specific field is requested, switch to its category first
+        const fieldCategoryMap = {
+            fanAddress: 'communication',
+        };
+        if (focusField && fieldCategoryMap[focusField]) {
+            this.activeConfigCategory = fieldCategoryMap[focusField];
         }
 
         const modal = document.getElementById('deviceEditModal');
@@ -5325,6 +5336,20 @@ class ModbusDashboard {
 
         closeBtn.addEventListener('click', handleClose);
         modal.addEventListener('click', handleOutsideClick);
+
+        // Focus and highlight the target field if requested
+        if (focusField) {
+            setTimeout(() => {
+                const el = document.getElementById(`${focusField}_${deviceId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.focus();
+                    el.select();
+                    el.style.boxShadow = '0 0 0 3px rgba(14,165,233,0.5)';
+                    setTimeout(() => { el.style.boxShadow = ''; }, 1500);
+                }
+            }, 80);
+        }
     }
 
     // ========================================
@@ -5892,6 +5917,15 @@ class ModbusDashboard {
             this.performSoftwareReset(device.id);
         });
 
+        // ID badge → open settings modal on Fan Address field
+        const idBadgeList = item.querySelector('.device-id-badge');
+        if (idBadgeList) {
+            idBadgeList.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.showDeviceEditModal(device.id, 'fanAddress');
+            });
+        }
+
         // Mode buttons
         item.querySelectorAll('.device-mode-btns .mode-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -6105,10 +6139,11 @@ class ModbusDashboard {
                                     <option value="holding">Holding</option>
                                     <option value="input">Input</option>
                                 </select>
-                                <input type="text" class="manual-address" placeholder="0xD001">
+                                <input type="text" class="manual-address" placeholder="D001">
                                 <input type="text" class="manual-name" placeholder="Name">
                                 <button class="btn btn-success btn-sm add-manual-btn">+ Add</button>
                             </div>
+                            <small class="manual-address-converted"></small>
                         </div>
                     </div>
                     <div class="monitoring-params-list">
@@ -6164,6 +6199,14 @@ class ModbusDashboard {
         softwareResetBtn.addEventListener('click', () => {
             this.performSoftwareReset(device.id);
         });
+
+        // ID badge → open settings modal on Fan Address field
+        const idBadge = card.querySelector('.device-id-badge');
+        if (idBadge) {
+            idBadge.addEventListener('click', () => {
+                this.showDeviceEditModal(device.id, 'fanAddress');
+            });
+        }
 
         // Edit button
         const editBtn = card.querySelector('.btn-edit');
@@ -7513,16 +7556,16 @@ class ModbusDashboard {
     }
 
     /**
-     * Parse address string (0xD001 or 53249)
+     * Parse address string — supports 0xD001, D001 (bare hex), 53249 (dec)
+     * Delegates to parseModbusValue for unified HEX/DEC handling.
      */
     parseMonitoringAddress(addressStr) {
         if (typeof addressStr === 'number') return addressStr;
-        addressStr = addressStr.toString().trim();
-
-        if (addressStr.toLowerCase().startsWith('0x')) {
-            return parseInt(addressStr, 16);
+        try {
+            return this.parseModbusValue(String(addressStr).trim(), 0, 65535);
+        } catch {
+            return NaN;
         }
-        return parseInt(addressStr, 10);
     }
 
     /**
@@ -7840,6 +7883,15 @@ class ModbusDashboard {
             });
         }
 
+        // Manual address: live HEX/DEC conversion display
+        const manualAddrInput = card.querySelector('.manual-address');
+        const manualAddrConverted = card.querySelector('.manual-address-converted');
+        if (manualAddrInput && manualAddrConverted) {
+            manualAddrInput.addEventListener('input', () => {
+                this.updateConvertedValueEl(manualAddrInput, manualAddrConverted, 0, 65535);
+            });
+        }
+
         // Add manually
         const addManualBtn = card.querySelector('.add-manual-btn');
         if (addManualBtn) {
@@ -7852,6 +7904,7 @@ class ModbusDashboard {
 
                 card.querySelector('.manual-address').value = '';
                 card.querySelector('.manual-name').value = '';
+                if (manualAddrConverted) manualAddrConverted.textContent = '';
             });
         }
 
