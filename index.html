@@ -151,10 +151,6 @@
                     <span class="menu-item-icon">📡</span>
                     <span class="menu-item-text">Modbus</span>
                 </div>
-                <div class="menu-item" data-page="firmware">
-                    <span class="menu-item-icon">📥</span>
-                    <span class="menu-item-text">Update</span>
-                </div>
                 <div class="menu-item" data-page="chart">
                     <span class="menu-item-icon">📈</span>
                     <span class="menu-item-text">Chart</span>
@@ -288,6 +284,9 @@
                                 <button class="device-setup-tab" data-tab="parameters" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
                                     Parameters
                                 </button>
+                                <button class="device-setup-tab" data-tab="update" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
+                                    Update
+                                </button>
                                 <button class="device-setup-tab" data-tab="manufacture" style="display: none; padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
                                     Manufacture
                                 </button>
@@ -343,6 +342,232 @@
                                     <!-- Parameter List -->
                                     <div id="paramList" class="param-list" style="flex: 1; overflow-y: auto;">
                                         <p class="placeholder">No parameters defined. Click "Import CSV" or "Load Default" to load parameters.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Update Tab Content -->
+                            <div class="device-setup-tab-content" id="deviceSetupUpdateTab" style="flex: 1; overflow-y: auto; display: none; background: white;">
+                                <div class="firmware-container">
+                                    <div class="firmware-header">
+                                        <h2>Firmware Download</h2>
+                                        <p class="firmware-subtitle">Modbus Function Code 0x66을 사용하여 장치에 펌웨어를 업로드합니다</p>
+                                    </div>
+
+                                    <!-- Firmware Source Selector -->
+                                    <div class="firmware-source-selector" id="firmwareSourceSelector">
+                                        <button class="fw-source-btn active" id="fwSourceLocalBtn" data-source="local">
+                                            <span class="fw-source-icon">📁</span>
+                                            <span class="fw-source-label">로컬 파일</span>
+                                        </button>
+                                        <button class="fw-source-btn" id="fwSourceOnlineBtn" data-source="online">
+                                            <span class="fw-source-icon">🌐</span>
+                                            <span class="fw-source-label">온라인 업데이트</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Panel A: Local File -->
+                                    <div id="fwPanelLocal" class="fw-source-panel">
+                                        <!-- File Upload Section -->
+                                        <div class="firmware-upload-section">
+                                            <div class="firmware-dropzone" id="firmwareDropzone">
+                                                <div class="dropzone-content">
+                                                    <div class="dropzone-icon">📁</div>
+                                                    <div class="dropzone-text">
+                                                        <p class="dropzone-main">파일을 여기에 드래그하거나 클릭하여 선택하세요</p>
+                                                        <p class="dropzone-sub">지원 형식: .bin, .hex, .fw</p>
+                                                    </div>
+                                                    <input type="file" id="firmwareFileInput" accept=".bin,.hex,.fw" hidden>
+                                                    <button class="btn btn-primary" id="firmwareSelectBtn">파일 선택</button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Selected File Info -->
+                                        <div class="firmware-file-info" id="firmwareFileInfo" style="display: none;">
+                                            <div class="file-info-header">
+                                                <span class="file-icon">📄</span>
+                                                <div class="file-details">
+                                                    <span class="file-name" id="firmwareFileName">-</span>
+                                                    <span class="file-size" id="firmwareFileSize">-</span>
+                                                </div>
+                                                <button class="file-remove-btn" id="firmwareRemoveBtn" title="파일 제거">×</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Panel B: Online Update -->
+                                    <div id="fwPanelOnline" class="fw-source-panel" style="display: none;">
+
+                                        <!-- 로컬 환경 비활성 메시지 -->
+                                        <div class="fw-online-disabled" id="fwOnlineDisabled" style="display: none;">
+                                            <div class="fw-online-disabled-icon">🔒</div>
+                                            <p class="fw-online-disabled-msg">로컬 환경에서는 온라인 펌웨어 기능을 사용할 수 없습니다</p>
+                                            <p class="fw-online-disabled-sub">GitHub Pages 배포 환경에서 이 기능을 사용하세요.</p>
+                                        </div>
+
+                                        <!-- 온라인 콘텐츠 (http/https 시 표시) -->
+                                        <div class="fw-online-content" id="fwOnlineContent" style="display: none;">
+                                            <div class="fw-online-toolbar">
+                                                <h3 class="fw-online-title">온라인 펌웨어 버전 목록</h3>
+                                                <button class="btn btn-secondary fw-btn-sm" id="fwRefreshVersionsBtn">
+                                                    <span id="fwRefreshIcon">↻</span> 버전 목록 새로고침
+                                                </button>
+                                            </div>
+
+                                            <!-- 로딩 상태 -->
+                                            <div class="fw-online-loading" id="fwOnlineLoading" style="display: none;">
+                                                <div class="fw-online-spinner"></div>
+                                                <span>버전 목록을 불러오는 중...</span>
+                                            </div>
+
+                                            <!-- 오류 상태 -->
+                                            <div class="fw-online-error" id="fwOnlineError" style="display: none;">
+                                                <span class="fw-online-error-icon">⚠</span>
+                                                <span id="fwOnlineErrorMsg">버전 목록을 불러올 수 없습니다.</span>
+                                            </div>
+
+                                            <!-- 버전 목록 테이블 -->
+                                            <div class="fw-version-table-wrapper" id="fwVersionTableWrapper" style="display: none;">
+                                                <table class="fw-version-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>버전</th>
+                                                            <th>배포일</th>
+                                                            <th>파일 크기</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="fwVersionTableBody">
+                                                        <!-- JS에서 동적 렌더링 -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <!-- 선택된 온라인 펌웨어 정보 -->
+                                            <div class="firmware-file-info fw-online-selected-info" id="fwOnlineSelectedInfo" style="display: none;">
+                                                <div class="file-info-header">
+                                                    <span class="file-icon">🌐</span>
+                                                    <div class="file-details">
+                                                        <span class="file-name" id="fwOnlineSelectedName">-</span>
+                                                        <span class="file-size" id="fwOnlineSelectedSize">-</span>
+                                                    </div>
+                                                    <span class="fw-online-dl-status" id="fwOnlineDlStatus"></span>
+                                                    <button class="file-remove-btn" id="fwOnlineClearBtn" title="선택 해제">×</button>
+                                                </div>
+                                                <!-- bin 파일 fetch 진행률 바 -->
+                                                <div class="fw-online-fetch-progress" id="fwOnlineFetchProgress" style="display: none;">
+                                                    <div class="fw-fetch-bar-track">
+                                                        <div class="fw-fetch-bar-fill" id="fwOnlineFetchFill"></div>
+                                                    </div>
+                                                    <span class="fw-fetch-bar-label" id="fwOnlineFetchLabel">다운로드 중...</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Protocol Settings -->
+                                    <div class="firmware-settings-section">
+                                        <h3>프로토콜 설정</h3>
+                                        <div class="firmware-settings-grid">
+                                            <div class="form-group">
+                                                <label for="fwPacketSize">패킷 크기 (bytes)</label>
+                                                <select id="fwPacketSize">
+                                                    <option value="32">32 bytes</option>
+                                                    <option value="60" selected>60 bytes (권장)</option>
+                                                    <option value="64">64 bytes</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="fwPacketDelay">패킷 간격 (ms)</label>
+                                                <input type="number" id="fwPacketDelay" min="10" max="500" value="50">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="fwResponseTimeout">응답 대기 (ms)</label>
+                                                <input type="number" id="fwResponseTimeout" min="100" max="5000" value="1000">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Update Step Indicators -->
+                                    <div class="firmware-steps-section" id="firmwareStepsSection">
+                                        <h3>업데이트 단계</h3>
+                                        <div class="firmware-steps">
+                                            <div class="firmware-step" id="fwStep0x90" data-step="0x90">
+                                                <div class="step-indicator">
+                                                    <span class="step-number">1</span>
+                                                    <span class="step-status-icon"></span>
+                                                </div>
+                                                <div class="step-content">
+                                                    <div class="step-title">초기화 (0x90)</div>
+                                                    <div class="step-desc">Flash Unlock, 파일 크기 전송</div>
+                                                </div>
+                                            </div>
+                                            <div class="firmware-step" id="fwStep0x91" data-step="0x91">
+                                                <div class="step-indicator">
+                                                    <span class="step-number">2</span>
+                                                    <span class="step-status-icon"></span>
+                                                </div>
+                                                <div class="step-content">
+                                                    <div class="step-title">Erase 확인 (0x91)</div>
+                                                    <div class="step-desc">Flash Erase 완료 확인 (0x55555555)</div>
+                                                </div>
+                                            </div>
+                                            <div class="firmware-step" id="fwStep0x03" data-step="0x03">
+                                                <div class="step-indicator">
+                                                    <span class="step-number">3</span>
+                                                    <span class="step-status-icon"></span>
+                                                </div>
+                                                <div class="step-content">
+                                                    <div class="step-title">데이터 전송 (0x03)</div>
+                                                    <div class="step-desc">펌웨어 데이터 전송</div>
+                                                    <div class="step-progress" id="fwDataProgress">
+                                                        <div class="step-progress-bar">
+                                                            <div class="step-progress-fill" id="fwDataProgressFill"></div>
+                                                        </div>
+                                                        <div class="step-progress-details">
+                                                            <span class="step-progress-percent" id="fwDataProgressPercent">0%</span>
+                                                            <span class="step-progress-bytes" id="fwDataProgressBytes">0 / 0 bytes</span>
+                                                        </div>
+                                                        <div class="step-progress-stats">
+                                                            <span class="step-progress-packets" id="fwDataProgressPackets">패킷: 0 / 0</span>
+                                                            <span class="step-progress-time" id="fwDataProgressTime">남은 시간: --:--</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="firmware-step" id="fwStep0x99" data-step="0x99">
+                                                <div class="step-indicator">
+                                                    <span class="step-number">4</span>
+                                                    <span class="step-status-icon"></span>
+                                                </div>
+                                                <div class="step-content">
+                                                    <div class="step-title">완료 (0x99)</div>
+                                                    <div class="step-desc">Flash Lock, 업데이트 완료</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Download Progress -->
+                                    <div class="firmware-progress-section" id="firmwareProgressSection" style="display: none;">
+                                        <h3>통신 로그</h3>
+                                        <div class="progress-container">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" id="firmwareProgressBar" style="width: 0%"></div>
+                                            </div>
+                                            <div class="progress-info">
+                                                <span class="progress-percent" id="firmwareProgressPercent">0%</span>
+                                                <span class="progress-status" id="firmwareProgressStatus">준비 중...</span>
+                                            </div>
+                                        </div>
+                                        <div class="progress-log" id="firmwareProgressLog"></div>
+                                    </div>
+
+                                    <!-- Action Buttons -->
+                                    <div class="firmware-actions">
+                                        <button class="btn btn-secondary" id="firmwareVerifyBtn" disabled>파일 검증</button>
+                                        <button class="btn btn-primary" id="firmwareDownloadBtn" disabled>다운로드 시작</button>
+                                        <button class="btn btn-danger" id="firmwareCancelBtn" style="display: none;">취소</button>
                                     </div>
                                 </div>
                             </div>
@@ -1839,246 +2064,6 @@
                                 </ul>
                             </div>
                         </section>
-                    </div>
-                </div>
-
-                <!-- Firmware Page -->
-                <div id="page-firmware" class="page-content">
-                    <div class="firmware-container">
-                        <div class="firmware-header">
-                            <h2>Firmware Download</h2>
-                            <p class="firmware-subtitle">Modbus Function Code 0x66을 사용하여 장치에 펌웨어를 업로드합니다</p>
-                        </div>
-
-                        <!-- Firmware Source Selector -->
-                        <div class="firmware-source-selector" id="firmwareSourceSelector">
-                            <button class="fw-source-btn active" id="fwSourceLocalBtn" data-source="local">
-                                <span class="fw-source-icon">📁</span>
-                                <span class="fw-source-label">로컬 파일</span>
-                            </button>
-                            <button class="fw-source-btn" id="fwSourceOnlineBtn" data-source="online">
-                                <span class="fw-source-icon">🌐</span>
-                                <span class="fw-source-label">온라인 업데이트</span>
-                            </button>
-                        </div>
-
-                        <!-- Panel A: Local File -->
-                        <div id="fwPanelLocal" class="fw-source-panel">
-                            <!-- File Upload Section -->
-                            <div class="firmware-upload-section">
-                                <div class="firmware-dropzone" id="firmwareDropzone">
-                                    <div class="dropzone-content">
-                                        <div class="dropzone-icon">📁</div>
-                                        <div class="dropzone-text">
-                                            <p class="dropzone-main">파일을 여기에 드래그하거나 클릭하여 선택하세요</p>
-                                            <p class="dropzone-sub">지원 형식: .bin, .hex, .fw</p>
-                                        </div>
-                                        <input type="file" id="firmwareFileInput" accept=".bin,.hex,.fw" hidden>
-                                        <button class="btn btn-primary" id="firmwareSelectBtn">파일 선택</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Selected File Info -->
-                            <div class="firmware-file-info" id="firmwareFileInfo" style="display: none;">
-                                <div class="file-info-header">
-                                    <span class="file-icon">📄</span>
-                                    <div class="file-details">
-                                        <span class="file-name" id="firmwareFileName">-</span>
-                                        <span class="file-size" id="firmwareFileSize">-</span>
-                                    </div>
-                                    <button class="file-remove-btn" id="firmwareRemoveBtn" title="파일 제거">×</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Panel B: Online Update -->
-                        <div id="fwPanelOnline" class="fw-source-panel" style="display: none;">
-
-                            <!-- 로컬 환경 비활성 메시지 -->
-                            <div class="fw-online-disabled" id="fwOnlineDisabled" style="display: none;">
-                                <div class="fw-online-disabled-icon">🔒</div>
-                                <p class="fw-online-disabled-msg">로컬 환경에서는 온라인 펌웨어 기능을 사용할 수 없습니다</p>
-                                <p class="fw-online-disabled-sub">GitHub Pages 배포 환경에서 이 기능을 사용하세요.</p>
-                            </div>
-
-                            <!-- 온라인 콘텐츠 (http/https 시 표시) -->
-                            <div class="fw-online-content" id="fwOnlineContent" style="display: none;">
-                                <div class="fw-online-toolbar">
-                                    <h3 class="fw-online-title">온라인 펌웨어 버전 목록</h3>
-                                    <button class="btn btn-secondary fw-btn-sm" id="fwRefreshVersionsBtn">
-                                        <span id="fwRefreshIcon">↻</span> 버전 목록 새로고침
-                                    </button>
-                                </div>
-
-                                <!-- 로딩 상태 -->
-                                <div class="fw-online-loading" id="fwOnlineLoading" style="display: none;">
-                                    <div class="fw-online-spinner"></div>
-                                    <span>버전 목록을 불러오는 중...</span>
-                                </div>
-
-                                <!-- 오류 상태 -->
-                                <div class="fw-online-error" id="fwOnlineError" style="display: none;">
-                                    <span class="fw-online-error-icon">⚠</span>
-                                    <span id="fwOnlineErrorMsg">버전 목록을 불러올 수 없습니다.</span>
-                                </div>
-
-                                <!-- 버전 목록 테이블 -->
-                                <div class="fw-version-table-wrapper" id="fwVersionTableWrapper" style="display: none;">
-                                    <table class="fw-version-table">
-                                        <thead>
-                                            <tr>
-                                                <th>버전</th>
-                                                <th>배포일</th>
-                                                <th>파일 크기</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="fwVersionTableBody">
-                                            <!-- JS에서 동적 렌더링 -->
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <!-- 선택된 온라인 펌웨어 정보 -->
-                                <div class="firmware-file-info fw-online-selected-info" id="fwOnlineSelectedInfo" style="display: none;">
-                                    <div class="file-info-header">
-                                        <span class="file-icon">🌐</span>
-                                        <div class="file-details">
-                                            <span class="file-name" id="fwOnlineSelectedName">-</span>
-                                            <span class="file-size" id="fwOnlineSelectedSize">-</span>
-                                        </div>
-                                        <span class="fw-online-dl-status" id="fwOnlineDlStatus"></span>
-                                        <button class="file-remove-btn" id="fwOnlineClearBtn" title="선택 해제">×</button>
-                                    </div>
-                                    <!-- bin 파일 fetch 진행률 바 -->
-                                    <div class="fw-online-fetch-progress" id="fwOnlineFetchProgress" style="display: none;">
-                                        <div class="fw-fetch-bar-track">
-                                            <div class="fw-fetch-bar-fill" id="fwOnlineFetchFill"></div>
-                                        </div>
-                                        <span class="fw-fetch-bar-label" id="fwOnlineFetchLabel">다운로드 중...</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Device Selection -->
-                        <div class="firmware-device-section">
-                            <h3>대상 장치 선택</h3>
-                            <div class="firmware-device-row">
-                                <div class="firmware-device-list" id="firmwareDeviceList">
-                                    <p class="placeholder">연결된 장치가 없습니다</p>
-                                </div>
-                                <div class="firmware-slave-direct">
-                                    <label for="firmwareSlaveId">Slave ID 직접 입력:</label>
-                                    <input type="number" id="firmwareSlaveId" min="1" max="247" value="1">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Protocol Settings -->
-                        <div class="firmware-settings-section">
-                            <h3>프로토콜 설정</h3>
-                            <div class="firmware-settings-grid">
-                                <div class="form-group">
-                                    <label for="fwPacketSize">패킷 크기 (bytes)</label>
-                                    <select id="fwPacketSize">
-                                        <option value="32">32 bytes</option>
-                                        <option value="60" selected>60 bytes (권장)</option>
-                                        <option value="64">64 bytes</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="fwPacketDelay">패킷 간격 (ms)</label>
-                                    <input type="number" id="fwPacketDelay" min="10" max="500" value="50">
-                                </div>
-                                <div class="form-group">
-                                    <label for="fwResponseTimeout">응답 대기 (ms)</label>
-                                    <input type="number" id="fwResponseTimeout" min="100" max="5000" value="1000">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Update Step Indicators -->
-                        <div class="firmware-steps-section" id="firmwareStepsSection">
-                            <h3>업데이트 단계</h3>
-                            <div class="firmware-steps">
-                                <div class="firmware-step" id="fwStep0x90" data-step="0x90">
-                                    <div class="step-indicator">
-                                        <span class="step-number">1</span>
-                                        <span class="step-status-icon"></span>
-                                    </div>
-                                    <div class="step-content">
-                                        <div class="step-title">초기화 (0x90)</div>
-                                        <div class="step-desc">Flash Unlock, 파일 크기 전송</div>
-                                    </div>
-                                </div>
-                                <div class="firmware-step" id="fwStep0x91" data-step="0x91">
-                                    <div class="step-indicator">
-                                        <span class="step-number">2</span>
-                                        <span class="step-status-icon"></span>
-                                    </div>
-                                    <div class="step-content">
-                                        <div class="step-title">Erase 확인 (0x91)</div>
-                                        <div class="step-desc">Flash Erase 완료 확인 (0x55555555)</div>
-                                    </div>
-                                </div>
-                                <div class="firmware-step" id="fwStep0x03" data-step="0x03">
-                                    <div class="step-indicator">
-                                        <span class="step-number">3</span>
-                                        <span class="step-status-icon"></span>
-                                    </div>
-                                    <div class="step-content">
-                                        <div class="step-title">데이터 전송 (0x03)</div>
-                                        <div class="step-desc">펌웨어 데이터 전송</div>
-                                        <div class="step-progress" id="fwDataProgress">
-                                            <div class="step-progress-bar">
-                                                <div class="step-progress-fill" id="fwDataProgressFill"></div>
-                                            </div>
-                                            <div class="step-progress-details">
-                                                <span class="step-progress-percent" id="fwDataProgressPercent">0%</span>
-                                                <span class="step-progress-bytes" id="fwDataProgressBytes">0 / 0 bytes</span>
-                                            </div>
-                                            <div class="step-progress-stats">
-                                                <span class="step-progress-packets" id="fwDataProgressPackets">패킷: 0 / 0</span>
-                                                <span class="step-progress-time" id="fwDataProgressTime">남은 시간: --:--</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="firmware-step" id="fwStep0x99" data-step="0x99">
-                                    <div class="step-indicator">
-                                        <span class="step-number">4</span>
-                                        <span class="step-status-icon"></span>
-                                    </div>
-                                    <div class="step-content">
-                                        <div class="step-title">완료 (0x99)</div>
-                                        <div class="step-desc">Flash Lock, 업데이트 완료</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Download Progress -->
-                        <div class="firmware-progress-section" id="firmwareProgressSection" style="display: none;">
-                            <h3>통신 로그</h3>
-                            <div class="progress-container">
-                                <div class="progress-bar">
-                                    <div class="progress-fill" id="firmwareProgressBar" style="width: 0%"></div>
-                                </div>
-                                <div class="progress-info">
-                                    <span class="progress-percent" id="firmwareProgressPercent">0%</span>
-                                    <span class="progress-status" id="firmwareProgressStatus">준비 중...</span>
-                                </div>
-                            </div>
-                            <div class="progress-log" id="firmwareProgressLog"></div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="firmware-actions">
-                            <button class="btn btn-secondary" id="firmwareVerifyBtn" disabled>파일 검증</button>
-                            <button class="btn btn-primary" id="firmwareDownloadBtn" disabled>다운로드 시작</button>
-                            <button class="btn btn-danger" id="firmwareCancelBtn" style="display: none;">취소</button>
-                        </div>
                     </div>
                 </div>
 

@@ -1167,14 +1167,12 @@ class ModbusDashboard {
         // Developer Mode - Logo Click Easter Egg
         this.initDeveloperMode();
 
-        // Menu navigation
+        // Top-level menu navigation
         document.querySelectorAll('.menu-item').forEach(item => {
             item.addEventListener('click', () => {
                 const page = item.dataset.page;
                 this.switchPage(page);
-
-                document.querySelectorAll('.menu-item').forEach(mi => mi.classList.remove('active'));
-                item.classList.add('active');
+                this._setMenuActive(page);
             });
         });
 
@@ -1607,15 +1605,15 @@ class ModbusDashboard {
                 // Switch to dashboard if currently on manufacture page
                 if (this.currentPage === 'manufacture') {
                     this.switchPage('dashboard');
-                    document.querySelectorAll('.menu-item').forEach(mi => mi.classList.remove('active'));
-                    document.querySelector('.menu-item[data-page="dashboard"]').classList.add('active');
+                    this._setMenuActive('dashboard');
                 }
             });
         }
 
         // Restore last visited page from sessionStorage and activate immediately
         const savedPage = sessionStorage.getItem('currentPage');
-        const pageToShow = savedPage || 'dashboard';
+        // firmware is no longer a separate page; redirect to device-setup
+        const pageToShow = (savedPage === 'firmware' ? 'device-setup' : savedPage) || 'dashboard';
 
         // Immediately activate the correct page without rendering other pages first
         const pageElement = document.getElementById(`page-${pageToShow}`);
@@ -1624,18 +1622,7 @@ class ModbusDashboard {
             pageElement.classList.add('active');
 
             // Update menu item active state immediately
-            document.querySelectorAll('.menu-item').forEach(mi => mi.classList.remove('active'));
-            const menuItem = document.querySelector(`.menu-item[data-page="${pageToShow}"]`);
-            if (menuItem) {
-                menuItem.classList.add('active');
-            }
-
-            // Call page-specific initialization if needed
-            if (pageToShow === 'firmware') {
-                this.updateFirmwareDeviceList();
-            } else if (pageToShow === 'device-setup') {
-                // Device setup will be fully initialized after tabs are restored in DOMContentLoaded
-            }
+            this._setMenuActive(pageToShow);
         }
     }
 
@@ -1659,6 +1646,15 @@ class ModbusDashboard {
         if (navbarStats) {
             navbarStats.style.display = 'flex';
         }
+    }
+
+    /**
+     * Set active state on menu item for the given page
+     */
+    _setMenuActive(page) {
+        document.querySelectorAll('.menu-item').forEach(mi => mi.classList.remove('active'));
+        const item = document.querySelector(`.menu-item[data-page="${page}"]`);
+        if (item) item.classList.add('active');
     }
 
     /**
@@ -1697,11 +1693,6 @@ class ModbusDashboard {
             while (this.isPolling && Date.now() < deadline) {
                 await this.delay(5);
             }
-        }
-
-        // Update firmware device list when switching to firmware page
-        if (pageName === 'firmware') {
-            this.updateFirmwareDeviceList();
         }
 
         // Update device setup list when switching to device-setup page
@@ -5632,8 +5623,6 @@ class ModbusDashboard {
         this.applyDeviceViewMode();
         // Update parameter page device selector
         this.updateParamDeviceSelector();
-        // Update firmware device list (initializeUI runs before loadDevices, so update here too)
-        this.updateFirmwareDeviceList();
     }
 
     /**
@@ -8884,45 +8873,6 @@ class ModbusDashboard {
         if (downloadBtn) downloadBtn.disabled = !hasFile;
     }
 
-    /**
-     * Update firmware device list
-     */
-    updateFirmwareDeviceList() {
-        const deviceList = document.getElementById('firmwareDeviceList');
-        if (!deviceList) return;
-
-        if (this.devices.length === 0) {
-            deviceList.innerHTML = '<p class="placeholder">연결된 장치가 없습니다</p>';
-            return;
-        }
-
-        deviceList.innerHTML = this.devices.map(device => `
-            <div class="firmware-device-item" data-device-id="${device.id}">
-                <input type="radio" name="fw-device-radio" id="fw-device-${device.id}" value="${device.slaveId}">
-                <span class="firmware-device-name">${device.name}</span>
-                <span class="firmware-device-id">ID: ${device.slaveId}</span>
-            </div>
-        `).join('');
-
-        // Add click handlers
-        deviceList.querySelectorAll('.firmware-device-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                if (e.target.type !== 'radio') {
-                    item.querySelector('input[type="radio"]').checked = true;
-                }
-                // Deselect all, select clicked
-                deviceList.querySelectorAll('.firmware-device-item').forEach(el => {
-                    el.classList.toggle('selected', el === item);
-                });
-                // Sync firmwareSlaveId
-                const device = this.devices.find(d => d.id === parseInt(item.dataset.deviceId));
-                if (device) {
-                    const slaveInput = document.getElementById('firmwareSlaveId');
-                    if (slaveInput) slaveInput.value = device.slaveId;
-                }
-            });
-        });
-    }
 
     /**
      * Verify firmware file
@@ -8967,8 +8917,13 @@ class ModbusDashboard {
             return;
         }
 
-        // Get settings
-        const slaveId = parseInt(document.getElementById('firmwareSlaveId')?.value) || 1;
+        // Get target slave ID from currently selected device in Device page
+        const selectedDevice = this.devices.find(d => d.id === this.currentSetupDeviceId);
+        if (!selectedDevice) {
+            this.showToast('왼쪽 목록에서 대상 장치를 선택하세요', 'error');
+            return;
+        }
+        const slaveId = selectedDevice.slaveId;
         const packetSize = parseInt(document.getElementById('fwPacketSize')?.value) || 60;
         const packetDelay = parseInt(document.getElementById('fwPacketDelay')?.value) || 50;
         const responseTimeout = parseInt(document.getElementById('fwResponseTimeout')?.value) || 1000;
@@ -11438,6 +11393,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (db.selectedParamDeviceId && (db.writer || db.simulatorEnabled)) {
                     db.readAllParameters();
                 }
+            } else if (targetTab === 'update') {
+                document.getElementById('deviceSetupUpdateTab').style.display = 'block';
             } else if (targetTab === 'manufacture') {
                 document.getElementById('deviceSetupManufactureTab').style.display = 'flex';
             }
