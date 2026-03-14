@@ -4508,124 +4508,124 @@ class ModbusDashboard {
     getDefaultParameters() {
         return [
             // Holding Registers
-            {type:'holding',address:'0xD000',name:'Reset',implemented:'Y',description:'Software Reset, Error Reset, EEPROM to RAM'},
-            {type:'holding',address:'0xD001',name:'Setpoint',implemented:'Y',description:'지령 값, 오픈루프 모드이면 % or 속도모드이면 RPM'},
-            {type:'holding',address:'0xD005',name:'Factory setting Control',implemented:'N',description:'공장 초기값 변경 및 적용 용도'},
-            {type:'holding',address:'0xD009',name:'Operating hours counter',implemented:'N',description:'65535시간까지 카운트 후 고정'},
-            {type:'holding',address:'0xD00A',name:'Operating minutes counter',implemented:'N',description:'0분 to 59분 롤링'},
-            {type:'holding',address:'0xD00D',name:'Stored set value',implemented:'N',description:'Set Point 설정값이 EEPROM에 저장됨, 급작스러운 전원 공급 중단 및 복구 후 마지막 설정값으로 재시작'},
-            {type:'holding',address:'0xD00F',name:'Enable/Disable',implemented:'N',description:'서보드라이브의 SVON/SVOFF와 같은 기능, 0xD16A(Enable/Disable source)의 값에 따라 적절한 Enable state가 결정'},
-            {type:'holding',address:'0xD100',name:'Fan address',implemented:'Y',description:'Node ID와 같은 역할'},
-            {type:'holding',address:'0xD101',name:'Set value source',implemented:'N',description:'Setpoint를 어떤 수단으로 사용할 것인지 설정 (0:AIN1, 1:RS485, 2:AIN2, 3:PWM)'},
-            {type:'holding',address:'0xD102',name:'Preferred running direction',implemented:'Y',description:'구동 방향 결정 (0:CCW, 1:CW)'},
-            {type:'holding',address:'0xD106',name:'Operating mode',implemented:'Y',description:'모터 제어 방식을 설정합니다. | 0:Speed Control, 2:Open-loop control'},
-            {type:'holding',address:'0xD112',name:'Motor stop enable',implemented:'N',description:'0: set value가 0이더라도 모터 항상 SVON, 1: set value가 0일 경우 모터 SVOFF'},
-            {type:'holding',address:'0xD119',name:'Maximum speed',implemented:'N',description:'센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)'},
-            {type:'holding',address:'0xD11A',name:'Maximum permissible speed',implemented:'N',description:'최대 속도의 상한치를 설정 (모터 최대 속도)'},
-            {type:'holding',address:'0xD11F',name:'Ramp-up curve',implemented:'N',description:'가/감속도 조정 파라미터, 알람 등 모터 정지조건이 감지되면 감속없이 정지함'},
-            {type:'holding',address:'0xD120',name:'Ramp-down curve',implemented:'N',description:'감속 곡선 설정'},
-            {type:'holding',address:'0xD12A',name:'Point 1 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
-            {type:'holding',address:'0xD12B',name:'Point 1 Y-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
-            {type:'holding',address:'0xD12C',name:'Point 2 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
-            {type:'holding',address:'0xD12D',name:'Point 2 Y-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
-            {type:'holding',address:'0xD12F',name:'Limitation Control',implemented:'N',description:'0번 비트 set: Power limit 활성화, 1번 비트 set: Current Limit 활성화'},
-            {type:'holding',address:'0xD135',name:'Maximum permissible power',implemented:'N',description:'허용 가능한 최대 파워 설정'},
-            {type:'holding',address:'0xD136',name:'Max. power at derating end',implemented:'N',description:'모듈과 모터의 온도를 토대로 출력을 디레이팅 하는 기능'},
-            {type:'holding',address:'0xD137',name:'Module temperature power derating start',implemented:'N',description:'모듈 온도 파워 디레이팅 시작점'},
-            {type:'holding',address:'0xD138',name:'Module temperature power derating end',implemented:'N',description:'모듈 온도 파워 디레이팅 종료점'},
-            {type:'holding',address:'0xD13B',name:'Maximum coil current',implemented:'Y',description:'전류 제한이 활성화 되면 모터 코일전류(rms값)를 이 파라미터에 설정된 값으로 제한'},
-            {type:'holding',address:'0xD14D',name:'Motor temperature power derating start address',implemented:'N',description:'모터 온도 파워 디레이팅 시작 주소'},
-            {type:'holding',address:'0xD14E',name:'Motor temperature power derating end address',implemented:'N',description:'모터 온도 파워 디레이팅 종료 주소'},
-            {type:'holding',address:'0xD145',name:'Speed limit for running monitoring',implemented:'N',description:'실행 모니터링 속도제한, 속도 피드백이 이 파라미터에 설정된 속도보다 낮을 경우 오류 해제 (n_Low)'},
-            {type:'holding',address:'0xD149',name:'Transmission speed',implemented:'N',description:'RS-485 통신 속도를 설정합니다. | 0:1200bps, 1:2400bps, 2:4800bps, 3:9600bps, 4:19200bps(default), 5:38400bps, 6:57600bps, 7:115200bps'},
-            {type:'holding',address:'0xD14A',name:'Parity configuration',implemented:'N',description:'시리얼 통신의 데이터 비트, 패리티, 스톱 비트를 설정합니다. | 0:Data8/Even/Stop1(default), 1:Data8/Odd/Stop1, 2:Data8/None/Stop2, 3:Data8/None/Stop1'},
-            {type:'holding',address:'0xF150',name:'Shedding function',implemented:'N',description:'외부 환경에 의해 팬이 얼어 기동이 어려울 경우 이 기능 활성화를 통해 구속 상태를 제거'},
-            {type:'holding',address:'0xF151',name:'Max. starting modulation level',implemented:'N',description:'최대 시작 모듈레이션 레벨'},
-            {type:'holding',address:'0xF152',name:'Number of start attempts',implemented:'N',description:'시작 시도 횟수'},
-            {type:'holding',address:'0xF153',name:'Relay dropout delay',implemented:'N',description:'에러나 경고 감지 시 릴레이 출력 지연시간을 설정하여 단기 이슈일 경우는 무시'},
-            {type:'holding',address:'0xD155',name:'Maximum power',implemented:'N',description:'최대 파워 설정'},
-            {type:'holding',address:'0xD158',name:'Configuration of I/O 1',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
-            {type:'holding',address:'0xD159',name:'Configuration of I/O 2',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
-            {type:'holding',address:'0xD15A',name:'Configuration of I/O 3',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
-            {type:'holding',address:'0xD170',name:'Customer data 0',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD171',name:'Customer data 1',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD172',name:'Customer data 2',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD173',name:'Customer data 3',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD174',name:'Customer data 4',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD175',name:'Customer data 5',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD176',name:'Customer data 6',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD177',name:'Customer data 7',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD178',name:'Customer data 8',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD179',name:'Customer data 9',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD17A',name:'Customer data 10',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD17B',name:'Customer data 11',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD17C',name:'Customer data 12',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD17D',name:'Customer data 13',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD17E',name:'Customer data 14',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD17F',name:'Customer data 15',implemented:'N',description:'고객 사용 영역'},
-            {type:'holding',address:'0xD180',name:'Operating hours counter (back-up)',implemented:'N',description:'0xD009의 사용시간을 저장하는 파라미터'},
-            {type:'holding',address:'0xD182',name:'Error indicator',implemented:'N',description:'가장 최근 에러의 파라미터 번호를 표시'},
-            {type:'holding',address:'0xD184',name:'Error 1',implemented:'N',description:'팬에서 발생한 첫 번째 오류 표시'},
-            {type:'holding',address:'0xD185',name:'Error time',implemented:'N',description:'팬에서 발생한 에러를 최대 13개까지 저장'},
-            {type:'holding',address:'0xD186',name:'Error history 1',implemented:'N',description:'에러 히스토리 1'},
-            {type:'holding',address:'0xD187',name:'Error history time 1',implemented:'N',description:'에러 히스토리 시간 1'},
-            {type:'holding',address:'0xD188',name:'Error history 2',implemented:'N',description:'에러 히스토리 2'},
-            {type:'holding',address:'0xD189',name:'Error history time 2',implemented:'N',description:'에러 히스토리 시간 2'},
-            {type:'holding',address:'0xD18A',name:'Error history 3',implemented:'N',description:'에러 히스토리 3'},
-            {type:'holding',address:'0xD18B',name:'Error history time 3',implemented:'N',description:'에러 히스토리 시간 3'},
-            {type:'holding',address:'0xD18C',name:'Error history 4',implemented:'N',description:'에러 히스토리 4'},
-            {type:'holding',address:'0xD18D',name:'Error history time 4',implemented:'N',description:'에러 히스토리 시간 4'},
-            {type:'holding',address:'0xD18E',name:'Error history 5',implemented:'N',description:'에러 히스토리 5'},
-            {type:'holding',address:'0xD18F',name:'Error history time 5',implemented:'N',description:'에러 히스토리 시간 5'},
-            {type:'holding',address:'0xD190',name:'Error history 6',implemented:'N',description:'에러 히스토리 6'},
-            {type:'holding',address:'0xD191',name:'Error history time 6',implemented:'N',description:'에러 히스토리 시간 6'},
-            {type:'holding',address:'0xD192',name:'Error history 7',implemented:'N',description:'에러 히스토리 7'},
-            {type:'holding',address:'0xD193',name:'Error history time 7',implemented:'N',description:'에러 히스토리 시간 7'},
-            {type:'holding',address:'0xD194',name:'Error history 8',implemented:'N',description:'에러 히스토리 8'},
-            {type:'holding',address:'0xD195',name:'Error history time 8',implemented:'N',description:'에러 히스토리 시간 8'},
-            {type:'holding',address:'0xD196',name:'Error history 9',implemented:'N',description:'에러 히스토리 9'},
-            {type:'holding',address:'0xD197',name:'Error history time 9',implemented:'N',description:'에러 히스토리 시간 9'},
-            {type:'holding',address:'0xD198',name:'Error history 10',implemented:'N',description:'에러 히스토리 10'},
-            {type:'holding',address:'0xD199',name:'Error history time 10',implemented:'N',description:'에러 히스토리 시간 10'},
-            {type:'holding',address:'0xD19A',name:'Error history 11',implemented:'N',description:'에러 히스토리 11'},
-            {type:'holding',address:'0xD19B',name:'Error history time 11',implemented:'N',description:'에러 히스토리 시간 11'},
-            {type:'holding',address:'0xD19C',name:'Error history 12',implemented:'N',description:'에러 히스토리 12'},
-            {type:'holding',address:'0xD19D',name:'Error history time 12',implemented:'N',description:'에러 히스토리 시간 12'},
-            {type:'holding',address:'0xD19E',name:'Error history 13',implemented:'N',description:'에러 히스토리 13'},
-            {type:'holding',address:'0xD19F',name:'Error history time 13',implemented:'N',description:'에러 히스토리 시간 13'},
-            {type:'holding',address:'0xD1A2',name:'Serial Number 1',implemented:'N',description:'팬 시리얼 번호 데이터'},
-            {type:'holding',address:'0xD1A3',name:'Serial Number 2',implemented:'N',description:'팬 시리얼 번호 데이터'},
-            {type:'holding',address:'0xD1A4',name:'Date of manufacture',implemented:'N',description:'제조 날짜'},
-            {type:'holding',address:'0xD1A5',name:'FAN type 1',implemented:'N',description:'ASCII 코드 형태로 표현'},
-            {type:'holding',address:'0xD1A6',name:'FAN type 2',implemented:'N',description:'ASCII 코드 형태로 표현'},
-            {type:'holding',address:'0xD1A7',name:'FAN type 3',implemented:'N',description:'ASCII 코드 형태로 표현'},
-            {type:'holding',address:'0xD1A8',name:'FAN type 4',implemented:'N',description:'ASCII 코드 형태로 표현'},
-            {type:'holding',address:'0xD1A9',name:'FAN type 5',implemented:'N',description:'ASCII 코드 형태로 표현'},
-            {type:'holding',address:'0xD1AA',name:'FAN type 6',implemented:'N',description:'ASCII 코드 형태로 표현'},
-            {type:'holding',address:'0xD623',name:'Error Mask',implemented:'N',description:'마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력'},
-            {type:'holding',address:'0xD624',name:'Warning Mask',implemented:'N',description:'마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력'},
+            {type:'holding',group:'Control',address:'0xD000',name:'Reset',implemented:'Y',description:'Software Reset, Error Reset, EEPROM to RAM'},
+            {type:'holding',group:'Control',address:'0xD001',name:'Setpoint',implemented:'Y',description:'지령 값, 오픈루프 모드이면 % or 속도모드이면 RPM'},
+            {type:'holding',group:'Control',address:'0xD00D',name:'Stored set value',implemented:'N',description:'Set Point 설정값이 EEPROM에 저장됨, 급작스러운 전원 공급 중단 및 복구 후 마지막 설정값으로 재시작'},
+            {type:'holding',group:'Control',address:'0xD00F',name:'Enable/Disable',implemented:'N',description:'서보드라이브의 SVON/SVOFF와 같은 기능, 0xD16A(Enable/Disable source)의 값에 따라 적절한 Enable state가 결정'},
+            {type:'holding',group:'Information',address:'0xD005',name:'Factory setting Control',implemented:'N',description:'공장 초기값 변경 및 적용 용도'},
+            {type:'holding',group:'Information',address:'0xD009',name:'Operating hours counter',implemented:'N',description:'65535시간까지 카운트 후 고정'},
+            {type:'holding',group:'Information',address:'0xD00A',name:'Operating minutes counter',implemented:'N',description:'0분 to 59분 롤링'},
+            {type:'holding',group:'Communication',address:'0xD100',name:'Fan address',implemented:'Y',description:'Node ID와 같은 역할'},
+            {type:'holding',group:'Communication',address:'0xD101',name:'Set value source',implemented:'N',description:'Setpoint를 어떤 수단으로 사용할 것인지 설정 (0:AIN1, 1:RS485, 2:AIN2, 3:PWM)'},
+            {type:'holding',group:'Communication',address:'0xD149',name:'Transmission speed',implemented:'N',description:'RS-485 통신 속도를 설정합니다. | 0:1200bps, 1:2400bps, 2:4800bps, 3:9600bps, 4:19200bps(default), 5:38400bps, 6:57600bps, 7:115200bps'},
+            {type:'holding',group:'Communication',address:'0xD14A',name:'Parity configuration',implemented:'N',description:'시리얼 통신의 데이터 비트, 패리티, 스톱 비트를 설정합니다. | 0:Data8/Even/Stop1(default), 1:Data8/Odd/Stop1, 2:Data8/None/Stop2, 3:Data8/None/Stop1'},
+            {type:'holding',group:'Motor Control',address:'0xD102',name:'Preferred running direction',implemented:'Y',description:'구동 방향 결정 (0:CCW, 1:CW)'},
+            {type:'holding',group:'Motor Control',address:'0xD106',name:'Operating mode',implemented:'Y',description:'모터 제어 방식을 설정합니다. | 0:Speed Control, 2:Open-loop control'},
+            {type:'holding',group:'Motor Control',address:'0xD112',name:'Motor stop enable',implemented:'N',description:'0: set value가 0이더라도 모터 항상 SVON, 1: set value가 0일 경우 모터 SVOFF'},
+            {type:'holding',group:'Motor Control',address:'0xD119',name:'Maximum speed',implemented:'N',description:'센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)'},
+            {type:'holding',group:'Motor Control',address:'0xD11A',name:'Maximum permissible speed',implemented:'N',description:'최대 속도의 상한치를 설정 (모터 최대 속도)'},
+            {type:'holding',group:'Motor Control',address:'0xD11F',name:'Ramp-up curve',implemented:'N',description:'가/감속도 조정 파라미터, 알람 등 모터 정지조건이 감지되면 감속없이 정지함'},
+            {type:'holding',group:'Motor Control',address:'0xD120',name:'Ramp-down curve',implemented:'N',description:'감속 곡선 설정'},
+            {type:'holding',group:'Signal Mapping',address:'0xD12A',name:'Point 1 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',group:'Signal Mapping',address:'0xD12B',name:'Point 1 Y-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',group:'Signal Mapping',address:'0xD12C',name:'Point 2 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',group:'Signal Mapping',address:'0xD12D',name:'Point 2 Y-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',group:'Limitation',address:'0xD12F',name:'Limitation Control',implemented:'N',description:'0번 비트 set: Power limit 활성화, 1번 비트 set: Current Limit 활성화'},
+            {type:'holding',group:'Limitation',address:'0xD135',name:'Maximum permissible power',implemented:'N',description:'허용 가능한 최대 파워 설정'},
+            {type:'holding',group:'Limitation',address:'0xD136',name:'Max. power at derating end',implemented:'N',description:'모듈과 모터의 온도를 토대로 출력을 디레이팅 하는 기능'},
+            {type:'holding',group:'Limitation',address:'0xD137',name:'Module temperature power derating start',implemented:'N',description:'모듈 온도 파워 디레이팅 시작점'},
+            {type:'holding',group:'Limitation',address:'0xD138',name:'Module temperature power derating end',implemented:'N',description:'모듈 온도 파워 디레이팅 종료점'},
+            {type:'holding',group:'Limitation',address:'0xD13B',name:'Maximum coil current',implemented:'Y',description:'전류 제한이 활성화 되면 모터 코일전류(rms값)를 이 파라미터에 설정된 값으로 제한'},
+            {type:'holding',group:'Limitation',address:'0xD145',name:'Speed limit for running monitoring',implemented:'N',description:'실행 모니터링 속도제한, 속도 피드백이 이 파라미터에 설정된 속도보다 낮을 경우 오류 해제 (n_Low)'},
+            {type:'holding',group:'Limitation',address:'0xD14D',name:'Motor temperature power derating start address',implemented:'N',description:'모터 온도 파워 디레이팅 시작 주소'},
+            {type:'holding',group:'Limitation',address:'0xD14E',name:'Motor temperature power derating end address',implemented:'N',description:'모터 온도 파워 디레이팅 종료 주소'},
+            {type:'holding',group:'Limitation',address:'0xD155',name:'Maximum power',implemented:'N',description:'최대 파워 설정'},
+            {type:'holding',group:'I/O',address:'0xD158',name:'Configuration of I/O 1',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
+            {type:'holding',group:'I/O',address:'0xD159',name:'Configuration of I/O 2',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
+            {type:'holding',group:'I/O',address:'0xD15A',name:'Configuration of I/O 3',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
+            {type:'holding',group:'Shedding',address:'0xF150',name:'Shedding function',implemented:'N',description:'외부 환경에 의해 팬이 얼어 기동이 어려울 경우 이 기능 활성화를 통해 구속 상태를 제거'},
+            {type:'holding',group:'Shedding',address:'0xF151',name:'Max. starting modulation level',implemented:'N',description:'최대 시작 모듈레이션 레벨'},
+            {type:'holding',group:'Shedding',address:'0xF152',name:'Number of start attempts',implemented:'N',description:'시작 시도 횟수'},
+            {type:'holding',group:'Shedding',address:'0xF153',name:'Relay dropout delay',implemented:'N',description:'에러나 경고 감지 시 릴레이 출력 지연시간을 설정하여 단기 이슈일 경우는 무시'},
+            {type:'holding',group:'Customer Data',address:'0xD170',name:'Customer data 0',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD171',name:'Customer data 1',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD172',name:'Customer data 2',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD173',name:'Customer data 3',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD174',name:'Customer data 4',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD175',name:'Customer data 5',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD176',name:'Customer data 6',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD177',name:'Customer data 7',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD178',name:'Customer data 8',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD179',name:'Customer data 9',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD17A',name:'Customer data 10',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD17B',name:'Customer data 11',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD17C',name:'Customer data 12',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD17D',name:'Customer data 13',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD17E',name:'Customer data 14',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Customer Data',address:'0xD17F',name:'Customer data 15',implemented:'N',description:'고객 사용 영역'},
+            {type:'holding',group:'Error / History',address:'0xD180',name:'Operating hours counter (back-up)',implemented:'N',description:'0xD009의 사용시간을 저장하는 파라미터'},
+            {type:'holding',group:'Error / History',address:'0xD182',name:'Error indicator',implemented:'N',description:'가장 최근 에러의 파라미터 번호를 표시'},
+            {type:'holding',group:'Error / History',address:'0xD184',name:'Error 1',implemented:'N',description:'팬에서 발생한 첫 번째 오류 표시'},
+            {type:'holding',group:'Error / History',address:'0xD185',name:'Error time',implemented:'N',description:'팬에서 발생한 에러를 최대 13개까지 저장'},
+            {type:'holding',group:'Error / History',address:'0xD186',name:'Error history 1',implemented:'N',description:'에러 히스토리 1'},
+            {type:'holding',group:'Error / History',address:'0xD187',name:'Error history time 1',implemented:'N',description:'에러 히스토리 시간 1'},
+            {type:'holding',group:'Error / History',address:'0xD188',name:'Error history 2',implemented:'N',description:'에러 히스토리 2'},
+            {type:'holding',group:'Error / History',address:'0xD189',name:'Error history time 2',implemented:'N',description:'에러 히스토리 시간 2'},
+            {type:'holding',group:'Error / History',address:'0xD18A',name:'Error history 3',implemented:'N',description:'에러 히스토리 3'},
+            {type:'holding',group:'Error / History',address:'0xD18B',name:'Error history time 3',implemented:'N',description:'에러 히스토리 시간 3'},
+            {type:'holding',group:'Error / History',address:'0xD18C',name:'Error history 4',implemented:'N',description:'에러 히스토리 4'},
+            {type:'holding',group:'Error / History',address:'0xD18D',name:'Error history time 4',implemented:'N',description:'에러 히스토리 시간 4'},
+            {type:'holding',group:'Error / History',address:'0xD18E',name:'Error history 5',implemented:'N',description:'에러 히스토리 5'},
+            {type:'holding',group:'Error / History',address:'0xD18F',name:'Error history time 5',implemented:'N',description:'에러 히스토리 시간 5'},
+            {type:'holding',group:'Error / History',address:'0xD190',name:'Error history 6',implemented:'N',description:'에러 히스토리 6'},
+            {type:'holding',group:'Error / History',address:'0xD191',name:'Error history time 6',implemented:'N',description:'에러 히스토리 시간 6'},
+            {type:'holding',group:'Error / History',address:'0xD192',name:'Error history 7',implemented:'N',description:'에러 히스토리 7'},
+            {type:'holding',group:'Error / History',address:'0xD193',name:'Error history time 7',implemented:'N',description:'에러 히스토리 시간 7'},
+            {type:'holding',group:'Error / History',address:'0xD194',name:'Error history 8',implemented:'N',description:'에러 히스토리 8'},
+            {type:'holding',group:'Error / History',address:'0xD195',name:'Error history time 8',implemented:'N',description:'에러 히스토리 시간 8'},
+            {type:'holding',group:'Error / History',address:'0xD196',name:'Error history 9',implemented:'N',description:'에러 히스토리 9'},
+            {type:'holding',group:'Error / History',address:'0xD197',name:'Error history time 9',implemented:'N',description:'에러 히스토리 시간 9'},
+            {type:'holding',group:'Error / History',address:'0xD198',name:'Error history 10',implemented:'N',description:'에러 히스토리 10'},
+            {type:'holding',group:'Error / History',address:'0xD199',name:'Error history time 10',implemented:'N',description:'에러 히스토리 시간 10'},
+            {type:'holding',group:'Error / History',address:'0xD19A',name:'Error history 11',implemented:'N',description:'에러 히스토리 11'},
+            {type:'holding',group:'Error / History',address:'0xD19B',name:'Error history time 11',implemented:'N',description:'에러 히스토리 시간 11'},
+            {type:'holding',group:'Error / History',address:'0xD19C',name:'Error history 12',implemented:'N',description:'에러 히스토리 12'},
+            {type:'holding',group:'Error / History',address:'0xD19D',name:'Error history time 12',implemented:'N',description:'에러 히스토리 시간 12'},
+            {type:'holding',group:'Error / History',address:'0xD19E',name:'Error history 13',implemented:'N',description:'에러 히스토리 13'},
+            {type:'holding',group:'Error / History',address:'0xD19F',name:'Error history time 13',implemented:'N',description:'에러 히스토리 시간 13'},
+            {type:'holding',group:'Error / History',address:'0xD623',name:'Error Mask',implemented:'N',description:'마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력'},
+            {type:'holding',group:'Error / History',address:'0xD624',name:'Warning Mask',implemented:'N',description:'마스크 씌운 경고 또는 에러가 날 경우 릴레이 출력'},
+            {type:'holding',group:'Device Info',address:'0xD1A2',name:'Serial Number 1',implemented:'N',description:'팬 시리얼 번호 데이터'},
+            {type:'holding',group:'Device Info',address:'0xD1A3',name:'Serial Number 2',implemented:'N',description:'팬 시리얼 번호 데이터'},
+            {type:'holding',group:'Device Info',address:'0xD1A4',name:'Date of manufacture',implemented:'N',description:'제조 날짜'},
+            {type:'holding',group:'Device Info',address:'0xD1A5',name:'FAN type 1',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',group:'Device Info',address:'0xD1A6',name:'FAN type 2',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',group:'Device Info',address:'0xD1A7',name:'FAN type 3',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',group:'Device Info',address:'0xD1A8',name:'FAN type 4',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',group:'Device Info',address:'0xD1A9',name:'FAN type 5',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',group:'Device Info',address:'0xD1AA',name:'FAN type 6',implemented:'N',description:'ASCII 코드 형태로 표현'},
             // Input Registers
-            {type:'input',address:'0xD000',name:'Identification',implemented:'Y',description:'장치 식별'},
-            {type:'input',address:'0xD001',name:'Max. number of bytes',implemented:'Y',description:'최대 바이트 수'},
-            {type:'input',address:'0xD002',name:'Bus controller software name',implemented:'Y',description:'Main 부트버전'},
-            {type:'input',address:'0xD003',name:'Bus controller software version',implemented:'Y',description:'Main 펌웨어 버전'},
-            {type:'input',address:'0xD004',name:'Commutation controller software name',implemented:'Y',description:'Inverter 부트 버전'},
-            {type:'input',address:'0xD005',name:'Commutation controller software version',implemented:'Y',description:'Inverter 펌웨어 버전'},
-            {type:'input',address:'0xD010',name:'Actual speed (Relative)',implemented:'N',description:'상대 속도'},
-            {type:'input',address:'0xD011',name:'Motor status',implemented:'Y',description:'모터 상태'},
-            {type:'input',address:'0xD012',name:'Warning',implemented:'Y',description:'경고'},
-            {type:'input',address:'0xD013',name:'DC-link voltage',implemented:'Y',description:'DC 링크 전압'},
-            {type:'input',address:'0xD014',name:'DC-link current',implemented:'N',description:'DC 링크 전류'},
-            {type:'input',address:'0xD015',name:'Module temperature',implemented:'Y',description:'IGBT Temperature Sensor 값'},
-            {type:'input',address:'0xD017',name:'Electronics temperature',implemented:'Y',description:'제어부 Temperature 값'},
-            {type:'input',address:'0xD018',name:'Current direction of rotation',implemented:'N',description:'현재 회전 방향'},
-            {type:'input',address:'0xD01A',name:'Current set value',implemented:'N',description:'현재 설정값'},
-            {type:'input',address:'0xD01C',name:'Enable/Disable input state',implemented:'N',description:'Enable/Disable 입력 상태'},
-            {type:'input',address:'0xD021',name:'Current power (Relative)',implemented:'N',description:'상대 전력'},
-            {type:'input',address:'0xD02D',name:'Actual speed [RPM] (Absolute)',implemented:'Y',description:'절대 속도 [RPM]'},
-            {type:'input',address:'0xD03D',name:'Line Voltage',implemented:'N',description:'라인 전압'},
-            {type:'input',address:'0xD050',name:'Command speed',implemented:'Y',description:'지령 속도'},
-            {type:'input',address:'0xD051',name:'Command torque',implemented:'Y',description:'지령 토크'}
+            {type:'input',group:'Device Info',address:'0xD000',name:'Identification',implemented:'Y',description:'장치 식별'},
+            {type:'input',group:'Device Info',address:'0xD001',name:'Max. number of bytes',implemented:'Y',description:'최대 바이트 수'},
+            {type:'input',group:'Device Info',address:'0xD002',name:'Bus controller software name',implemented:'Y',description:'Main 부트버전'},
+            {type:'input',group:'Device Info',address:'0xD003',name:'Bus controller software version',implemented:'Y',description:'Main 펌웨어 버전'},
+            {type:'input',group:'Device Info',address:'0xD004',name:'Commutation controller software name',implemented:'Y',description:'Inverter 부트 버전'},
+            {type:'input',group:'Device Info',address:'0xD005',name:'Commutation controller software version',implemented:'Y',description:'Inverter 펌웨어 버전'},
+            {type:'input',group:'Status',address:'0xD010',name:'Actual speed (Relative)',implemented:'N',description:'상대 속도'},
+            {type:'input',group:'Status',address:'0xD011',name:'Motor status',implemented:'Y',description:'모터 상태'},
+            {type:'input',group:'Status',address:'0xD012',name:'Warning',implemented:'Y',description:'경고'},
+            {type:'input',group:'Status',address:'0xD018',name:'Current direction of rotation',implemented:'N',description:'현재 회전 방향'},
+            {type:'input',group:'Status',address:'0xD01A',name:'Current set value',implemented:'N',description:'현재 설정값'},
+            {type:'input',group:'Status',address:'0xD01C',name:'Enable/Disable input state',implemented:'N',description:'Enable/Disable 입력 상태'},
+            {type:'input',group:'Electrical',address:'0xD013',name:'DC-link voltage',implemented:'Y',description:'DC 링크 전압'},
+            {type:'input',group:'Electrical',address:'0xD014',name:'DC-link current',implemented:'N',description:'DC 링크 전류'},
+            {type:'input',group:'Electrical',address:'0xD015',name:'Module temperature',implemented:'Y',description:'IGBT Temperature Sensor 값'},
+            {type:'input',group:'Electrical',address:'0xD017',name:'Electronics temperature',implemented:'Y',description:'제어부 Temperature 값'},
+            {type:'input',group:'Electrical',address:'0xD021',name:'Current power (Relative)',implemented:'N',description:'상대 전력'},
+            {type:'input',group:'Electrical',address:'0xD03D',name:'Line Voltage',implemented:'N',description:'라인 전압'},
+            {type:'input',group:'Speed',address:'0xD02D',name:'Actual speed [RPM] (Absolute)',implemented:'Y',description:'절대 속도 [RPM]'},
+            {type:'input',group:'Speed',address:'0xD050',name:'Command speed',implemented:'Y',description:'지령 속도'},
+            {type:'input',group:'Speed',address:'0xD051',name:'Command torque',implemented:'Y',description:'지령 토크'}
         ];
     }
 
@@ -6085,19 +6085,19 @@ class ModbusDashboard {
                     <span class="monitoring-count">(${(device.monitoringParams || []).length})</span>
                 </div>
                 <div class="monitoring-content" style="display: ${device.monitoringExpanded ? 'block' : 'none'};">
-                    <div class="monitoring-params-list">
-                        ${this.renderMonitoringParamsHTML(device.monitoringParams)}
-                    </div>
                     <div class="monitoring-add-section">
                         <div class="add-param-tabs">
                             <button class="add-tab active" data-tab="csv">Parameter List</button>
                             <button class="add-tab" data-tab="manual">Manual Input</button>
                         </div>
                         <div class="add-tab-content active" data-tab="csv">
-                            <select class="param-select">
-                                ${this.generateParameterOptions()}
-                            </select>
-                            <button class="btn btn-success btn-sm add-param-btn">+ Add</button>
+                            <div class="param-picker-row">
+                                <button class="param-picker-trigger" type="button">
+                                    <span class="param-picker-trigger-label">파라미터 선택...</span>
+                                    <span class="param-picker-trigger-arrow">▾</span>
+                                </button>
+                                <button class="btn btn-success btn-sm add-param-btn">+ Add</button>
+                            </div>
                         </div>
                         <div class="add-tab-content" data-tab="manual">
                             <div class="manual-input-row">
@@ -6110,6 +6110,9 @@ class ModbusDashboard {
                                 <button class="btn btn-success btn-sm add-manual-btn">+ Add</button>
                             </div>
                         </div>
+                    </div>
+                    <div class="monitoring-params-list">
+                        ${this.renderMonitoringParamsHTML(device.monitoringParams)}
                     </div>
                 </div>
             </div>
@@ -7477,6 +7480,39 @@ class ModbusDashboard {
     }
 
     /**
+     * Generate grouped parameter picker HTML (replaces flat <select>)
+     */
+    generateParamPickerHTML() {
+        // Group by "type:group" — fallback group for params without group field
+        const grouped = {};
+        this.parameters.forEach(p => {
+            const typeLabel = p.type === 'input' ? 'Input' : 'Holding';
+            const groupKey = `${typeLabel} — ${p.group || (p.type === 'input' ? 'Input Registers' : 'Holding Registers')}`;
+            if (!grouped[groupKey]) grouped[groupKey] = [];
+            grouped[groupKey].push(p);
+        });
+
+        const keys = Object.keys(grouped);
+        const firstKey = keys[0] || '';
+
+        let catHtml = '';
+        let paramHtml = '';
+
+        keys.forEach((groupKey, i) => {
+            catHtml += `<div class="param-picker-cat-item${i === 0 ? ' active' : ''}" data-group="${groupKey}">${groupKey}</div>`;
+            grouped[groupKey].forEach(p => {
+                paramHtml += `<div class="param-picker-item${i === 0 ? '' : ' hidden-group'}" data-value="${p.type}:${p.address}" data-group="${groupKey}">${p.name}<span class="param-picker-addr">${p.address}</span></div>`;
+            });
+        });
+
+        return `
+            <div class="param-picker-panels">
+                <div class="param-picker-cat-panel">${catHtml}</div>
+                <div class="param-picker-param-panel">${paramHtml}</div>
+            </div>`;
+    }
+
+    /**
      * Parse address string (0xD001 or 53249)
      */
     parseMonitoringAddress(addressStr) {
@@ -7694,13 +7730,113 @@ class ModbusDashboard {
             });
         });
 
+        // Param picker popup
+        const triggerBtn = card.querySelector('.param-picker-trigger');
+        if (triggerBtn) {
+            // Remove stale popup for this device if any
+            document.querySelectorAll(`.param-picker-popup[data-device-id="${deviceId}"]`).forEach(p => p.remove());
+
+            // Create popup and append to body
+            const popup = document.createElement('div');
+            popup.className = 'param-picker-popup';
+            popup.dataset.deviceId = deviceId;
+            popup.style.display = 'none';
+            popup.innerHTML = `
+                <input type="text" class="param-picker-search" placeholder="파라미터 검색...">
+                ${this.generateParamPickerHTML()}
+            `;
+            document.body.appendChild(popup);
+
+            // Category click
+            popup.querySelector('.param-picker-cat-panel').addEventListener('click', (e) => {
+                const cat = e.target.closest('.param-picker-cat-item');
+                if (!cat) return;
+                popup.querySelectorAll('.param-picker-cat-item').forEach(el => el.classList.remove('active'));
+                cat.classList.add('active');
+                const group = cat.dataset.group;
+                popup.querySelectorAll('.param-picker-item').forEach(item => {
+                    item.classList.toggle('hidden-group', item.dataset.group !== group);
+                });
+            });
+
+            // Item click → store value, update trigger label, close popup
+            popup.querySelector('.param-picker-param-panel').addEventListener('click', (e) => {
+                const item = e.target.closest('.param-picker-item');
+                if (!item) return;
+                const addrEl = item.querySelector('.param-picker-addr');
+                const name = item.childNodes[0].textContent.trim();
+                const addr = addrEl ? addrEl.textContent.trim() : '';
+                triggerBtn.dataset.selectedValue = item.dataset.value;
+                triggerBtn.querySelector('.param-picker-trigger-label').textContent = `${name} (${addr})`;
+                triggerBtn.classList.add('has-selection');
+                popup.style.display = 'none';
+            });
+
+            // Search filter
+            const searchInput = popup.querySelector('.param-picker-search');
+            searchInput.addEventListener('input', () => {
+                const q = searchInput.value.toLowerCase().trim();
+                const catPanelEl = popup.querySelector('.param-picker-cat-panel');
+                if (q) {
+                    catPanelEl.style.display = 'none';
+                    popup.querySelectorAll('.param-picker-item').forEach(item => {
+                        item.classList.toggle('hidden-group', !item.textContent.toLowerCase().includes(q));
+                    });
+                } else {
+                    catPanelEl.style.display = '';
+                    const activeCat = catPanelEl.querySelector('.param-picker-cat-item.active');
+                    const group = activeCat ? activeCat.dataset.group : null;
+                    popup.querySelectorAll('.param-picker-item').forEach(item => {
+                        item.classList.toggle('hidden-group', group && item.dataset.group !== group);
+                    });
+                }
+            });
+
+            // Trigger click → position and show popup
+            triggerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = popup.style.display !== 'none';
+                // Close all other open popups
+                document.querySelectorAll('.param-picker-popup').forEach(p => { p.style.display = 'none'; });
+                if (isOpen) return;
+
+                popup.style.display = 'block';
+                const rect = triggerBtn.getBoundingClientRect();
+                const popupW = 400;
+                const popupH = 280;
+                let left = rect.left;
+                let top = rect.bottom + 4;
+                if (left + popupW > window.innerWidth - 8) left = window.innerWidth - popupW - 8;
+                if (top + popupH > window.innerHeight - 8) top = rect.top - popupH - 4;
+                popup.style.left = left + 'px';
+                popup.style.top = top + 'px';
+                popup.style.width = popupW + 'px';
+
+                // Reset search
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+                setTimeout(() => searchInput.focus(), 50);
+            });
+
+            // Stop popup click from bubbling to document
+            popup.addEventListener('click', (e) => e.stopPropagation());
+
+            // Close on outside click
+            document.addEventListener('click', () => { popup.style.display = 'none'; });
+        }
+
         // Add from CSV
         const addCsvBtn = card.querySelector('.add-param-btn');
         if (addCsvBtn) {
             addCsvBtn.addEventListener('click', () => {
-                const select = card.querySelector('.param-select');
-                this.addMonitoringParamFromCSV(deviceId, select.value);
-                select.value = '';
+                const value = triggerBtn ? triggerBtn.dataset.selectedValue : null;
+                if (!value) return;
+                this.addMonitoringParamFromCSV(deviceId, value);
+                if (triggerBtn) {
+                    triggerBtn.dataset.selectedValue = '';
+                    triggerBtn.querySelector('.param-picker-trigger-label').textContent = '파라미터 선택...';
+                    triggerBtn.classList.remove('has-selection');
+                }
             });
         }
 
