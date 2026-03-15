@@ -4416,6 +4416,13 @@ select:focus {
     opacity: 0.6;
 }
 
+.device-card.serial-disconnected,
+.device-list-item.serial-disconnected {
+    opacity: 0.4;
+    pointer-events: none;
+    filter: grayscale(40%);
+}
+
 .device-card-header {
     display: flex;
     justify-content: space-between;

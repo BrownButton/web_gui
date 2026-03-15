@@ -3838,13 +3838,13 @@ class ModbusDashboard {
 
         if (connected) {
             navbarStatusIndicator.className = 'navbar-status-indicator status-connected';
-            navbarStatusText.textContent = 'Connected';
+            navbarStatusText.textContent = 'Serial Port Connected';
             sidebarConnectBtn.textContent = 'Disconnect';
             sidebarConnectBtn.className = 'btn btn-secondary btn-block';
             sendBtn.disabled = false;
         } else {
             navbarStatusIndicator.className = 'navbar-status-indicator status-disconnected';
-            navbarStatusText.textContent = 'Disconnected';
+            navbarStatusText.textContent = 'Serial Port Disconnected';
             sidebarConnectBtn.textContent = 'Connect';
             sidebarConnectBtn.className = 'btn btn-primary btn-block';
             sendBtn.disabled = true;
@@ -3854,6 +3854,11 @@ class ModbusDashboard {
                 serialPortMenu.classList.add('expanded');
             }
         }
+
+        // 시리얼 미연결 시 모든 카드/리스트 아이템 비활성화
+        document.querySelectorAll('.device-card, .device-list-item').forEach(el => {
+            el.classList.toggle('serial-disconnected', !connected);
+        });
     }
 
     // ========== Parameter Management ==========
@@ -5810,6 +5815,13 @@ class ModbusDashboard {
             this.devices.forEach(device => {
                 const card = this.createDeviceCard(device);
                 grid.appendChild(card);
+            });
+        }
+
+        // 시리얼 미연결 상태면 모든 카드 비활성화
+        if (!this.isConnected) {
+            grid.querySelectorAll('.device-card, .device-list-item').forEach(el => {
+                el.classList.add('serial-disconnected');
             });
         }
     }
