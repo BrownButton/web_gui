@@ -77,10 +77,6 @@
                     </div>
                 </div>
             </div>
-            <div class="navbar-connection">
-                <span id="navbar-status-indicator" class="navbar-status-indicator status-disconnected"></span>
-                <span id="navbar-status-text" class="navbar-status-text">Serial Port Disconnected</span>
-            </div>
             <button class="monitor-toggle-btn" id="monitorToggleBtn" title="Communication Monitor">
                 <span class="monitor-toggle-icon">📡</span>
                 <span class="monitor-toggle-text">Monitor</span>
@@ -98,6 +94,10 @@
                         <span class="menu-item-icon">🔌</span>
                         <span class="menu-item-text">Serial Port</span>
                         <span class="menu-item-arrow">▼</span>
+                    </div>
+                    <div id="serial-status-banner" class="serial-status-banner disconnected">
+                        <span id="navbar-status-indicator" class="navbar-status-indicator status-disconnected"></span>
+                        <span id="navbar-status-text" class="serial-status-banner-text">Disconnected</span>
                     </div>
                     <div class="menu-item-content">
                         <div class="sidebar-form-group">

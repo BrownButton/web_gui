@@ -3832,19 +3832,28 @@ class ModbusDashboard {
     updateConnectionStatus(connected) {
         const navbarStatusIndicator = document.getElementById('navbar-status-indicator');
         const navbarStatusText = document.getElementById('navbar-status-text');
+        const serialStatusBanner = document.getElementById('serial-status-banner');
         const sidebarConnectBtn = document.getElementById('sidebar-connectBtn');
         const sendBtn = document.getElementById('sendBtn');
         const serialPortMenu = document.getElementById('serialPortMenu');
 
         if (connected) {
             navbarStatusIndicator.className = 'navbar-status-indicator status-connected';
-            navbarStatusText.textContent = 'Serial Port Connected';
+            if (navbarStatusText) navbarStatusText.textContent = 'Connected';
+            if (serialStatusBanner) {
+                serialStatusBanner.classList.remove('disconnected');
+                serialStatusBanner.classList.add('connected');
+            }
             sidebarConnectBtn.textContent = 'Disconnect';
             sidebarConnectBtn.className = 'btn btn-secondary btn-block';
             sendBtn.disabled = false;
         } else {
             navbarStatusIndicator.className = 'navbar-status-indicator status-disconnected';
-            navbarStatusText.textContent = 'Serial Port Disconnected';
+            if (navbarStatusText) navbarStatusText.textContent = 'Disconnected';
+            if (serialStatusBanner) {
+                serialStatusBanner.classList.remove('connected');
+                serialStatusBanner.classList.add('disconnected');
+            }
             sidebarConnectBtn.textContent = 'Connect';
             sidebarConnectBtn.className = 'btn btn-primary btn-block';
             sendBtn.disabled = true;
