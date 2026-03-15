@@ -5387,6 +5387,10 @@ class ModbusDashboard {
                     this.stopAutoPolling();
                     this.showToast('Live Watch가 중지되었습니다', 'error');
                 } else {
+                    if (!this.writer && !this.simulatorEnabled) {
+                        this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
+                        return;
+                    }
                     this.devices.forEach(d => { d.liveWatch = true; });
                     this.saveDevices();
                     this._syncAllDeviceLwBtns();
