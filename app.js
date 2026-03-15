@@ -944,6 +944,14 @@ class ChartManager {
     }
 }
 
+// 드라이브 Serial Port 초기값 (단일 출처)
+const DEFAULT_SERIAL = {
+    baudRate: 19200,
+    dataBits: 8,
+    parity: 'even',
+    stopBits: 1,
+};
+
 class ModbusDashboard {
     constructor() {
         this.port = null;
@@ -1526,11 +1534,11 @@ class ModbusDashboard {
         const sidebarDataBits = document.getElementById('sidebar-dataBits');
         const sidebarStopBits = document.getElementById('sidebar-stopBits');
 
-        // Set default values first
-        if (sidebarBaudRate) sidebarBaudRate.value = '9600';
-        if (sidebarParity) sidebarParity.value = 'none';
-        if (sidebarDataBits) sidebarDataBits.value = '8';
-        if (sidebarStopBits) sidebarStopBits.value = '1';
+        // 드라이브 초기값으로 설정 (DEFAULT_SERIAL 상수 참조)
+        if (sidebarBaudRate) sidebarBaudRate.value = String(DEFAULT_SERIAL.baudRate);
+        if (sidebarParity) sidebarParity.value = DEFAULT_SERIAL.parity;
+        if (sidebarDataBits) sidebarDataBits.value = String(DEFAULT_SERIAL.dataBits);
+        if (sidebarStopBits) sidebarStopBits.value = String(DEFAULT_SERIAL.stopBits);
 
         // Then load saved settings (will override defaults)
         this.loadSerialSettings();
@@ -2246,10 +2254,10 @@ class ModbusDashboard {
             const stopBitsEl = document.getElementById('sidebar-stopBits');
 
             // Get values with validation
-            const baudRate = parseInt(baudRateEl.value) || 9600;
-            const dataBits = parseInt(dataBitsEl.value) || 8;
-            const parity = parityEl.value || 'none';
-            const stopBits = parseInt(stopBitsEl.value) || 1;
+            const baudRate = parseInt(baudRateEl.value) || DEFAULT_SERIAL.baudRate;
+            const dataBits = parseInt(dataBitsEl.value) || DEFAULT_SERIAL.dataBits;
+            const parity = parityEl.value || DEFAULT_SERIAL.parity;
+            const stopBits = parseInt(stopBitsEl.value) || DEFAULT_SERIAL.stopBits;
 
             // Log settings for debugging
             console.log('Serial Settings:', { baudRate, dataBits, parity, stopBits });
@@ -2310,14 +2318,15 @@ class ModbusDashboard {
      * Load serial settings from localStorage
      */
     loadSerialSettings() {
+        const baudRateEl = document.getElementById('sidebar-baudRate');
+        const dataBitsEl = document.getElementById('sidebar-dataBits');
+        const parityEl = document.getElementById('sidebar-parity');
+        const stopBitsEl = document.getElementById('sidebar-stopBits');
+
         const saved = localStorage.getItem('serialSettings');
         if (saved) {
             try {
                 const settings = JSON.parse(saved);
-                const baudRateEl = document.getElementById('sidebar-baudRate');
-                const dataBitsEl = document.getElementById('sidebar-dataBits');
-                const parityEl = document.getElementById('sidebar-parity');
-                const stopBitsEl = document.getElementById('sidebar-stopBits');
 
                 if (baudRateEl && settings.baudRate) baudRateEl.value = settings.baudRate;
                 if (dataBitsEl && settings.dataBits) dataBitsEl.value = settings.dataBits;
@@ -2328,6 +2337,8 @@ class ModbusDashboard {
             } catch (e) {
                 console.error('Failed to load serial settings:', e);
             }
+        } else {
+            // 저장된 설정 없음 → syncSerialSettings()에서 이미 DEFAULT_SERIAL 적용됨
         }
     }
 

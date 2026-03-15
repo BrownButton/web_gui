@@ -5206,6 +5206,7 @@ select:focus {
     gap: 4px;
     align-items: center;
     width: 100%;
+    position: relative;
 }
 
 .manual-type {
@@ -5244,11 +5245,12 @@ select:focus {
 }
 
 .manual-address-converted {
+    position: absolute;
+    top: 100%;
+    left: 0;
     display: block;
     font-size: 10px;
     color: #6c757d;
-    min-height: 14px;
-    margin-top: 2px;
     padding-left: 76px; /* align under address input (type 72px + gap 4px) */
     white-space: nowrap;
     overflow: hidden;
