@@ -22,12 +22,12 @@ window.OSTestModules.push({
             number: '1-1',
             title: '기본 연결 동작 시험 및 Baudrate, Parity 변경',
             description: 'RS485 기본 통신 기능 검증',
-            purpose: 'EC FAN과 RS485 Modbus 통신이 기본 설정(19200/Even/Stop1)에서 정상 동작하는지 확인하고, ' +
-                     '드라이브가 지원하는 Baudrate × Parity × Stop Bit 전체 조합에서 통신이 성공하는지 검증한다. ' +
+            purpose: 'EC FAN과 RS485 Modbus 통신 연결이 정상적으로 이루어지는지 확인하고, ' +
+                     '드라이브가 지원하는 Baudrate × Parity × Stop Bit의 모든 조합에서 통신이 정상 동작하는지 검증한다. ' +
                      '시험 완료 후 초기 통신 설정으로 복원한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA, USB to RS485 Converter',
-            criteria: '지원하는 모든 Baudrate/Parity 조합에서 재접속 후 FC03 정상 응답 수신 + 초기값 복원 완료',
+            criteria: '지원하는 모든 케이스에서 정상 응답 수신 + 최종 복원 완료',
             steps: [
                 'USB to RS485 Converter 연결 및 초기 설정(19200 / Even / Stop1) 확인\n' +
                 '⚠ 단일 장비 전제 — 동일 버스의 다른 장비는 분리 후 진행',
@@ -46,11 +46,10 @@ window.OSTestModules.push({
             number: '1-2',
             title: 'Broadcast 동작 시험',
             description: 'ID 0으로 전체 디바이스 명령 전달 검증',
-            purpose: 'Broadcast ID(0)으로 쓰기 명령을 전송했을 때 버스 상의 모든 EC-FAN 디바이스가 ' +
-                     '해당 명령을 수신하여 처리하는지 확인한다.',
+            purpose: 'Node ID 0 (Broadcast)으로 명령 전송 시 RS485 버스에 연결된 모든 드라이브에 동시 적용되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA 이상, USB to RS485 Converter',
-            criteria: 'Broadcasting ID(0)으로 FC06 쓰기 명령 전송 후 대상 디바이스에서 값 변경 확인',
+            criteria: 'Broadcast ID(0x00)로 전송한 명령이 버스에 연결된 모든 드라이브에 동시 적용됨',
             steps: [
                 {
                     type: 'check_connection',

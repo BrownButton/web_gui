@@ -28,11 +28,10 @@ window.OSTestModules.push({
             number: '3-1-1',
             title: 'Software Reset',
             description: 'SW Reset 명령 처리 검증',
-            purpose: 'Modbus 명령으로 Software Reset을 수행한 후 드라이브가 재초기화되고 ' +
-                     '통신이 재연결되는지 확인한다.',
+            purpose: 'Modbus 명령을 통해 드라이브 소프트웨어 리셋(Software Reset)이 정상 동작하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'Reset 명령 전송 후 드라이브 재부팅, 약 5~10초 내 통신 재연결 확인',
+            criteria: 'SW Reset 명령 전송 후 드라이브가 정상적으로 재시작됨 / 재시작 후 통신 및 파라미터 읽기가 정상 동작',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -74,11 +73,10 @@ window.OSTestModules.push({
             number: '3-1-2',
             title: 'Alarm Reset',
             description: '알람 클리어 명령 처리 검증',
-            purpose: '알람 발생 상태에서 Alarm Reset 명령을 전송했을 때 알람 코드가 ' +
-                     '클리어(0)되는지 확인한다.',
+            purpose: '알람(Fault) 상태에서 Reset 명령 전송 시 알람이 해제되고 정상 운전 가능 상태로 복귀하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'Alarm Reset 명령 후 Motor Status [0xD011] 알람 비트 클리어 확인',
+            criteria: 'Alarm Reset 명령 전송 후 Motor Status의 에러 비트(FB, 기타 에러 비트)가 Clear됨 / 알람 해제 후 정상 운전 가능 상태로 복귀',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -117,10 +115,10 @@ window.OSTestModules.push({
             number: '3-2',
             title: '전류제한 파라미터 설정',
             description: '최대 코일 전류 설정 및 반영 검증',
-            purpose: '최대 코일 전류(Max Coil Current) 파라미터를 쓰고 읽어서 값이 올바르게 반영되는지 확인한다.',
+            purpose: 'Max Coil Current [0xD13B] 파라미터 설정 후 드라이브가 해당 전류 제한값을 적용하여 동작하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: '설정한 전류제한 값 Write 후 Read-back 일치',
+            criteria: 'Max Coil Current [0xD13B] 파라미터 설정값이 정상 기록됨 / 전원 재투입 후에도 설정값 유지 (EEPROM 저장 확인) / 구동 중 전류 제한 동작 정상 확인',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -157,11 +155,10 @@ window.OSTestModules.push({
             number: '3-3',
             title: '구동 방향 설정 (CW / CCW)',
             description: '모터 정·역 방향 설정 파라미터 검증',
-            purpose: 'Running Direction 파라미터(0=CCW, 1=CW)를 변경하고 모터 구동 방향이 ' +
-                     '실제로 바뀌는지 확인한다.',
+            purpose: '회전 방향 설정에 따라 모터가 정상 구동되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'CW(1) / CCW(0) 설정 후 모터 회전 방향 변경 육안 확인',
+            criteria: '[0xD102] Running Direction = 1 (CW): 구동 지령 시 시계 방향 모터 회전 / [0xD102] Running Direction = 0 (CCW): 구동 지령 시 반시계 방향 모터 회전',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -217,11 +214,10 @@ window.OSTestModules.push({
             number: '3-4',
             title: 'EEPROM Save',
             description: '파라미터 저장 명령 처리 검증',
-            purpose: '파라미터를 변경한 후 Store Parameters 명령으로 EEPROM에 저장하고, ' +
-                     '전원 재투입 후 변경된 값이 유지되는지 확인한다.',
+            purpose: '파라미터 변경 후 EEPROM Save 명령을 실행하면 전원 재투입 후에도 변경된 파라미터가 유지되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: '전원 재투입 후 저장된 파라미터 값 유지 확인',
+            criteria: 'EEPROM Save 명령 없이 전원 재투입 시: 이전 저장값으로 복구 / EEPROM Save 후 전원 재투입 시: 변경된 값이 유지됨',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -271,10 +267,10 @@ window.OSTestModules.push({
             number: '3-5',
             title: 'DCLink Voltage 읽기',
             description: 'DC 링크 전압 센싱 정상 여부 검증',
-            purpose: 'DC Link Voltage 레지스터를 읽어 실측 전압과 일치하는지 확인한다.',
+            purpose: 'DC Link 전압 모니터링 파라미터가 실제 전압값을 정상적으로 반영하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (540Vdc 인가), USB to RS485 Converter, DC 전압계',
-            criteria: 'DC Link Voltage [0x2605] 읽기 값이 실측 540Vdc의 ±5V 이내',
+            criteria: 'DC Link 전압 파라미터가 실제 DC 전압값을 정상적으로 반영함 / 입력 전압 변화에 따라 파라미터 값이 정상적으로 변화',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인 (540Vdc 인가 상태)' },
                 {
@@ -295,10 +291,10 @@ window.OSTestModules.push({
             number: '3-6',
             title: 'Board 온도 읽기',
             description: '드라이브 기판 온도 센싱 검증',
-            purpose: '드라이브 기판 온도(Drive Temperature) 레지스터를 읽어 실내 온도 범위 내에 있는지 확인한다.',
+            purpose: 'Board 온도 센서 파라미터가 실제 온도값을 정상적으로 반영하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'Board 온도 [0x260A] 읽기 값이 실내온도 기준 0~50℃ 범위 내',
+            criteria: 'Board 온도 파라미터가 합리적인 온도값을 출력함 / 구동 시간에 따라 온도 파라미터 값이 정상적으로 변화',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -319,10 +315,10 @@ window.OSTestModules.push({
             number: '3-7',
             title: 'IGBT 온도 읽기',
             description: 'IGBT 모듈 온도 센싱 검증',
-            purpose: 'IGBT 모듈 온도 레지스터를 읽어 실내 온도 범위 내에 있는지 확인한다.',
+            purpose: 'IGBT(IPM) 온도 센서 파라미터가 실제 온도값을 정상적으로 반영하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'IGBT Temp [0x260B] 읽기 값이 0~35℃ 범위 내',
+            criteria: 'IGBT 온도 파라미터가 합리적인 온도값을 출력함 / 구동 시간에 따라 IGBT 온도 파라미터 값이 정상적으로 변화',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -343,10 +339,10 @@ window.OSTestModules.push({
             number: '3-8',
             title: '펌웨어 버전 확인 (MAIN / MAIN Boot)',
             description: 'Main MCU 및 Boot 버전 레지스터 읽기 검증',
-            purpose: 'Main MCU SW 버전 및 Boot 버전 레지스터를 읽어 기준 버전과 일치하는지 확인한다.',
+            purpose: 'Main 펌웨어 버전 및 Main Boot 버전 파라미터가 정상적으로 출력되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'Main SW Ver [0x2613] 및 Main Boot Ver 읽기 — 기준 버전과 일치',
+            criteria: 'Main SW Ver 파라미터가 현재 탑재된 펌웨어 버전과 일치 / Main Boot Ver 파라미터가 정상 출력',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -375,10 +371,10 @@ window.OSTestModules.push({
             number: '3-9',
             title: '펌웨어 버전 확인 (INVERTER / INVERTER Boot)',
             description: 'Inverter MCU 및 Boot 버전 레지스터 읽기 검증',
-            purpose: 'Inverter MCU SW 버전 및 Boot 버전 레지스터를 읽어 기준 버전과 일치하는지 확인한다.',
+            purpose: 'Inverter 펌웨어 버전 및 Inverter Boot 버전 파라미터가 정상적으로 출력되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'Inverter SW Ver [0x100A] 읽기 — 기준 버전과 일치',
+            criteria: 'Inverter SW Ver 파라미터가 현재 탑재된 인버터 펌웨어 버전과 일치 / Inverter Boot Ver 파라미터가 정상 출력',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -407,11 +403,10 @@ window.OSTestModules.push({
             number: '3-10-1',
             title: 'Main OS 다운로드',
             description: 'Main MCU 펌웨어 다운로드 기능 검증',
-            purpose: 'GUI의 펌웨어 다운로드 기능을 통해 Main MCU OS를 정상적으로 다운로드할 수 있는지 확인한다. ' +
-                     '다운로드 완료 후 SW 버전이 업데이트되는지 검증한다.',
+            purpose: 'Main OS 다운로드 완료 후 전원을 Off/On하면 Flash 메모리에 있는 새로운 OS가 정상 적용되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter, Main OS 바이너리 파일',
-            criteria: 'Main OS 다운로드 완료 후 SW 버전 레지스터 값 변경 확인',
+            criteria: 'Main OS 다운로드 및 전원 Off/On 후 펌웨어 버전이 업데이트된 버전으로 확인됨 (Main OS의 경우 LED 점멸 주기 변화를 통해 업데이트 확인)',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -445,10 +440,10 @@ window.OSTestModules.push({
             number: '3-10-2',
             title: 'Inverter OS 다운로드',
             description: 'Inverter MCU 펌웨어 다운로드 기능 검증',
-            purpose: 'GUI의 펌웨어 다운로드 기능을 통해 Inverter MCU OS를 정상적으로 다운로드할 수 있는지 확인한다.',
+            purpose: 'Inverter OS 다운로드 완료 후 전원을 Off/On하면 Flash 메모리에 있는 새로운 OS가 정상 적용되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter, Inverter OS 바이너리 파일',
-            criteria: 'Inverter OS 다운로드 완료 후 SW 버전 레지스터 값 변경 확인',
+            criteria: 'Inverter OS 다운로드 및 전원 Off/On 후 Inverter 펌웨어 버전이 업데이트된 버전으로 확인됨',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -482,11 +477,10 @@ window.OSTestModules.push({
             number: '3-10-3',
             title: 'OS 다운로드 중 분리 예외처리',
             description: '다운로드 중단 처리 및 복구 검증',
-            purpose: 'OS 다운로드 진행 중 USB 연결을 강제로 해제했을 때 시스템이 안전하게 ' +
-                     '복구(재다운로드 가능)되는지 확인한다.',
+            purpose: 'OS 다운로드 진행 중 통신 연결이 끊겼을 때 재 연결 시 OS 재 다운로드가 가능한지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter, OS 바이너리 파일',
-            criteria: '다운로드 중 분리 후 재연결 시 정상 부팅 또는 재다운로드 진입 확인',
+            criteria: 'OS 재 다운로드하여 정상적으로 업데이트 되었을 경우 합격 (Main OS의 경우 LED 점멸 주기 변화를 통해 업데이트 확인)',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {

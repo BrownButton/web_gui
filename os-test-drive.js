@@ -5,7 +5,7 @@
  * 4-1-3. Analog I 입력
  * 4-1-4. RS485 입력
  * 4-2.   FG / PPR 설정
- * 4-3.   구동 모드 설정 (Torque / Velocity)
+ * 4-3.   구동 모드 설정 (Operation mode)
  * 4-4.   Set Value
  * 4-5.   Open-loop Control
  * 4-6.   Closed-loop Velocity Control
@@ -24,11 +24,10 @@ window.OSTestModules.push({
             number: '4-1-1',
             title: 'Set Value Source — PWM 입력',
             description: 'PWM 신호로 Setpoint 설정 검증',
-            purpose: 'Set Value Source를 PWM으로 설정한 후 외부 PWM 신호 입력에 따라 ' +
-                     '드라이브 Setpoint가 변경되는지 확인한다.',
+            purpose: 'Set Value Source를 PWM 입력으로 설정 시 PWM 신호에 의해 팬 모터가 정상 구동되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA, USB to RS485 Converter, PWM 발생기 (CN303 7번 핀)',
-            criteria: 'PWM Duty에 비례한 Setpoint 값 변경 확인 (예: 80% Duty → 정격속도 80%)',
+            criteria: 'PWM 듀티비에 비례하여 팬 모터 속도/토크가 정상 제어됨',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -94,11 +93,10 @@ window.OSTestModules.push({
             number: '4-1-2',
             title: 'Set Value Source — Analog V 입력',
             description: 'Analog 전압으로 Setpoint 설정 검증',
-            purpose: 'Set Value Source를 Analog Voltage로 설정한 후 외부 전압 입력에 따라 ' +
-                     '드라이브 Setpoint가 변경되는지 확인한다.',
+            purpose: 'Set Value Source를 Analog 전압 입력으로 설정 시 아날로그 전압 신호에 의해 팬 모터가 정상 구동되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA, USB to RS485 Converter, DC 전압원 (CN303 6번~4번 핀)',
-            criteria: '4V 입력 시 정격속도 40% 해당 FG OUT 주파수 출력 확인 (±3%)',
+            criteria: '아날로그 입력 전압에 비례하여 팬 모터 속도/토크가 정상 제어됨',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -141,11 +139,10 @@ window.OSTestModules.push({
             number: '4-1-3',
             title: 'Set Value Source — Analog I 입력',
             description: 'Analog 전류로 Setpoint 설정 검증',
-            purpose: 'Set Value Source를 Analog Current로 설정한 후 외부 전류 입력에 따라 ' +
-                     '드라이브 Setpoint가 변경되는지 확인한다.',
+            purpose: 'Set Value Source를 Analog 전류 입력으로 설정 시 아날로그 전류 신호에 의해 팬 모터가 정상 구동되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA, USB to RS485 Converter, DC 전류원 (CN303 5번~4번 핀)',
-            criteria: '12mA 입력 시 정격속도 60% 해당 FG OUT 주파수 출력 확인 (±3%)',
+            criteria: '아날로그 입력 전류에 비례하여 팬 모터 속도/토크가 정상 제어됨 / 4mA: 최소 출력(0%), 20mA: 최대 출력(100%)에 해당',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -188,10 +185,10 @@ window.OSTestModules.push({
             number: '4-1-4',
             title: 'Set Value Source — RS485 입력',
             description: 'RS485 통신으로 Setpoint 설정 검증',
-            purpose: 'RS485 통신을 통한 Setpoint 직접 제어가 동작하는지 확인한다.',
+            purpose: 'Set Value Source를 RS485 통신으로 설정 시 Modbus 명령에 의해 팬 모터 속도/토크가 정상 제어되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'Setpoint 쓰기 후 모터 속도 변화 확인',
+            criteria: 'RS485 Set Point 명령에 비례하여 팬 모터 속도/토크가 정상 제어됨 / Actual Speed 파라미터가 명령값에 정상 추종',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -241,11 +238,10 @@ window.OSTestModules.push({
             number: '4-2',
             title: 'FG / PPR 설정 (1, 2, 4, 8)',
             description: 'FG 출력 및 PPR 파라미터 설정 검증',
-            purpose: 'PPR(Pulse Per Revolution) 값을 1/2/4/8로 변경했을 때 FG OUT 주파수가 ' +
-                     '설정값에 비례하여 변경되는지 확인한다.',
+            purpose: 'FG(Frequency Generator) PPR(Pulse Per Revolution) 설정에 따라 속도 피드백 신호가 정상적으로 동작하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (구동 중), USB to RS485 Converter, 주파수 카운터 or 오실로스코프',
-            criteria: 'PPR 2배 증가 시 FG OUT 주파수 2배 증가 확인',
+            criteria: '각 PPR 설정값에 따라 FG 출력 펄스 주파수가 정확히 해당 배율로 출력됨 / Actual Speed 파라미터가 PPR 변경과 무관하게 실제 속도를 정확히 반영',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인 (모터 구동 중)' },
                 {
@@ -298,13 +294,12 @@ window.OSTestModules.push({
             id: 'drive-mode',
             category: '구동동작',
             number: '4-3',
-            title: '구동 모드 설정 (Torque / Velocity)',
-            description: 'Operating Mode 파라미터 설정 및 적용 검증',
-            purpose: 'Operating Mode를 Torque 모드와 Velocity 모드로 각각 설정하고 ' +
-                     '드라이브가 해당 모드로 동작하는지 확인한다.',
+            title: '구동 모드 설정 (Operation mode)',
+            description: 'Open-loop / Closed-loop Velocity 모드 전환 검증',
+            purpose: 'Operating Mode 파라미터 설정에 따라 토크 제어(Open-loop) 및 속도 제어(Closed-loop Velocity) 모드가 정상 동작하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'Operating Mode [0xD106] Write 후 값 반영 확인 및 구동 모드 전환 확인',
+            criteria: 'Operating Mode = 0x0002: Open-loop 토크 제어 정상 동작 (Command Torque 추종 확인) / Operating Mode = 0x0000: Closed-loop 속도 제어 정상 동작 (Actual Speed 추종 확인)',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -359,11 +354,10 @@ window.OSTestModules.push({
             number: '4-4',
             title: 'Set Value (Setpoint 입력 및 속도 확인)',
             description: 'Setpoint 쓰기 후 실제 속도 응답 검증',
-            purpose: 'RS485를 통해 다양한 Setpoint 값을 쓰고 실제 모터 속도(Actual Speed)가 ' +
-                     '비례하여 변경되는지 확인한다.',
+            purpose: 'Set Point [0xD001] 파라미터를 통해 다양한 지령값을 설정하고 드라이브가 해당 값에 정상 추종하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1, Speed Control 모드), USB to RS485 Converter',
-            criteria: '각 Setpoint 단계별 Actual Speed 변화 확인 (16000 → 32000 → 48000 단계)',
+            criteria: 'Set Point 값에 따라 토크/속도가 정상 비례하여 제어됨 / Command Torque / Actual Speed 파라미터가 기대값에 일치 또는 추종',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인 (Speed Control 모드)' },
                 {
@@ -431,11 +425,10 @@ window.OSTestModules.push({
             number: '4-5',
             title: 'Open-loop Control',
             description: '개방형 제어 모드 구동 검증',
-            purpose: 'Operating Mode를 Open-loop(Torque)로 설정하고 Setpoint에 따라 ' +
-                     '모터가 개방형 제어 모드로 구동되는지 확인한다.',
+            purpose: 'Open-loop Control 모드를 이용해 팬 모터 운전이 가능한지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'Open-loop 모드에서 Setpoint 변경에 따른 출력 전압 변화 확인',
+            criteria: '0xD050 (Command Torque) 파라미터의 값 10 확인 (Torque Command 약 10% 출력 확인)',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {
@@ -491,11 +484,10 @@ window.OSTestModules.push({
             number: '4-6',
             title: 'Closed-loop Velocity Control',
             description: '폐루프 속도 제어 모드 구동 검증',
-            purpose: 'Speed Control 모드(Closed-loop)에서 Setpoint에 따라 ' +
-                     '실제 모터 속도(Actual Speed)가 목표값을 추종하는지 확인한다.',
+            purpose: 'Closed loop velocity control 모드를 이용해 팬 모터 운전이 가능한지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'Setpoint 기반 목표속도와 Actual Speed [0xD02D] 편차 ±5% 이내',
+            criteria: '0xD051 (Command Velocity) 파라미터의 값 100 확인 (Velocity Command 100rpm 출력 확인) / 0xD02D (Actual Speed)가 100rpm에 추종',
             steps: [
                 { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
                 {

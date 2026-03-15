@@ -4,7 +4,7 @@
  * 2-2. FC(04) Read Input Register
  * 2-3. FC(06) Write Single Register
  * 2-4. FC(10) Write Multiple Registers
- * 2-5. FC(2B) Read Device Identification
+ * 2-5. FC(2B) MEI Transport (Procedure 실행)
  */
 
 window.OSTestModules = window.OSTestModules || [];
@@ -20,10 +20,10 @@ window.OSTestModules.push({
             number: '2-1',
             title: 'FC(03) Read Holding Register',
             description: 'Holding Register 읽기 기능 검증',
-            purpose: 'Modbus RTU Read Holding Register [FC=03] 명령 입력 시 정상 응답하는지 확인한다.',
+            purpose: 'Modbus RTU Read Holding Register [0x03] 명령 입력 시 동작을 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'FC03 응답 정상 수신 및 Value = 0x0000 (Setpoint 초기값 = 0)',
+            criteria: '입력 코드에 대한 출력 코드가 정상으로 나타나면 합격 (Value = 0x0000)',
             steps: [
                 {
                     type: 'check_connection',
@@ -55,10 +55,10 @@ window.OSTestModules.push({
             number: '2-2',
             title: 'FC(04) Read Input Register',
             description: 'Input Register 읽기 기능 검증',
-            purpose: 'Modbus RTU Read Input Register [FC=04] 명령 입력 시 정상 응답하는지 확인한다.',
+            purpose: 'Modbus RTU Read Input Register [0x04] 명령 입력 시 동작을 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'FC04 응답 정상 수신 및 Value = 0x4242 (Identification)',
+            criteria: '입력 코드에 대한 출력 코드가 정상으로 나타나면 합격 (Value = 0x4242)',
             steps: [
                 {
                     type: 'check_connection',
@@ -89,10 +89,10 @@ window.OSTestModules.push({
             number: '2-3',
             title: 'FC(06) Write Single Register',
             description: 'Single Register 쓰기 기능 검증',
-            purpose: 'Modbus RTU Write Single Register [FC=06] 명령 입력 시 정상 echo 응답하는지 확인한다.',
+            purpose: 'Modbus RTU Write Single Register [0x06] 명령 입력 시 동작을 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'FC06 응답이 송신 데이터와 동일하게 echo되면 합격',
+            criteria: '입력 코드에 대한 출력 코드가 정상으로 나타나면 합격',
             steps: [
                 {
                     type: 'check_connection',
@@ -140,11 +140,10 @@ window.OSTestModules.push({
             number: '2-4',
             title: 'FC(10) Write Multiple Registers',
             description: 'Multiple Register 쓰기 기능 검증',
-            purpose: 'Modbus RTU Write Multiple Registers [FC=10(16)] 명령으로 연속 레지스터에 값을 쓰고 ' +
-                     '정상 응답(echo)을 확인한다.',
+            purpose: 'Modbus RTU Write Multiple Registers [0x10] 명령 입력 시 복수의 레지스터가 정상적으로 기록되는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'FC10 응답 정상 수신 (시작주소 + 쓰기 개수 echo) 및 레지스터 값 반영 확인',
+            criteria: '복수 레지스터 쓰기 명령에 대한 응답이 정상으로 나타나면 합격 / FC(03) 읽기를 통해 기록된 값이 요청값과 일치함을 확인',
             steps: [
                 {
                     type: 'check_connection',
@@ -192,13 +191,12 @@ window.OSTestModules.push({
             id: 'mb-5',
             category: 'Modbus RTU',
             number: '2-5',
-            title: 'FC(2B) Read Device Identification',
-            description: 'Device ID 오브젝트 읽기 기능 검증',
-            purpose: 'Modbus RTU Read Device Identification [FC=2B/0x2B, MEI Type=0x0E] 명령으로 ' +
-                     '디바이스 식별 정보(Vendor, Product, Version 등)를 읽는지 확인한다.',
+            title: 'FC(2B) MEI Transport (Procedure 실행)',
+            description: 'MEI Transport 명령으로 Procedure 실행 검증',
+            purpose: 'Modbus RTU MEI Transport [0x2B] 명령으로 프로시저(Procedure) 실행이 정상 동작하는지 확인한다.',
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA (Node Address 1), USB to RS485 Converter',
-            criteria: 'FC2B 응답 정상 수신 및 VendorName/ProductCode/MajorMinorRevision 오브젝트 반환',
+            criteria: 'FC(2B) MEI Transport 명령에 대해 정상 응답이 반환됨 / 지정된 프로시저가 정상 실행됨',
             steps: [
                 {
                     type: 'check_connection',
