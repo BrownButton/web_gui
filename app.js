@@ -126,7 +126,7 @@ class ChartManager {
         this.canvas.addEventListener('mouseleave', this.handleMouseLeave);
         this.canvas.addEventListener('wheel', this.handleWheel, { passive: false });
         this.canvas.addEventListener('dblclick', this.handleDblClick);
-        this.canvas.addEventListener('click', this.handleClick);
+        this.canvas.addEventListener('contextmenu', this.handleClick);
     }
 
     handleMouseMove(e) {
@@ -204,6 +204,7 @@ class ChartManager {
     }
 
     handleClick(e) {
+        e.preventDefault();
         const rect = this.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -328,7 +329,7 @@ class ChartManager {
         if (!infoEl) return;
 
         if (this.markers.length === 0) {
-            infoEl.textContent = 'No markers set (Click to add)';
+            infoEl.textContent = 'No markers set (Right-click to add)';
         } else if (this.markers.length === 1) {
             infoEl.textContent = `M1: ${this.formatTime(this.markers[0].x)} (Click to add M2)`;
         } else {
@@ -590,6 +591,18 @@ class ChartManager {
         }
     }
 
+    niceStep(range, targetTicks) {
+        const rough = range / targetTicks;
+        const magnitude = Math.pow(10, Math.floor(Math.log10(rough)));
+        const normalized = rough / magnitude;
+        let nice;
+        if (normalized < 1.5) nice = 1;
+        else if (normalized < 3.5) nice = 2;
+        else if (normalized < 7.5) nice = 5;
+        else nice = 10;
+        return nice * magnitude;
+    }
+
     drawGrid() {
         const ctx = this.ctx;
         const left = this.chartMargins.left;
@@ -600,23 +613,29 @@ class ChartManager {
         ctx.strokeStyle = '#f0f0f0';
         ctx.lineWidth = 1;
 
-        // Vertical grid lines (time)
-        const xStep = (right - left) / 10;
-        for (let i = 0; i <= 10; i++) {
-            const x = left + i * xStep;
+        // Vertical grid lines — data-aligned (time)
+        const visMinX = this.screenToChartX(left);
+        const visMaxX = this.screenToChartX(right);
+        const xStep = this.niceStep(visMaxX - visMinX, 10);
+        const xStart = Math.ceil(visMinX / xStep) * xStep;
+        for (let t = xStart; t <= visMaxX + xStep * 0.01; t += xStep) {
+            const sx = this.chartToScreenX(t);
             ctx.beginPath();
-            ctx.moveTo(x, top);
-            ctx.lineTo(x, bottom);
+            ctx.moveTo(sx, top);
+            ctx.lineTo(sx, bottom);
             ctx.stroke();
         }
 
-        // Horizontal grid lines (value)
-        const yStep = (bottom - top) / 8;
-        for (let i = 0; i <= 8; i++) {
-            const y = top + i * yStep;
+        // Horizontal grid lines — data-aligned (value)
+        const visMinY = this.screenToChartY(bottom);
+        const visMaxY = this.screenToChartY(top);
+        const yStep = this.niceStep(visMaxY - visMinY, 8);
+        const yStart = Math.ceil(visMinY / yStep) * yStep;
+        for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
+            const sy = this.chartToScreenY(v);
             ctx.beginPath();
-            ctx.moveTo(left, y);
-            ctx.lineTo(right, y);
+            ctx.moveTo(left, sy);
+            ctx.lineTo(right, sy);
             ctx.stroke();
         }
     }
@@ -631,42 +650,43 @@ class ChartManager {
         ctx.strokeStyle = '#adb5bd';
         ctx.lineWidth = 1;
 
-        // Y-axis
+        // Y-axis border
         ctx.beginPath();
         ctx.moveTo(left, top);
         ctx.lineTo(left, bottom);
         ctx.stroke();
 
-        // X-axis
+        // X-axis border
         ctx.beginPath();
         ctx.moveTo(left, bottom);
         ctx.lineTo(right, bottom);
         ctx.stroke();
 
-        // Y-axis labels
         ctx.fillStyle = '#6c757d';
         ctx.font = '10px Consolas, monospace';
+
+        // Y-axis labels — same ticks as grid
+        const visMinY = this.screenToChartY(bottom);
+        const visMaxY = this.screenToChartY(top);
+        const yStep = this.niceStep(visMaxY - visMinY, 8);
+        const yStart = Math.ceil(visMinY / yStep) * yStep;
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
-
-        const yStep = (bottom - top) / 8;
-        const valueStep = (this.yMax - this.yMin) / 8;
-        for (let i = 0; i <= 8; i++) {
-            const y = top + i * yStep;
-            const value = this.yMax - i * valueStep;
-            ctx.fillText(value.toFixed(0), left - 5, y);
+        for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
+            const sy = this.chartToScreenY(v);
+            ctx.fillText(v.toFixed(0), left - 5, sy);
         }
 
-        // X-axis labels
+        // X-axis labels — same ticks as grid
+        const visMinX = this.screenToChartX(left);
+        const visMaxX = this.screenToChartX(right);
+        const xStep = this.niceStep(visMaxX - visMinX, 10);
+        const xStart = Math.ceil(visMinX / xStep) * xStep;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-
-        const xStep = (right - left) / 10;
-        const timeStep = this.timeScale / 10;
-        for (let i = 0; i <= 10; i++) {
-            const x = left + i * xStep;
-            const time = i * timeStep;
-            ctx.fillText(this.formatTime(time), x, bottom + 5);
+        for (let t = xStart; t <= visMaxX + xStep * 0.01; t += xStep) {
+            const sx = this.chartToScreenX(t);
+            ctx.fillText(this.formatTime(t), sx, bottom + 5);
         }
     }
 
@@ -9761,7 +9781,7 @@ class ModbusDashboard {
             const addrEl   = document.getElementById(`chartCh${i + 1}Addr`);
             if (enableEl?.checked) {
                 const chNum = parseInt(addrEl?.value);
-                if (chNum >= 1 && chNum <= 254) {
+                if (chNum >= 0 && chNum <= 254) {
                     configuredChannels.push({ chIdx: i, chNum });
                 }
             }
@@ -9781,9 +9801,11 @@ class ModbusDashboard {
         const slaveId = parseInt(document.getElementById('chartSlaveId')?.value) || 1;
         const period  = parseInt(document.getElementById('chartSampleRate')?.value) || 1600;
 
-        this.chartSlaveId           = slaveId;
+        this.chartSlaveId            = slaveId;
         this.chartConfiguredChannels = configuredChannels;
-        this.chartRunning           = true;
+        this.chartPeriodMs           = period * 0.125; // 1 unit = 125μs
+        this.chartRunning            = true;
+        this.chartManager.clearData();
         this.chartManager.startCapture();
 
         const statusEl = document.getElementById('chartStatus');
@@ -9794,8 +9816,9 @@ class ModbusDashboard {
         await this.sendAndReceiveFC64(stopFrame, 0x00, 300);
 
         // Configure 전송
-        const channelNums = configuredChannels.map(c => c.chNum);
-        const configFrame = this.modbus.buildContinuousConfigure(slaveId, period, channelNums);
+        const channelSlots = [0xFF, 0xFF, 0xFF, 0xFF];
+        configuredChannels.forEach(c => { channelSlots[c.chIdx] = c.chNum; });
+        const configFrame = this.modbus.buildContinuousConfigure(slaveId, period, channelSlots);
         const configResp  = await this.sendAndReceiveFC64(configFrame, 0x02, 1000);
 
         if (!configResp) {
@@ -9843,16 +9866,18 @@ class ModbusDashboard {
             if (!parsed) { await this.delay(20); continue; }
 
             if (parsed.data.length > 0) {
-                const numCh       = this.chartConfiguredChannels.length;
+                const numCh        = this.chartConfiguredChannels.length;
                 const samplesPerCh = Math.floor(parsed.data.length / numCh);
-                const now         = Date.now();
+                const now          = Date.now();
 
-                // 채널별로 마지막 샘플만 차트에 추가 (인터리브 가정)
-                this.chartConfiguredChannels.forEach((ch, cfgIdx) => {
-                    for (let s = 0; s < samplesPerCh; s++) {
-                        const val = parsed.data[cfgIdx + s * numCh];
+                // 인터리브 순서: [CH1_s0, CH2_s0, CH3_s0, CH1_s1, CH2_s1, CH3_s1, ...]
+                // 외부 루프: 샘플, 내부 루프: 채널 — 같은 샘플의 모든 채널은 동일 타임스탬프
+                for (let s = 0; s < samplesPerCh; s++) {
+                    const t = now - (samplesPerCh - 1 - s) * this.chartPeriodMs;
+                    this.chartConfiguredChannels.forEach((ch, cfgIdx) => {
+                        const val = parsed.data[s * numCh + cfgIdx];
                         if (val === undefined) return;
-                        this.chartManager.addDataPoint(ch.chIdx, val, now);
+                        this.chartManager.addDataPoint(ch.chIdx, val, t);
                         totalSamples++;
 
                         // 현재값 표시: 마지막 샘플
@@ -9860,8 +9885,8 @@ class ModbusDashboard {
                             const valueEl = document.getElementById(`chartCh${ch.chIdx + 1}Value`);
                             if (valueEl) valueEl.textContent = val.toFixed(3);
                         }
-                    }
-                });
+                    });
+                }
 
                 const sampleCountEl = document.getElementById('chartSampleCount');
                 if (sampleCountEl) sampleCountEl.textContent = totalSamples;

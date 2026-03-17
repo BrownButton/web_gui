@@ -546,14 +546,17 @@ class ModbusRTU {
         return this.buildFrame(nodeId, 0x64, new Uint8Array([0x00]));
     }
 
-    buildContinuousConfigure(nodeId, period, channels) {
-        // [NodeID][0x64][0x02][Period_H][Period_L][Ch1]...[ChN][0xFF][CRC]
-        const data = new Uint8Array(1 + 2 + channels.length + 1);
+    buildContinuousConfigure(nodeId, period, channelSlots) {
+        // channelSlots: 4-element array, 0xFF = unused slot
+        // [NodeID][0x64][0x02][Period_H][Period_L][Ch0][Ch1][Ch2][Ch3][0xFF][CRC]
+        const data = new Uint8Array(1 + 2 + 4 + 1); // control + period + 4 slots + terminator
         data[0] = 0x02; // control
         data[1] = (period >> 8) & 0xFF;
         data[2] = period & 0xFF;
-        channels.forEach((ch, i) => { data[3 + i] = ch & 0xFF; });
-        data[3 + channels.length] = 0xFF; // terminator
+        for (let i = 0; i < 4; i++) {
+            data[3 + i] = (channelSlots[i] ?? 0xFF) & 0xFF;
+        }
+        data[7] = 0xFF; // terminator
         return this.buildFrame(nodeId, 0x64, data);
     }
 

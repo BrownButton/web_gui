@@ -7972,3 +7972,12 @@ textarea:disabled {
     cursor: not-allowed !important;
     caret-color: #adb5bd !important;
 }
+
+/* ─── Offset Calibration ─────────────────────────────────────── */
+@keyframes offsetBadgePulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+}
+.offset-badge-pulse {
+    animation: offsetBadgePulse 1s ease-in-out infinite;
+}
