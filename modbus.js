@@ -273,6 +273,9 @@ class ModbusRTU {
                 result.address = (response[2] << 8) | response[3];
                 result.value = (response[4] << 8) | response[5];
                 break;
+
+            case 0x2B: // MEI Transport — CANopen SDO
+                return this.parseCANopenResponse(response);
         }
 
         return result;
@@ -335,6 +338,119 @@ class ModbusRTU {
         return Array.from(buffer)
             .map(b => b.toString(16).padStart(2, '0').toUpperCase())
             .join(' ');
+    }
+
+    // ===== FC 0x2B MEI Transport — CANopen (MEI Type 0x0D) =====
+    //
+    // TX 프레임 구조 (15 bytes, CRC 포함):
+    // [NodeID][2B][0D][ProtocolCtrl][node_id_ex][Reserved][IdxH][IdxL][SubIdx][StartH][StartL][NumH][NumL][CRC_L][CRC_H]
+    //    0      1   2       3            4          5        6     7      8       9      10     11    12    13    14
+    //
+    // RX 프레임 구조 (13 + NumData + 2 bytes, CRC 포함):
+    // [NodeID][2B][0D][protocol_ctrl][reserved][node_id_ex][IdxH][IdxL][SubIdx][StartH][StartL][NumH][NumL][Data...][CRC_L][CRC_H]
+    //    0      1   2       3            4           5        6     7      8       9      10     11    12    13~     -2    -1
+    //
+    // ProtocolCtrl: 0x00 = Read, 0x80 = Write
+
+    /**
+     * Build CANopen Upload Request (읽기) frame — FC 0x2B / MEI 0x0D
+     * @param {number} slaveId    Modbus Slave ID (1~247)
+     * @param {number} index      Object Index (예: 0x2000), Big-Endian 전송
+     * @param {number} subIndex   Sub-Index
+     * @param {number} startAddr  Start Address (기본값 0x0000)
+     * @param {number} numData    읽을 데이터 바이트 수 (기본값 2)
+     * @returns {Uint8Array} CRC 포함 전체 프레임 (15 bytes)
+     */
+    buildCANopenUpload(slaveId, index, subIndex, startAddr = 0, numData = 2) {
+        const data = new Uint8Array(11); // MEI Type(1) + payload(10)
+        data[0]  = 0x0D;                      // MEI Type
+        data[1]  = 0x00;                      // ProtocolCtrl: Read
+        data[2]  = slaveId & 0xFF;            // node_id_ex
+        data[3]  = 0x00;                      // Reserved
+        data[4]  = (index >> 8) & 0xFF;       // Index High (Big-Endian)
+        data[5]  = index & 0xFF;              // Index Low
+        data[6]  = subIndex & 0xFF;           // SubIndex
+        data[7]  = (startAddr >> 8) & 0xFF;   // Start Address High
+        data[8]  = startAddr & 0xFF;          // Start Address Low
+        data[9]  = (numData >> 8) & 0xFF;     // Num of Data High
+        data[10] = numData & 0xFF;            // Num of Data Low
+        return this.buildFrame(slaveId, 0x2B, data);
+    }
+
+    /**
+     * Build CANopen Download Request (쓰기) frame — FC 0x2B / MEI 0x0D
+     * @param {number} slaveId    Modbus Slave ID (1~247)
+     * @param {number} index      Object Index, Big-Endian 전송
+     * @param {number} subIndex   Sub-Index
+     * @param {number[]} values   쓸 16-bit 값 배열 (Big-Endian 전송)
+     * @param {number} startAddr  Start Address (기본값 0x0000)
+     * @returns {Uint8Array} CRC 포함 전체 프레임
+     */
+    buildCANopenDownload(slaveId, index, subIndex, values, startAddr = 0) {
+        const valueArray = Array.isArray(values) ? values : [values];
+        const numData = valueArray.length * 2; // 16-bit per value → bytes
+        const data = new Uint8Array(11 + numData); // header(11) + data
+        data[0]  = 0x0D;                      // MEI Type
+        data[1]  = 0x80;                      // ProtocolCtrl: Write
+        data[2]  = slaveId & 0xFF;            // node_id_ex
+        data[3]  = 0x00;                      // Reserved
+        data[4]  = (index >> 8) & 0xFF;       // Index High
+        data[5]  = index & 0xFF;              // Index Low
+        data[6]  = subIndex & 0xFF;           // SubIndex
+        data[7]  = (startAddr >> 8) & 0xFF;   // Start Address High
+        data[8]  = startAddr & 0xFF;          // Start Address Low
+        data[9]  = (numData >> 8) & 0xFF;     // Num of Data High
+        data[10] = numData & 0xFF;            // Num of Data Low
+        // Data: Big-Endian 16-bit values
+        for (let i = 0; i < valueArray.length; i++) {
+            data[11 + i * 2] = (valueArray[i] >> 8) & 0xFF;
+            data[12 + i * 2] = valueArray[i] & 0xFF;
+        }
+        return this.buildFrame(slaveId, 0x2B, data);
+    }
+
+    /**
+     * Parse CANopen response — FC 0x2B / MEI 0x0D
+     * @param {Uint8Array} response CRC 포함 전체 프레임
+     * @returns {{slaveId, protocolCtrl, index, subIndex, startAddr, numData, dataWords: number[], rawBytes: number[], value: number|null, error: string|null}}
+     */
+    parseCANopenResponse(response) {
+        if (!this.verifyCRC(response)) {
+            throw new Error('Invalid CRC');
+        }
+
+        const slaveId = response[0];
+        const fc      = response[1];
+
+        // Modbus 예외 응답 (0xAB = 0x2B | 0x80)
+        if (fc === 0xAB) {
+            const exCode = response[2];
+            throw new Error(`Modbus Exception ${exCode}: ${this.getExceptionMessage(exCode)}`);
+        }
+
+        if (fc !== 0x2B || response[2] !== 0x0D) {
+            throw new Error(`Unexpected frame: FC=0x${fc.toString(16)}, MEI=0x${response[2].toString(16)}`);
+        }
+
+        // response[3]=protocol_ctrl, response[4]=reserved, response[5]=node_id_ex
+        const protocolCtrl = response[3];
+        const index        = (response[6] << 8) | response[7]; // Big-Endian
+        const subIndex     = response[8];
+        const startAddr    = (response[9] << 8) | response[10];
+        const numData      = (response[11] << 8) | response[12];
+
+        // Data: frame[13] ~ frame[13+numData-1]
+        const rawBytes = Array.from(response.slice(13, 13 + numData));
+
+        // Big-Endian 16-bit 단위로 파싱
+        const dataWords = [];
+        for (let i = 0; i + 1 < rawBytes.length; i += 2) {
+            dataWords.push((rawBytes[i] << 8) | rawBytes[i + 1]);
+        }
+
+        const value = dataWords.length > 0 ? dataWords[0] : null;
+
+        return { slaveId, protocolCtrl, index, subIndex, startAddr, numData, dataWords, rawBytes, value, error: null };
     }
 
     // ===== Firmware Update Protocol (Function Code 0x66) =====
@@ -404,6 +520,62 @@ class ModbusRTU {
         data[0] = 0x99; // OpCode
 
         return this.buildFrame(slaveId, 0x66, data);
+    }
+
+    // ===== FC 0x64 Continuous Data Streaming =====
+    //
+    // TX Configure (0x02):
+    //   [NodeID][0x64][0x02][Period_H][Period_L][Ch1]...[ChN][0xFF][CRC_L][CRC_H]
+    //   Period: uint16, 1 unit = 0.125 μs, min 160 (= 20 μs)
+    //   Channel list: 1~254, terminated by 0xFF
+    //
+    // TX Stop (0x00):
+    //   [NodeID][0x64][0x00][CRC_L][CRC_H]
+    //
+    // TX Request Data (0x03):
+    //   [NodeID][0x64][0x03][CRC_L][CRC_H]
+    //
+    // RX Configure (0x02): echo of TX frame
+    // RX Stop (0x00):  [NodeID][0x64][0x00][CRC_L][CRC_H]
+    // RX Data (0x03):  [NodeID][0x64][0x03][Status][Len][Data...][CRC_L][CRC_H]
+    //   Status: 0x00=done, 0x01=stay(more data in buffer)
+    //   Data: Len × float32 little-endian (ARM), max 15 items
+
+    buildContinuousStop(nodeId) {
+        // [NodeID][0x64][0x00][CRC]
+        return this.buildFrame(nodeId, 0x64, new Uint8Array([0x00]));
+    }
+
+    buildContinuousConfigure(nodeId, period, channels) {
+        // [NodeID][0x64][0x02][Period_H][Period_L][Ch1]...[ChN][0xFF][CRC]
+        const data = new Uint8Array(1 + 2 + channels.length + 1);
+        data[0] = 0x02; // control
+        data[1] = (period >> 8) & 0xFF;
+        data[2] = period & 0xFF;
+        channels.forEach((ch, i) => { data[3 + i] = ch & 0xFF; });
+        data[3 + channels.length] = 0xFF; // terminator
+        return this.buildFrame(nodeId, 0x64, data);
+    }
+
+    buildContinuousRequest(nodeId) {
+        // [NodeID][0x64][0x03][CRC]
+        return this.buildFrame(nodeId, 0x64, new Uint8Array([0x03]));
+    }
+
+    parseContinuousDataResponse(bytes) {
+        // [NodeID][0x64][0x03][Status][Len][Data...][CRC_L][CRC_H]
+        if (bytes.length < 7) return null;
+        const status = bytes[3];
+        const len = bytes[4];
+        const data = [];
+        const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length);
+        const view = new DataView(buf);
+        for (let i = 0; i < len; i++) {
+            const offset = 5 + i * 4;
+            if (offset + 4 > bytes.length - 2) break; // CRC boundary
+            data.push(view.getFloat32(offset, true)); // little-endian (ARM)
+        }
+        return { status, len, data };
     }
 
     /**

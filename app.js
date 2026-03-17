@@ -1073,13 +1073,38 @@ class ModbusDashboard {
         this.backgroundPollingEnabled = false; // Use Web Worker timer to avoid browser throttling
         this.pollingWorker = null; // Web Worker for background polling
 
+        // Offset Calibration state
+        this.offsetCalibState = {
+            phase: 'idle', // 'idle' | 'running' | 'complete' | 'error'
+            steps: [
+                {
+                    id: 'current-offset',
+                    label: '전류 Offset 보정',
+                    status: 'pending', // 'pending' | 'running' | 'done' | 'error'
+                    axes: ['U상', 'V상', 'W상'],
+                    before: [null, null, null],
+                    after:  [null, null, null],
+                },
+                {
+                    id: 'hall-offset',
+                    label: 'Hall Offset 보정',
+                    status: 'pending',
+                    axes: ['Hall A', 'Hall B', 'Hall C'],
+                    before: [null, null, null],
+                    after:  [null, null, null],
+                },
+            ],
+        };
+
         // Current page tracking - restore from sessionStorage if available
         this.currentPage = sessionStorage.getItem('currentPage') || 'dashboard';
 
         // Chart Manager
         this.chartManager = null;
         this.chartPollingTimer = null;
-        this.chartSlaveId = 1; // Default slave ID for chart polling
+        this.chartSlaveId = 1;
+        this.chartRunning = false;
+        this.chartConfiguredChannels = []; // [{ chIdx, chNum }, ...]
 
         // Device Setup auto-apply debounce timers
         this.applyDebounceTimers = {};
@@ -2461,6 +2486,15 @@ class ModbusDashboard {
         // FC 05, 06, 0F, 10 쓰기 응답 에코: slave(1) + fc(1) + addr(2) + value/qty(2) + CRC(2) = 8
         if (fc === 0x05 || fc === 0x06 || fc === 0x0F || fc === 0x10) return 8;
 
+        // FC 0x2B MEI Transport (CANopen): 가변 길이
+        // header(13) + NumData + CRC(2). NumData는 bytes[11..12] (Big-Endian)
+        // 13바이트 미만이면 null 반환해 더 기다림
+        if (fc === 0x2B) {
+            if (this.receiveIndex < 13) return null;
+            const numData = (this.receiveBuffer[11] << 8) | this.receiveBuffer[12];
+            return 13 + numData + 2;
+        }
+
         // 그 외 (알 수 없는 FC): 최소 5바이트로 폴백
         return 5;
     }
@@ -2478,6 +2512,9 @@ class ModbusDashboard {
 
         // FC 0x66: 펌웨어 업데이트 응답 — responseBuffer에서 별도 처리, 여기서는 무시
         if (this.receiveBuffer[1] === 0x66) return;
+
+        // FC 0x64: Chart Continuous 응답 — responseBuffer에서 별도 처리, 여기서는 무시
+        if (this.receiveBuffer[1] === 0x64) return;
 
         // 0xFF 바이어스 노이즈 즉시 폐기:
         // RS-485 DE→RE 전환 시 버스 floating → UART idle(mark) = 0xFF 연속 수신됨
@@ -7031,6 +7068,10 @@ class ModbusDashboard {
                     // Read 명령: sendAndWaitResponse로 값을 받아서 resolve에 전달
                     const value = await this.sendAndWaitResponse(cmd.frame, cmd.slaveId);
                     cmd.resolve(value);
+                } else if (cmd.type === 'canopen_read' || cmd.type === 'canopen_write') {
+                    // CANopen SDO 명령: 파싱은 sendCANopenAndWaitResponse 내부에서 처리
+                    const result = await this.sendCANopenAndWaitResponse(cmd.frame, cmd.slaveId);
+                    cmd.resolve(result);
                 } else {
                     // Write 명령 (기존 동작): commandTimeout으로 응답 대기
                     await this.sendWriteAndWaitResponse(cmd.frame, cmd.slaveId, cmd.address);
@@ -7462,6 +7503,114 @@ class ModbusDashboard {
                 resolve(); // Still resolve to continue execution
             }
         });
+    }
+
+    /**
+     * FC 0x2B CANopen SDO 명령 전송 후 응답 대기 및 파싱
+     * sendAndWaitResponse와 동일한 구조이나, 응답을 parseCANopenResponse로 처리.
+     * @param {Uint8Array} frame  전송할 프레임
+     * @param {number} slaveId   예상 Slave ID
+     * @returns {Promise<{cs, index, subIndex, value, abortCode, error}|null>}
+     */
+    async sendCANopenAndWaitResponse(frame, slaveId) {
+        return new Promise(async (resolve) => {
+            this.receiveIndex = 0;
+
+            const responsePromise = new Promise((resResolve) => {
+                this.pendingResponse = {
+                    slaveId,
+                    resolve: resResolve,
+                    startTime: Date.now()
+                };
+            });
+
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout')), this.commandTimeout);
+            });
+
+            try {
+                await this.writer.write(frame);
+                this.addMonitorEntry('sent', frame, { functionCode: 0x2B, startAddress: (frame[6] << 8) | frame[7] });
+                this.stats.requests++;
+                this.updateStatsDisplay();
+
+                const response = await Promise.race([responsePromise, timeoutPromise]);
+                this.pendingResponse = null;
+
+                if (response && response[0] === slaveId) {
+                    try {
+                        const parsed = this.modbus.parseCANopenResponse(response);
+                        if (parsed.error) {
+                            this.stats.errors++;
+                        } else {
+                            this.stats.success++;
+                        }
+                        this.updateStatsDisplay();
+                        resolve(parsed);
+                    } catch (e) {
+                        this.stats.errors++;
+                        this.updateStatsDisplay();
+                        resolve(null);
+                    }
+                } else {
+                    this.stats.errors++;
+                    this.updateStatsDisplay();
+                    resolve(null);
+                }
+            } catch (error) {
+                this.pendingResponse = null;
+                this.stats.errors++;
+                this.updateStatsDisplay();
+                this.addMonitorEntry('error', `Slave ${slaveId}: CANopen response timeout (${this.commandTimeout}ms)`);
+                resolve(null);
+            }
+        });
+    }
+
+    /**
+     * CANopen SDO 읽기 (Upload) — 485 버스 안전 래퍼
+     * polling 중이면 commandQueue에 등록, 아니면 직접 전송.
+     * @param {number} slaveId   Modbus Slave ID
+     * @param {number} index     CANopen Object Index
+     * @param {number} subIndex  CANopen Sub-Index
+     * @returns {Promise<{cs, index, subIndex, value, abortCode, error}|null>}
+     */
+    async readCANopenObject(slaveId, index, subIndex, numData = 2) {
+        const frame = this.modbus.buildCANopenUpload(slaveId, index, subIndex, 0, numData);
+
+        if (this.writer) {
+            if (this.autoPollingTimer) {
+                return new Promise((resolve, reject) => {
+                    this.commandQueue.push({ type: 'canopen_read', frame, slaveId, resolve, reject });
+                });
+            }
+            return await this.sendCANopenAndWaitResponse(frame, slaveId);
+        }
+        throw new Error('Not connected');
+    }
+
+    /**
+     * CANopen SDO 쓰기 (Download) — 485 버스 안전 래퍼
+     * polling 중이면 commandQueue에 등록, 아니면 직접 전송.
+     * @param {number} slaveId   Modbus Slave ID
+     * @param {number} index     CANopen Object Index
+     * @param {number} subIndex  CANopen Sub-Index
+     * @param {number} value     쓸 값
+     * @param {number} [size=4]  데이터 크기 (1, 2, 3, 4 bytes)
+     * @returns {Promise<{cs, index, subIndex, value, abortCode, error}|null>}
+     */
+    async writeCANopenObject(slaveId, index, subIndex, value, size = 4) {
+        const frame = this.modbus.buildCANopenDownload(slaveId, index, subIndex, value, size);
+
+        if (this.writer) {
+            if (this.autoPollingTimer) {
+                return new Promise((resolve, reject) => {
+                    this.commandQueue.push({ type: 'canopen_write', frame, slaveId, resolve, reject });
+                });
+            }
+            return await this.sendCANopenAndWaitResponse(frame, slaveId);
+        }
+        throw new Error('Not connected');
     }
 
     /**
@@ -9323,6 +9472,71 @@ class ModbusDashboard {
     }
 
     /**
+     * FC 0x64 전용 TX/RX.
+     * responseBuffer로 수신하며, control 값에 따라 예상 길이를 동적으로 판단.
+     * @param {Uint8Array} frame  - 송신 프레임
+     * @param {number}     control - 0x00(stop) | 0x02(configure) | 0x03(data)
+     * @param {number}     timeout - ms
+     */
+    async sendAndReceiveFC64(frame, control, timeout = 500) {
+        if (!this.writer) return null;
+
+        // 이전 잔류 데이터 flush
+        this.responseBuffer = null;
+        this.receiveIndex = 0;
+        await this.delay(10);
+
+        await this.writer.write(frame);
+        this.addMonitorEntry('sent', frame);
+
+        // TX 완료 후 수신 시작
+        this.responseBuffer = [];
+
+        return new Promise((resolve) => {
+            const startTime = Date.now();
+
+            const check = () => {
+                const buf = this.responseBuffer;
+                if (!buf) { resolve(null); return; }
+
+                let expectedLen = null;
+                if (control === 0x00) {
+                    // Stop RX: [NodeID][0x64][0x00][CRC] = 4 bytes
+                    if (buf.length >= 4) expectedLen = 4;
+                } else if (control === 0x02) {
+                    // Configure RX: echo of TX (same length)
+                    if (buf.length >= frame.length) expectedLen = frame.length;
+                } else if (control === 0x03) {
+                    // Data RX: [NodeID][0x64][0x03][Status][Len][Data...][CRC] = 5+Len*4+2
+                    if (buf.length >= 5) expectedLen = 5 + buf[4] * 4 + 2;
+                }
+
+                if (expectedLen !== null && buf.length >= expectedLen) {
+                    const response = new Uint8Array(buf.slice(0, expectedLen));
+                    this.responseBuffer = null;
+                    if (this.modbus.verifyCRC(response)) {
+                        this.addMonitorEntry('received', response);
+                        resolve(response);
+                    } else {
+                        resolve(null);
+                    }
+                    return;
+                }
+
+                if (Date.now() - startTime > timeout) {
+                    this.responseBuffer = null;
+                    resolve(null);
+                    return;
+                }
+
+                setTimeout(check, 5);
+            };
+
+            setTimeout(check, 5);
+        });
+    }
+
+    /**
      * Send raw data to serial port
      */
     async sendRawData(data) {
@@ -9388,17 +9602,17 @@ class ModbusDashboard {
         const pauseBtn = document.getElementById('chartPauseBtn');
 
         if (startBtn) {
-            startBtn.addEventListener('click', () => {
-                this.startChartCapture();
+            startBtn.addEventListener('click', async () => {
                 startBtn.disabled = true;
                 stopBtn.disabled = false;
                 pauseBtn.disabled = false;
+                await this.startChartCapture();
             });
         }
 
         if (stopBtn) {
-            stopBtn.addEventListener('click', () => {
-                this.stopChartCapture();
+            stopBtn.addEventListener('click', async () => {
+                await this.stopChartCapture();
                 startBtn.disabled = false;
                 stopBtn.disabled = true;
                 pauseBtn.disabled = true;
@@ -9429,11 +9643,7 @@ class ModbusDashboard {
             });
         }
 
-        if (sampleRateEl) {
-            sampleRateEl.addEventListener('change', () => {
-                this.chartManager.setSampleRate(parseInt(sampleRateEl.value));
-            });
-        }
+        // sampleRateEl: FC 0x64 Period 드롭다운 — startChartCapture() 시점에 읽음, 리스너 불필요
 
         if (bufferSizeEl) {
             bufferSizeEl.addEventListener('change', () => {
@@ -9441,28 +9651,13 @@ class ModbusDashboard {
             });
         }
 
-        // Channel configuration
+        // Channel configuration — enable/disable만 ChartManager에 전달
+        // 채널 번호는 startChartCapture() 시점에 직접 읽음
         for (let i = 0; i < 4; i++) {
             const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
-            const addrEl = document.getElementById(`chartCh${i + 1}Addr`);
-
             if (enableEl) {
                 enableEl.addEventListener('change', () => {
                     this.chartManager.setChannelEnabled(i, enableEl.checked);
-                });
-            }
-
-            if (addrEl) {
-                addrEl.addEventListener('change', () => {
-                    let addr = addrEl.value.trim();
-                    if (addr.startsWith('0x') || addr.startsWith('0X')) {
-                        addr = parseInt(addr, 16);
-                    } else {
-                        addr = parseInt(addr);
-                    }
-                    if (!isNaN(addr)) {
-                        this.chartManager.setChannelAddress(i, addr);
-                    }
                 });
             }
         }
@@ -9540,77 +9735,169 @@ class ModbusDashboard {
     }
 
     /**
-     * Start chart data capture
+     * Start chart data capture (FC 0x64 Continuous)
      */
-    startChartCapture() {
+    async startChartCapture() {
         if (!this.chartManager) return;
+        if (!this.writer) {
+            this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
+            // Restore buttons
+            const startBtn = document.getElementById('chartStartBtn');
+            const stopBtn  = document.getElementById('chartStopBtn');
+            const pauseBtn = document.getElementById('chartPauseBtn');
+            if (startBtn) startBtn.disabled = false;
+            if (stopBtn)  stopBtn.disabled  = true;
+            if (pauseBtn) pauseBtn.disabled = true;
+            return;
+        }
 
+        // 진행 중인 폴링 사이클이 있으면 완료 대기
+        while (this.isPolling) await this.delay(5);
+
+        // 활성화된 채널 수집: { chIdx: 0~3, chNum: 1~254 }
+        const configuredChannels = [];
+        for (let i = 0; i < 4; i++) {
+            const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
+            const addrEl   = document.getElementById(`chartCh${i + 1}Addr`);
+            if (enableEl?.checked) {
+                const chNum = parseInt(addrEl?.value);
+                if (chNum >= 1 && chNum <= 254) {
+                    configuredChannels.push({ chIdx: i, chNum });
+                }
+            }
+        }
+
+        if (configuredChannels.length === 0) {
+            this.showToast('활성화된 채널이 없습니다 (Ch# 1~254 범위 확인)', 'error');
+            const startBtn = document.getElementById('chartStartBtn');
+            const stopBtn  = document.getElementById('chartStopBtn');
+            const pauseBtn = document.getElementById('chartPauseBtn');
+            if (startBtn) startBtn.disabled = false;
+            if (stopBtn)  stopBtn.disabled  = true;
+            if (pauseBtn) pauseBtn.disabled = true;
+            return;
+        }
+
+        const slaveId = parseInt(document.getElementById('chartSlaveId')?.value) || 1;
+        const period  = parseInt(document.getElementById('chartSampleRate')?.value) || 1600;
+
+        this.chartSlaveId           = slaveId;
+        this.chartConfiguredChannels = configuredChannels;
+        this.chartRunning           = true;
         this.chartManager.startCapture();
 
-        // Start polling for chart data
-        const sampleRate = this.chartManager.sampleRate;
+        const statusEl = document.getElementById('chartStatus');
+        if (statusEl) statusEl.textContent = 'Configuring...';
 
-        this.chartPollingTimer = setInterval(() => {
-            this.pollChartData();
-        }, sampleRate);
+        // 이전 스트리밍 상태 초기화: Stop 먼저 전송
+        const stopFrame = this.modbus.buildContinuousStop(slaveId);
+        await this.sendAndReceiveFC64(stopFrame, 0x00, 300);
+
+        // Configure 전송
+        const channelNums = configuredChannels.map(c => c.chNum);
+        const configFrame = this.modbus.buildContinuousConfigure(slaveId, period, channelNums);
+        const configResp  = await this.sendAndReceiveFC64(configFrame, 0x02, 1000);
+
+        if (!configResp) {
+            this.showToast('Configure 실패: 디바이스 응답 없음', 'error');
+            this.chartRunning = false;
+            this.chartManager.stopCapture();
+            if (statusEl) statusEl.textContent = 'Stopped';
+            const startBtn = document.getElementById('chartStartBtn');
+            const stopBtn  = document.getElementById('chartStopBtn');
+            const pauseBtn = document.getElementById('chartPauseBtn');
+            if (startBtn) startBtn.disabled = false;
+            if (stopBtn)  stopBtn.disabled  = true;
+            if (pauseBtn) pauseBtn.disabled = true;
+            return;
+        }
+
+        if (statusEl) statusEl.textContent = 'Running';
+
+        // 데이터 루프 시작 (비동기, await 불필요)
+        this.chartDataLoop();
     }
 
     /**
-     * Stop chart data capture
+     * FC 0x64 데이터 수신 루프.
+     * Status=stay(0x01)이면 즉시 재요청, Status=done(0x00)이면 짧게 대기.
      */
-    stopChartCapture() {
+    async chartDataLoop() {
+        const slaveId = this.chartSlaveId;
+        let totalSamples = 0;
+
+        while (this.chartRunning) {
+            if (!this.writer) { await this.delay(50); continue; }
+
+            const frame    = this.modbus.buildContinuousRequest(slaveId);
+            const response = await this.sendAndReceiveFC64(frame, 0x03, 300);
+
+            if (!this.chartRunning) break;
+
+            if (!response) {
+                await this.delay(20);
+                continue;
+            }
+
+            const parsed = this.modbus.parseContinuousDataResponse(response);
+            if (!parsed) { await this.delay(20); continue; }
+
+            if (parsed.data.length > 0) {
+                const numCh       = this.chartConfiguredChannels.length;
+                const samplesPerCh = Math.floor(parsed.data.length / numCh);
+                const now         = Date.now();
+
+                // 채널별로 마지막 샘플만 차트에 추가 (인터리브 가정)
+                this.chartConfiguredChannels.forEach((ch, cfgIdx) => {
+                    for (let s = 0; s < samplesPerCh; s++) {
+                        const val = parsed.data[cfgIdx + s * numCh];
+                        if (val === undefined) return;
+                        this.chartManager.addDataPoint(ch.chIdx, val, now);
+                        totalSamples++;
+
+                        // 현재값 표시: 마지막 샘플
+                        if (s === samplesPerCh - 1) {
+                            const valueEl = document.getElementById(`chartCh${ch.chIdx + 1}Value`);
+                            if (valueEl) valueEl.textContent = val.toFixed(3);
+                        }
+                    }
+                });
+
+                const sampleCountEl = document.getElementById('chartSampleCount');
+                if (sampleCountEl) sampleCountEl.textContent = totalSamples;
+            }
+
+            // Status=done이면 짧게 대기 후 재요청, stay이면 즉시 재요청
+            if (parsed.status === 0x00) await this.delay(5);
+        }
+
+        this.responseBuffer = null;
+    }
+
+    /**
+     * Stop chart data capture (FC 0x64 Stop)
+     */
+    async stopChartCapture() {
         if (!this.chartManager) return;
+
+        this.chartRunning = false;
+        await this.delay(50); // 루프 종료 대기
+
+        if (this.writer) {
+            const stopFrame = this.modbus.buildContinuousStop(this.chartSlaveId || 1);
+            await this.sendAndReceiveFC64(stopFrame, 0x00, 300);
+        }
 
         this.chartManager.stopCapture();
 
-        if (this.chartPollingTimer) {
-            clearInterval(this.chartPollingTimer);
-            this.chartPollingTimer = null;
-        }
-    }
-
-    /**
-     * Poll data for chart channels
-     */
-    async pollChartData() {
-        if (!this.chartManager || !this.chartManager.isRunning) return;
-        if (!this.port && !this.simulatorEnabled) return;
-
-        const timestamp = Date.now();
-
+        // 현재값 표시 리셋
         for (let i = 0; i < 4; i++) {
-            const channel = this.chartManager.channels[i];
-            if (!channel.enabled || channel.address === 0) continue;
-
-            try {
-                // Use first device's slave ID or default to 1
-                const slaveId = this.devices.length > 0 ? this.devices[0].slaveId : 1;
-
-                const frame = this.modbus.buildReadHoldingRegistersRequest(slaveId, channel.address, 1);
-
-                if (this.simulatorEnabled) {
-                    // Simulator returns a Promise
-                    const response = await this.simulator.processRequest(frame);
-                    if (response && response.length >= 5) {
-                        const value = (response[3] << 8) | response[4];
-                        this.chartManager.addDataPoint(i, value, timestamp);
-                    }
-                } else if (this.port) {
-                    // Send request
-                    await this.writer.write(frame);
-
-                    // Wait for response with timeout
-                    const response = await this.waitForResponseWithTimeout(100);
-                    if (response && response.length >= 5) {
-                        const value = (response[3] << 8) | response[4];
-                        this.chartManager.addDataPoint(i, value, timestamp);
-                    }
-                }
-            } catch (error) {
-                // Silently ignore errors during chart polling
-                console.debug('Chart polling error for channel', i, error);
-            }
+            const el = document.getElementById(`chartCh${i + 1}Value`);
+            if (el) el.textContent = '--';
         }
+
+        const statusEl = document.getElementById('chartStatus');
+        if (statusEl) statusEl.textContent = 'Stopped';
     }
 
     /**
@@ -11326,6 +11613,94 @@ class ModbusDashboard {
                     this._setHwTestResult(testId, 'pass', 'Pass — Factory Reset 및 파라미터 저장 완료');
                     break;
                 }
+                case 'hw-canopen-27f0': {
+                    const indices = [0x27F0, 0x27F1, 0x27F2, 0x27F3];
+                    const elIds   = ['hwCanopen27F0Value', 'hwCanopen27F1Value', 'hwCanopen27F2Value', 'hwCanopen27F3Value'];
+                    const rawIds  = ['hwCanopen27F0Raw',   'hwCanopen27F1Raw',   'hwCanopen27F2Raw',   'hwCanopen27F3Raw'];
+                    const results = [];
+                    let allPass = true;
+                    for (let i = 0; i < indices.length; i++) {
+                        const el    = document.getElementById(elIds[i]);
+                        const elRaw = document.getElementById(rawIds[i]);
+                        const r     = await this.readCANopenObject(slaveId, indices[i], 0x00, 16);
+                        if (!r || r.error) {
+                            if (el)    el.textContent    = r?.error ? 'ERR' : 'timeout';
+                            if (elRaw) elRaw.textContent = '-';
+                            results.push(`0x${indices[i].toString(16).toUpperCase()}=ERR`);
+                            allPass = false;
+                        } else {
+                            const ascii  = r.rawBytes
+                                .filter(b => b !== 0x00)
+                                .map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : '.')
+                                .join('');
+                            const rawHex = r.rawBytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+                            if (el)    el.textContent    = ascii || '-';
+                            if (elRaw) elRaw.textContent = rawHex;
+                            results.push(`0x${indices[i].toString(16).toUpperCase()}="${ascii}"`);
+                        }
+                    }
+                    if (allPass) {
+                        this._setHwTestResult(testId, 'pass', `Pass — ${results.join(', ')}`);
+                    } else {
+                        this._setHwTestResult(testId, 'fail', `Fail — ${results.join(', ')}`);
+                    }
+                    break;
+                }
+                case 'hw-canopen-motor-id': {
+                    const MOTOR_ID_MAP = {
+                        0x1000: 'Sirocco FAN (550W)',
+                        0x2000: 'Axial FAN (750W)',
+                    };
+                    const result  = await this.readCANopenObject(slaveId, 0x2000, 0x00);
+                    const elVal   = document.getElementById('hwCanopenMotorIdValue');
+                    const elName  = document.getElementById('hwCanopenMotorIdName');
+                    const elRaw   = document.getElementById('hwCanopenMotorIdRaw');
+                    if (!result) {
+                        if (elVal)  elVal.textContent  = '-';
+                        if (elName) elName.textContent = '-';
+                        if (elRaw)  elRaw.textContent  = '-';
+                        this._setHwTestResult(testId, 'fail', 'Fail — 응답 없음 (timeout)');
+                        break;
+                    }
+                    if (result.error) {
+                        if (elVal)  elVal.textContent  = '-';
+                        if (elName) elName.textContent = '-';
+                        if (elRaw)  elRaw.textContent  = '-';
+                        this._setHwTestResult(testId, 'fail', `Fail — ${result.error}`);
+                        break;
+                    }
+                    const hexVal   = result.value != null ? `0x${result.value.toString(16).toUpperCase().padStart(4, '0')}` : '-';
+                    const motorName = MOTOR_ID_MAP[result.value] ?? '알 수 없는 모터';
+                    const rawHex   = result.rawBytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+                    if (elVal)  elVal.textContent  = hexVal;
+                    if (elName) elName.textContent = motorName;
+                    if (elRaw)  elRaw.textContent  = rawHex;
+                    this._setHwTestResult(testId, 'pass', `Pass — ${motorName} (${hexVal})`);
+                    break;
+                }
+                case 'hw-canopen-2000': {
+                    const result = await this.readCANopenObject(slaveId, 0x2000, 0x00);
+                    const elVal  = document.getElementById('hwCanopen2000Value');
+                    const elCs   = document.getElementById('hwCanopen2000Cs');
+                    if (!result) {
+                        if (elVal) elVal.textContent = '-';
+                        if (elCs)  elCs.textContent  = '-';
+                        this._setHwTestResult(testId, 'fail', 'Fail — 응답 없음 (timeout)');
+                        break;
+                    }
+                    if (result.error) {
+                        if (elVal) elVal.textContent = '-';
+                        if (elCs)  elCs.textContent  = '-';
+                        this._setHwTestResult(testId, 'fail', `Fail — ${result.error}`);
+                        break;
+                    }
+                    const hexVal  = result.value != null ? `0x${result.value.toString(16).toUpperCase().padStart(4, '0')}` : '-';
+                    const rawHex  = result.rawBytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+                    if (elVal) elVal.textContent = hexVal;
+                    if (elCs)  elCs.textContent  = rawHex;
+                    this._setHwTestResult(testId, 'pass', `Pass — 값 ${hexVal} (raw: ${rawHex})`);
+                    break;
+                }
                 default:
                     this._setHwTestResult(testId, 'fail', '알 수 없는 테스트 ID');
             }
@@ -11335,8 +11710,9 @@ class ModbusDashboard {
     }
 
     async runAllHardwareTests() {
-        const testIds = ['hw-inv-os', 'hw-main-os', 'hw-motor-id', 'hw-eeprom',
-                         'hw-current', 'hw-igbt-temp', 'hw-hall', 'hw-factory-reset'];
+        const testIds = ['hw-canopen-27f0', 'hw-canopen-motor-id',
+                         'hw-eeprom', 'hw-current', 'hw-igbt-temp', 'hw-hall',
+                         'hw-factory-reset', 'hw-canopen-2000'];
         for (const id of testIds) {
             await this.runHardwareTest(id);
         }
@@ -11355,6 +11731,230 @@ class ModbusDashboard {
             if (el) el.textContent = '-';
         });
     }
+
+    // ─── Offset Calibration ────────────────────────────────────────────────────
+
+    /**
+     * Updates a step's status badge and description text.
+     * @param {number} stepIdx  - 0 = 전류 Offset, 1 = Hall Offset
+     * @param {'pending'|'running'|'done'|'error'} status
+     * @param {string} desc     - Short description shown under the step title
+     */
+    _setOffsetStepStatus(stepIdx, status, desc) {
+        const n = stepIdx + 1;
+        const badge = document.getElementById(`offsetStep${n}Badge`);
+        const descEl = document.getElementById(`offsetStep${n}Desc`);
+
+        if (descEl) descEl.textContent = desc;
+        if (!badge) return;
+
+        const map = {
+            pending: { label: '대기',   bg: '#e9ecef', color: '#6c757d' },
+            running: { label: '진행 중', bg: '#fff3cd', color: '#856404' },
+            done:    { label: '완료',   bg: '#d4edda', color: '#155724' },
+            error:   { label: '오류',   bg: '#f8d7da', color: '#721c24' },
+        };
+        const s = map[status] || map.pending;
+        badge.textContent       = s.label;
+        badge.style.background  = s.bg;
+        badge.style.color       = s.color;
+
+        if (status === 'running') {
+            badge.classList.add('offset-badge-pulse');
+        } else {
+            badge.classList.remove('offset-badge-pulse');
+        }
+
+        // Mirror to state
+        if (this.offsetCalibState.steps[stepIdx]) {
+            this.offsetCalibState.steps[stepIdx].status = status;
+        }
+    }
+
+    /**
+     * Updates the step card metrics (편심/편축 지수) and redraws the αβ scatter chart.
+     *
+     * @param {number}   stepIdx       - 0 = 전류 Offset, 1 = Hall Offset
+     * @param {{x,y}[]}  beforePts     - αβ scatter points before calibration
+     * @param {{x,y}[]|null} afterPts  - αβ scatter points after calibration, or null
+     * @param {{eccIndex:number, misIndex:number, refRadius:number}|null} beforeMetrics
+     * @param {{eccIndex:number, misIndex:number}|null} afterMetrics
+     */
+    _updateOffsetABData(stepIdx, beforePts, afterPts, beforeMetrics, afterMetrics) {
+        const chartIds = ['offsetCurrentChart', 'offsetHallChart'];
+        const n = stepIdx + 1;
+        const fmt = v => (v === null || v === undefined) ? '—' : v.toFixed(1) + '%';
+
+        // Update metric cells
+        const eccBef = document.getElementById(`offsetStep${n}EccBefore`);
+        const eccAft = document.getElementById(`offsetStep${n}EccAfter`);
+        const misBef = document.getElementById(`offsetStep${n}MisBefore`);
+        const misAft = document.getElementById(`offsetStep${n}MisAfter`);
+
+        if (eccBef) eccBef.textContent = beforeMetrics ? fmt(beforeMetrics.eccIndex) : '—';
+        if (misBef) misBef.textContent = beforeMetrics ? fmt(beforeMetrics.misIndex) : '—';
+        if (eccAft) eccAft.textContent = afterMetrics  ? fmt(afterMetrics.eccIndex)  : '—';
+        if (misAft) misAft.textContent = afterMetrics  ? fmt(afterMetrics.misIndex)  : '—';
+
+        // Redraw αβ chart
+        const refR = beforeMetrics?.refRadius ?? null;
+        drawOffsetABChart(chartIds[stepIdx], beforePts, afterPts, refR);
+    }
+
+    /**
+     * Resets all offset calibration state and DOM to initial idle values.
+     */
+    _resetOffsetState() {
+        this.offsetCalibState.phase = 'idle';
+        this.offsetCalibState.steps.forEach((s, i) => {
+            s.status = 'pending';
+            s.before = [null, null, null];
+            s.after  = [null, null, null];
+            this._setOffsetStepStatus(i, 'pending', '대기 중');
+            this._updateOffsetABData(i, [], null, null, null);
+        });
+        const statusEl = document.getElementById('offsetOverallStatus');
+        if (statusEl) statusEl.textContent = '보정 시작 전 — Start 버튼을 눌러 보정을 시작하세요.';
+        const btn = document.getElementById('offsetStartBtn');
+        if (btn) { btn.disabled = false; btn.textContent = '▶ Start'; }
+    }
+
+    /**
+     * Entry point for the Start button.
+     * Runs Step 1 (전류 Offset) then Step 2 (Hall Offset) sequentially.
+     */
+    async startOffsetCalibration() {
+        // Guard: serial must be connected
+        if (!this.writer) {
+            alert('시리얼 포트가 연결되어 있지 않습니다.\n연결 후 다시 시도하세요.');
+            return;
+        }
+        // Guard: a device must be selected in the Manufacture tab
+        const device = this.devices.find(d => d.id === this.currentSetupDeviceId);
+        if (!device) {
+            alert('디바이스를 선택하세요.');
+            return;
+        }
+        // Guard: don't allow double-start
+        if (this.offsetCalibState.phase === 'running') return;
+
+        // Reset to clean state then kick off
+        this._resetOffsetState();
+        this.offsetCalibState.phase = 'running';
+
+        const btn = document.getElementById('offsetStartBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '진행 중…'; }
+
+        const statusEl = document.getElementById('offsetOverallStatus');
+        if (statusEl) statusEl.textContent = '보정 진행 중…';
+
+        try {
+            await this._runCurrentOffsetStep(device);
+            await this._runHallOffsetStep(device);
+            this.offsetCalibState.phase = 'complete';
+            if (statusEl) statusEl.textContent = '✔ 보정 완료';
+            if (btn) { btn.disabled = false; btn.textContent = '↺ 재시작'; }
+        } catch (err) {
+            this.offsetCalibState.phase = 'error';
+            if (statusEl) statusEl.textContent = `⚠ 오류 발생: ${err.message || err}`;
+            if (btn) { btn.disabled = false; btn.textContent = '↺ 재시작'; }
+            console.error('[Offset Calibration]', err);
+        }
+    }
+
+    /**
+     * Step 1: Current Offset calibration skeleton.
+     * TODO: Replace the simulated delay+mock values with actual Modbus read/write
+     *       once the protocol is confirmed.
+     * @param {object} device
+     */
+    async _runCurrentOffsetStep(device) {
+        this._setOffsetStepStatus(0, 'running', '전류 측정 중…');
+
+        // ── TODO: Receive UVW current samples from device, apply DC removal,
+        //          then call clarkTransform(u, v, w) to get {alpha, beta, zero}.
+        //          Replace the mock generator below with real data once protocol confirmed.
+        await new Promise(r => setTimeout(r, 600));
+
+        // Mock: before — eccentric, off-center cloud (편심+편축 상태)
+        const beforePts = _mockABCloud(220, 1.0, 0.28, 0.18, 0.16);
+        const beforeAmp = beforePts.map(p => Math.sqrt(p.x * p.x + p.y * p.y));
+        const bAmpMean = beforeAmp.reduce((s, v) => s + v, 0) / beforeAmp.length;
+        const bAmpMax  = Math.max(...beforeAmp), bAmpMin = Math.min(...beforeAmp);
+        const beforeMetrics = {
+            eccIndex:  (bAmpMax - bAmpMin) / (bAmpMax + bAmpMin) * 100,
+            misIndex:  18.7,  // TODO: compute from zero-sequence RMS / mean amplitude
+            refRadius: bAmpMean,
+        };
+        this._updateOffsetABData(0, beforePts, null, beforeMetrics, null);
+
+        this._setOffsetStepStatus(0, 'running', '보정 명령 전송 중…');
+
+        // ── TODO: Write calibration trigger register
+        // await this.writeRegister(device.slaveId, 0xXXXX, 0x0001);
+        await new Promise(r => setTimeout(r, 800));
+
+        // ── TODO: Poll status register until calibration completes
+        await new Promise(r => setTimeout(r, 600));
+
+        // Mock: after — tight circle near origin (보정 완료 상태)
+        const afterPts = _mockABCloud(220, 1.0, 0.02, 0.01, 0.04);
+        const afterAmp = afterPts.map(p => Math.sqrt(p.x * p.x + p.y * p.y));
+        const aAmpMax  = Math.max(...afterAmp), aAmpMin = Math.min(...afterAmp);
+        const afterMetrics = {
+            eccIndex: (aAmpMax - aAmpMin) / (aAmpMax + aAmpMin) * 100,
+            misIndex: 1.3,    // TODO: real zero-sequence value
+        };
+        this._updateOffsetABData(0, beforePts, afterPts, beforeMetrics, afterMetrics);
+
+        this._setOffsetStepStatus(0, 'done', '보정 완료');
+    }
+
+    /**
+     * Step 2: Hall Offset calibration skeleton.
+     * TODO: Replace the simulated delay+mock values with actual Modbus read/write
+     *       once the protocol is confirmed.
+     * @param {object} device
+     */
+    async _runHallOffsetStep(device) {
+        this._setOffsetStepStatus(1, 'running', 'Hall 센서 측정 중…');
+
+        // ── TODO: Receive UVW Hall sensor samples from device, apply DC removal,
+        //          then call clarkTransform(u, v, w).
+        await new Promise(r => setTimeout(r, 600));
+
+        // Mock: before — eccentricity visible as asymmetric ring
+        const beforePts = _mockABCloud(220, 1.0, 0.35, -0.12, 0.18);
+        const beforeAmp = beforePts.map(p => Math.sqrt(p.x * p.x + p.y * p.y));
+        const bAmpMean = beforeAmp.reduce((s, v) => s + v, 0) / beforeAmp.length;
+        const bAmpMax  = Math.max(...beforeAmp), bAmpMin = Math.min(...beforeAmp);
+        const beforeMetrics = {
+            eccIndex:  (bAmpMax - bAmpMin) / (bAmpMax + bAmpMin) * 100,
+            misIndex:  22.4,
+            refRadius: bAmpMean,
+        };
+        this._updateOffsetABData(1, beforePts, null, beforeMetrics, null);
+
+        this._setOffsetStepStatus(1, 'running', '보정 명령 전송 중…');
+
+        // ── TODO: Write calibration trigger register
+        await new Promise(r => setTimeout(r, 800));
+
+        // ── TODO: Poll status register
+        await new Promise(r => setTimeout(r, 600));
+
+        // Mock: after — nearly perfect circle
+        const afterPts = _mockABCloud(220, 1.0, 0.015, -0.01, 0.035);
+        const afterAmp = afterPts.map(p => Math.sqrt(p.x * p.x + p.y * p.y));
+        const aAmpMax  = Math.max(...afterAmp), aAmpMin = Math.min(...afterAmp);
+        const afterMetrics = {
+            eccIndex: (aAmpMax - aAmpMin) / (aAmpMax + aAmpMin) * 100,
+            misIndex: 1.8,
+        };
+        this._updateOffsetABData(1, beforePts, afterPts, beforeMetrics, afterMetrics);
+
+        this._setOffsetStepStatus(1, 'done', '보정 완료');
+    }
 }
 
 /**
@@ -11363,6 +11963,175 @@ class ModbusDashboard {
  * 파일 위치: os-test-manager.js
  */
 // OSTestManager 클래스는 os-test-manager.js 파일로 분리되었습니다.
+
+
+// ─── Offset αβ Chart ─────────────────────────────────────────────────────────
+
+/**
+ * Generates a mock αβ point cloud simulating a slightly eccentric/misaligned motor.
+ * Used as placeholder until the real Modbus protocol is defined.
+ *
+ * @param {number} n       - Number of points
+ * @param {number} r       - Nominal circle radius
+ * @param {number} eccenX  - Center offset on α axis (eccentricity)
+ * @param {number} eccenY  - Center offset on β axis (eccentricity)
+ * @param {number} noise   - Gaussian noise magnitude
+ * @returns {{x:number, y:number}[]}
+ */
+function _mockABCloud(n, r, eccenX, eccenY, noise) {
+    const pts = [];
+    // Simple Box-Muller for Gaussian noise
+    const randn = () => {
+        let u, v;
+        do { u = Math.random(); v = Math.random(); } while (u === 0);
+        return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    };
+    for (let i = 0; i < n; i++) {
+        const angle = (i / n) * 2 * Math.PI;
+        pts.push({
+            x: (r + randn() * noise) * Math.cos(angle) + eccenX,
+            y: (r + randn() * noise) * Math.sin(angle) + eccenY,
+        });
+    }
+    return pts;
+}
+
+/**
+ * Clarke (αβ0) transform for 3-phase signals.
+ * DC removal should be applied before calling (subtract mean of each phase).
+ * @param {number[]} u - Phase U samples
+ * @param {number[]} v - Phase V samples
+ * @param {number[]} w - Phase W samples
+ * @returns {{ alpha: number[], beta: number[], zero: number[] }}
+ */
+function clarkTransform(u, v, w) {
+    const K = 2 / 3, S3 = Math.sqrt(3);
+    const alpha = u.map((_, i) => K * (u[i] - v[i] / 2 - w[i] / 2));
+    const beta  = u.map((_, i) => K * (S3 / 2 * (v[i] - w[i])));
+    const zero  = u.map((_, i) => (u[i] + v[i] + w[i]) / 3);
+    return { alpha, beta, zero };
+}
+
+/**
+ * Draws an αβ plane scatter plot for offset calibration visualization.
+ * Before points (grey) and After points (indigo) are overlaid on the same canvas.
+ * An optional reference ideal circle shows where calibrated points should land.
+ *
+ * @param {string}              canvasId    - ID of the <canvas> element
+ * @param {{x:number,y:number}[]} beforePts - αβ scatter before calibration (grey)
+ * @param {{x:number,y:number}[]|null} afterPts - αβ scatter after calibration (indigo), or null
+ * @param {number|null}         refRadius   - radius of ideal reference circle, or null
+ */
+function drawOffsetABChart(canvasId, beforePts, afterPts, refRadius) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const displayW = rect.width  || canvas.offsetWidth  || 260;
+    const displayH = rect.height || canvas.offsetHeight || 220;
+
+    if (canvas.width  !== Math.round(displayW * dpr) ||
+        canvas.height !== Math.round(displayH * dpr)) {
+        canvas.width  = Math.round(displayW * dpr);
+        canvas.height = Math.round(displayH * dpr);
+    }
+
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, displayW, displayH);
+
+    const cx = displayW / 2;
+    const cy = displayH / 2;
+    const pad = 28; // padding for axis labels
+
+    // Determine data range (auto-scale)
+    let range = 1.0; // default non-zero range for idle state
+    if (beforePts && beforePts.length > 0) {
+        beforePts.forEach(p => { range = Math.max(range, Math.abs(p.x), Math.abs(p.y)); });
+    }
+    if (afterPts && afterPts.length > 0) {
+        afterPts.forEach(p => { range = Math.max(range, Math.abs(p.x), Math.abs(p.y)); });
+    }
+    if (refRadius) range = Math.max(range, refRadius);
+    range *= 1.20; // 20% margin
+
+    const plotR = Math.min(cx, cy) - pad; // radius of the plot area in px
+    const scale = plotR / range;
+
+    // Helper: data coords → canvas px (y inverted)
+    const toCx = x => cx + x * scale;
+    const toCy = y => cy - y * scale;
+
+    // 1. Background concentric rings (25/50/75/100%)
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#e9ecef';
+    for (let r = 1; r <= 4; r++) {
+        const pr = plotR * r / 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, pr, 0, Math.PI * 2);
+        ctx.stroke();
+        // ring scale label (right side)
+        const labelVal = (range / scale * (pr / plotR)).toFixed(2);
+        ctx.fillStyle = '#ced4da';
+        ctx.font = `9px -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((range * r / 4).toFixed(2), cx + pr + 3, cy);
+    }
+
+    // 2. Coordinate axes
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#dee2e6';
+    ctx.beginPath(); ctx.moveTo(cx - plotR - 6, cy); ctx.lineTo(cx + plotR + 6, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - plotR - 6); ctx.lineTo(cx, cy + plotR + 6); ctx.stroke();
+
+    // 3. Axis labels (α / β)
+    ctx.font = `11px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.fillStyle = '#6c757d';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('α', cx + plotR + 10, cy + 3);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('β', cx, cy - plotR - 8);
+
+    // 4. Reference ideal circle (dashed)
+    if (refRadius != null) {
+        const pr = refRadius * scale;
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = '#ced4da';
+        ctx.beginPath();
+        ctx.arc(cx, cy, pr, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // 5. Before scatter (grey)
+    if (beforePts && beforePts.length > 0) {
+        ctx.fillStyle = 'rgba(173,181,189, 0.55)';
+        beforePts.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(toCx(p.x), toCy(p.y), 2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    // 6. After scatter (indigo)
+    if (afterPts && afterPts.length > 0) {
+        ctx.fillStyle = 'rgba(102,126,234, 0.65)';
+        afterPts.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(toCx(p.x), toCy(p.y), 2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    // 7. Center dot
+    ctx.fillStyle = '#495057';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+}
 
 
 // Initialize application
@@ -11481,7 +12250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (targetSubtab === 'tuning') {
                 document.getElementById('manufactureTuning').style.display = 'block';
             } else if (targetSubtab === 'offset') {
-                document.getElementById('manufactureOffset').style.display = 'block';
+                document.getElementById('manufactureOffset').style.display = 'flex';
             } else if (targetSubtab === 'serial-number') {
                 document.getElementById('manufactureSerialNumber').style.display = 'block';
             }
@@ -11554,4 +12323,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    // ── Offset Calibration: Start button & initial idle charts ────────────────
+    document.getElementById('offsetStartBtn')?.addEventListener('click', () => {
+        window.dashboard.startOffsetCalibration();
+    });
+
+    // Draw idle-state αβ charts (grid + axes only, no scatter data)
+    requestAnimationFrame(() => {
+        drawOffsetABChart('offsetCurrentChart', [], null, null);
+        drawOffsetABChart('offsetHallChart',    [], null, null);
+    });
 });

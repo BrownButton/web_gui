@@ -1434,21 +1434,14 @@
 
                                 <!-- Test List -->
                                 <div style="flex: 1; overflow-y: auto; padding: 24px 32px;">
+                                    <div style="display: grid; gap: 10px;">
 
-                                    <!-- Section 1: INVERTER MCU -->
-                                    <section style="margin-bottom: 28px;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">1. INVERTER MCU</h3>
-                                            <span style="font-size: 12px; color: #6c757d;">1 test</span>
-                                        </div>
-                                        <div style="display: grid; gap: 10px;">
-
-                                            <!-- HW-1: INVERTER OS 버전 -->
-                                            <div class="hw-test-item" data-test-id="hw-inv-os" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                            <!-- MCU-01: 펌웨어 버전 읽기 (CANopen SDO 0x27F0~0x27F3) -->
+                                            <div class="hw-test-item" data-test-id="hw-canopen-27f0" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
                                                 <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
                                                     <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-1 &nbsp; INVERTER MCU OS 버전 확인</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">레지스터 0x100A (FC03) 읽기 → 기준 버전과 일치 여부</div>
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">MCU-01 &nbsp; 펌웨어 버전 읽기 (FC 0x2B / CANopen SDO)</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">main_boot / main_fw / inverter_boot / inverter_fw 버전 문자열 조회</div>
                                                     </div>
                                                     <div style="display: flex; align-items: center; gap: 10px;">
                                                         <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
@@ -1456,44 +1449,57 @@
                                                     </div>
                                                 </div>
                                                 <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px;">
-                                                        <div><span style="color: #6c757d;">레지스터</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">0x100A (Holding, FC03)</div></div>
-                                                        <div><span style="color: #6c757d;">판정 방법</span><div style="font-weight: 500; margin-top: 2px;">설비 자동 (일치 여부)</div></div>
-                                                        <div style="grid-column: 1/-1;">
-                                                            <span style="color: #6c757d;">기준 버전 (예상값)</span>
-                                                            <div style="display: flex; gap: 8px; margin-top: 4px;">
-                                                                <input type="text" id="hwInvOsExpected" placeholder="예: 0x0100" style="flex: 1; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; font-family: monospace;">
-                                                                <span style="font-size: 11px; color: #6c757d; align-self: center;">현재 읽은 값: <strong id="hwInvOsActual" style="color: #1a1a1a;">-</strong></span>
+                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
+                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Main MCU Bootloader</span>
+                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x27F0</span>
                                                             </div>
+                                                            <strong id="hwCanopen27F0Value" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
+                                                            <div id="hwCanopen27F0Raw" style="margin-top: 5px; font-family: monospace; font-size: 11px; color: #6c757d; word-break: break-all;">-</div>
+                                                        </div>
+                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
+                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Main MCU Firmware</span>
+                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x27F1</span>
+                                                            </div>
+                                                            <strong id="hwCanopen27F1Value" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
+                                                            <div id="hwCanopen27F1Raw" style="margin-top: 5px; font-family: monospace; font-size: 11px; color: #6c757d; word-break: break-all;">-</div>
+                                                        </div>
+                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
+                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Inverter Bootloader</span>
+                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x27F2</span>
+                                                            </div>
+                                                            <strong id="hwCanopen27F2Value" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
+                                                            <div id="hwCanopen27F2Raw" style="margin-top: 5px; font-family: monospace; font-size: 11px; color: #6c757d; word-break: break-all;">-</div>
+                                                        </div>
+                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
+                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Inverter Firmware</span>
+                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x27F3</span>
+                                                            </div>
+                                                            <strong id="hwCanopen27F3Value" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
+                                                            <div id="hwCanopen27F3Raw" style="margin-top: 5px; font-family: monospace; font-size: 11px; color: #6c757d; word-break: break-all;">-</div>
                                                         </div>
                                                     </div>
                                                     <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
-                                                        <strong>판정 기준:</strong> PC가 가지고 있는 PCBA 코드 정보와 프로그램 버전 정보 일치 여부 자동 합부 판정
+                                                        <strong>판정 기준:</strong> 4개 버전 문자열 모두 정상 수신되면 합격<br>
+                                                        <span style="color: #6c757d; font-size: 11px;">※ FC 0x2B / MEI 0x0D — ASCII 문자열 (최대 16바이트)</span>
                                                     </div>
                                                     <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
                                                         <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-inv-os')">▶ Start</button>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-canopen-27f0')">▶ Start</button>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                        </div>
-                                    </section>
-
-                                    <!-- Section 2: MAIN MCU -->
-                                    <section style="margin-bottom: 28px;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">2. MAIN MCU</h3>
-                                            <span style="font-size: 12px; color: #6c757d;">3 tests</span>
-                                        </div>
-                                        <div style="display: grid; gap: 10px;">
-
-                                            <!-- HW-2: MAIN MCU OS 버전 -->
-                                            <div class="hw-test-item" data-test-id="hw-main-os" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                            <!-- MCU-03: 모터 ID 읽기 (CANopen SDO 0x2000) -->
+                                            <div class="hw-test-item" data-test-id="hw-canopen-motor-id" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
                                                 <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
                                                     <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-2 &nbsp; MAIN MCU OS 버전 확인</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">레지스터 0x2613 (FC03) 읽기 → 기준 버전과 일치 여부</div>
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">MCU-03 &nbsp; 모터 ID 읽기 (FC 0x2B / CANopen SDO)</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">FC 0x2B MEI 0x0D — SDO Upload Request (Index 0x2000, Sub 0x00)</div>
                                                     </div>
                                                     <div style="display: flex; align-items: center; gap: 10px;">
                                                         <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
@@ -1501,58 +1507,24 @@
                                                     </div>
                                                 </div>
                                                 <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px;">
-                                                        <div><span style="color: #6c757d;">레지스터</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">0x2613 (Holding, FC03)</div></div>
-                                                        <div><span style="color: #6c757d;">판정 방법</span><div style="font-weight: 500; margin-top: 2px;">설비 자동 (일치 여부)</div></div>
-                                                        <div style="grid-column: 1/-1;">
-                                                            <span style="color: #6c757d;">기준 버전 (예상값)</span>
-                                                            <div style="display: flex; gap: 8px; margin-top: 4px;">
-                                                                <input type="text" id="hwMainOsExpected" placeholder="예: 0x0100" style="flex: 1; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; font-family: monospace;">
-                                                                <span style="font-size: 11px; color: #6c757d; align-self: center;">현재 읽은 값: <strong id="hwMainOsActual" style="color: #1a1a1a;">-</strong></span>
+                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px;">
+                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px; display: inline-block; min-width: 200px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
+                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Motor ID</span>
+                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x2000</span>
                                                             </div>
+                                                            <strong id="hwCanopenMotorIdValue" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
+                                                            <div id="hwCanopenMotorIdName" style="margin-top: 5px; font-size: 13px; font-weight: 600; color: #0d6efd;">-</div>
+                                                            <div id="hwCanopenMotorIdRaw" style="margin-top: 3px; font-family: monospace; font-size: 11px; color: #6c757d;">-</div>
                                                         </div>
                                                     </div>
                                                     <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
-                                                        <strong>판정 기준:</strong> PC가 가지고 있는 PCBA 코드 정보와 프로그램 버전 정보 일치 여부 자동 합부 판정
+                                                        <strong>판정 기준:</strong> SDO 응답이 정상 수신되고 Abort 없이 값이 반환되면 합격<br>
+                                                        <span style="color: #6c757d; font-size: 11px;">※ 0x2000 = Motor ID 레지스터</span>
                                                     </div>
                                                     <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
                                                         <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-main-os')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- HW-3: 모터 ID -->
-                                            <div class="hw-test-item" data-test-id="hw-motor-id" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-3 &nbsp; 모터 ID 확인</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">레지스터 0x2000 (FC03) 읽기 → 기준 모터 ID와 일치 여부</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px;">
-                                                        <div><span style="color: #6c757d;">레지스터</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">0x2000 (Holding, FC03)</div></div>
-                                                        <div><span style="color: #6c757d;">판정 방법</span><div style="font-weight: 500; margin-top: 2px;">설비 자동 (일치 여부)</div></div>
-                                                        <div style="grid-column: 1/-1;">
-                                                            <span style="color: #6c757d;">기준 모터 ID (예상값)</span>
-                                                            <div style="display: flex; gap: 8px; margin-top: 4px;">
-                                                                <input type="text" id="hwMotorIdExpected" placeholder="예: 0x0001" style="flex: 1; padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; font-family: monospace;">
-                                                                <span style="font-size: 11px; color: #6c757d; align-self: center;">현재 읽은 값: <strong id="hwMotorIdActual" style="color: #1a1a1a;">-</strong></span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
-                                                        <strong>판정 기준:</strong> PC가 가지고 있는 PCBA 코드 정보와 모터 ID 비교 후 일치 여부 자동 합부 판정<br>
-                                                        <span style="color: #6c757d; font-size: 11px;">※ LQC 설비 도입 및 모터 ID EEPROM 입력 방식 적용 시 검사항목 SKIP</span>
-                                                    </div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-motor-id')">▶ Start</button>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-canopen-motor-id')">▶ Start</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1593,16 +1565,6 @@
                                                 </div>
                                             </div>
 
-                                        </div>
-                                    </section>
-
-                                    <!-- Section 3: Power Stack -->
-                                    <section style="margin-bottom: 28px;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">3. Power Stack</h3>
-                                            <span style="font-size: 12px; color: #6c757d;">3 tests</span>
-                                        </div>
-                                        <div style="display: grid; gap: 10px;">
 
                                             <!-- HW-5: INVERTER 출력 및 전류 센싱 -->
                                             <div class="hw-test-item" data-test-id="hw-current" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
@@ -1729,16 +1691,6 @@
                                                 </div>
                                             </div>
 
-                                        </div>
-                                    </section>
-
-                                    <!-- Section 4: 초기화 -->
-                                    <section style="margin-bottom: 28px;">
-                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                            <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #1a1a1a;">4. 초기화</h3>
-                                            <span style="font-size: 12px; color: #6c757d;">1 test</span>
-                                        </div>
-                                        <div style="display: grid; gap: 10px;">
 
                                             <!-- HW-8: 파라미터 초기화 -->
                                             <div class="hw-test-item" data-test-id="hw-factory-reset" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
@@ -1774,8 +1726,44 @@
                                                 </div>
                                             </div>
 
-                                        </div>
-                                    </section>
+
+                                            <!-- HW-9: CANopen SDO 0x2000 읽기 -->
+                                            <div class="hw-test-item" data-test-id="hw-canopen-2000" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">HW-9 &nbsp; CANopen SDO 읽기 (FC 0x2B / Index 0x2000)</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">FC 0x2B MEI 0x0D — SDO Upload Request (Index 0x2000, Sub 0x00)</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px;">
+                                                        <div><span style="color: #6c757d;">프로토콜</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">FC 0x2B / MEI Type 0x0D</div></div>
+                                                        <div><span style="color: #6c757d;">SDO 명령</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">Upload (cs=0x40)</div></div>
+                                                        <div><span style="color: #6c757d;">Object Index</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">0x2000</div></div>
+                                                        <div><span style="color: #6c757d;">Sub-Index</span><div style="font-weight: 500; margin-top: 2px; font-family: monospace;">0x00</div></div>
+                                                        <div style="grid-column: 1/-1; display: flex; align-items: center; gap: 24px;">
+                                                            <span style="color: #6c757d;">읽은 값 (raw):</span>
+                                                            <strong id="hwCanopen2000Value" style="font-family: monospace; color: #1a1a1a;">-</strong>
+                                                            <span style="color: #6c757d;">cs:</span>
+                                                            <strong id="hwCanopen2000Cs" style="font-family: monospace; color: #1a1a1a;">-</strong>
+                                                        </div>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> SDO 응답이 정상 수신되고 Abort 없이 값이 반환되면 합격<br>
+                                                        <span style="color: #6c757d; font-size: 11px;">※ FC 0x2B CANopen 프로토콜 동작 검증 목적</span>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-canopen-2000')">▶ Start</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                    </div>
 
                                 </div>
                             </div>
@@ -1790,13 +1778,125 @@
                                     </div>
 
                                     <!-- Offset Setting Sub-tab -->
-                                    <div class="manufacture-subtab-content" id="manufactureOffset" style="display: none; padding: 32px;">
-                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
-                                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">📐</div>
-                                            <p style="font-size: 15px; font-weight: 500; color: #404040;">Offset Setting</p>
-                                            <p style="font-size: 13px; margin-top: 6px; color: #999;">Offset 값 설정 (준비 중)</p>
+                                    <div class="manufacture-subtab-content" id="manufactureOffset" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
+
+                                        <!-- Header Bar -->
+                                        <div style="padding: 18px 28px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;">
+                                            <div>
+                                                <div style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Offset Calibration</div>
+                                                <div id="offsetOverallStatus" style="font-size: 12px; color: #6c757d; margin-top: 3px;">보정 시작 전 — Start 버튼을 눌러 보정을 시작하세요.</div>
+                                            </div>
+                                            <button id="offsetStartBtn" class="btn btn-primary btn-sm" style="min-width: 130px; font-size: 13px;">▶ Start</button>
                                         </div>
-                                    </div>
+
+                                        <!-- Body: Left steps + Right charts -->
+                                        <div style="flex: 1; display: flex; overflow: hidden; min-height: 0;">
+
+                                            <!-- Left Panel: Steps -->
+                                            <div style="flex: 0 0 290px; padding: 20px 18px; border-right: 1px solid #e9ecef; overflow-y: auto; background: #fafafa;">
+
+                                                <!-- Step 1: 전류 Offset -->
+                                                <div id="offsetStep1Card" style="border: 1px solid #e9ecef; border-radius: 8px; background: white; overflow: hidden; margin-bottom: 14px;">
+                                                    <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0f0f0;">
+                                                        <div>
+                                                            <div style="font-size: 13px; font-weight: 600; color: #1a1a1a;">Step 1 &nbsp; 전류 Offset 보정</div>
+                                                            <div id="offsetStep1Desc" style="font-size: 11px; color: #6c757d; margin-top: 3px;">대기 중</div>
+                                                        </div>
+                                                        <span id="offsetStep1Badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500; white-space: nowrap;">대기</span>
+                                                    </div>
+                                                    <div style="padding: 10px 14px;">
+                                                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                                                            <thead>
+                                                                <tr>
+                                                                    <td style="color: #6c757d; padding: 3px 0; font-size: 10px;"></td>
+                                                                    <td style="color: #adb5bd; font-size: 10px; padding: 3px 6px;">보정 전</td>
+                                                                    <td style="color: #28a745; font-size: 10px; padding: 3px 6px;">보정 후</td>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td style="color: #6c757d; padding: 5px 0; font-weight: 500; white-space: nowrap;">편심 지수</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px;" id="offsetStep1EccBefore">—</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #28a745;" id="offsetStep1EccAfter">—</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td style="color: #6c757d; padding: 5px 0; font-weight: 500; white-space: nowrap;">편축 지수</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px;" id="offsetStep1MisBefore">—</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #28a745;" id="offsetStep1MisAfter">—</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Step 2: Hall Offset -->
+                                                <div id="offsetStep2Card" style="border: 1px solid #e9ecef; border-radius: 8px; background: white; overflow: hidden;">
+                                                    <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0f0f0;">
+                                                        <div>
+                                                            <div style="font-size: 13px; font-weight: 600; color: #1a1a1a;">Step 2 &nbsp; Hall Offset 보정</div>
+                                                            <div id="offsetStep2Desc" style="font-size: 11px; color: #6c757d; margin-top: 3px;">대기 중</div>
+                                                        </div>
+                                                        <span id="offsetStep2Badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500; white-space: nowrap;">대기</span>
+                                                    </div>
+                                                    <div style="padding: 10px 14px;">
+                                                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                                                            <thead>
+                                                                <tr>
+                                                                    <td style="color: #6c757d; padding: 3px 0; font-size: 10px;"></td>
+                                                                    <td style="color: #adb5bd; font-size: 10px; padding: 3px 6px;">보정 전</td>
+                                                                    <td style="color: #28a745; font-size: 10px; padding: 3px 6px;">보정 후</td>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td style="color: #6c757d; padding: 5px 0; font-weight: 500; white-space: nowrap;">편심 지수</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px;" id="offsetStep2EccBefore">—</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #28a745;" id="offsetStep2EccAfter">—</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td style="color: #6c757d; padding: 5px 0; font-weight: 500; white-space: nowrap;">편축 지수</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px;" id="offsetStep2MisBefore">—</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #28a745;" id="offsetStep2MisAfter">—</td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+
+                                            </div><!-- /Left Panel -->
+
+                                            <!-- Right Panel: Radar Charts -->
+                                            <div style="flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; overflow: hidden; min-width: 0;">
+
+                                                <!-- Chart 1: 전류 Offset -->
+                                                <div style="background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; min-height: 0;">
+                                                    <div style="font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; flex-shrink: 0;">전류 Offset</div>
+                                                    <div style="flex: 1; position: relative; min-height: 0;">
+                                                        <canvas id="offsetCurrentChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+                                                    </div>
+                                                    <div style="display: flex; gap: 16px; justify-content: center; margin-top: 8px; font-size: 11px; color: #6c757d; flex-shrink: 0;">
+                                                        <span><span style="display:inline-block;width:12px;height:2px;background:#adb5bd;vertical-align:middle;margin-right:4px;border-radius:1px;"></span>보정 전</span>
+                                                        <span><span style="display:inline-block;width:12px;height:2px;background:#667eea;vertical-align:middle;margin-right:4px;border-radius:1px;"></span>보정 후</span>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Chart 2: Hall Offset -->
+                                                <div style="background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; min-height: 0;">
+                                                    <div style="font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; flex-shrink: 0;">Hall 편심 / 편축</div>
+                                                    <div style="flex: 1; position: relative; min-height: 0;">
+                                                        <canvas id="offsetHallChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
+                                                    </div>
+                                                    <div style="display: flex; gap: 16px; justify-content: center; margin-top: 8px; font-size: 11px; color: #6c757d; flex-shrink: 0;">
+                                                        <span><span style="display:inline-block;width:12px;height:2px;background:#adb5bd;vertical-align:middle;margin-right:4px;border-radius:1px;"></span>보정 전</span>
+                                                        <span><span style="display:inline-block;width:12px;height:2px;background:#667eea;vertical-align:middle;margin-right:4px;border-radius:1px;"></span>보정 후</span>
+                                                    </div>
+                                                </div>
+
+                                            </div><!-- /Right Panel -->
+
+                                        </div><!-- /Body -->
+
+                                    </div><!-- /manufactureOffset -->
 
                                     <!-- Serial Number Sub-tab -->
                                     <div class="manufacture-subtab-content" id="manufactureSerialNumber" style="display: none; padding: 32px;">
@@ -2130,13 +2230,13 @@
                                     </select>
                                 </div>
                                 <div class="chart-setting-item">
-                                    <label for="chartSampleRate">Sample Rate</label>
+                                    <label for="chartSampleRate">Period</label>
                                     <select id="chartSampleRate">
-                                        <option value="50">50ms</option>
-                                        <option value="100" selected>100ms</option>
-                                        <option value="200">200ms</option>
-                                        <option value="500">500ms</option>
-                                        <option value="1000">1s</option>
+                                        <option value="160">20 μs</option>
+                                        <option value="800">100 μs</option>
+                                        <option value="1600" selected>200 μs</option>
+                                        <option value="4000">500 μs</option>
+                                        <option value="8000">1 ms</option>
                                     </select>
                                 </div>
                                 <div class="chart-setting-item">
@@ -2147,6 +2247,10 @@
                                         <option value="2000">2000 pts</option>
                                         <option value="5000">5000 pts</option>
                                     </select>
+                                </div>
+                                <div class="chart-setting-item">
+                                    <label for="chartSlaveId">Slave ID</label>
+                                    <input type="number" id="chartSlaveId" value="1" min="1" max="247">
                                 </div>
                             </div>
                         </div>
@@ -2199,8 +2303,8 @@
                                     <span class="channel-name">CH1</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh1Addr">Addr:</label>
-                                    <input type="text" id="chartCh1Addr" value="0xD011" placeholder="0x0000">
+                                    <label for="chartCh1Addr">Ch#:</label>
+                                    <input type="number" id="chartCh1Addr" value="1" min="1" max="254" placeholder="1-254">
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
@@ -2214,8 +2318,8 @@
                                     <span class="channel-name">CH2</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh2Addr">Addr:</label>
-                                    <input type="text" id="chartCh2Addr" value="0xD001" placeholder="0x0000">
+                                    <label for="chartCh2Addr">Ch#:</label>
+                                    <input type="number" id="chartCh2Addr" value="2" min="1" max="254" placeholder="1-254">
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
@@ -2229,8 +2333,8 @@
                                     <span class="channel-name">CH3</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh3Addr">Addr:</label>
-                                    <input type="text" id="chartCh3Addr" value="0x0000" placeholder="0x0000">
+                                    <label for="chartCh3Addr">Ch#:</label>
+                                    <input type="number" id="chartCh3Addr" value="3" min="1" max="254" placeholder="1-254">
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
@@ -2244,8 +2348,8 @@
                                     <span class="channel-name">CH4</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh4Addr">Addr:</label>
-                                    <input type="text" id="chartCh4Addr" value="0x0000" placeholder="0x0000">
+                                    <label for="chartCh4Addr">Ch#:</label>
+                                    <input type="number" id="chartCh4Addr" value="4" min="1" max="254" placeholder="1-254">
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
