@@ -2382,13 +2382,15 @@ class ModbusDashboard {
 
             // 기존 등록 디바이스의 operationMode를 디바이스에서 다시 읽기
             // (앱 재시작 시 localStorage 값과 실제 디바이스 설정이 다를 수 있음)
-            const existingDevices = this.devices.filter(d => d.slaveId !== 0);
-            if (existingDevices.length > 0) {
-                // auto-scan이 있으면 스캔 완료 후 실행, 없으면 폴링 시작 후 바로 실행
-                const syncDelay = this.autoScanEnabled ? 8000 : 500;
-                setTimeout(() => {
-                    existingDevices.forEach(d => this.initializeDeviceMode(d.id));
-                }, syncDelay);
+            // auto-scan이 활성화된 경우: 스캔 완료 콜백(startDeviceScan 내부)에서 처리
+            // auto-scan이 비활성화된 경우: 폴링 시작 후 바로 실행
+            if (!this.autoScanEnabled) {
+                const existingDevices = this.devices.filter(d => d.slaveId !== 0);
+                if (existingDevices.length > 0) {
+                    setTimeout(() => {
+                        existingDevices.forEach(d => this.initializeDeviceMode(d.id));
+                    }, 500);
+                }
             }
 
         } catch (error) {
@@ -8502,6 +8504,11 @@ class ModbusDashboard {
         this.isScanning = true;
         this.scanAborted = false;
 
+        // 스캔 시작 전 이미 등록된 디바이스 ID 저장 (스캔 완료 후 operationMode 동기화용)
+        const preExistingDeviceIds = this.devices
+            .filter(d => d.slaveId !== 0)
+            .map(d => d.id);
+
         const manualScanBtn = document.getElementById('manualScanBtn');
         const stopScanBtn = document.getElementById('stopScanBtn');
         const scanProgress = document.getElementById('scanProgress');
@@ -8631,6 +8638,14 @@ class ModbusDashboard {
         // readRegisterWithTimeout / readParameterByAddress 는 내부에서 큐 처리하므로
         // 폴링 재개 이후 안전하게 순차 실행됨
         this._autoReadAfterScan();
+
+        // 스캔 전부터 존재했던 디바이스의 operationMode 동기화
+        // (신규 발견 디바이스는 addScannedDevice() → initializeDeviceMode()로 이미 처리됨)
+        if (preExistingDeviceIds.length > 0) {
+            setTimeout(() => {
+                preExistingDeviceIds.forEach(id => this.initializeDeviceMode(id));
+            }, 300);
+        }
     }
 
     /**
