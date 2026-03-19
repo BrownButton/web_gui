@@ -7366,6 +7366,41 @@ class ModbusDashboard {
      * Send frame and wait for response with timeout
      */
     async sendAndWaitResponse(frame, expectedSlaveId) {
+        // Simulator mode - bypass real serial port
+        if (this.simulatorEnabled) {
+            return new Promise(async (resolve) => {
+                this.addMonitorEntry('sent', frame, { functionCode: frame[1], startAddress: (frame[2] << 8) | frame[3], quantity: 1 });
+                this.stats.requests++;
+                this.updateStatsDisplay();
+
+                const simulatedIds = this.getSimulatedDeviceIds();
+                if (!simulatedIds.includes(expectedSlaveId)) {
+                    this.stats.errors++;
+                    this.updateStatsDisplay();
+                    resolve(null);
+                    return;
+                }
+
+                const originalSlaveId = this.simulator.slaveId;
+                this.simulator.slaveId = expectedSlaveId;
+                try {
+                    const response = await this.simulator.processRequest(frame);
+                    if (response && response.length >= 5 && response[0] === expectedSlaveId && (response[1] & 0x80) === 0) {
+                        this.addMonitorEntry('received', response);
+                        this.stats.success++;
+                        this.updateStatsDisplay();
+                        resolve((response[3] << 8) | response[4]);
+                    } else {
+                        this.stats.errors++;
+                        this.updateStatsDisplay();
+                        resolve(null);
+                    }
+                } finally {
+                    this.simulator.slaveId = originalSlaveId;
+                }
+            });
+        }
+
         return new Promise(async (resolve) => {
             // Clear receive buffer
             this.receiveIndex = 0;
@@ -7603,6 +7638,32 @@ class ModbusDashboard {
      * Send write command and wait for response with timeout
      */
     async sendWriteAndWaitResponse(frame, slaveId, address) {
+        // Simulator mode - bypass real serial port
+        if (this.simulatorEnabled) {
+            return new Promise(async (resolve) => {
+                this.addMonitorEntry('sent', frame, { functionCode: 6, startAddress: address });
+                this.stats.requests++;
+                this.updateStatsDisplay();
+
+                const originalSlaveId = this.simulator.slaveId;
+                this.simulator.slaveId = slaveId;
+                try {
+                    const response = await this.simulator.processRequest(frame);
+                    if (response) {
+                        this.addMonitorEntry('received', response);
+                        this.stats.success++;
+                        this.updateStatsDisplay();
+                    } else {
+                        this.stats.errors++;
+                        this.updateStatsDisplay();
+                    }
+                } finally {
+                    this.simulator.slaveId = originalSlaveId;
+                }
+                resolve();
+            });
+        }
+
         return new Promise(async (resolve, reject) => {
             // Set up response handler
             const responsePromise = new Promise(res => {
