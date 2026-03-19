@@ -6050,7 +6050,7 @@ class ModbusDashboard {
         }
 
         const modeText = device.operationMode === 0 ? 'RPM' : '%';
-        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online);
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online || this.simulatorEnabled);
 
         item.innerHTML = `
             <span class="drag-handle" title="Drag to reorder">≡</span>
@@ -6242,7 +6242,7 @@ class ModbusDashboard {
         }
 
         const modeText = device.operationMode === 0 ? 'RPM' : '%';
-        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online);
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online || this.simulatorEnabled);
 
         card.innerHTML = `
             <div class="card-drag-bar" title="Drag to reorder">
@@ -6743,7 +6743,7 @@ class ModbusDashboard {
             // Update local state (keep user-entered value for display)
             device.setpoint = setpoint;
             this.saveDevices();
-            this.renderDeviceGrid();
+            this.updateDeviceCardStatus(device);
 
             const unit = device.operationMode === 0 ? 'RPM' : '%';
             if (!silent) this.showToast(`${device.name}: Setpoint ${setpoint}${unit} 적용되었습니다`, 'success');
@@ -7504,7 +7504,7 @@ class ModbusDashboard {
         // Remove offline class when device comes back online
         element.classList.remove('offline');
 
-        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online);
+        const statusInfo = this.getMotorStatusInfo(device.motorStatus, device.online || this.simulatorEnabled);
 
         const statusIndicator = element.querySelector('.status-indicator');
         const statusTextEl = element.querySelector('.status-text');
