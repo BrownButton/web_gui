@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hall UVW Fault Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117; --surface: #161b22; --surface2: #1c2128;
+      --border: #30363d; --text: #c9d1d9; --muted: #6e7681;
+      --accent: #58a6ff; --green: #3fb950; --orange: #f0883e;
+      --red: #ff7b72; --yellow: #e3b341;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; }
+
+    #drop-zone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 48px; text-align: center; margin: 32px auto; max-width: 500px; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    #drop-zone.drag-over { border-color: var(--accent); background: rgba(88,166,255,.06); }
+    #drop-zone label {
+      display: inline-block; padding: 9px 22px; background: var(--accent);
+      color: #0d1117; border-radius: 6px; cursor: pointer; font-weight: 700;
+    }
+    #drop-zone p { color: var(--muted); margin-top: 10px; font-size: 12px; }
+    #file-input { display: none; }
+
+    header {
+      padding: 12px 22px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    header h1 { font-size: 15px; font-weight: 700; color: var(--accent); }
+    .pill { font-size: 11px; padding: 2px 10px; border-radius: 20px; border: 1px solid var(--border); color: var(--muted); }
+
+    #main { display: none; padding: 14px 18px 36px; }
+
+    /* Controls bar */
+    #ctrl-bar {
+      display: flex; align-items: center; gap: 12px; padding: 9px 13px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    #ctrl-bar h4 { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+    .assign-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .assign-item {
+      display: flex; align-items: center; gap: 5px; padding: 3px 9px;
+      border-radius: 5px; border: 1px solid var(--border); background: var(--surface2); font-size: 12px;
+    }
+    .assign-item select { background: transparent; border: none; color: var(--text); font-size: 12px; cursor: pointer; outline: none; }
+    .ch-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+    .ctrl-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+    .ctrl-item input[type=number] {
+      width: 54px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text); padding: 3px 6px; font-size: 12px;
+    }
+    #btn-run {
+      margin-left: auto; padding: 5px 16px; border-radius: 5px; border: none;
+      background: var(--accent); color: #0d1117; font-weight: 700; font-size: 12px; cursor: pointer;
+    }
+
+    /* Verdict banner */
+    #verdict-banner {
+      display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .verdict-card {
+      flex: 1; min-width: 180px; border-radius: 8px; padding: 12px 16px;
+      border: 1px solid var(--border); background: var(--surface);
+    }
+    .verdict-card .vc-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 4px; }
+    .verdict-card .vc-value { font-size: 22px; font-weight: 800; }
+    .verdict-card .vc-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .vc-bar { height: 6px; border-radius: 3px; background: var(--border); margin-top: 8px; overflow: hidden; }
+    .vc-fill { height: 100%; border-radius: 3px; }
+    .good  { color: var(--green); }
+    .mild  { color: var(--yellow); }
+    .warn  { color: var(--orange); }
+    .crit  { color: var(--red); }
+    .verdict-main {
+      flex: 2; min-width: 240px; border-radius: 8px; padding: 12px 16px;
+      background: var(--surface2); border: 1px solid var(--border);
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .verdict-main .vm-title { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .verdict-main .vm-result { font-size: 16px; font-weight: 700; }
+    .verdict-main .vm-detail { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.6; }
+
+    /* Layout rows */
+    .row { display: grid; gap: 10px; margin-bottom: 10px; }
+    .row-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .row-2 { grid-template-columns: 1fr 1fr; }
+
+    .panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px;
+    }
+    .panel-title {
+      font-size: 10px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .06em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+    }
+    .panel-title span { color: var(--text); font-size: 11px; text-transform: none; letter-spacing: 0; }
+    .panel-title .badge {
+      margin-left: auto; font-size: 10px; padding: 1px 7px; border-radius: 10px;
+      font-weight: 700; text-transform: none; letter-spacing: 0;
+    }
+
+    /* Metric table inside panels */
+    .mrow { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; border-bottom: 1px solid #21272e; }
+    .mrow:last-child { border: none; }
+    .mv { font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 900px) {
+      .row-3 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .row-3, .row-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Hall UVW Fault Analyzer</h1>
+  <span id="file-pill" class="pill">파일 없음</span>
+  <span id="info-pill" class="pill" style="display:none"></span>
+</header>
+
+<div id="drop-zone">
+  <label for="file-input">LSM 파일 선택</label>
+  <input type="file" id="file-input" accept=".lsm,.csv,.txt" />
+  <p>또는 드래그 &amp; 드롭 · U/V/W Hall Raw 데이터</p>
+</div>
+
+<div id="main">
+
+  <!-- Controls -->
+  <div id="ctrl-bar">
+    <h4>채널 역할</h4>
+    <div class="assign-row" id="assign-row"></div>
+    <div class="sep"></div>
+    <div class="ctrl-item"><label>극수 (Pole Pairs)</label>
+      <input type="number" id="inp-pp" value="1" min="1" max="32" /></div>
+    <div class="ctrl-item"><label>빈 수</label>
+      <input type="number" id="inp-bins" value="180" min="36" max="720" /></div>
+    <button id="btn-run">분석</button>
+  </div>
+
+  <!-- Verdict -->
+  <div id="verdict-banner"></div>
+
+  <!-- Row 1: αβ | Polar Amplitude | Raw Signals -->
+  <div class="row row-3">
+    <div class="panel">
+      <div class="panel-title">Clarke α-β 궤적 <span>— 원 → 정상, 타원 → 편심</span></div>
+      <canvas id="c-ab" style="display:block;width:100%;aspect-ratio:1/1;"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">극좌표 Amplitude <span>— 찌그러짐 → 편심</span></div>
+      <canvas id="c-polar" style="display:block;width:100%;aspect-ratio:1/1;"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">원시 신호 (Raw Hall U/V/W)</div>
+      <canvas id="c-raw" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 2: Amplitude vs angle | Zero Seq vs angle -->
+  <div class="row row-2">
+    <div class="panel">
+      <div class="panel-title">Amplitude vs 전기각 <span>— 편심 프로파일</span>
+        <span class="badge" id="badge-ecc"></span></div>
+      <canvas id="c-amp-ang" height="140"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Zero Sequence vs 전기각 <span>— 편축 프로파일</span>
+        <span class="badge" id="badge-mis"></span></div>
+      <canvas id="c-zero-ang" height="140"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 3: FFT Amplitude | FFT Zero Seq -->
+  <div class="row row-2">
+    <div class="panel">
+      <div class="panel-title">Amplitude 고조파 분석 (FFT) <span>— 1× dominant → 편심</span></div>
+      <canvas id="c-fft-amp" height="130"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Zero Sequence 고조파 분석 (FFT) <span>— 1× dominant → 편축</span></div>
+      <canvas id="c-fft-zero" height="130"></canvas>
+    </div>
+  </div>
+
+</div><!-- #main -->
+
+<script>
+// ── Constants & Colors ─────────────────────────────────────────────────────
+const CH_COLORS = ['#58a6ff','#3fb950','#f0883e','#ff7b72','#d2a8ff'];
+const ROLE_OPTS = ['U','V','W','무시'];
+
+// ── Parser ─────────────────────────────────────────────────────────────────
+function parseLSM(text) {
+  const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+  const names = lines[0].split(';').map(s=>s.trim()).filter(Boolean);
+  const numCh = names.length;
+  const chs = names.map((name,i)=>({ name, index:i+1, times:[], values:[] }));
+  for (let li=1;li<lines.length;li++){
+    const parts = lines[li].split(';');
+    for (let ci=0;ci<numCh;ci++){
+      const seg=(parts[ci]||'').trim(); if(!seg) continue;
+      const [t,v]=seg.split(/\s+/).map(Number);
+      if(!isNaN(t)&&!isNaN(v)){chs[ci].times.push(t);chs[ci].values.push(v);}
+    }
+  }
+  return chs;
+}
+
+// ── Math helpers ───────────────────────────────────────────────────────────
+const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const rms  = arr => Math.sqrt(mean(arr.map(v=>v*v)));
+
+function dft(signal) {
+  // Returns magnitudes for harmonics 0..N/2
+  const N = signal.length;
+  const mags = [];
+  for (let k=0;k<Math.floor(N/2)+1;k++){
+    let re=0,im=0;
+    for (let n=0;n<N;n++){
+      const phi = 2*Math.PI*k*n/N;
+      re += signal[n]*Math.cos(phi);
+      im -= signal[n]*Math.sin(phi);
+    }
+    mags.push(Math.sqrt(re*re+im*im)/N);
+  }
+  return mags;
+}
+
+function fitSine1x(angles_rad, values) {
+  // Fit: A0 + A1*cos(theta - phi)
+  // Returns {A0, A1, phi_deg}
+  const N = angles_rad.length;
+  const A0 = mean(values);
+  let sc=0, ss=0;
+  for (let i=0;i<N;i++){
+    const v=values[i]-A0;
+    sc += v*Math.cos(angles_rad[i]);
+    ss += v*Math.sin(angles_rad[i]);
+  }
+  const A1 = Math.sqrt(sc*sc+ss*ss)/(N/2);
+  const phi = Math.atan2(ss,sc)*180/Math.PI;
+  return { A0, A1, phi_deg: ((phi%360)+360)%360 };
+}
+
+// ── Analysis ───────────────────────────────────────────────────────────────
+function analyze(channels, uIdx, vIdx, wIdx, polePairs, numBins) {
+  const U = channels[uIdx].values;
+  const V = channels[vIdx].values;
+  const W = channels[wIdx].values;
+  const times = channels[uIdx].times;
+  const N = U.length;
+
+  // DC removal
+  const dcU=mean(U), dcV=mean(V), dcW=mean(W);
+  const u=U.map(v=>v-dcU), v=V.map(v=>v-dcV), w=W.map(v=>v-dcW);
+
+  // Clarke transform
+  const K=2/3, S3=Math.sqrt(3);
+  const alpha = u.map((_,i)=>K*(u[i]-v[i]/2-w[i]/2));
+  const beta  = u.map((_,i)=>K*(S3/2*(v[i]-w[i])));
+  const zero  = u.map((_,i)=>(u[i]+v[i]+w[i])/3);
+
+  // Amplitude & electrical angle → mechanical angle
+  const amplitude = alpha.map((a,i)=>Math.sqrt(a*a+beta[i]*beta[i]));
+  const elecAngle = alpha.map((a,i)=>{
+    const ang=Math.atan2(beta[i],a);
+    return ((ang%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  });
+
+  // Mechanical angle (each mech rev = polePairs elec revs)
+  // We use elecAngle directly for binning.
+  // For p>1: amplitude varies at 1/p frequency vs elecAngle
+  // → user sees p repetitions per mech rev in the elecAngle domain
+  const mechAngle = elecAngle.map(th=>((th/polePairs)%(2*Math.PI)+2*Math.PI)%(2*Math.PI));
+
+  // Angle-binned analysis using mechAngle
+  const binSize=2*Math.PI/numBins;
+  const ampBins  = Array.from({length:numBins},()=>[]);
+  const zeroBins = Array.from({length:numBins},()=>[]);
+
+  mechAngle.forEach((th,i)=>{
+    const b=Math.min(Math.floor(th/binSize),numBins-1);
+    ampBins[b].push(amplitude[i]);
+    zeroBins[b].push(zero[i]);
+  });
+
+  const ampProfile=[], zeroProfile=[];
+  for(let b=0;b<numBins;b++){
+    const ang=((b+0.5)*binSize)*180/Math.PI;
+    if(ampBins[b].length){
+      const m=mean(ampBins[b]);
+      ampProfile.push({angle:ang,mean:m,min:Math.min(...ampBins[b]),max:Math.max(...ampBins[b]),n:ampBins[b].length});
+    }
+    if(zeroBins[b].length){
+      const m=mean(zeroBins[b]);
+      zeroProfile.push({angle:ang,mean:m,n:zeroBins[b].length});
+    }
+  }
+
+  // Fill missing bins by linear interpolation for FFT
+  function fillBins(profile, N) {
+    const vals = Array(N).fill(null);
+    profile.forEach(b=>{
+      const idx=Math.round(b.angle/(360/N));
+      if(idx<N) vals[idx]=b.mean;
+    });
+    // Simple gap fill
+    for(let i=0;i<N;i++){
+      if(vals[i]===null){
+        const prev=vals[(i-1+N)%N]??0, next=vals[(i+1)%N]??0;
+        vals[i]=(prev+next)/2;
+      }
+    }
+    return vals;
+  }
+  const ampFill   = fillBins(ampProfile, numBins);
+  const zeroFill  = fillBins(zeroProfile, numBins);
+  const fftAmp    = dft(ampFill);
+  const fftZero   = dft(zeroFill);
+
+  // Metrics
+  const ampMeans  = ampProfile.map(b=>b.mean);
+  const ampMean   = mean(ampMeans);
+  const ampMax    = Math.max(...ampMeans), ampMin=Math.min(...ampMeans);
+  const eccIndex  = (ampMax-ampMin)/(ampMax+ampMin)*100;
+
+  const zeroMeans = zeroProfile.map(b=>b.mean);
+  const zeroRMS   = rms(zeroMeans);
+  const misIndex  = zeroRMS/ampMean*100;
+
+  // Direction fit
+  const angRad = ampProfile.map(b=>b.angle*Math.PI/180);
+  const eccFit  = fitSine1x(angRad, ampMeans);
+  const zeroRad = zeroProfile.map(b=>b.angle*Math.PI/180);
+  const misFit  = fitSine1x(zeroRad, zeroMeans);
+
+  return {
+    times, U, V, W, alpha, beta, zero, amplitude, mechAngle,
+    ampProfile, zeroProfile, fftAmp, fftZero, numBins,
+    metrics: { ampMean, ampMax, ampMin, eccIndex, misIndex,
+               eccDir: eccFit.phi_deg, misDir: misFit.phi_deg,
+               dcU, dcV, dcW }
+  };
+}
+
+// ── Chart registry ─────────────────────────────────────────────────────────
+const _charts = {};
+function mkChart(id, cfg) {
+  if(_charts[id]) _charts[id].destroy();
+  _charts[id] = new Chart(document.getElementById(id), cfg);
+  return _charts[id];
+}
+
+const GRID_COLOR = 'rgba(48,54,61,0.6)';
+const TICK_COLOR = '#6e7681';
+const baseScaleX = () => ({ grid:{color:GRID_COLOR}, ticks:{color:TICK_COLOR} });
+const baseScaleY = () => ({ grid:{color:GRID_COLOR}, ticks:{color:TICK_COLOR} });
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render(res, channels, uIdx, vIdx, wIdx) {
+  const { times, U, V, W, alpha, beta, zero, amplitude, mechAngle,
+          ampProfile, zeroProfile, fftAmp, fftZero, numBins, metrics } = res;
+
+  // ── 1. Raw signals ──────────────────────────────────────────────────────
+  const stride = Math.max(1, Math.floor(times.length/600));
+  const ti = times.filter((_,i)=>i%stride===0);
+  mkChart('c-raw',{
+    type:'line',
+    data:{ datasets:[
+      { label:`U: ${channels[uIdx].name}`, data:ti.map((_,k)=>({x:times[k*stride],y:U[k*stride]})),
+        borderColor:CH_COLORS[0], borderWidth:1.2, pointRadius:0, backgroundColor:'transparent' },
+      { label:`V: ${channels[vIdx].name}`, data:ti.map((_,k)=>({x:times[k*stride],y:V[k*stride]})),
+        borderColor:CH_COLORS[1], borderWidth:1.2, pointRadius:0, backgroundColor:'transparent' },
+      { label:`W: ${channels[wIdx].name}`, data:ti.map((_,k)=>({x:times[k*stride],y:W[k*stride]})),
+        borderColor:CH_COLORS[2], borderWidth:1.2, pointRadius:0, backgroundColor:'transparent' },
+    ]},
+    options:{
+      animation:false, responsive:true,
+      plugins:{ legend:{ labels:{color:TICK_COLOR,boxWidth:14,font:{size:10}} } },
+      scales:{
+        x:{...baseScaleX(),type:'linear',title:{display:true,text:'Time',color:TICK_COLOR,font:{size:10}}},
+        y:{...baseScaleY()}
+      }
+    }
+  });
+
+  // ── 2. α-β Lissajous ───────────────────────────────────────────────────
+  const pts_ab = alpha.filter((_,i)=>i%stride===0)
+                       .map((_,k)=>({x:alpha[k*stride],y:beta[k*stride]}));
+  // Reference circle at mean amplitude
+  const ampMean=metrics.ampMean;
+  const refCircle=Array.from({length:361},(_,i)=>({x:ampMean*Math.cos(i*Math.PI/180),y:ampMean*Math.sin(i*Math.PI/180)}));
+  mkChart('c-ab',{
+    type:'scatter',
+    data:{ datasets:[
+      { label:'α-β 궤적', data:pts_ab, borderColor:'#58a6ff88', backgroundColor:'#58a6ff22', pointRadius:1.2, pointHoverRadius:3 },
+      { label:'기준원', data:refCircle, borderColor:'#ffffff33', backgroundColor:'transparent',
+        pointRadius:0, borderWidth:1, showLine:true, tension:0 }
+    ]},
+    options:{
+      animation:false, aspectRatio:1,
+      plugins:{ legend:{ labels:{color:TICK_COLOR,boxWidth:12,font:{size:10}} } },
+      scales:{
+        x:{...baseScaleX(),title:{display:true,text:'α',color:TICK_COLOR,font:{size:10}}},
+        y:{...baseScaleY(),title:{display:true,text:'β',color:TICK_COLOR,font:{size:10}}}
+      }
+    }
+  });
+
+  // ── 3. Polar amplitude ─────────────────────────────────────────────────
+  const pts_pol = amplitude.filter((_,i)=>i%stride===0)
+                           .map((_,k)=>({
+                             x:amplitude[k*stride]*Math.cos(mechAngle[k*stride]),
+                             y:amplitude[k*stride]*Math.sin(mechAngle[k*stride])
+                           }));
+  const axR=metrics.ampMax*1.08;
+  mkChart('c-polar',{
+    type:'scatter',
+    data:{ datasets:[
+      { label:'Amplitude', data:pts_pol, borderColor:'#3fb95088', backgroundColor:'#3fb95022', pointRadius:1.2, pointHoverRadius:3 },
+      { label:'기준원', data:refCircle, borderColor:'#ffffff33', backgroundColor:'transparent',
+        pointRadius:0, borderWidth:1, showLine:true, tension:0 }
+    ]},
+    options:{
+      animation:false, aspectRatio:1,
+      plugins:{ legend:{ labels:{color:TICK_COLOR,boxWidth:12,font:{size:10}} } },
+      scales:{
+        x:{...baseScaleX(),min:-axR,max:axR},
+        y:{...baseScaleY(),min:-axR,max:axR}
+      }
+    }
+  });
+
+  // ── 4. Amplitude vs angle ──────────────────────────────────────────────
+  const eccColor='#58a6ff';
+  mkChart('c-amp-ang',{
+    type:'line',
+    data:{ datasets:[
+      { label:'Amplitude 평균', data:ampProfile.map(b=>({x:b.angle,y:b.mean})),
+        borderColor:eccColor, borderWidth:2, pointRadius:0, tension:0.3, backgroundColor:'transparent', order:2 },
+      { label:'Max', data:ampProfile.map(b=>({x:b.angle,y:b.max})),
+        borderColor:eccColor+'44', borderWidth:1, pointRadius:0, tension:0.3, backgroundColor:eccColor+'18', fill:'+1', order:3 },
+      { label:'Min', data:ampProfile.map(b=>({x:b.angle,y:b.min})),
+        borderColor:eccColor+'44', borderWidth:1, pointRadius:0, tension:0.3, backgroundColor:eccColor+'18', order:3 },
+      { label:'평균선', data:[{x:0,y:ampMean},{x:360,y:ampMean}],
+        borderColor:'#ffffff33', borderWidth:1, borderDash:[4,4], pointRadius:0, backgroundColor:'transparent' },
+    ]},
+    options:{
+      animation:false, responsive:true,
+      plugins:{ legend:{ labels:{color:TICK_COLOR,boxWidth:12,font:{size:10}} } },
+      scales:{
+        x:{...baseScaleX(),type:'linear',min:0,max:360,ticks:{color:TICK_COLOR,callback:v=>v+'°',maxTicksLimit:13}},
+        y:{...baseScaleY()}
+      }
+    }
+  });
+
+  // ── 5. Zero sequence vs angle ───────────────────────────────────────────
+  const misColor='#f0883e';
+  const zMeans=zeroProfile.map(b=>b.mean);
+  const zMean=mean(zMeans);
+  mkChart('c-zero-ang',{
+    type:'line',
+    data:{ datasets:[
+      { label:'Zero Seq 평균', data:zeroProfile.map(b=>({x:b.angle,y:b.mean})),
+        borderColor:misColor, borderWidth:2, pointRadius:0, tension:0.3, backgroundColor:'transparent' },
+      { label:'영상분=0', data:[{x:0,y:0},{x:360,y:0}],
+        borderColor:'#ffffff33', borderWidth:1, borderDash:[4,4], pointRadius:0, backgroundColor:'transparent' },
+    ]},
+    options:{
+      animation:false, responsive:true,
+      plugins:{ legend:{ labels:{color:TICK_COLOR,boxWidth:12,font:{size:10}} } },
+      scales:{
+        x:{...baseScaleX(),type:'linear',min:0,max:360,ticks:{color:TICK_COLOR,callback:v=>v+'°',maxTicksLimit:13}},
+        y:{...baseScaleY(),title:{display:true,text:'Zero Seq (ADC counts)',color:TICK_COLOR,font:{size:10}}}
+      }
+    }
+  });
+
+  // ── 6. FFT charts ───────────────────────────────────────────────────────
+  const MAX_HARM=Math.min(16, fftAmp.length-1);
+  const harmLabels=Array.from({length:MAX_HARM},(_,i)=>(i+1)+'×');
+
+  function fftDataset(fftArr, color) {
+    return fftArr.slice(1,MAX_HARM+1).map((v,i)=>({x:i+1,y:v}));
+  }
+
+  mkChart('c-fft-amp',{
+    type:'bar',
+    data:{ datasets:[
+      { label:'Amplitude 고조파', data:fftDataset(fftAmp),
+        backgroundColor: fftAmp.slice(1,MAX_HARM+1).map((_,i)=>i===0?'#58a6ff':'#58a6ff44'),
+        borderColor:'transparent' }
+    ]},
+    options:{
+      animation:false, responsive:true,
+      plugins:{ legend:{display:false},
+        tooltip:{callbacks:{title:items=>`${items[0].raw.x}× 고조파`}} },
+      scales:{
+        x:{...baseScaleX(),type:'linear',min:0.5,max:MAX_HARM+0.5,
+           ticks:{color:TICK_COLOR,stepSize:1,callback:v=>Number.isInteger(v)?v+'×':''}},
+        y:{...baseScaleY(),title:{display:true,text:'크기',color:TICK_COLOR,font:{size:10}}}
+      }
+    }
+  });
+
+  mkChart('c-fft-zero',{
+    type:'bar',
+    data:{ datasets:[
+      { label:'Zero Seq 고조파', data:fftDataset(fftZero),
+        backgroundColor: fftZero.slice(1,MAX_HARM+1).map((_,i)=>i===0?'#f0883e':'#f0883e44'),
+        borderColor:'transparent' }
+    ]},
+    options:{
+      animation:false, responsive:true,
+      plugins:{ legend:{display:false},
+        tooltip:{callbacks:{title:items=>`${items[0].raw.x}× 고조파`}} },
+      scales:{
+        x:{...baseScaleX(),type:'linear',min:0.5,max:MAX_HARM+0.5,
+           ticks:{color:TICK_COLOR,stepSize:1,callback:v=>Number.isInteger(v)?v+'×':''}},
+        y:{...baseScaleY(),title:{display:true,text:'크기',color:TICK_COLOR,font:{size:10}}}
+      }
+    }
+  });
+
+  // ── 7. Verdict & badges ────────────────────────────────────────────────
+  renderVerdict(metrics);
+}
+
+function severityClass(pct) {
+  if(pct<1)  return {cls:'good',  label:'정상',    color:'#3fb950'};
+  if(pct<3)  return {cls:'mild',  label:'경미',    color:'#e3b341'};
+  if(pct<10) return {cls:'warn',  label:'주의',    color:'#f0883e'};
+  return           {cls:'crit',  label:'심각',    color:'#ff7b72'};
+}
+
+function renderVerdict(metrics) {
+  const { eccIndex, misIndex, eccDir, misDir, ampMean } = metrics;
+  const eS=severityClass(eccIndex), mS=severityClass(misIndex);
+
+  // Overall verdict
+  let verdict='', detail='';
+  const ecc_dom = eccIndex > misIndex*1.5;
+  const mis_dom = misIndex > eccIndex*1.5;
+  const both_ok = eccIndex<1 && misIndex<1;
+  const both_sig= eccIndex>=1 && misIndex>=1;
+
+  if(both_ok) {
+    verdict='✓ 정상'; detail='편심·편축 모두 허용 범위 이내입니다.';
+  } else if(ecc_dom && misIndex<1) {
+    verdict='⚠ 편심 (Eccentricity) 주요 원인';
+    detail=`샤프트 중심과 자석 중심이 어긋남.<br>Gap 불균일로 Amplitude가 각도에 따라 변동.<br>최대 Amplitude 방향: ${eccDir.toFixed(1)}°`;
+  } else if(mis_dom && eccIndex<1) {
+    verdict='⚠ 편축 (Misalignment) 주요 원인';
+    detail=`샤프트 축이 기울어짐 (Axial Tilt).<br>영상분(Zero Sequence)에 1× 성분 발생.<br>최대 Zero Seq 방향: ${misDir.toFixed(1)}°`;
+  } else if(both_sig) {
+    verdict='⚠ 편심 + 편축 복합';
+    detail=`편심 ${eccIndex.toFixed(1)}% · 편축 ${misIndex.toFixed(1)}% 동시 발생.<br>편심 방향: ${eccDir.toFixed(1)}° · 편축 방향: ${misDir.toFixed(1)}°`;
+  } else if(eccIndex>=1) {
+    verdict='⚠ 편심 의심';
+    detail=`편축 지수는 허용 수준이나 Amplitude 변동 존재.<br>최대 방향: ${eccDir.toFixed(1)}°`;
+  } else {
+    verdict='⚠ 편축 의심';
+    detail=`편심 지수는 허용 수준이나 영상분 변동 존재.<br>최대 방향: ${misDir.toFixed(1)}°`;
+  }
+
+  const overallCls = eccIndex>=10||misIndex>=10 ? 'crit' :
+                     eccIndex>=3 ||misIndex>=3  ? 'warn' :
+                     eccIndex>=1 ||misIndex>=1  ? 'mild' : 'good';
+
+  const banner=document.getElementById('verdict-banner');
+  banner.innerHTML=`
+    <div class="verdict-card">
+      <div class="vc-label">편심 지수 (Eccentricity)</div>
+      <div class="vc-value ${eS.cls}">${eccIndex.toFixed(2)}%</div>
+      <div class="vc-sub">${eS.label} · 방향 ${eccDir.toFixed(1)}°</div>
+      <div class="vc-bar"><div class="vc-fill" style="width:${Math.min(eccIndex*5,100).toFixed(1)}%;background:${eS.color}"></div></div>
+    </div>
+    <div class="verdict-card">
+      <div class="vc-label">편축 지수 (Misalignment)</div>
+      <div class="vc-value ${mS.cls}">${misIndex.toFixed(2)}%</div>
+      <div class="vc-sub">${mS.label} · 방향 ${misDir.toFixed(1)}°</div>
+      <div class="vc-bar"><div class="vc-fill" style="width:${Math.min(misIndex*5,100).toFixed(1)}%;background:${mS.color}"></div></div>
+    </div>
+    <div class="verdict-card">
+      <div class="vc-label">진단 상세</div>
+      <div class="mrow"><span>평균 Amplitude</span><span class="mv">${metrics.ampMean.toFixed(1)}</span></div>
+      <div class="mrow"><span>Amp Max</span><span class="mv">${metrics.ampMax.toFixed(1)}</span></div>
+      <div class="mrow"><span>Amp Min</span><span class="mv">${metrics.ampMin.toFixed(1)}</span></div>
+      <div class="mrow"><span>Peak-to-Peak</span><span class="mv">${(metrics.ampMax-metrics.ampMin).toFixed(1)}</span></div>
+      <div class="mrow"><span>DC offset U/V/W</span><span class="mv">${metrics.dcU.toFixed(0)}/${metrics.dcV.toFixed(0)}/${metrics.dcW.toFixed(0)}</span></div>
+    </div>
+    <div class="verdict-main">
+      <div class="vm-title">판정 결과</div>
+      <div class="vm-result ${overallCls}">${verdict}</div>
+      <div class="vm-detail">${detail}</div>
+    </div>`;
+
+  // Badges
+  const badgeEcc=document.getElementById('badge-ecc');
+  badgeEcc.textContent=`${eccIndex.toFixed(2)}% ${eS.label}`;
+  badgeEcc.style.cssText=`background:${eS.color}22;color:${eS.color};border:1px solid ${eS.color}55;`;
+
+  const badgeMis=document.getElementById('badge-mis');
+  badgeMis.textContent=`${misIndex.toFixed(2)}% ${mS.label}`;
+  badgeMis.style.cssText=`background:${mS.color}22;color:${mS.color};border:1px solid ${mS.color}55;`;
+}
+
+// ── State ──────────────────────────────────────────────────────────────────
+let parsedChannels=null;
+let roleMap={U:-1,V:-1,W:-1};  // channel indices
+
+function autoAssign(channels) {
+  // Simple heuristic: assign in order, skip clearly non-sinusoidal channels
+  const chs=channels.slice();
+  let u=0,v=1,w=2;
+  // If a channel has high integer ratio it might be an angle, skip it
+  function intRatio(ch){return ch.values.filter(v=>Number.isInteger(v)).length/ch.values.length;}
+  const ir=chs.map(intRatio);
+  // Find 3 channels with lowest int ratio as U/V/W candidates
+  const sorted=chs.map((_,i)=>i).sort((a,b)=>ir[a]-ir[b]);
+  return {U:sorted[0]??0, V:sorted[1]??1, W:sorted[2]??2};
+}
+
+function buildAssignUI(channels) {
+  roleMap=autoAssign(channels);
+  const row=document.getElementById('assign-row');
+  row.innerHTML='';
+  channels.forEach((ch,i)=>{
+    const color=CH_COLORS[i%CH_COLORS.length];
+    const curRole=Object.entries(roleMap).find(([,v])=>v===i)?.[0]||'무시';
+    const div=document.createElement('div');
+    div.className='assign-item';
+    div.style.borderColor=color+'88';
+    div.innerHTML=`<div class="ch-dot" style="background:${color}"></div>
+      <span style="color:${color}">CH${ch.index}</span>
+      <select data-idx="${i}">
+        ${ROLE_OPTS.map(r=>`<option value="${r}" ${r===curRole?'selected':''}>${r}</option>`).join('')}
+      </select>`;
+    row.appendChild(div);
+  });
+  row.addEventListener('change',()=>{
+    roleMap={U:-1,V:-1,W:-1};
+    row.querySelectorAll('select').forEach(sel=>{
+      const idx=parseInt(sel.dataset.idx), role=sel.value;
+      if(role!=='무시') roleMap[role]=idx;
+    });
+  });
+}
+
+function runAnalysis() {
+  if(!parsedChannels) return;
+  const {U,V,W}=roleMap;
+  if(U<0||V<0||W<0){ alert('U, V, W 채널을 모두 지정해주세요.'); return; }
+  const pp=Math.max(1,parseInt(document.getElementById('inp-pp').value)||1);
+  const bins=Math.max(36,parseInt(document.getElementById('inp-bins').value)||180);
+  const res=analyze(parsedChannels,U,V,W,pp,bins);
+  render(res,parsedChannels,U,V,W);
+}
+
+function loadFile(file) {
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    parsedChannels=parseLSM(e.target.result);
+    document.getElementById('file-pill').textContent=file.name;
+    const info=document.getElementById('info-pill');
+    info.textContent=`${parsedChannels[0]?.values.length??0} samples · ${parsedChannels.length} ch`;
+    info.style.display='';
+    document.getElementById('drop-zone').style.display='none';
+    document.getElementById('main').style.display='block';
+    buildAssignUI(parsedChannels);
+    runAnalysis();
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+document.getElementById('file-input').addEventListener('change',e=>loadFile(e.target.files[0]));
+document.getElementById('btn-run').addEventListener('click',runAnalysis);
+
+const dz=document.getElementById('drop-zone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');loadFile(e.dataTransfer.files[0]);});
+</script>
+</body>
+</html>
