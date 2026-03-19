@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modbus RTU/RS-485 Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="ls_logo.ico">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -1763,6 +1764,60 @@
                                                 </div>
                                             </div>
 
+                                            <!-- Power Stack-03: Inverter 출력 및 전류 센싱 -->
+                                            <div class="hw-test-item" data-test-id="hw-write-cmd-test" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
+                                                    <div style="flex: 1;">
+                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Power Stack-03 &nbsp; Inverter 출력 및 전류 센싱</div>
+                                                        <div style="font-size: 11px; color: #6c757d;">0x4004=100, 0x4005=10, 0x2701=1, 0x2700=0x1000 순차 전송</div>
+                                                    </div>
+                                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
+                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
+                                                    </div>
+                                                </div>
+                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
+                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px;">
+                                                        <div style="font-weight: 500; margin-bottom: 12px; color: #1a1a1a;">파라미터 설정</div>
+                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                                                            <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px 12px;">
+                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px;">Aging Current &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4004</code></div>
+                                                                <div style="display: flex; align-items: center; gap: 6px;">
+                                                                    <input type="number" id="hwWriteCmdCurrent" min="0" max="100" placeholder="100" style="width: 100%; padding: 5px 8px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px; font-family: monospace;">
+                                                                    <span style="color: #6c757d; white-space: nowrap;">%</span>
+                                                                </div>
+                                                            </div>
+                                                            <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px 12px;">
+                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px;">Aging Speed &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4005</code></div>
+                                                                <div style="display: flex; align-items: center; gap: 6px;">
+                                                                    <input type="number" id="hwWriteCmdSpeed" min="0" placeholder="10" style="width: 100%; padding: 5px 8px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px; font-family: monospace;">
+                                                                    <span style="color: #6c757d; white-space: nowrap;">Hz</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div style="font-weight: 500; margin-bottom: 8px; color: #1a1a1a;">전송 명령 순서</div>
+                                                        <ol style="margin: 0; padding-left: 18px; line-height: 2; color: #404040; font-family: monospace;">
+                                                            <li>write <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4004</code> = Aging Current [%]</li>
+                                                            <li>write <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4005</code> = Aging Speed [Hz]</li>
+                                                            <li>write <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2701</code> = 1</li>
+                                                            <li>write <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2700</code> = 0x1000</li>
+                                                        </ol>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; background: #fff8e1; border-top: 1px solid #e9ecef; font-size: 12px;">
+                                                        <strong>판정 기준:</strong> 4개 Write 명령 모두 오류 없이 전송되면 합격<br>
+                                                        <span style="color: #6c757d; font-size: 11px;">※ 임시 항목 — 실제 동작 확인 후 수정 예정</span>
+                                                    </div>
+                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
+                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
+                                                        <div style="display: flex; gap: 8px;">
+                                                            <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-write-cmd-test')">▶ Start</button>
+                                                            <button class="btn btn-sm" style="background: #dc3545; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer;" onclick="app.stopPowerStack03()">■ Stop</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+
                                     </div>
 
                                 </div>
@@ -1946,7 +2001,7 @@
                                             <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Function Code</div>
                                             <div style="font-size: 13px; color: #6c757d;">Modbus function to execute</div>
                                         </div>
-                                        <div style="min-width: 300px;">
+                                        <div style="min-width: 300px; max-width: 300px;">
                                             <select id="functionCode"
                                                 style="width: 100%; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;">
                                                 <option value="1">01 - Read Coils</option>
@@ -1957,12 +2012,13 @@
                                                 <option value="6">06 - Write Single Register</option>
                                                 <option value="15">15 - Write Multiple Coils</option>
                                                 <option value="16">16 - Write Multiple Registers</option>
+                                                <option value="43">2B - FC 0x2B MEI Transport (CANopen SDO)</option>
                                             </select>
                                         </div>
                                     </div>
 
                                     <!-- Start Address -->
-                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                                    <div id="startAddressRow" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
                                         <div style="flex: 1; padding-right: 40px;">
                                             <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Start Address</div>
                                             <div style="font-size: 13px; color: #6c757d;">Starting register/coil address (decimal or hex)</div>
@@ -1975,7 +2031,7 @@
                                     </div>
 
                                     <!-- Quantity -->
-                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                                    <div id="quantityRow" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
                                         <div style="flex: 1; padding-right: 40px;">
                                             <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Quantity</div>
                                             <div style="font-size: 13px; color: #6c757d;">Number of registers/coils to read</div>
@@ -1998,6 +2054,69 @@
                                                 <input type="text" id="writeValue" value="0" placeholder="0 or 3E8"
                                                     style="width: 100%; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;">
                                                 <small class="input-converted" id="writeValue-converted" style="font-size: 12px; color: #6c757d; min-height: 16px;"></small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- FC 0x2B: CANopen SDO Fields -->
+                                    <div id="fc2bGroup" style="display: none;">
+                                        <!-- Operation -->
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                                            <div style="flex: 1; padding-right: 40px;">
+                                                <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Operation</div>
+                                                <div style="font-size: 13px; color: #6c757d;">SDO Upload (읽기) 또는 Download (쓰기)</div>
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 300px;">
+                                                <select id="fc2bOperation" style="width: 100%; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;">
+                                                    <option value="read">Upload — 읽기 (cs 0x40)</option>
+                                                    <option value="write">Download — 쓰기 (cs 0x2B/2F/27/23)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <!-- Object Index -->
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                                            <div style="flex: 1; padding-right: 40px;">
+                                                <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Object Index</div>
+                                                <div style="font-size: 13px; color: #6c757d;">CANopen Object Dictionary Index (hex)</div>
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 300px;">
+                                                <input type="text" id="fc2bIndex" value="6040" placeholder="6040"
+                                                    style="width: 100%; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white; font-family: monospace;">
+                                                <small id="fc2bIndex-hint" style="font-size: 12px; color: #6c757d; min-height: 16px;"></small>
+                                            </div>
+                                        </div>
+                                        <!-- Sub-Index -->
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                                            <div style="flex: 1; padding-right: 40px;">
+                                                <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Sub-Index</div>
+                                                <div style="font-size: 13px; color: #6c757d;">CANopen Sub-Index (hex)</div>
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 300px;">
+                                                <input type="text" id="fc2bSubIndex" value="00" placeholder="00"
+                                                    style="width: 100%; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white; font-family: monospace;">
+                                            </div>
+                                        </div>
+                                        <!-- Num Data (Upload only) -->
+                                        <div id="fc2bNumDataGroup" style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                                            <div style="flex: 1; padding-right: 40px;">
+                                                <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Num Data</div>
+                                                <div style="font-size: 13px; color: #6c757d;">읽을 데이터 바이트 수 (응답 데이터 크기)</div>
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 300px;">
+                                                <input type="text" id="fc2bNumData" value="2" placeholder="2"
+                                                    style="width: 100%; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white;">
+                                            </div>
+                                        </div>
+                                        <!-- Write Value (Download only) -->
+                                        <div id="fc2bWriteGroup" style="display: none; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid #e9ecef;">
+                                            <div style="flex: 1; padding-right: 40px;">
+                                                <div style="font-size: 14px; font-weight: 500; color: #1a1a1a; margin-bottom: 4px;">Write Value</div>
+                                                <div style="font-size: 13px; color: #6c757d;">쓸 값 (hex, 16-bit)</div>
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 4px; min-width: 300px;">
+                                                <input type="text" id="fc2bWriteValue" value="0000" placeholder="000F"
+                                                    style="width: 100%; padding: 7px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 14px; background: white; font-family: monospace;">
+                                                <small style="font-size: 12px; color: #6c757d;">※ 16-bit 단일 값 (0x0000 ~ 0xFFFF)</small>
                                             </div>
                                         </div>
                                     </div>

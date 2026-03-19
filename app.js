@@ -32,6 +32,8 @@ class ChartManager {
         // Zoom and pan state
         this.zoom = { x: 1, y: 1 };
         this.pan = { x: 0, y: 0 };
+        this.viewMinTime = 0; // current left-edge time (ms), updated each render
+        this.autoScroll = true; // false when user manually pans
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         this.panStart = { x: 0, y: 0 };
@@ -137,7 +139,14 @@ class ChartManager {
         if (this.isDragging) {
             const dx = x - this.dragStart.x;
             const dy = y - this.dragStart.y;
-            this.pan.x = this.panStart.x + dx;
+            // X drag: shift viewMinTime (negative dx = drag left = forward in time)
+            const chartWidth = this.width - this.chartMargins.left - this.chartMargins.right;
+            const deltaTime = -dx / (chartWidth * this.zoom.x) * this.timeScale;
+            const latestTime = this.getLatestTime();
+            const maxMinTime = Math.max(0, latestTime - this.timeScale);
+            this.viewMinTime = Math.max(0, Math.min(maxMinTime, this.panStartViewMinTime + deltaTime));
+            // If dragged all the way to the latest, resume auto-scroll
+            this.autoScroll = (this.viewMinTime >= maxMinTime);
             this.pan.y = this.panStart.y + dy;
             if (!this.isRunning) this.render();
         } else {
@@ -156,6 +165,7 @@ class ChartManager {
             this.isDragging = true;
             this.dragStart = { x, y };
             this.panStart = { ...this.pan };
+            this.panStartViewMinTime = this.viewMinTime;
             this.canvas.style.cursor = 'grabbing';
         }
     }
@@ -226,6 +236,12 @@ class ChartManager {
         if (!this.isRunning) this.render();
     }
 
+    getLatestTime() {
+        const active = this.channels.filter(ch => ch.enabled && ch.data.length > 0);
+        if (active.length === 0) return this.timeScale;
+        return Math.max(...active.map(ch => ch.data[ch.data.length - 1].t));
+    }
+
     isInChartArea(x, y) {
         return x >= this.chartMargins.left &&
                x <= this.width - this.chartMargins.right &&
@@ -236,7 +252,7 @@ class ChartManager {
     screenToChartX(screenX) {
         const chartWidth = this.width - this.chartMargins.left - this.chartMargins.right;
         const relX = (screenX - this.chartMargins.left - this.pan.x) / (chartWidth * this.zoom.x);
-        return relX * this.timeScale;
+        return this.viewMinTime + relX * this.timeScale;
     }
 
     screenToChartY(screenY) {
@@ -247,7 +263,7 @@ class ChartManager {
 
     chartToScreenX(chartX) {
         const chartWidth = this.width - this.chartMargins.left - this.chartMargins.right;
-        const relX = chartX / this.timeScale;
+        const relX = (chartX - this.viewMinTime) / this.timeScale;
         return this.chartMargins.left + relX * chartWidth * this.zoom.x + this.pan.x;
     }
 
@@ -284,7 +300,7 @@ class ChartManager {
             itemEl.innerHTML = `
                 <span class="cursor-value-dot" style="background: ${ch.color}"></span>
                 <span class="cursor-value-label">${ch.name}:</span>
-                <span class="cursor-value-num">${value.toFixed(1)}</span>
+                <span class="cursor-value-num">${value.toFixed(3)}</span>
             `;
             valuesEl.appendChild(itemEl);
         });
@@ -422,7 +438,7 @@ class ChartManager {
     updateChannelValue(channelIndex, value) {
         const el = document.getElementById(`chartCh${channelIndex + 1}Value`);
         if (el) {
-            el.textContent = value.toFixed(1);
+            el.textContent = value.toFixed(3);
         }
     }
 
@@ -487,6 +503,8 @@ class ChartManager {
         this.trigger.triggered = false;
         this.trigger.triggerIndex = -1;
         this.startTime = null;
+        this.viewMinTime = 0;
+        this.autoScroll = true;
         this.updateMarkersInfo();
         this.updateStats();
         this.render();
@@ -619,6 +637,7 @@ class ChartManager {
         const xStep = this.niceStep(visMaxX - visMinX, 10);
         const xStart = Math.ceil(visMinX / xStep) * xStep;
         for (let t = xStart; t <= visMaxX + xStep * 0.01; t += xStep) {
+            if (t < 0) continue;
             const sx = this.chartToScreenX(t);
             ctx.beginPath();
             ctx.moveTo(sx, top);
@@ -670,11 +689,12 @@ class ChartManager {
         const visMaxY = this.screenToChartY(top);
         const yStep = this.niceStep(visMaxY - visMinY, 8);
         const yStart = Math.ceil(visMinY / yStep) * yStep;
+        const yDecimals = yStep >= 1 ? 0 : yStep >= 0.1 ? 1 : yStep >= 0.01 ? 2 : 3;
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
         for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
             const sy = this.chartToScreenY(v);
-            ctx.fillText(v.toFixed(0), left - 5, sy);
+            ctx.fillText(v.toFixed(yDecimals), left - 5, sy);
         }
 
         // X-axis labels — same ticks as grid
@@ -685,6 +705,7 @@ class ChartManager {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         for (let t = xStart; t <= visMaxX + xStep * 0.01; t += xStep) {
+            if (t < 0) continue;
             const sx = this.chartToScreenX(t);
             ctx.fillText(this.formatTime(t), sx, bottom + 5);
         }
@@ -707,19 +728,10 @@ class ChartManager {
         ctx.rect(left, top, chartWidth, chartHeight);
         ctx.clip();
 
-        // Determine visible time range
-        let minTime = 0;
-        let maxTime = this.timeScale;
-
-        // For continuous mode with running data, shift view to show latest data
-        if (this.mode === 'continuous' && this.channels[0].data.length > 0) {
-            const latestTime = Math.max(...this.channels.filter(ch => ch.enabled && ch.data.length > 0)
-                .map(ch => ch.data[ch.data.length - 1].t));
-
-            if (latestTime > this.timeScale) {
-                minTime = latestTime - this.timeScale;
-                maxTime = latestTime;
-            }
+        // Auto-scroll: follow latest data unless user has manually panned
+        if (this.autoScroll && this.mode === 'continuous') {
+            const latestTime = this.getLatestTime();
+            this.viewMinTime = Math.max(0, latestTime - this.timeScale);
         }
 
         // Draw each channel
@@ -732,8 +744,8 @@ class ChartManager {
 
             let started = false;
             for (const point of ch.data) {
-                const x = left + ((point.t - minTime) / (maxTime - minTime)) * chartWidth * this.zoom.x + this.pan.x;
-                const y = top + (1 - (point.v - this.yMin) / (this.yMax - this.yMin)) * chartHeight * this.zoom.y + this.pan.y;
+                const x = this.chartToScreenX(point.t);
+                const y = this.chartToScreenY(point.v);
 
                 if (!started) {
                     ctx.moveTo(x, y);
@@ -1282,6 +1294,13 @@ class ModbusDashboard {
         // Function code change handler
         document.getElementById('functionCode').addEventListener('change', (e) => {
             this.updateWriteValueVisibility(parseInt(e.target.value));
+        });
+
+        // FC 0x2B operation change handler (Read/Write)
+        document.getElementById('fc2bOperation').addEventListener('change', (e) => {
+            const isWrite = e.target.value === 'write';
+            document.getElementById('fc2bNumDataGroup').style.display = isWrite ? 'none' : 'flex';
+            document.getElementById('fc2bWriteGroup').style.display = isWrite ? 'flex' : 'none';
         });
 
         // Parameter management
@@ -2275,6 +2294,22 @@ class ModbusDashboard {
     updateWriteValueVisibility(functionCode) {
         const writeValueGroup = document.getElementById('writeValueGroup');
         const quantityGroup = document.getElementById('quantity').parentElement;
+        const startAddressRow = document.getElementById('startAddressRow');
+        const quantityRow = document.getElementById('quantityRow');
+        const fc2bGroup = document.getElementById('fc2bGroup');
+
+        if (functionCode === 43) { // FC 0x2B MEI Transport (CANopen SDO)
+            writeValueGroup.style.display = 'none';
+            quantityGroup.style.display = 'none';
+            if (startAddressRow) startAddressRow.style.display = 'none';
+            if (quantityRow) quantityRow.style.display = 'none';
+            if (fc2bGroup) fc2bGroup.style.display = 'block';
+            return;
+        }
+
+        if (startAddressRow) startAddressRow.style.display = 'flex';
+        if (quantityRow) quantityRow.style.display = 'flex';
+        if (fc2bGroup) fc2bGroup.style.display = 'none';
 
         if ([5, 6].includes(functionCode)) {
             writeValueGroup.style.display = 'flex';
@@ -2556,15 +2591,29 @@ class ModbusDashboard {
 
         const expectedLength = this.getExpectedFrameLength();
         if (expectedLength === null) return;          // 길이 확정 불가 (바이트 부족)
-        if (this.receiveIndex < expectedLength) return; // 프레임 미완성, 추가 바이트 대기
+
+        // FC 0x2B 펌웨어 버그 워크어라운드:
+        // NumData 필드가 실제 전송 바이트보다 1 크게 잘못 계산된 펌웨어가 있음.
+        // → expectedLength 바이트가 아직 없더라도 expectedLength-1 바이트는 있고
+        //   그 끝 2바이트가 유효한 CRC라면 짧은 프레임으로 수용한다.
+        let actualLength = expectedLength;
+        let fc2bLengthShort = false;
+        if (this.receiveBuffer[1] === 0x2B &&
+            this.receiveIndex === expectedLength - 1 &&
+            this.modbus.verifyCRC(this.receiveBuffer.slice(0, expectedLength - 1))) {
+            actualLength = expectedLength - 1;
+            fc2bLengthShort = true; // 펌웨어 버그: NumData 선언보다 1바이트 짧게 수신
+        } else if (this.receiveIndex < expectedLength) {
+            return; // 프레임 미완성, 추가 바이트 대기
+        }
 
         // 정확히 한 프레임만 추출
-        const frame = this.receiveBuffer.slice(0, expectedLength);
+        const frame = this.receiveBuffer.slice(0, actualLength);
 
         // 나머지 바이트를 버퍼 앞으로 이동
-        const remaining = this.receiveIndex - expectedLength;
+        const remaining = this.receiveIndex - actualLength;
         for (let i = 0; i < remaining; i++) {
-            this.receiveBuffer[i] = this.receiveBuffer[expectedLength + i];
+            this.receiveBuffer[i] = this.receiveBuffer[actualLength + i];
         }
         this.receiveIndex = remaining;
 
@@ -2574,6 +2623,14 @@ class ModbusDashboard {
             this.updateStats(false);
             if (this.receiveIndex >= 2) this.tryParseFrame();
             return;
+        }
+
+        // FC 0x2B 길이 부족 경고 (CRC는 유효하나 NumData 선언보다 1바이트 짧게 수신)
+        // 별도 error 엔트리 대신 다음 received 엔트리에 경고 sub-line을 붙임
+        if (fc2bLengthShort) {
+            const declared = (frame[11] << 8) | frame[12];
+            this._pendingRxWarning =
+                `⚠ FC 0x2B: RX length mismatch — NumData declares ${declared} bytes but received ${declared - 1} (short by 1). Firmware bug suspected.`;
         }
 
         // 스캔 응답 처리
@@ -2754,6 +2811,22 @@ class ModbusDashboard {
         try {
             const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 0, 255);
             const functionCode = parseInt(document.getElementById('functionCode').value);
+
+            // FC 0x2B CANopen SDO — 별도 처리 (readCANopenObject/writeCANopenObject)
+            if (functionCode === 43) {
+                const index    = parseInt(document.getElementById('fc2bIndex').value, 16);
+                const subIndex = parseInt(document.getElementById('fc2bSubIndex').value, 16);
+                const op       = document.getElementById('fc2bOperation').value;
+                if (op === 'read') {
+                    const numData = parseInt(document.getElementById('fc2bNumData').value) || 2;
+                    await this.readCANopenObject(slaveId, index, subIndex, numData);
+                } else {
+                    const val = parseInt(document.getElementById('fc2bWriteValue').value || '0', 16);
+                    await this.writeCANopenObject(slaveId, index, subIndex, val);
+                }
+                return; // stats는 sendCANopenAndWaitResponse에서 처리됨
+            }
+
             const startAddress = this.parseModbusValue(document.getElementById('startAddress').value, 0, 65535);
             const quantity = this.parseModbusValue(document.getElementById('quantity').value, 1, 125);
             const writeValue = this.parseModbusValue(document.getElementById('writeValue').value || '0', 0, 65535);
@@ -2795,6 +2868,11 @@ class ModbusDashboard {
      * Add entry to unified monitor
      */
     addMonitorEntry(type, dataOrMessage, parsedData = null, errorMsg = null) {
+        // FC 0x2B 펌웨어 버그 워크어라운드: 경고 메시지를 다음 received 엔트리에 one-shot으로 붙임
+        if (type === 'received' && this._pendingRxWarning) {
+            errorMsg = this._pendingRxWarning;
+            this._pendingRxWarning = null;
+        }
         const monitorDisplay = document.getElementById('monitorDisplay');
         if (!monitorDisplay) {
             console.error('monitorDisplay element not found');
@@ -2987,6 +3065,15 @@ class ModbusDashboard {
             summary.className = 'monitor-summary';
             summary.textContent = this.getFrameSummary(dataOrMessage, parsedData, type);
             mainLine.appendChild(summary);
+
+            // errorMsg가 있으면 바이트 아래에 경고 sub-line 표시
+            if (errorMsg) {
+                const warnLine = document.createElement('div');
+                warnLine.className = 'monitor-warn-line';
+                warnLine.style.cssText = 'font-size: 11px; color: #e67e00; padding: 2px 0 0 4px;';
+                warnLine.textContent = errorMsg;
+                entry.appendChild(warnLine);
+            }
 
             entry.dataset.hasDetails = 'true';
             entry._detailsData = { frame: dataOrMessage, byteInfo, parsedData, type, timeStr, deltaStr };
@@ -5001,6 +5088,22 @@ class ModbusDashboard {
         try {
             const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 0, 255);
             const functionCode = parseInt(document.getElementById('functionCode').value);
+
+            // FC 0x2B CANopen SDO — 별도 처리
+            if (functionCode === 43) {
+                const index    = parseInt(document.getElementById('fc2bIndex').value, 16);
+                const subIndex = parseInt(document.getElementById('fc2bSubIndex').value, 16);
+                const op       = document.getElementById('fc2bOperation').value;
+                if (op === 'read') {
+                    const numData = parseInt(document.getElementById('fc2bNumData').value) || 2;
+                    await this.readCANopenObject(slaveId, index, subIndex, numData);
+                } else {
+                    const val = parseInt(document.getElementById('fc2bWriteValue').value || '0', 16);
+                    await this.writeCANopenObject(slaveId, index, subIndex, val);
+                }
+                return; // stats는 sendCANopenAndWaitResponse에서 처리됨
+            }
+
             const startAddress = this.parseModbusValue(document.getElementById('startAddress').value, 0, 65535);
             const quantity = this.parseModbusValue(document.getElementById('quantity').value, 1, 125);
             const writeValue = this.parseModbusValue(document.getElementById('writeValue').value || '0', 0, 65535);
@@ -5045,6 +5148,27 @@ class ModbusDashboard {
         try {
             const slaveId = this.parseModbusValue(document.getElementById('slaveId').value, 0, 255);
             const functionCode = parseInt(document.getElementById('functionCode').value);
+
+            // FC 0x2B는 시뮬레이터 미지원 — 프레임만 생성하여 monitor에 표시
+            if (functionCode === 43) {
+                const index    = parseInt(document.getElementById('fc2bIndex').value, 16);
+                const subIndex = parseInt(document.getElementById('fc2bSubIndex').value, 16);
+                const op       = document.getElementById('fc2bOperation').value;
+                let frame;
+                if (op === 'read') {
+                    const numData = parseInt(document.getElementById('fc2bNumData').value) || 2;
+                    frame = this.modbus.buildCANopenUpload(slaveId, index, subIndex, 0, numData);
+                } else {
+                    const val = parseInt(document.getElementById('fc2bWriteValue').value || '0', 16);
+                    frame = this.modbus.buildCANopenDownload(slaveId, index, subIndex, val);
+                }
+                this.addMonitorEntry('sent', frame, { functionCode: 0x2B, startAddress: (index << 8) | subIndex });
+                this.addMonitorEntry('error', 'FC 0x2B: 시뮬레이터 미지원 (실제 장치에서만 동작)');
+                this.stats.requests++;
+                this.updateStatsDisplay();
+                return;
+            }
+
             const startAddress = this.parseModbusValue(document.getElementById('startAddress').value, 0, 65535);
             const quantity = this.parseModbusValue(document.getElementById('quantity').value, 1, 125);
             const writeValue = this.parseModbusValue(document.getElementById('writeValue').value || '0', 0, 65535);
@@ -7423,25 +7547,24 @@ class ModbusDashboard {
             };
         }
 
-        // No errors - check if running (status > 0 could mean running)
-        // If status is 0, motor is stopped/idle
+        // 0xD011: 0 = motor OK, non-zero = alarm
         if (status === 0) {
             return {
-                text: 'Stopped',
-                class: 'stopped',
+                text: 'OK',
+                class: 'running',
                 errors: [],
                 hasError: false,
-                tooltip: 'Motor stopped'
+                tooltip: 'Motor OK'
             };
         }
 
-        // Non-zero but no error bits - assume running
+        // Non-zero but no matching error bit — undefined alarm bit
         return {
-            text: 'Running',
-            class: 'running',
+            text: 'Alarm',
+            class: 'error',
             errors: [],
-            hasError: false,
-            tooltip: 'Motor running normally'
+            hasError: true,
+            tooltip: `Alarm — undefined bit (0x${status.toString(16).toUpperCase().padStart(4, '0')})`
         };
     }
 
@@ -9848,6 +9971,7 @@ class ModbusDashboard {
     async chartDataLoop() {
         const slaveId = this.chartSlaveId;
         let totalSamples = 0;
+        let nextSampleTime = null; // 누적 타임스탬프 카운터 (패킷 도착 시점과 무관)
 
         while (this.chartRunning) {
             if (!this.writer) { await this.delay(50); continue; }
@@ -9868,14 +9992,16 @@ class ModbusDashboard {
             if (parsed.data.length > 0) {
                 const numCh        = this.chartConfiguredChannels.length;
                 const samplesPerCh = Math.floor(parsed.data.length / numCh);
-                const now          = Date.now();
 
-                // 인터리브 순서: [CH1_s0, CH2_s0, CH3_s0, CH1_s1, CH2_s1, CH3_s1, ...]
-                // 외부 루프: 샘플, 내부 루프: 채널 — 같은 샘플의 모든 채널은 동일 타임스탬프
+                // 누적 카운터 초기화 (첫 데이터 수신 시점 기준)
+                if (nextSampleTime === null) nextSampleTime = Date.now();
+
+                // 채널 우선(Channel-first) 순서: [CH1_s0, CH1_s1, ..., CH2_s0, CH2_s1, ..., CH3_s0, ...]
+                // 타임스탬프를 패킷 도착 시점이 아닌 누적 카운터로 할당 → Len 변동 시에도 연속성 보장
                 for (let s = 0; s < samplesPerCh; s++) {
-                    const t = now - (samplesPerCh - 1 - s) * this.chartPeriodMs;
+                    const t = nextSampleTime + s * this.chartPeriodMs;
                     this.chartConfiguredChannels.forEach((ch, cfgIdx) => {
-                        const val = parsed.data[s * numCh + cfgIdx];
+                        const val = parsed.data[cfgIdx * samplesPerCh + s];
                         if (val === undefined) return;
                         this.chartManager.addDataPoint(ch.chIdx, val, t);
                         totalSamples++;
@@ -9887,6 +10013,7 @@ class ModbusDashboard {
                         }
                     });
                 }
+                nextSampleTime += samplesPerCh * this.chartPeriodMs;
 
                 const sampleCountEl = document.getElementById('chartSampleCount');
                 if (sampleCountEl) sampleCountEl.textContent = totalSamples;
@@ -11726,11 +11853,51 @@ class ModbusDashboard {
                     this._setHwTestResult(testId, 'pass', `Pass — 값 ${hexVal} (raw: ${rawHex})`);
                     break;
                 }
+                case 'hw-write-cmd-test': {
+                    // Power Stack-03: Inverter 출력 및 전류 센싱 (FC 0x2B CANopen SDO Download)
+                    const agingCurrent = parseInt(document.getElementById('hwWriteCmdCurrent')?.value || '100', 10);
+                    const agingSpeed   = parseInt(document.getElementById('hwWriteCmdSpeed')?.value   || '10',  10);
+                    if (isNaN(agingCurrent) || agingCurrent < 0 || agingCurrent > 100) {
+                        this._setHwTestResult(testId, 'fail', 'Aging Current 값을 확인해주세요 (0~100 %)');
+                        return;
+                    }
+                    if (isNaN(agingSpeed) || agingSpeed < 0) {
+                        this._setHwTestResult(testId, 'fail', 'Aging Speed 값을 확인해주세요 (0 Hz 이상)');
+                        return;
+                    }
+                    await this.writeCANopenObject(slaveId, 0x4004, 0x00, agingCurrent);
+                    await this.writeCANopenObject(slaveId, 0x4005, 0x00, agingSpeed);
+                    await this.writeCANopenObject(slaveId, 0x2701, 0x00, 1);
+                    await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x1000);
+                    this._setHwTestResult(testId, 'pass',
+                        `Pass — FC 0x2B: 0x4004=${agingCurrent}%, 0x4005=${agingSpeed}Hz, 0x2701=1, 0x2700=0x1000 전송 완료`);
+                    break;
+                }
+
                 default:
                     this._setHwTestResult(testId, 'fail', '알 수 없는 테스트 ID');
             }
         } catch (err) {
             this._setHwTestResult(testId, 'fail', `오류: ${err.message || err}`);
+        }
+    }
+
+    async stopPowerStack03() {
+        const device = this._getManufactureDevice();
+        if (!device) {
+            this._setHwTestResult('hw-write-cmd-test', 'fail', '디바이스가 선택되지 않았습니다');
+            return;
+        }
+        const slaveId = device.slaveId;
+        try {
+            await this.writeCANopenObject(slaveId, 0x4004, 0x00, 0);
+            await this.writeCANopenObject(slaveId, 0x4005, 0x00, 0);
+            await this.writeCANopenObject(slaveId, 0x2701, 0x00, 2);
+            await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x1000);
+            this._setHwTestResult('hw-write-cmd-test', 'pending',
+                'Stop 완료 — 0x4004=0, 0x4005=0, 0x2701=2, 0x2700=0x1000');
+        } catch (err) {
+            this._setHwTestResult('hw-write-cmd-test', 'fail', `Stop 오류: ${err.message || err}`);
         }
     }
 
