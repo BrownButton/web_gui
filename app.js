@@ -2380,6 +2380,17 @@ class ModbusDashboard {
                 this.startAutoPolling();
             }
 
+            // 기존 등록 디바이스의 operationMode를 디바이스에서 다시 읽기
+            // (앱 재시작 시 localStorage 값과 실제 디바이스 설정이 다를 수 있음)
+            const existingDevices = this.devices.filter(d => d.slaveId !== 0);
+            if (existingDevices.length > 0) {
+                // auto-scan이 있으면 스캔 완료 후 실행, 없으면 폴링 시작 후 바로 실행
+                const syncDelay = this.autoScanEnabled ? 8000 : 500;
+                setTimeout(() => {
+                    existingDevices.forEach(d => this.initializeDeviceMode(d.id));
+                }, syncDelay);
+            }
+
         } catch (error) {
             console.error('Connection error:', error);
             this.addMonitorEntry('error', `Connection failed: ${error.message}`);
