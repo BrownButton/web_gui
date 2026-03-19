@@ -6008,8 +6008,8 @@ class ModbusDashboard {
             });
         }
 
-        // 시리얼 미연결 상태면 모든 카드 비활성화
-        if (!this.isConnected) {
+        // 시리얼 미연결 상태면 모든 카드 비활성화 (시뮬레이터 활성 시 제외)
+        if (!this.isConnected && !this.simulatorEnabled) {
             grid.querySelectorAll('.device-card, .device-list-item').forEach(el => {
                 el.classList.add('serial-disconnected');
             });
