@@ -11961,6 +11961,25 @@ class ModbusDashboard {
                     break;
                 }
 
+                case 'hw-ps-04': {
+                    // Power Stack-04: IPM / Board Temperature 읽기 (FC 0x2B CANopen SDO Upload)
+                    const toInt16 = v => { const n = v & 0xFFFF; return n >= 0x8000 ? n - 0x10000 : n; };
+                    const r260B = await this.readCANopenObject(slaveId, 0x260B, 0x00);
+                    const r260C = await this.readCANopenObject(slaveId, 0x260C, 0x00);
+                    const raw260B = r260B?.value ?? r260B;
+                    const raw260C = r260C?.value ?? r260C;
+                    const t260B = raw260B != null ? toInt16(raw260B) : null;
+                    const t260C = raw260C != null ? toInt16(raw260C) : null;
+                    const fmtTemp = v => v != null ? `${v} ℃` : 'N/A';
+                    const el260B = document.getElementById('hwPs04Val260B');
+                    const el260C = document.getElementById('hwPs04Val260C');
+                    if (el260B) el260B.textContent = fmtTemp(t260B);
+                    if (el260C) el260C.textContent = fmtTemp(t260C);
+                    this._setHwTestResult(testId, 'pass',
+                        `Pass — IPM Temp=${fmtTemp(t260B)}, Board Temp=${fmtTemp(t260C)}`);
+                    break;
+                }
+
                 default:
                     this._setHwTestResult(testId, 'fail', '알 수 없는 테스트 ID');
             }
