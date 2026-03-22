@@ -10298,7 +10298,7 @@ class ModbusDashboard {
             // offsetWidth: display:flex 설정 직후 호출 시 layout reflow로 올바른 값 반환
             const w = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 400;
             canvas.width  = w;
-            canvas.height = 130;
+            canvas.height = 200;
             this[chartKey] = new MiniChart(canvas, channels);
             this[chartKey].render();
         };
