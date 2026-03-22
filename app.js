@@ -10324,6 +10324,23 @@ class ModbusDashboard {
             { name: 'Iv', color: '#3498db', chNum: 17 },
             { name: 'Iw', color: '#2ecc71', chNum: 18 },
         ]);
+
+        // Aging Current / Speed 마지막 입력값 복원
+        const saved = (() => { try { return JSON.parse(localStorage.getItem('ovInverterSettings') || '{}'); } catch { return {}; } })();
+        const curEl = document.getElementById('ovInverterCurrent');
+        const spdEl = document.getElementById('ovInverterSpeed');
+        if (curEl && saved.current != null) curEl.value = saved.current;
+        if (spdEl && saved.speed   != null) spdEl.value = saved.speed;
+
+        // 변경 시 localStorage에 저장
+        const save = () => {
+            localStorage.setItem('ovInverterSettings', JSON.stringify({
+                current: curEl?.value,
+                speed:   spdEl?.value,
+            }));
+        };
+        curEl?.addEventListener('input', save);
+        spdEl?.addEventListener('input', save);
     }
 
     async toggleMiniChart(type) {
