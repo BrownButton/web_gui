@@ -1222,6 +1222,7 @@ class ModbusDashboard {
 
         // HW Overview 통합 폴링 (탭 진입 시 자동 시작)
         this.ovPollingRunning = false;
+        this.ovOnceExecuted   = false; // OS버전/모터ID/EEPROM 1회 실행 여부
 
         // Device Setup auto-apply debounce timers
         this.applyDebounceTimers = {};
@@ -2570,8 +2571,9 @@ class ModbusDashboard {
             // 물리적 제거 포함 모든 경우에 항상 연결 상태를 해제
             this.isConnected = false;
             this.updateConnectionStatus(false);
-            // HW Overview 폴링 중지
+            // HW Overview 폴링 중지 + 1회 실행 플래그 리셋 (재연결 시 재실행)
             this.ovPollingRunning = false;
+            this.ovOnceExecuted   = false;
         }
     }
 
@@ -10541,6 +10543,26 @@ class ModbusDashboard {
         this._setOvBadge('ps-igbt-temp', 'live');
         this._setOvBadge('ps-phase-loss','live');
         this._ovPollingLoop();
+        this._runOvOnce(); // OS버전 / 모터ID / EEPROM 최초 1회 실행
+    }
+
+    async _runOvOnce() {
+        if (this.ovOnceExecuted) return;
+
+        // writer·device가 준비될 때까지 대기 (탭 이탈 시 중단)
+        while (!this.writer || !this._getManufactureDevice()) {
+            if (!this.ovPollingRunning) return;
+            await this.delay(500);
+        }
+        if (this.ovOnceExecuted) return; // 대기 중 중복 호출 방지
+        this.ovOnceExecuted = true;
+
+        // 순차 실행 — 버스 충돌 없이 큐를 통해 전송됨
+        await this.runOvOsVersion();
+        if (!this.ovPollingRunning) return;
+        await this.runOvMotorId();
+        if (!this.ovPollingRunning) return;
+        await this.runOvEeprom();
     }
 
     stopOvPolling() {
