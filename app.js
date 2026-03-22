@@ -10303,7 +10303,7 @@ class ModbusDashboard {
     // ─────────────────────────────────────────────────────────
 
     initMiniCharts() {
-        const heightMap = { miniChartHall: 160, miniChartCurrent: 200 };
+        const heightMap = { miniChartHall: 160, miniChartCurrent: 160 };
         const init = (canvasId, chartKey, channels) => {
             const canvas = document.getElementById(canvasId);
             if (!canvas || this[chartKey]) return;
@@ -10388,10 +10388,10 @@ class ModbusDashboard {
             : ['ov-iu', 'ov-iv', 'ov-iw'];
         const minIds = type === 'hall'
             ? ['ov-hall-u-min', 'ov-hall-v-min', 'ov-hall-w-min']
-            : [];
+            : ['ov-iu-min', 'ov-iv-min', 'ov-iw-min'];
         const maxIds = type === 'hall'
             ? ['ov-hall-u-max', 'ov-hall-v-max', 'ov-hall-w-max']
-            : [];
+            : ['ov-iu-max', 'ov-iv-max', 'ov-iw-max'];
 
         while (this.miniChartRunning[type]) {
             if (!this.writer) { await this.delay(50); continue; }
