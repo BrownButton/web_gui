@@ -10317,7 +10317,7 @@ class ModbusDashboard {
         init('miniChartHall', 'miniChartHall', [
             { name: 'Hall U', color: '#e74c3c', chNum: 22 },
             { name: 'Hall V', color: '#3498db', chNum: 23 },
-            { name: 'Hall W', color: '#2ecc71', chNum: 23 },
+            { name: 'Hall W', color: '#2ecc71', chNum: 24 },
         ]);
         init('miniChartCurrent', 'miniChartCurrent', [
             { name: 'Iu', color: '#e74c3c', chNum: 16 },
