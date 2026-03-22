@@ -1870,8 +1870,9 @@
                                             </div>
                                         </div>
 
-                                        <!-- Test Cards Grid -->
-                                        <div style="flex: 1; overflow-y: auto; padding: 20px 28px; background: #f8f9fa; display: flex; flex-direction: column; gap: 12px;">
+                                        <!-- Test Cards Grid (외부: 스크롤 담당, 내부: flex 레이아웃 담당 — 분리하지 않으면 flex-shrink가 자식을 압축함) -->
+                                        <div style="flex: 1; overflow-y: auto; background: #f8f9fa;">
+                                        <div style="padding: 20px 28px; display: flex; flex-direction: column; gap: 12px;">
 
                                             <!-- Row 1: Interface 2열 -->
                                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -2104,7 +2105,8 @@
                                                 </div>
                                             </div>
 
-                                        </div>
+                                        </div><!-- /inner flex column -->
+                                        </div><!-- /outer scroll container -->
                                     </div><!-- /manufactureHwOverview -->
 
                                     <!-- Tuning Sub-tab -->
