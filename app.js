@@ -10542,27 +10542,8 @@ class ModbusDashboard {
         this._setOvBadge('ps-dclink',    'live');
         this._setOvBadge('ps-igbt-temp', 'live');
         this._setOvBadge('ps-phase-loss','live');
+        // 단일 체인으로 실행 — 1회 검사 후 폴링 루프 진입 (병렬 금지)
         this._ovPollingLoop();
-        this._runOvOnce(); // OS버전 / 모터ID / EEPROM 최초 1회 실행
-    }
-
-    async _runOvOnce() {
-        if (this.ovOnceExecuted) return;
-
-        // writer·device가 준비될 때까지 대기 (탭 이탈 시 중단)
-        while (!this.writer || !this._getManufactureDevice()) {
-            if (!this.ovPollingRunning) return;
-            await this.delay(500);
-        }
-        if (this.ovOnceExecuted) return; // 대기 중 중복 호출 방지
-        this.ovOnceExecuted = true;
-
-        // 순차 실행 — 버스 충돌 없이 큐를 통해 전송됨
-        await this.runOvOsVersion();
-        if (!this.ovPollingRunning) return;
-        await this.runOvMotorId();
-        if (!this.ovPollingRunning) return;
-        await this.runOvEeprom();
     }
 
     stopOvPolling() {
@@ -10576,8 +10557,26 @@ class ModbusDashboard {
     async _ovPollingLoop() {
         const toInt16 = v => { const n = v & 0xFFFF; return n >= 0x8000 ? n - 0x10000 : n; };
 
+        // writer·device 준비 대기
         while (this.ovPollingRunning) {
-            // writer 또는 device가 없으면 대기 (연결/스캔 완료 후 자동 재개)
+            if (this.writer && this._getManufactureDevice()) break;
+            await this.delay(500);
+        }
+        if (!this.ovPollingRunning) return;
+
+        // ── 최초 1회 검사 (OS버전 / 모터ID / EEPROM) ──────────────
+        if (!this.ovOnceExecuted) {
+            this.ovOnceExecuted = true;
+            await this.runOvOsVersion();
+            if (!this.ovPollingRunning) return;
+            await this.runOvMotorId();
+            if (!this.ovPollingRunning) return;
+            await this.runOvEeprom();
+            if (!this.ovPollingRunning) return;
+        }
+
+        // ── 반복 폴링 (DClink / IGBT / 결상) ─────────────────────
+        while (this.ovPollingRunning) {
             if (!this.writer) { await this.delay(500); continue; }
             const device = this._getManufactureDevice();
             if (!device) { await this.delay(500); continue; }
