@@ -1977,7 +1977,7 @@
                                             <!-- Row 3: PS 3열 (동일 높이) -->
                                             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; align-items: stretch;">
                                                 <!-- DClink 센싱 회로 검증 -->
-                                                <div id="ovCard-ps-dclink" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="app.runOvDclink()">
+                                                <div id="ovCard-ps-dclink" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                                                     <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
                                                         <span style="font-size: 10px; background: #fff3cd; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PS</span>
                                                         <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">DClink 센싱 회로 검증</span>
@@ -1990,20 +1990,20 @@
                                                     </div>
                                                 </div>
                                                 <!-- IGBT 모듈 온도 검증 -->
-                                                <div id="ovCard-ps-igbt-temp" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="app.runOvIgbtTemp()">
+                                                <div id="ovCard-ps-igbt-temp" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                                                     <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
                                                         <span style="font-size: 10px; background: #fff3cd; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PS</span>
                                                         <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">IGBT 모듈 온도 검증</span>
                                                     </div>
                                                     <div style="padding: 10px 14px;">
                                                         <div style="padding: 8px 10px; background: #fafafa; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 11px; color: #6c757d;">Motor ID &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 10px;">0x2000</span></span>
+                                                            <span style="font-size: 11px; color: #6c757d;">IGBT Temp &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 10px;">0x260B</span></span>
                                                             <span id="ov-igbt-motor-id" style="font-size: 18px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <!-- 입력 결상 감지 회로 검증 -->
-                                                <div id="ovCard-ps-phase-loss" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="app.runOvPhaseLoss()">
+                                                <div id="ovCard-ps-phase-loss" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                                                     <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
                                                         <span style="font-size: 10px; background: #fff3cd; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PS</span>
                                                         <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">입력 결상 감지 회로 검증</span>

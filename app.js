@@ -1220,8 +1220,8 @@ class ModbusDashboard {
         this.miniChartCurrent = null;
         this.miniChartRunning = { hall: false, current: false };
 
-        // HW Overview 개별 폴링
-        this.ovPollingRunning = { dclink: false, igbtTemp: false, phaseLoss: false };
+        // HW Overview 통합 폴링 (탭 진입 시 자동 시작)
+        this.ovPollingRunning = false;
 
         // Device Setup auto-apply debounce timers
         this.applyDebounceTimers = {};
@@ -2564,7 +2564,7 @@ class ModbusDashboard {
             this.isConnected = false;
             this.updateConnectionStatus(false);
             // HW Overview 폴링 중지
-            Object.keys(this.ovPollingRunning).forEach(k => { this.ovPollingRunning[k] = false; });
+            this.ovPollingRunning = false;
         }
     }
 
@@ -10521,78 +10521,59 @@ class ModbusDashboard {
         this._setOvBadge('mcu-eeprom', ok ? 'pass' : 'fail');
     }
 
-    async runOvDclink() {
-        if (this.ovPollingRunning.dclink) {
-            this.ovPollingRunning.dclink = false;
-            this._setOvBadge('ps-dclink', 'pending');
-            return;
-        }
-        const device = this._getManufactureDevice();
-        if (!device) { this.showToast('디바이스가 선택되지 않았습니다', 'error'); return; }
-        if (!this.writer) { this.showToast('시리얼 포트가 연결되지 않았습니다', 'error'); return; }
-        this.ovPollingRunning.dclink = true;
-        this._setOvBadge('ps-dclink', 'live');
-        this._ovPollingLoop('dclink', device.slaveId);
-    }
+    // ─────────────────────────────────────────────────────────
+    //  HW Overview — 통합 자동 폴링 (탭 진입/이탈 시 자동 제어)
+    //  3가지 항목(DClink / IGBT 온도 / 결상)을 단일 루프에서
+    //  순차적으로 읽어 버스 충돌 없이 큐를 통해 전송한다.
+    // ─────────────────────────────────────────────────────────
 
-    async runOvIgbtTemp() {
-        if (this.ovPollingRunning.igbtTemp) {
-            this.ovPollingRunning.igbtTemp = false;
-            this._setOvBadge('ps-igbt-temp', 'pending');
-            return;
-        }
+    startOvPolling() {
+        if (this.ovPollingRunning) return; // 이미 실행 중
         const device = this._getManufactureDevice();
-        if (!device) { this.showToast('디바이스가 선택되지 않았습니다', 'error'); return; }
-        if (!this.writer) { this.showToast('시리얼 포트가 연결되지 않았습니다', 'error'); return; }
-        this.ovPollingRunning.igbtTemp = true;
+        if (!device || !this.writer) return; // 연결 안 됨 → 무시
+        this.ovPollingRunning = true;
+        this._setOvBadge('ps-dclink',    'live');
         this._setOvBadge('ps-igbt-temp', 'live');
-        this._ovPollingLoop('igbtTemp', device.slaveId);
+        this._setOvBadge('ps-phase-loss','live');
+        this._ovPollingLoop(device.slaveId);
     }
 
-    async runOvPhaseLoss() {
-        if (this.ovPollingRunning.phaseLoss) {
-            this.ovPollingRunning.phaseLoss = false;
-            this._setOvBadge('ps-phase-loss', 'pending');
-            return;
-        }
-        const device = this._getManufactureDevice();
-        if (!device) { this.showToast('디바이스가 선택되지 않았습니다', 'error'); return; }
-        if (!this.writer) { this.showToast('시리얼 포트가 연결되지 않았습니다', 'error'); return; }
-        this.ovPollingRunning.phaseLoss = true;
-        this._setOvBadge('ps-phase-loss', 'live');
-        this._ovPollingLoop('phaseLoss', device.slaveId);
+    stopOvPolling() {
+        if (!this.ovPollingRunning) return;
+        this.ovPollingRunning = false;
+        this._setOvBadge('ps-dclink',    'pending');
+        this._setOvBadge('ps-igbt-temp', 'pending');
+        this._setOvBadge('ps-phase-loss','pending');
     }
 
-    async _ovPollingLoop(type, slaveId) {
+    async _ovPollingLoop(slaveId) {
         const toInt16 = v => { const n = v & 0xFFFF; return n >= 0x8000 ? n - 0x10000 : n; };
 
-        while (this.ovPollingRunning[type]) {
+        while (this.ovPollingRunning) {
             if (!this.writer) { await this.delay(500); continue; }
 
-            switch (type) {
-                case 'dclink': {
-                    const raw = await this.readInputRegisterWithTimeout(slaveId, 0xD013);
-                    const el  = document.getElementById('ov-dclink-v');
-                    if (raw !== null && raw !== undefined && el) el.textContent = raw;
-                    break;
-                }
-                case 'igbtTemp': {
-                    const r  = await this.readCANopenObject(slaveId, 0x260B, 0x00);
-                    const el = document.getElementById('ov-igbt-motor-id');
-                    if (r && !r.error && r.value != null && el)
-                        el.textContent = toInt16(r.value) + ' ℃';
-                    break;
-                }
-                case 'phaseLoss': {
-                    const alarmCode = await this.readInputRegisterWithTimeout(slaveId, 0x2800);
-                    const el = document.getElementById('ov-alarm-code');
-                    if (alarmCode !== null && alarmCode !== undefined && el)
-                        el.textContent = '0x' + alarmCode.toString(16).toUpperCase().padStart(4, '0');
-                    break;
-                }
-            }
+            // 1) DClink 전압 — FC04 Input Register 0xD013
+            const dcRaw = await this.readInputRegisterWithTimeout(slaveId, 0xD013);
+            const dcEl  = document.getElementById('ov-dclink-v');
+            if (dcRaw !== null && dcRaw !== undefined && dcEl) dcEl.textContent = dcRaw;
 
-            if (this.ovPollingRunning[type]) await this.delay(1000);
+            if (!this.ovPollingRunning) break;
+
+            // 2) IGBT 온도 — CANopen 0x260B:00
+            const igbtR  = await this.readCANopenObject(slaveId, 0x260B, 0x00);
+            const igbtEl = document.getElementById('ov-igbt-motor-id');
+            if (igbtR && !igbtR.error && igbtR.value != null && igbtEl)
+                igbtEl.textContent = toInt16(igbtR.value) + ' ℃';
+
+            if (!this.ovPollingRunning) break;
+
+            // 3) 결상(Alarm Code) — FC04 Input Register 0x2800
+            const alarmCode = await this.readInputRegisterWithTimeout(slaveId, 0x2800);
+            const alarmEl   = document.getElementById('ov-alarm-code');
+            if (alarmCode !== null && alarmCode !== undefined && alarmEl)
+                alarmEl.textContent = '0x' + alarmCode.toString(16).toUpperCase().padStart(4, '0');
+
+            if (this.ovPollingRunning) await this.delay(1000);
         }
     }
 
@@ -13022,6 +13003,11 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.style.color = '#667eea';
             tab.style.borderBottom = '2px solid #667eea';
 
+            // HW Overview 탭을 벗어나면 통합 폴링 중지
+            if (targetSubtab !== 'hw-overview') {
+                window.dashboard.stopOvPolling();
+            }
+
             // Hide all subtab contents
             const subtabContents = document.querySelectorAll('.manufacture-subtab-content');
             subtabContents.forEach(content => {
@@ -13042,6 +13028,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (targetSubtab === 'hw-overview') {
                 document.getElementById('manufactureHwOverview').style.display = 'flex';
                 window.dashboard.initMiniCharts();
+                window.dashboard.startOvPolling();
             }
         });
     });
