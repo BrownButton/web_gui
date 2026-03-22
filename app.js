@@ -7287,6 +7287,35 @@ class ModbusDashboard {
     /**
      * Poll next device sequentially (TX -> wait response/timeout -> next)
      */
+    /** FC 0x64 스트림(메인 차트 또는 미니 차트)이 버스를 점유 중인지 여부 */
+    get _isFc64Active() {
+        return this.chartRunning || Object.values(this.miniChartRunning).some(v => v);
+    }
+
+    /**
+     * commandQueue에 쌓인 명령을 모두 순차 실행.
+     * FC 0x64 차트 루프가 폴링 루프 대신 이 함수를 호출해 버스 충돌 없이 큐를 소진한다.
+     */
+    async _drainCommandQueue() {
+        while (this.commandQueue.length > 0) {
+            const cmd = this.commandQueue.shift();
+            try {
+                if (cmd.type === 'read') {
+                    const value = await this.sendAndWaitResponse(cmd.frame, cmd.slaveId);
+                    cmd.resolve(value);
+                } else if (cmd.type === 'canopen_read' || cmd.type === 'canopen_write') {
+                    const result = await this.sendCANopenAndWaitResponse(cmd.frame, cmd.slaveId);
+                    cmd.resolve(result);
+                } else {
+                    await this.sendWriteAndWaitResponse(cmd.frame, cmd.slaveId, cmd.address);
+                    cmd.resolve();
+                }
+            } catch (err) {
+                cmd.reject(err);
+            }
+        }
+    }
+
     async pollNextDeviceSequential() {
         // Check if polling should continue
         if (!this.autoPollingTimer) {
@@ -7296,6 +7325,12 @@ class ModbusDashboard {
         // If scanning, wait and retry later
         if (this.isScanning) {
             setTimeout(() => this.pollNextDeviceSequential(), 500);
+            return;
+        }
+
+        // FC 0x64 스트림(미니차트/차트)이 버스를 점유 중이면 폴링 대기
+        if (this.chartRunning || Object.values(this.miniChartRunning).some(v => v)) {
+            setTimeout(() => this.pollNextDeviceSequential(), 100);
             return;
         }
 
@@ -7450,13 +7485,8 @@ class ModbusDashboard {
                 return null;
             }
         } else if (this.writer) {
-            if (this.autoPollingTimer) {
-                // Called while polling is active — always queue regardless of isPolling.
-                // isPolling=true does NOT mean we are inside the polling loop; the loop
-                // could be suspended at an await while this external caller runs.
-                // Sending directly here would collide with the in-progress poll frame.
-                // Internal polling reads (pollNextDeviceSequential, pollMonitoringParams)
-                // bypass this function and call sendAndWaitResponse directly.
+            if (this.autoPollingTimer || this._isFc64Active) {
+                // Polling 중이거나 FC64 차트가 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
                     this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
                 });
@@ -7725,14 +7755,12 @@ class ModbusDashboard {
                 this.updateStats(true);
             }
         } else if (this.writer) {
-            if (this.autoPollingTimer) {
-                // Polling active: enqueue to avoid 485 bus collision
-                // Uses commandTimeout (설정의 Timeout 값) for the actual write response
+            if (this.autoPollingTimer || this._isFc64Active) {
+                // Polling 중이거나 FC64 차트가 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
                     this.commandQueue.push({ frame, slaveId, address, resolve, reject });
                 });
             } else {
-                // Polling not active: execute directly
                 await this.sendWriteAndWaitResponse(frame, slaveId, address);
             }
         } else {
@@ -7889,7 +7917,7 @@ class ModbusDashboard {
         const frame = this.modbus.buildCANopenUpload(slaveId, index, subIndex, 0, numData);
 
         if (this.writer) {
-            if (this.autoPollingTimer) {
+            if (this.autoPollingTimer || this._isFc64Active) {
                 return new Promise((resolve, reject) => {
                     this.commandQueue.push({ type: 'canopen_read', frame, slaveId, resolve, reject });
                 });
@@ -7913,7 +7941,7 @@ class ModbusDashboard {
         const frame = this.modbus.buildCANopenDownload(slaveId, index, subIndex, value, size);
 
         if (this.writer) {
-            if (this.autoPollingTimer) {
+            if (this.autoPollingTimer || this._isFc64Active) {
                 return new Promise((resolve, reject) => {
                     this.commandQueue.push({ type: 'canopen_write', frame, slaveId, resolve, reject });
                 });
@@ -8457,14 +8485,12 @@ class ModbusDashboard {
                 return null;
             }
         } else if (this.writer) {
-            if (this.autoPollingTimer) {
-                // Called while polling is active — always queue regardless of isPolling.
-                // Internal polling reads bypass this function and call sendAndWaitResponse directly.
+            if (this.autoPollingTimer || this._isFc64Active) {
+                // Polling 중이거나 FC64 차트가 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
                     this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
                 });
             }
-            // Polling is inactive — safe to send directly.
             return await this.sendAndWaitResponse(frame, slaveId);
         }
 
@@ -10227,6 +10253,9 @@ class ModbusDashboard {
 
             // Status=done이면 짧게 대기 후 재요청, stay이면 즉시 재요청
             if (parsed.status === 0x00) await this.delay(5);
+
+            // FC64 요청 사이에 대기 중인 큐 명령 소진 (버스 충돌 방지)
+            if (this.commandQueue.length > 0) await this._drainCommandQueue();
         }
 
         this.responseBuffer = null;
@@ -10370,6 +10399,9 @@ class ModbusDashboard {
                 }
             }
             chart.render();
+
+            // FC64 요청 사이에 대기 중인 큐 명령 소진 (버스 충돌 방지)
+            if (this.commandQueue.length > 0) await this._drainCommandQueue();
         }
     }
 
