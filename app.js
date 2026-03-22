@@ -10315,8 +10315,8 @@ class ModbusDashboard {
             this[chartKey].render();
         };
         init('miniChartHall', 'miniChartHall', [
-            { name: 'Hall U', color: '#e74c3c', chNum: 21 },
-            { name: 'Hall V', color: '#3498db', chNum: 22 },
+            { name: 'Hall U', color: '#e74c3c', chNum: 22 },
+            { name: 'Hall V', color: '#3498db', chNum: 23 },
             { name: 'Hall W', color: '#2ecc71', chNum: 23 },
         ]);
         init('miniChartCurrent', 'miniChartCurrent', [
