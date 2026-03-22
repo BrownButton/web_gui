@@ -10477,9 +10477,16 @@ class ModbusDashboard {
     //  HW Overview — 개별 카드 테스트 실행
     // ─────────────────────────────────────────────────────────
 
+    // 테두리 효과 없이 표시할 카드 ID 목록 (자동 실행 항목)
+    static _OV_NO_BORDER_IDS = new Set([
+        'mcu-os-version', 'mcu-motor-id-set', 'mcu-eeprom',
+        'ps-dclink', 'ps-igbt-temp', 'ps-phase-loss',
+    ]);
+
     _setOvBadge(id, status) {
         const card = document.getElementById(`ovCard-${id}`);
         if (!card) return;
+        if (ModbusDashboard._OV_NO_BORDER_IDS.has(id)) return; // 테두리 효과 없음
         const borderMap = {
             pass:    '#6fcf97',  // 초록
             fail:    '#eb8a90',  // 빨강
