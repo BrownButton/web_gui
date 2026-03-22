@@ -10494,7 +10494,7 @@ class ModbusDashboard {
 
     // 테두리 효과 없이 표시할 카드 ID 목록 (자동 실행 항목)
     static _OV_NO_BORDER_IDS = new Set([
-        'mcu-os-version', 'mcu-motor-id-set', 'mcu-eeprom',
+        'mcu-os-version', 'mcu-motor-id-set',
         'ps-dclink', 'ps-igbt-temp', 'ps-phase-loss',
     ]);
 
@@ -10592,8 +10592,6 @@ class ModbusDashboard {
             await this.runOvOsVersion();
             if (!this.ovPollingRunning) return;
             await this.runOvMotorId();
-            if (!this.ovPollingRunning) return;
-            await this.runOvEeprom();
             if (!this.ovPollingRunning) return;
         }
 
