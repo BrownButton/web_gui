@@ -993,10 +993,12 @@ class MiniChart {
         if (!ch) return;
         ch.data.push(value);
         if (ch.data.length > this.maxPoints) ch.data.shift();
+        if (ch.min === undefined || value < ch.min) ch.min = value;
+        if (ch.max === undefined || value > ch.max) ch.max = value;
     }
 
     clear() {
-        this.channels.forEach(ch => ch.data = []);
+        this.channels.forEach(ch => { ch.data = []; ch.min = undefined; ch.max = undefined; });
         this.render();
     }
 
@@ -10301,13 +10303,14 @@ class ModbusDashboard {
     // ─────────────────────────────────────────────────────────
 
     initMiniCharts() {
+        const heightMap = { miniChartHall: 160, miniChartCurrent: 200 };
         const init = (canvasId, chartKey, channels) => {
             const canvas = document.getElementById(canvasId);
             if (!canvas || this[chartKey]) return;
             // offsetWidth: display:flex 설정 직후 호출 시 layout reflow로 올바른 값 반환
             const w = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 400;
             canvas.width  = w;
-            canvas.height = 200;
+            canvas.height = heightMap[canvasId] ?? 200;
             this[chartKey] = new MiniChart(canvas, channels);
             this[chartKey].render();
         };
@@ -10383,6 +10386,12 @@ class ModbusDashboard {
         const valueIds = type === 'hall'
             ? ['ov-hall-u', 'ov-hall-v', 'ov-hall-w']
             : ['ov-iu', 'ov-iv', 'ov-iw'];
+        const minIds = type === 'hall'
+            ? ['ov-hall-u-min', 'ov-hall-v-min', 'ov-hall-w-min']
+            : [];
+        const maxIds = type === 'hall'
+            ? ['ov-hall-u-max', 'ov-hall-v-max', 'ov-hall-w-max']
+            : [];
 
         while (this.miniChartRunning[type]) {
             if (!this.writer) { await this.delay(50); continue; }
@@ -10404,6 +10413,12 @@ class ModbusDashboard {
                     if (s === samplesPerCh - 1) {
                         const el = document.getElementById(valueIds[ci]);
                         if (el) el.textContent = val.toFixed(3);
+                        // min/max 업데이트 (hall 차트만)
+                        const ch = chart.channels[ci];
+                        const minEl = minIds[ci] ? document.getElementById(minIds[ci]) : null;
+                        const maxEl = maxIds[ci] ? document.getElementById(maxIds[ci]) : null;
+                        if (minEl && ch.min !== undefined) minEl.textContent = ch.min.toFixed(3);
+                        if (maxEl && ch.max !== undefined) maxEl.textContent = ch.max.toFixed(3);
                     }
                 }
             }
