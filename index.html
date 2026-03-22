@@ -2032,15 +2032,15 @@
                                                     </div>
 
                                                     <!-- Inverter 출력 및 전류 센싱 검증 -->
-                                                    <div id="ovCard-ps-inverter-current" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                                    <div id="ovCard-ps-inverter-current" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="app.toggleMiniChart('current')">
                                                         <div style="padding: 11px 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0;">
                                                             <div style="display: flex; align-items: center; gap: 8px;">
                                                                 <span style="font-size: 10px; background: #fff3cd; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PS</span>
                                                                 <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">Inverter 출력 및 전류 센싱 검증</span>
                                                             </div>
                                                         </div>
-                                                        <!-- 입력 파라미터 -->
-                                                        <div style="padding: 10px 14px 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                                        <!-- 입력 파라미터 (클릭 이벤트 카드로 전파 차단) -->
+                                                        <div onclick="event.stopPropagation()" style="padding: 10px 14px 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                                                             <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 8px 10px;">
                                                                 <div style="font-size: 10px; color: #6c757d; margin-bottom: 5px;">Aging Current &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px; font-size: 10px;">0x4004</code></div>
                                                                 <div style="display: flex; align-items: center; gap: 5px;">
@@ -2078,10 +2078,10 @@
                                                         <div style="padding: 0 14px 4px;">
                                                             <canvas id="miniChartCurrent" style="width: 100%; height: 110px; border-radius: 6px; display: block; background: #fafafa;"></canvas>
                                                         </div>
-                                                        <!-- Start / Stop -->
-                                                        <div style="padding: 8px 14px; border-top: 1px solid #f0f0f0; display: flex; justify-content: flex-end; gap: 6px;">
+                                                        <!-- Start / Stop (클릭 이벤트 카드로 전파 차단) -->
+                                                        <div onclick="event.stopPropagation()" style="padding: 8px 14px; border-top: 1px solid #f0f0f0; display: flex; justify-content: flex-end; gap: 6px;">
                                                             <button id="ovInverterStartBtn" class="btn btn-primary btn-sm" style="font-size: 11px; padding: 3px 12px;" onclick="app.startOvInverter()">▶ Start</button>
-                                                            <button id="ovInverterStopBtn" class="btn btn-sm" style="font-size: 11px; padding: 3px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;" disabled onclick="app.stopOvInverter()">■ Stop</button>
+                                                            <button id="ovInverterStopBtn" class="btn btn-sm" style="font-size: 11px; padding: 3px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="app.stopOvInverter()">■ Stop</button>
                                                         </div>
                                                     </div>
 

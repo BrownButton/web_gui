@@ -10397,15 +10397,9 @@ class ModbusDashboard {
         if (!card) return;
         card.style.borderColor = running ? '#60a5fa' : '#e9ecef';
         card.style.borderWidth = running ? '2px' : '1px';
-
-        if (type === 'current') {
-            const startBtn = document.getElementById('ovInverterStartBtn');
-            const stopBtn  = document.getElementById('ovInverterStopBtn');
-            if (startBtn) startBtn.disabled = running;
-            if (stopBtn)  stopBtn.disabled  = !running;
-        }
     }
 
+    // CANopen 파라미터 전송만 담당 — 차트 제어는 카드 클릭(toggleMiniChart)이 담당
     async startOvInverter() {
         if (!this.writer) {
             this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
@@ -10427,20 +10421,15 @@ class ModbusDashboard {
         await this.writeCANopenObject(slaveId, 0x4005, 0x00, agingSpeed);
         await this.writeCANopenObject(slaveId, 0x2701, 0x00, 1);
         await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x1000);
-
-        await this.startMiniChart('current');
     }
 
     async stopOvInverter() {
-        await this.stopMiniChart('current');
-
         if (!this.writer) return;
         const slaveId = this._getMiniChartSlaveId();
         await this.writeCANopenObject(slaveId, 0x4004, 0x00, 0);
         await this.writeCANopenObject(slaveId, 0x4005, 0x00, 0);
         await this.writeCANopenObject(slaveId, 0x2701, 0x00, 2);
         await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x1000);
-        this._setOvBadge('ps-inverter-current', 'pending');
     }
 
     // ─────────────────────────────────────────────────────────
