@@ -976,6 +976,82 @@ class ChartManager {
     }
 }
 
+// ─────────────────────────────────────────────────────────
+//  MiniChart  —  HW Overview 인라인 차트 (경량 Canvas 렌더러)
+// ─────────────────────────────────────────────────────────
+class MiniChart {
+    constructor(canvas, channels) {
+        // channels: [{ name, color, chNum }]
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.channels = channels.map(ch => ({ ...ch, data: [] }));
+        this.maxPoints = 300;
+    }
+
+    addDataPoint(chIdx, value) {
+        const ch = this.channels[chIdx];
+        if (!ch) return;
+        ch.data.push(value);
+        if (ch.data.length > this.maxPoints) ch.data.shift();
+    }
+
+    clear() {
+        this.channels.forEach(ch => ch.data = []);
+        this.render();
+    }
+
+    render() {
+        const canvas = this.canvas;
+        const ctx = this.ctx;
+        const W = canvas.width;
+        const H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        ctx.fillStyle = '#fafafa';
+        ctx.fillRect(0, 0, W, H);
+
+        // Y축 범위 자동 계산
+        let min = Infinity, max = -Infinity;
+        this.channels.forEach(ch => ch.data.forEach(v => {
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }));
+        if (!isFinite(min)) { min = -1; max = 1; }
+        if (min === max) { min -= 1; max += 1; }
+        const pad = (max - min) * 0.1;
+        min -= pad; max += pad;
+
+        // 수평 그리드 선 3개
+        ctx.strokeStyle = '#e9ecef';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 3; i++) {
+            const y = Math.round((i / 3) * H) + 0.5;
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+        }
+
+        // 채널 라인
+        this.channels.forEach(ch => {
+            if (ch.data.length < 2) return;
+            ctx.strokeStyle = ch.color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ch.data.forEach((v, i) => {
+                const x = (i / (this.maxPoints - 1)) * W;
+                const y = H - ((v - min) / (max - min)) * H;
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+        });
+
+        // Y축 min/max 레이블
+        ctx.fillStyle = '#adb5bd';
+        ctx.font = '9px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(max.toFixed(1), 3, 10);
+        ctx.fillText(min.toFixed(1), 3, H - 3);
+    }
+}
+
 // 드라이브 Serial Port 초기값 (단일 출처)
 const DEFAULT_SERIAL = {
     baudRate: 19200,
@@ -994,6 +1070,7 @@ class ModbusDashboard {
         this.receiveBuffer = new Uint8Array(256);
         this.receiveIndex = 0;
         this.readInProgress = false;
+        this._serialDataCb = null; // event-driven RX callback for sendAndReceiveFC64
         this.displayFormat = 'hex'; // 'hex' or 'dec'
         this.parameters = [];
 
@@ -1137,6 +1214,14 @@ class ModbusDashboard {
         this.chartSlaveId = 1;
         this.chartRunning = false;
         this.chartConfiguredChannels = []; // [{ chIdx, chNum }, ...]
+
+        // Mini Chart (HW Overview)
+        this.miniChartHall = null;
+        this.miniChartCurrent = null;
+        this.miniChartRunning = { hall: false, current: false };
+
+        // HW Overview 개별 폴링
+        this.ovPollingRunning = { dclink: false, igbtTemp: false, phaseLoss: false };
 
         // Device Setup auto-apply debounce timers
         this.applyDebounceTimers = {};
@@ -2478,6 +2563,8 @@ class ModbusDashboard {
             // 물리적 제거 포함 모든 경우에 항상 연결 상태를 해제
             this.isConnected = false;
             this.updateConnectionStatus(false);
+            // HW Overview 폴링 중지
+            Object.keys(this.ovPollingRunning).forEach(k => { this.ovPollingRunning[k] = false; });
         }
     }
 
@@ -2527,6 +2614,12 @@ class ModbusDashboard {
         if (this.responseBuffer) {
             for (let i = 0; i < data.length; i++) {
                 this.responseBuffer.push(data[i]);
+            }
+            // event-driven: sendAndReceiveFC64 대기 중인 콜백 즉시 호출
+            if (this._serialDataCb) {
+                const fn = this._serialDataCb;
+                this._serialDataCb = null;
+                fn();
             }
         }
 
@@ -9712,57 +9805,83 @@ class ModbusDashboard {
         if (!this.writer) return null;
 
         // 이전 잔류 데이터 flush
+        this._serialDataCb = null;
         this.responseBuffer = null;
         this.receiveIndex = 0;
-        await this.delay(10);
+        await Promise.resolve();
+        await Promise.resolve();
 
         await this.writer.write(frame);
         this.addMonitorEntry('sent', frame);
 
-        // TX 완료 후 수신 시작
-        this.responseBuffer = [];
+        // 이 호출 전용 버퍼 토큰 — 다른 호출과 버퍼가 섞이는 것을 방지
+        const myBuffer = [];
+        this.responseBuffer = myBuffer;
+
+        this.stats.requests++;
 
         return new Promise((resolve) => {
-            const startTime = Date.now();
+            const startTime = performance.now();
+            let hardTimeoutId = null;
+
+            const done = (response) => {
+                this.updateStats(response !== null);
+                resolve(response);
+            };
+
+            const cleanup = () => {
+                if (this._serialDataCb === check) this._serialDataCb = null;
+                if (hardTimeoutId) { clearTimeout(hardTimeoutId); hardTimeoutId = null; }
+                // 다른 호출이 responseBuffer를 이미 교체한 경우에는 건드리지 않음
+                if (this.responseBuffer === myBuffer) this.responseBuffer = null;
+            };
 
             const check = () => {
                 const buf = this.responseBuffer;
-                if (!buf) { resolve(null); return; }
+                // 버퍼가 교체되었으면(다른 호출이 시작됨) 즉시 포기
+                if (!buf || buf !== myBuffer) { cleanup(); done(null); return; }
 
                 let expectedLen = null;
                 if (control === 0x00) {
-                    // Stop RX: [NodeID][0x64][0x00][CRC] = 4 bytes
                     if (buf.length >= 4) expectedLen = 4;
                 } else if (control === 0x02) {
-                    // Configure RX: echo of TX (same length)
                     if (buf.length >= frame.length) expectedLen = frame.length;
                 } else if (control === 0x03) {
-                    // Data RX: [NodeID][0x64][0x03][Status][Len][Data...][CRC] = 5+Len*4+2
                     if (buf.length >= 5) expectedLen = 5 + buf[4] * 4 + 2;
                 }
 
                 if (expectedLen !== null && buf.length >= expectedLen) {
                     const response = new Uint8Array(buf.slice(0, expectedLen));
-                    this.responseBuffer = null;
+                    cleanup();
                     if (this.modbus.verifyCRC(response)) {
                         this.addMonitorEntry('received', response);
-                        resolve(response);
+                        done(response);
                     } else {
-                        resolve(null);
+                        done(null);
                     }
                     return;
                 }
 
-                if (Date.now() - startTime > timeout) {
-                    this.responseBuffer = null;
-                    resolve(null);
+                if (performance.now() - startTime > timeout) {
+                    cleanup();
+                    done(null);
                     return;
                 }
 
-                setTimeout(check, 5);
+                // 다음 데이터 도착 시 즉시 재확인 (setTimeout 폴링 없음)
+                this._serialDataCb = check;
             };
 
-            setTimeout(check, 5);
+            // 안전망: 디바이스 무응답 시 강제 종료
+            hardTimeoutId = setTimeout(() => {
+                if (this._serialDataCb === check || this.responseBuffer === myBuffer) {
+                    cleanup();
+                    done(null);
+                }
+            }, timeout + 100);
+
+            // 즉시 첫 확인
+            check();
         });
     }
 
@@ -10137,6 +10256,354 @@ class ModbusDashboard {
 
         const statusEl = document.getElementById('chartStatus');
         if (statusEl) statusEl.textContent = 'Stopped';
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Mini Chart — HW Overview 인라인 차트
+    // ─────────────────────────────────────────────────────────
+
+    initMiniCharts() {
+        const init = (canvasId, chartKey, channels) => {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || this[chartKey]) return;
+            // offsetWidth: display:flex 설정 직후 호출 시 layout reflow로 올바른 값 반환
+            const w = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 400;
+            canvas.width  = w;
+            canvas.height = 130;
+            this[chartKey] = new MiniChart(canvas, channels);
+            this[chartKey].render();
+        };
+        init('miniChartHall', 'miniChartHall', [
+            { name: 'Hall U', color: '#e74c3c', chNum: 21 },
+            { name: 'Hall V', color: '#3498db', chNum: 22 },
+            { name: 'Hall W', color: '#2ecc71', chNum: 23 },
+        ]);
+        init('miniChartCurrent', 'miniChartCurrent', [
+            { name: 'Iu', color: '#e74c3c', chNum: 16 },
+            { name: 'Iv', color: '#3498db', chNum: 17 },
+            { name: 'Iw', color: '#2ecc71', chNum: 18 },
+        ]);
+    }
+
+    async toggleMiniChart(type) {
+        if (this.miniChartRunning[type]) {
+            await this.stopMiniChart(type);
+        } else {
+            await this.startMiniChart(type);
+        }
+    }
+
+    async startMiniChart(type) {
+        if (!this.writer) {
+            this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
+            return;
+        }
+        if (this.chartRunning) {
+            this.showToast('Chart 탭이 실행 중입니다. 먼저 중지해주세요.', 'warning');
+            return;
+        }
+        // 다른 미니 차트가 실행 중이면 먼저 중지
+        const other = type === 'hall' ? 'current' : 'hall';
+        if (this.miniChartRunning[other]) await this.stopMiniChart(other);
+
+        let chart = type === 'hall' ? this.miniChartHall : this.miniChartCurrent;
+        if (!chart) {
+            this.initMiniCharts();
+            await this.delay(50);
+            chart = type === 'hall' ? this.miniChartHall : this.miniChartCurrent;
+        }
+        if (!chart) {
+            this.showToast('차트 초기화 실패: HW Overview 탭을 다시 열어주세요', 'error');
+            return;
+        }
+        chart.clear();
+
+        const slaveId = this._getMiniChartSlaveId();
+        const channelSlots = [...chart.channels.map(ch => ch.chNum)];
+        while (channelSlots.length < 4) channelSlots.push(0xFF);
+
+        while (this.isPolling) await this.delay(5);
+
+        const stopFrame = this.modbus.buildContinuousStop(slaveId);
+        await this.sendAndReceiveFC64(stopFrame, 0x00, 300);
+
+        const period = 160; // 20ms per sample
+        const configFrame = this.modbus.buildContinuousConfigure(slaveId, period, channelSlots);
+        const resp = await this.sendAndReceiveFC64(configFrame, 0x02, 1000);
+        if (!resp) {
+            this.showToast('Mini Chart Configure 실패: 디바이스 응답 없음', 'error');
+            return;
+        }
+
+        this.miniChartRunning[type] = true;
+        this._updateMiniChartBtn(type, true);
+        this._miniChartDataLoop(type, slaveId, chart.channels.length, period * 0.125);
+    }
+
+    async _miniChartDataLoop(type, slaveId, numCh, periodMs) {
+        const chart = type === 'hall' ? this.miniChartHall : this.miniChartCurrent;
+        const valueIds = type === 'hall'
+            ? ['ov-hall-u', 'ov-hall-v', 'ov-hall-w']
+            : ['ov-iu', 'ov-iv', 'ov-iw'];
+
+        while (this.miniChartRunning[type]) {
+            if (!this.writer) { await this.delay(50); continue; }
+
+            const frame    = this.modbus.buildContinuousRequest(slaveId);
+            const response = await this.sendAndReceiveFC64(frame, 0x03, 300);
+            if (!this.miniChartRunning[type]) break;
+            if (!response) { await Promise.resolve(); continue; }
+
+            const parsed = this.modbus.parseContinuousDataResponse(response);
+            if (!parsed || parsed.data.length === 0) { await Promise.resolve(); continue; }
+
+            const samplesPerCh = Math.floor(parsed.data.length / numCh);
+            for (let s = 0; s < samplesPerCh; s++) {
+                for (let ci = 0; ci < numCh; ci++) {
+                    const val = parsed.data[ci * samplesPerCh + s];
+                    if (val === undefined) continue;
+                    chart.addDataPoint(ci, val);
+                    if (s === samplesPerCh - 1) {
+                        const el = document.getElementById(valueIds[ci]);
+                        if (el) el.textContent = val.toFixed(3);
+                    }
+                }
+            }
+            chart.render();
+        }
+    }
+
+    async stopMiniChart(type) {
+        this.miniChartRunning[type] = false;
+        // 진행 중인 FC64 콜백이 일반 폴링 버퍼를 오염시키지 않도록 즉시 제거
+        this._serialDataCb = null;
+        await this.delay(50);
+        if (this.writer) {
+            const slaveId = this._getMiniChartSlaveId();
+            const stopFrame = this.modbus.buildContinuousStop(slaveId);
+            await this.sendAndReceiveFC64(stopFrame, 0x00, 300);
+        }
+        this._updateMiniChartBtn(type, false);
+    }
+
+    _getMiniChartSlaveId() {
+        const dev = this.devices.find(d => d.id === this.currentSetupDeviceId) || this.devices[0];
+        return dev?.slaveId || 1;
+    }
+
+    _updateMiniChartBtn(type, running) {
+        const cardId = type === 'hall' ? 'ovCard-ps-hall-sensor' : 'ovCard-ps-inverter-current';
+        const card   = document.getElementById(cardId);
+        if (!card) return;
+        card.style.borderColor = running ? '#60a5fa' : '#e9ecef';
+        card.style.borderWidth = running ? '2px' : '1px';
+
+        if (type === 'current') {
+            const startBtn = document.getElementById('ovInverterStartBtn');
+            const stopBtn  = document.getElementById('ovInverterStopBtn');
+            if (startBtn) startBtn.disabled = running;
+            if (stopBtn)  stopBtn.disabled  = !running;
+        }
+    }
+
+    async startOvInverter() {
+        if (!this.writer) {
+            this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
+            return;
+        }
+        const agingCurrent = parseInt(document.getElementById('ovInverterCurrent')?.value ?? '100', 10);
+        const agingSpeed   = parseInt(document.getElementById('ovInverterSpeed')?.value   ?? '10',  10);
+        if (isNaN(agingCurrent) || agingCurrent < 0 || agingCurrent > 100) {
+            this.showToast('Aging Current 값을 확인해주세요 (0~100 %)', 'error');
+            return;
+        }
+        if (isNaN(agingSpeed) || agingSpeed < 0) {
+            this.showToast('Aging Speed 값을 확인해주세요 (0 Hz 이상)', 'error');
+            return;
+        }
+
+        const slaveId = this._getMiniChartSlaveId();
+        await this.writeCANopenObject(slaveId, 0x4004, 0x00, agingCurrent);
+        await this.writeCANopenObject(slaveId, 0x4005, 0x00, agingSpeed);
+        await this.writeCANopenObject(slaveId, 0x2701, 0x00, 1);
+        await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x1000);
+
+        await this.startMiniChart('current');
+    }
+
+    async stopOvInverter() {
+        await this.stopMiniChart('current');
+
+        if (!this.writer) return;
+        const slaveId = this._getMiniChartSlaveId();
+        await this.writeCANopenObject(slaveId, 0x4004, 0x00, 0);
+        await this.writeCANopenObject(slaveId, 0x4005, 0x00, 0);
+        await this.writeCANopenObject(slaveId, 0x2701, 0x00, 2);
+        await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x1000);
+        this._setOvBadge('ps-inverter-current', 'pending');
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  HW Overview — 개별 카드 테스트 실행
+    // ─────────────────────────────────────────────────────────
+
+    _setOvBadge(id, status) {
+        const card = document.getElementById(`ovCard-${id}`);
+        if (!card) return;
+        const borderMap = {
+            pass:    '#6fcf97',  // 초록
+            fail:    '#eb8a90',  // 빨강
+            running: '#fdba74',  // 연한 주황
+            live:    '#6fcf97',  // 초록 (+ 애니메이션)
+            pending: '#e9ecef',  // 기본 회색
+        };
+        card.style.borderColor = borderMap[status] || borderMap.pending;
+        card.style.borderWidth = status === 'pending' ? '1px' : '2px';
+        card.classList.toggle('ov-card-live', status === 'live');
+    }
+
+    async runOvMotorId() {
+        const device = this._getManufactureDevice();
+        if (!device) { this.showToast('디바이스가 선택되지 않았습니다', 'error'); return; }
+        const slaveId = device.slaveId;
+        this._setOvBadge('mcu-motor-id-set', 'running');
+
+        const MOTOR_ID_MAP = {
+            0x1000: 'Sirocco FAN (550W)',
+            0x2000: 'Axial FAN (750W)',
+        };
+        const result = await this.readCANopenObject(slaveId, 0x2000, 0x00);
+        const el = document.getElementById('ov-motor-id');
+
+        if (!result || result.error) {
+            if (el) el.textContent = result?.error ? 'ERR' : 'timeout';
+            this._setOvBadge('mcu-motor-id-set', 'fail');
+            return;
+        }
+        const hexVal    = result.value != null ? `0x${result.value.toString(16).toUpperCase().padStart(4, '0')}` : '-';
+        const motorName = MOTOR_ID_MAP[result.value] ?? '알 수 없음';
+        if (el) el.textContent = `${motorName}  ${hexVal}`;
+        this._setOvBadge('mcu-motor-id-set', 'pass');
+    }
+
+    async runOvEeprom() {
+        const device = this._getManufactureDevice();
+        if (!device) { this.showToast('디바이스가 선택되지 않았습니다', 'error'); return; }
+        const slaveId = device.slaveId;
+        this._setOvBadge('mcu-eeprom', 'running');
+
+        await this.writeRegister(slaveId, 0x2002, 110);
+        await this.writeRegister(slaveId, 0x1010, 0x65766173);
+        await new Promise(r => setTimeout(r, 500));
+        const readBack = await this.readRegisterWithTimeout(slaveId, 0x2002);
+        const ok = readBack === 110;
+        this._setOvBadge('mcu-eeprom', ok ? 'pass' : 'fail');
+    }
+
+    async runOvDclink() {
+        if (this.ovPollingRunning.dclink) {
+            this.ovPollingRunning.dclink = false;
+            this._setOvBadge('ps-dclink', 'pending');
+            return;
+        }
+        const device = this._getManufactureDevice();
+        if (!device) { this.showToast('디바이스가 선택되지 않았습니다', 'error'); return; }
+        if (!this.writer) { this.showToast('시리얼 포트가 연결되지 않았습니다', 'error'); return; }
+        this.ovPollingRunning.dclink = true;
+        this._setOvBadge('ps-dclink', 'live');
+        this._ovPollingLoop('dclink', device.slaveId);
+    }
+
+    async runOvIgbtTemp() {
+        if (this.ovPollingRunning.igbtTemp) {
+            this.ovPollingRunning.igbtTemp = false;
+            this._setOvBadge('ps-igbt-temp', 'pending');
+            return;
+        }
+        const device = this._getManufactureDevice();
+        if (!device) { this.showToast('디바이스가 선택되지 않았습니다', 'error'); return; }
+        if (!this.writer) { this.showToast('시리얼 포트가 연결되지 않았습니다', 'error'); return; }
+        this.ovPollingRunning.igbtTemp = true;
+        this._setOvBadge('ps-igbt-temp', 'live');
+        this._ovPollingLoop('igbtTemp', device.slaveId);
+    }
+
+    async runOvPhaseLoss() {
+        if (this.ovPollingRunning.phaseLoss) {
+            this.ovPollingRunning.phaseLoss = false;
+            this._setOvBadge('ps-phase-loss', 'pending');
+            return;
+        }
+        const device = this._getManufactureDevice();
+        if (!device) { this.showToast('디바이스가 선택되지 않았습니다', 'error'); return; }
+        if (!this.writer) { this.showToast('시리얼 포트가 연결되지 않았습니다', 'error'); return; }
+        this.ovPollingRunning.phaseLoss = true;
+        this._setOvBadge('ps-phase-loss', 'live');
+        this._ovPollingLoop('phaseLoss', device.slaveId);
+    }
+
+    async _ovPollingLoop(type, slaveId) {
+        const toInt16 = v => { const n = v & 0xFFFF; return n >= 0x8000 ? n - 0x10000 : n; };
+
+        while (this.ovPollingRunning[type]) {
+            if (!this.writer) { await this.delay(500); continue; }
+
+            switch (type) {
+                case 'dclink': {
+                    const raw = await this.readInputRegisterWithTimeout(slaveId, 0xD013);
+                    const el  = document.getElementById('ov-dclink-v');
+                    if (raw !== null && raw !== undefined && el) el.textContent = raw;
+                    break;
+                }
+                case 'igbtTemp': {
+                    const r  = await this.readCANopenObject(slaveId, 0x260B, 0x00);
+                    const el = document.getElementById('ov-igbt-motor-id');
+                    if (r && !r.error && r.value != null && el)
+                        el.textContent = toInt16(r.value) + ' ℃';
+                    break;
+                }
+                case 'phaseLoss': {
+                    const alarmCode = await this.readInputRegisterWithTimeout(slaveId, 0x2800);
+                    const el = document.getElementById('ov-alarm-code');
+                    if (alarmCode !== null && alarmCode !== undefined && el)
+                        el.textContent = '0x' + alarmCode.toString(16).toUpperCase().padStart(4, '0');
+                    break;
+                }
+            }
+
+            if (this.ovPollingRunning[type]) await this.delay(1000);
+        }
+    }
+
+    async runOvOsVersion() {
+        this._setOvBadge('mcu-os-version', 'running');
+
+        // 기존 Hardware Test (hw-canopen-27f0) 와 동일한 로직 실행
+        await this.runHardwareTest('hw-canopen-27f0');
+
+        // Hardware Test 탭에 업데이트된 결과를 Overview 카드에 복사
+        const mappings = [
+            { valId: 'hwCanopen27F0Value', rawId: 'hwCanopen27F0Raw', asciiId: 'ov-mcu-boot-ascii', hexId: 'ov-mcu-boot' },
+            { valId: 'hwCanopen27F1Value', rawId: 'hwCanopen27F1Raw', asciiId: 'ov-mcu-fw-ascii',   hexId: 'ov-mcu-fw'   },
+            { valId: 'hwCanopen27F2Value', rawId: 'hwCanopen27F2Raw', asciiId: 'ov-inv-boot-ascii', hexId: 'ov-inv-boot' },
+            { valId: 'hwCanopen27F3Value', rawId: 'hwCanopen27F3Raw', asciiId: 'ov-inv-fw-ascii',   hexId: 'ov-inv-fw'   },
+        ];
+        for (const m of mappings) {
+            const val = document.getElementById(m.valId)?.textContent;
+            const raw = document.getElementById(m.rawId)?.textContent;
+            const asciiEl = document.getElementById(m.asciiId);
+            const hexEl   = document.getElementById(m.hexId);
+            if (asciiEl && val) asciiEl.textContent = val;
+            if (hexEl   && raw) hexEl.textContent   = raw;
+        }
+
+        // hw-canopen-27f0 배지 상태를 Overview 배지에 반영
+        const hwBadge = document.querySelector('.hw-test-item[data-test-id="hw-canopen-27f0"] .hw-test-badge');
+        if (hwBadge) {
+            const text   = hwBadge.textContent.trim();
+            const status = text === 'Pass' ? 'pass' : text === 'Fail' ? 'fail' : 'pending';
+            this._setOvBadge('mcu-os-version', status);
+        }
     }
 
     /**
@@ -12551,6 +13018,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('manufactureOffset').style.display = 'flex';
             } else if (targetSubtab === 'serial-number') {
                 document.getElementById('manufactureSerialNumber').style.display = 'block';
+            } else if (targetSubtab === 'hw-overview') {
+                document.getElementById('manufactureHwOverview').style.display = 'flex';
+                window.dashboard.initMiniCharts();
             }
         });
     });
