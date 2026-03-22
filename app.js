@@ -2447,6 +2447,13 @@ class ModbusDashboard {
             this.isConnected = true;
             this.updateConnectionStatus(true);
 
+            // HW Overview 탭이 열려있으면 폴링 시작
+            const hwOverviewEl = document.getElementById('manufactureHwOverview');
+            if (hwOverviewEl && hwOverviewEl.style.display !== 'none') {
+                this.initMiniCharts();
+                this.startOvPolling();
+            }
+
             // Save settings to localStorage
             this.saveSerialSettings({ baudRate, dataBits, parity, stopBits });
 
@@ -10529,13 +10536,11 @@ class ModbusDashboard {
 
     startOvPolling() {
         if (this.ovPollingRunning) return; // 이미 실행 중
-        const device = this._getManufactureDevice();
-        if (!device || !this.writer) return; // 연결 안 됨 → 무시
         this.ovPollingRunning = true;
         this._setOvBadge('ps-dclink',    'live');
         this._setOvBadge('ps-igbt-temp', 'live');
         this._setOvBadge('ps-phase-loss','live');
-        this._ovPollingLoop(device.slaveId);
+        this._ovPollingLoop();
     }
 
     stopOvPolling() {
@@ -10546,11 +10551,15 @@ class ModbusDashboard {
         this._setOvBadge('ps-phase-loss','pending');
     }
 
-    async _ovPollingLoop(slaveId) {
+    async _ovPollingLoop() {
         const toInt16 = v => { const n = v & 0xFFFF; return n >= 0x8000 ? n - 0x10000 : n; };
 
         while (this.ovPollingRunning) {
+            // writer 또는 device가 없으면 대기 (연결/스캔 완료 후 자동 재개)
             if (!this.writer) { await this.delay(500); continue; }
+            const device = this._getManufactureDevice();
+            if (!device) { await this.delay(500); continue; }
+            const slaveId = device.slaveId;
 
             // 1) DClink 전압 — FC04 Input Register 0xD013
             const dcRaw = await this.readInputRegisterWithTimeout(slaveId, 0xD013);
