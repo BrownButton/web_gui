@@ -7987,7 +7987,7 @@ textarea:disabled {
 .ov-card-clickable {
     transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
-.ov-card-clickable:hover {
+.ov-card-clickable:not(.ov-card-running):hover {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07) !important;
     border-color: #ced4da !important;
     transform: translateY(-1px);
@@ -7995,4 +7995,15 @@ textarea:disabled {
 .ov-card-clickable:active {
     transform: translateY(0);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+/* 차트 실행 중 — 파란 테두리 유지 (hover 포함) */
+.ov-card-clickable.ov-card-running {
+    border-color: #60a5fa !important;
+    border-width: 2px !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15) !important;
+}
+.ov-card-clickable.ov-card-running:hover {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+    transform: translateY(-1px);
 }

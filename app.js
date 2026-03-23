@@ -1221,6 +1221,7 @@ class ModbusDashboard {
         this.miniChartHall = null;
         this.miniChartCurrent = null;
         this.miniChartRunning = { hall: false, current: false };
+        this._fc64Busy = false; // FC64 전환(stop/start) 구간에서 버스 점유 표시
 
         // HW Overview 통합 폴링 (탭 진입 시 자동 시작)
         this.ovPollingRunning = false;
@@ -7300,7 +7301,7 @@ class ModbusDashboard {
      */
     /** FC 0x64 스트림(메인 차트 또는 미니 차트)이 버스를 점유 중인지 여부 */
     get _isFc64Active() {
-        return this.chartRunning || Object.values(this.miniChartRunning).some(v => v);
+        return this.chartRunning || Object.values(this.miniChartRunning).some(v => v) || this._fc64Busy;
     }
 
     /**
@@ -10364,6 +10365,9 @@ class ModbusDashboard {
         const other = type === 'hall' ? 'current' : 'hall';
         if (this.miniChartRunning[other]) await this.stopMiniChart(other);
 
+        // stopMiniChart가 _fc64Busy를 해제했더라도 configure 프레임 전송 전까지 버스 점유 유지
+        this._fc64Busy = true;
+
         let chart = type === 'hall' ? this.miniChartHall : this.miniChartCurrent;
         if (!chart) {
             this.initMiniCharts();
@@ -10371,6 +10375,7 @@ class ModbusDashboard {
             chart = type === 'hall' ? this.miniChartHall : this.miniChartCurrent;
         }
         if (!chart) {
+            this._fc64Busy = false;
             this.showToast('차트 초기화 실패: HW Overview 탭을 다시 열어주세요', 'error');
             return;
         }
@@ -10389,11 +10394,13 @@ class ModbusDashboard {
         const configFrame = this.modbus.buildContinuousConfigure(slaveId, period, channelSlots);
         const resp = await this.sendAndReceiveFC64(configFrame, 0x02, 1000);
         if (!resp) {
+            this._fc64Busy = false;
             this.showToast('Mini Chart Configure 실패: 디바이스 응답 없음', 'error');
             return;
         }
 
-        this.miniChartRunning[type] = true;
+        this.miniChartRunning[type] = true; // 이후 _isFc64Active는 miniChartRunning으로 유지됨
+        this._fc64Busy = false;
         this._updateMiniChartBtn(type, true);
         this._miniChartDataLoop(type, slaveId, chart.channels.length, period * 0.125);
     }
@@ -10447,6 +10454,8 @@ class ModbusDashboard {
     }
 
     async stopMiniChart(type) {
+        // _fc64Busy를 먼저 세워 ovPolling 루프의 직접 TX를 큐로 전환
+        this._fc64Busy = true;
         this.miniChartRunning[type] = false;
         // 진행 중인 FC64 콜백이 일반 폴링 버퍼를 오염시키지 않도록 즉시 제거
         this._serialDataCb = null;
@@ -10457,6 +10466,7 @@ class ModbusDashboard {
             await this.sendAndReceiveFC64(stopFrame, 0x00, 300);
         }
         this._updateMiniChartBtn(type, false);
+        this._fc64Busy = false;
     }
 
     _getMiniChartSlaveId() {
@@ -10468,8 +10478,7 @@ class ModbusDashboard {
         const cardId = type === 'hall' ? 'ovCard-ps-hall-sensor' : 'ovCard-ps-inverter-current';
         const card   = document.getElementById(cardId);
         if (!card) return;
-        card.style.borderColor = running ? '#60a5fa' : '#e9ecef';
-        card.style.borderWidth = running ? '2px' : '1px';
+        card.classList.toggle('ov-card-running', running);
     }
 
     // CANopen 파라미터 전송만 담당 — 차트 제어는 카드 클릭(toggleMiniChart)이 담당
@@ -10570,6 +10579,109 @@ class ModbusDashboard {
     }
 
     // ─────────────────────────────────────────────────────────
+    //  Alarm Code 룩업 테이블 (Alarm code.md 기준)
+    // ─────────────────────────────────────────────────────────
+    getAlarmCodeName(code) {
+        const TABLE = {
+            0x00: 'No error',
+            // Group 1 — Current
+            0x10: 'IPM fault',
+            0x11: 'IPM temperature',
+            0x12: 'V-phase current',
+            0x13: 'U-phase current',
+            0x14: 'Over current',
+            0x15: 'Current offset',
+            0x16: 'Current limit exceeded',
+            0x17: 'IPM Low temperature',
+            // Group 2 — Overload
+            0x20: 'Instantaneous overload',
+            0x21: 'Continuous overload',
+            0x22: 'Drive temperature 1',
+            0x23: 'Regeneration overload',
+            0x24: 'Motor cable open',
+            0x25: 'Drive temperature 2',
+            0x26: 'Encoder temperature',
+            0x27: 'Motor temperature',
+            0x28: 'Fan trip',
+            0x29: 'Regeneration brake fault',
+            0x2A: 'Motor circuit failure',
+            // Group 3 — Encoder & Motor
+            0x30: 'Encoder communication',
+            0x31: 'Encoder cable open',
+            0x32: 'Encoder data',
+            0x33: 'Motor setting',
+            0x34: 'Encoder Z phase open',
+            0x35: 'Encoder low battery',
+            0x36: 'Encoder Low Amplitude',
+            0x37: 'Encoder High Amplitude',
+            0x38: 'Encoder Frequency',
+            0x39: 'Encoder Offset',
+            0x3A: 'Encoder Phase',
+            0x3B: 'Encoder position',
+            0x3C: 'Encoder over voltage',
+            0x3D: 'Encoder under voltage',
+            0x3E: 'Encoder over current',
+            0x3F: 'Encoder batt. failure',
+            // Group 4 — Voltage
+            0x40: 'Under voltage',
+            0x41: 'Over voltage',
+            0x42: 'Main power fail',
+            0x43: 'Control power fail',
+            0x45: 'Fast Detect over voltage',
+            // Group 5 — Control Functions
+            0x50: 'Over speed limit',
+            0x51: 'POS following',
+            0x52: 'Emergency stop',
+            0x53: 'Excessive SPD deviation',
+            0x54: 'Encoder2 POS difference',
+            0x55: 'POS tracking',
+            0x56: 'Over position command',
+            0x57: 'Over speed pulse-out',
+            0x58: 'Motor Blocked',
+            0x59: 'Motor Braking',
+            // Group 6 — Communication / Data
+            0x60: 'USB communication',
+            0x61: 'RS-422 comm.',
+            0x62: 'ECAT comm.',
+            0x63: 'Parameter checksum',
+            0x64: 'Parameter range',
+            0x65: 'ECAT hardware init',
+            0x66: 'ECAT communication 1',
+            0x67: 'ECAT communication 2',
+            0x68: 'ECAT communication 3',
+            // Group 7 — System Configuration
+            0x70: 'Drive motor combination',
+            0x71: 'Factory setting',
+            0x72: 'GPIO setting',
+            0x73: 'Invalid hardware',
+            0x74: 'FPGA not configured',
+            0x75: 'Firmware not configured',
+            0x76: 'USB over current',
+            0x77: 'Modbus TCP Lost Command',
+            // Group 8 — External Encoder (Enc2)
+            0x80: 'Enc2 communication',
+            0x81: 'Enc2 cable open',
+            0x82: 'Enc2 data',
+            0x83: 'Enc2 Z phase open',
+            0x84: 'Enc2 motor setting',
+            0x85: 'Enc2 low battery',
+            0x86: 'Enc2 Sin/Cos Amplitude',
+            0x87: 'Enc2 Sin/Cos Frequency',
+            0x88: 'Enc2 setting',
+            0x89: 'Enc2 temperature',
+            0x8A: 'Enc2 light source',
+            0x8B: 'Enc2 position',
+            0x8C: 'Enc2 over voltage',
+            0x8D: 'Enc2 under voltage',
+            0x8E: 'Enc2 over current',
+            0x8F: 'Enc2 battery failure',
+        };
+        const name = TABLE[code & 0xFF];
+        const hex = '0x' + (code & 0xFF).toString(16).toUpperCase().padStart(2, '0');
+        return name ? `${hex}  ${name}` : `${hex}  (Unknown)`;
+    }
+
+    // ─────────────────────────────────────────────────────────
     //  HW Overview — 통합 자동 폴링 (탭 진입/이탈 시 자동 제어)
     //  3가지 항목(DClink / IGBT 온도 / 결상)을 단일 루프에서
     //  순차적으로 읽어 버스 충돌 없이 큐를 통해 전송한다.
@@ -10634,11 +10746,22 @@ class ModbusDashboard {
 
             if (!this.ovPollingRunning) break;
 
-            // 3) 결상(Alarm Code) — FC04 Input Register 0x2800
-            const alarmCode = await this.readInputRegisterWithTimeout(slaveId, 0x2800);
-            const alarmEl   = document.getElementById('ov-alarm-code');
-            if (alarmCode !== null && alarmCode !== undefined && alarmEl)
-                alarmEl.textContent = '0x' + alarmCode.toString(16).toUpperCase().padStart(4, '0');
+            // 3) 결상(Alarm Code) — FC 0x2B CANopen SDO 0x603F:00
+            const alarmR  = await this.readCANopenObject(slaveId, 0x603F, 0x00);
+            const alarmEl = document.getElementById('ov-alarm-code');
+            if (alarmR && !alarmR.error && alarmR.value != null && alarmEl)
+                alarmEl.textContent = this.getAlarmCodeName(alarmR.value);
+
+            if (!this.ovPollingRunning) break;
+
+            // 4) 모터 결상(PHA bit) — FC04 Input Register 0xD011 bit[0]
+            const d011Raw = await this.readInputRegisterWithTimeout(slaveId, 0xD011);
+            const phaEl   = document.getElementById('ov-pha-bit');
+            if (d011Raw !== null && d011Raw !== undefined && phaEl) {
+                const pha = (d011Raw & 0x0001) !== 0;
+                phaEl.textContent  = pha ? 'Phase Fail' : 'OK';
+                phaEl.style.color  = pha ? '#dc3545' : '#28a745';
+            }
 
             if (this.ovPollingRunning) await this.delay(1000);
         }
