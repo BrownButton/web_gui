@@ -1232,7 +1232,7 @@ class ModbusDashboard {
         this.applyDebounceTimers = {};
 
         // Active category in Configuration panel
-        this.activeConfigCategory = 'motor';
+        this.activeConfigCategory = 'motorInfo';
 
         this.initializeUI();
         this.loadParameters();
@@ -2457,6 +2457,12 @@ class ModbusDashboard {
             if (hwOverviewEl && hwOverviewEl.style.display !== 'none') {
                 this.initMiniCharts();
                 this.startOvPolling();
+            }
+
+            // Configuration - 모터 탭이 열려있으면 motorType 자동 읽기
+            if (this.activeConfigCategory === 'motorInfo' && this.currentSetupDeviceId) {
+                const setupDevice = this.devices.find(d => d.id === this.currentSetupDeviceId);
+                if (setupDevice) setTimeout(() => this.readMotorType(setupDevice.id), 800);
             }
 
             // Save settings to localStorage
@@ -10758,12 +10764,10 @@ class ModbusDashboard {
         }
         if (!this.ovPollingRunning) return;
 
-        // ── 최초 1회 검사 (OS버전 / 모터ID / EEPROM) ──────────────
+        // ── 최초 1회 검사 (OS버전) ────────────────────────────────
         if (!this.ovOnceExecuted) {
             this.ovOnceExecuted = true;
             await this.runOvOsVersion();
-            if (!this.ovPollingRunning) return;
-            await this.runOvMotorId();
             if (!this.ovPollingRunning) return;
         }
 
@@ -10774,14 +10778,26 @@ class ModbusDashboard {
             if (!device) { await this.delay(500); continue; }
             const slaveId = device.slaveId;
 
-            // 1) DClink 전압 — FC04 Input Register 0xD013
+            // 1) Motor ID — FC 0x2B CANopen SDO 0x2000:00
+            const motorR  = await this.readCANopenObject(slaveId, 0x2000, 0x00);
+            const motorEl = document.getElementById('ov-motor-id');
+            if (motorR && !motorR.error && motorR.value != null && motorEl) {
+                const MOTOR_ID_MAP = { 0x1000: 'Sirocco Motor', 0x2000: 'Axial Motor' };
+                const hexVal   = `0x${motorR.value.toString(16).toUpperCase().padStart(4, '0')}`;
+                const name     = MOTOR_ID_MAP[motorR.value] ?? '알 수 없음';
+                motorEl.textContent = `${name}  ${hexVal}`;
+            }
+
+            if (!this.ovPollingRunning) break;
+
+            // 2) DClink 전압 — FC04 Input Register 0xD013
             const dcRaw = await this.readInputRegisterWithTimeout(slaveId, 0xD013);
             const dcEl  = document.getElementById('ov-dclink-v');
             if (dcRaw !== null && dcRaw !== undefined && dcEl) dcEl.textContent = dcRaw;
 
             if (!this.ovPollingRunning) break;
 
-            // 2) IGBT 온도 — CANopen 0x260B:00
+            // 3) IGBT 온도 — CANopen 0x260B:00
             const igbtR  = await this.readCANopenObject(slaveId, 0x260B, 0x00);
             const igbtEl = document.getElementById('ov-igbt-motor-id');
             if (igbtR && !igbtR.error && igbtR.value != null && igbtEl)
@@ -10789,7 +10805,7 @@ class ModbusDashboard {
 
             if (!this.ovPollingRunning) break;
 
-            // 3) 결상(Alarm Code) — FC 0x2B CANopen SDO 0x603F:00
+            // 4) 결상(Alarm Code) — FC 0x2B CANopen SDO 0x603F:00
             const alarmR  = await this.readCANopenObject(slaveId, 0x603F, 0x00);
             const alarmEl = document.getElementById('ov-alarm-code');
             if (alarmR && !alarmR.error && alarmR.value != null && alarmEl)
@@ -10797,7 +10813,7 @@ class ModbusDashboard {
 
             if (!this.ovPollingRunning) break;
 
-            // 4) 모터 결상(PHA bit) — FC04 Input Register 0xD011 bit[0]
+            // 5) 모터 결상(PHA bit) — FC04 Input Register 0xD011 bit[0]
             const d011Raw = await this.readInputRegisterWithTimeout(slaveId, 0xD011);
             const phaEl   = document.getElementById('ov-pha-bit');
             if (d011Raw !== null && d011Raw !== undefined && phaEl) {
@@ -11351,8 +11367,9 @@ class ModbusDashboard {
 
         // 'ramp' category was merged into 'motor'
         if (this.activeConfigCategory === 'ramp') this.activeConfigCategory = 'motor';
-        const activeCategory = this.activeConfigCategory || 'motor';
+        const activeCategory = this.activeConfigCategory || 'motorInfo'; // 기본값: 모터 탭
         const categories = [
+            { id: 'motorInfo',     label: '모터' },
             { id: 'motor',         label: '모터 제어' },
             { id: 'protection',    label: '보호 설정' },
             { id: 'communication', label: '통신 설정' },
@@ -11454,6 +11471,22 @@ class ModbusDashboard {
             </div>`;
 
         switch (category) {
+            case 'motorInfo':
+                return `<div style="margin-top: 0;">
+                    ${row('motorType', '모터 타입', '연결된 모터의 타입 ID (FC 0x2B, 0x2000)', `
+                        <div style="display: flex; gap: 6px; align-items: center;" onclick="event.stopPropagation()">
+                            <select id="motorType_${id}" style="${iStyle}"
+                                onchange="window.dashboard.debouncedApply('motorType', ${id})">
+                                <option value="" ${device.motorType == null ? 'selected' : ''} disabled>-- 선택 --</option>
+                                <option value="4096" ${device.motorType === 4096 ? 'selected' : ''}>Sirocco Motor (0x1000)</option>
+                                <option value="8192" ${device.motorType === 8192 ? 'selected' : ''}>Axial Motor (0x2000)</option>
+                            </select>
+                            <button class="btn btn-sm" title="디바이스에서 읽기"
+                                style="padding: 5px 9px; font-size: 13px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; line-height: 1;"
+                                onclick="window.dashboard.readMotorType(${id})">↻</button>
+                        </div>`)}
+                </div>`;
+
             case 'motor':
                 return `<div style="margin-top: 0;">
                     ${row('operatingMode', '동작 모드', '모터 제어 방식 설정 (0xD106)', `
@@ -11596,6 +11629,11 @@ class ModbusDashboard {
         const contentArea = document.getElementById('configContent');
         if (contentArea) {
             contentArea.innerHTML = this.getConfigCategoryHTML(device, categoryName);
+        }
+
+        // motorInfo 탭 진입 시 디바이스에서 값 자동 읽기
+        if (categoryName === 'motorInfo') {
+            setTimeout(() => this.readMotorType(device.id), 100);
         }
     }
 
@@ -11825,6 +11863,10 @@ class ModbusDashboard {
                         break;
                     case 'tempDerating':
                         await this.applyTempDerating(deviceId);
+                        success = true;
+                        break;
+                    case 'motorType':
+                        await this.applyMotorType(deviceId);
                         success = true;
                         break;
                 }
@@ -12245,6 +12287,60 @@ class ModbusDashboard {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
 
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Apply Motor Type (0x2000, FC 0x2B CANopen SDO)
+     */
+    async applyMotorType(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+
+        const input  = document.getElementById(`motorType_${deviceId}`);
+        const status = document.getElementById(`motorType_${deviceId}_status`);
+        if (!input) return;
+
+        const value = parseInt(input.value);
+        if (isNaN(value) || value < 0 || value > 65535) {
+            if (status) { status.textContent = '❌'; status.title = 'Invalid value (0–65535)'; }
+            return;
+        }
+
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+
+        const result = await this.writeCANopenObject(device.slaveId, 0x2000, 0x00, value);
+        if (result && !result.error) {
+            device.motorType = value;
+            this.saveDevices();
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Read Motor Type from device (0x2000, FC 0x2B CANopen SDO) and update select
+     */
+    async readMotorType(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device || !this.writer) return;
+
+        const sel    = document.getElementById(`motorType_${deviceId}`);
+        const status = document.getElementById(`motorType_${deviceId}_status`);
+        if (status) { status.textContent = '↻'; status.title = 'Reading...'; }
+
+        const result = await this.readCANopenObject(device.slaveId, 0x2000, 0x00);
+        if (result && !result.error && result.value != null) {
+            device.motorType = result.value;
+            this.saveDevices();
+            if (sel) sel.value = String(result.value);
+            if (status) { status.textContent = '⭕'; status.title = 'Read successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Read failed'; }
+        }
         if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
     }
 
