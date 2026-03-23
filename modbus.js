@@ -414,8 +414,8 @@ class ModbusRTU {
      * @param {Uint8Array} response CRC 포함 전체 프레임
      * @returns {{slaveId, protocolCtrl, index, subIndex, startAddr, numData, dataWords: number[], rawBytes: number[], value: number|null, error: string|null}}
      */
-    parseCANopenResponse(response) {
-        if (!this.verifyCRC(response)) {
+    parseCANopenResponse(response, { skipCRC = false } = {}) {
+        if (!skipCRC && !this.verifyCRC(response)) {
             throw new Error('Invalid CRC');
         }
 

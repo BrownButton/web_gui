@@ -1887,13 +1887,17 @@
                                                     </div>
                                                 </div>
                                                 <!-- IF: USB 통신회로 검증 -->
-                                                <div id="ovCard-if-usb" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                                <div id="ovCard-if-usb" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="app.runUsbHidTest()">
                                                     <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
                                                         <span style="font-size: 10px; background: #d1fae5; color: #065f46; padding: 2px 7px; border-radius: 4px; font-weight: 700;">IF</span>
                                                         <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">USB 통신회로 검증</span>
+                                                        <span style="font-size: 10px; color: #adb5bd; margin-left: 4px;">클릭하여 테스트</span>
                                                     </div>
-                                                    <div style="padding: 12px 14px;">
-                                                        <div style="padding: 8px 12px; background: #f8f9fa; border-radius: 6px; font-size: 11px; color: #6c757d; text-align: center;">USB 통신 연결 및 데이터 송수신 동작 확인</div>
+                                                    <div style="padding: 10px 14px;">
+                                                        <div style="padding: 8px 10px; background: #fafafa; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                            <span style="font-size: 11px; color: #6c757d; white-space: nowrap;">Motor ID &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 10px;">0x2000</span></span>
+                                                            <span id="ov-usb-motor-id" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #1a1a1a; text-align: right;">-</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

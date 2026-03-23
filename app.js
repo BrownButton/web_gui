@@ -1222,6 +1222,7 @@ class ModbusDashboard {
         this.miniChartCurrent = null;
         this.miniChartRunning = { hall: false, current: false };
         this._fc64Busy = false; // FC64 전환(stop/start) 구간에서 버스 점유 표시
+        this.hidDevice = null;  // WebHID 연결 장치
         this._currentRmsData = [{sumSq:0,count:0},{sumSq:0,count:0},{sumSq:0,count:0}];
 
         // HW Overview 통합 폴링 (탭 진입 시 자동 시작)
@@ -1839,6 +1840,9 @@ class ModbusDashboard {
             sessionStorage.removeItem('deviceSetupTab');
             sessionStorage.removeItem('manufactureSubtab');
         }
+
+        // HW Overview 폴링은 해당 탭에서만 동작 — 페이지 전환 시 항상 중지
+        this.stopOvPolling();
 
         // Start/stop polling based on page
         if (pageName === 'dashboard') {
@@ -10579,6 +10583,128 @@ class ModbusDashboard {
         card.style.borderColor = borderMap[status] || borderMap.pending;
         card.style.borderWidth = status === 'pending' ? '1px' : '2px';
         card.classList.toggle('ov-card-live', status === 'live');
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  HW Overview — USB HID 통신회로 검증
+    //  WebHID API로 65-byte 패킷 (Modbus + 0x00 패딩) 송수신
+    // ─────────────────────────────────────────────────────────
+    async runUsbHidTest() {
+        if (!navigator.hid) {
+            this.showToast('WebHID를 지원하지 않는 브라우저입니다 (Chrome/Edge 필요)', 'error');
+            return;
+        }
+
+        const device = this._getManufactureDevice();
+        const slaveId = device?.slaveId ?? 1;
+
+        this._setOvBadge('if-usb', 'running');
+        const el = document.getElementById('ov-usb-motor-id');
+        if (el) el.textContent = '...';
+
+        try {
+            // HID 장치 연결 (이미 열려있으면 재사용)
+            if (!this.hidDevice || !this.hidDevice.opened) {
+                this.hidDevice = null;
+                const devices = await navigator.hid.requestDevice({ filters: [] });
+                if (!devices || devices.length === 0) {
+                    this._setOvBadge('if-usb', 'fail');
+                    if (el) el.textContent = '취소됨';
+                    return;
+                }
+                this.hidDevice = devices[0];
+                this.showToast(`HID 장치 선택됨: ${this.hidDevice.productName}`, 'info');
+            }
+
+            if (!this.hidDevice.opened) {
+                await this.hidDevice.open();
+                this.showToast('HID 장치 열림', 'info');
+            }
+
+            // CANopen Upload frame: FC 0x2B, 0x2000:00 (Motor ID)
+            const frame = this.modbus.buildCANopenUpload(slaveId, 0x2000, 0x00, 0, 2);
+
+            // 디바이스 report 정보 콘솔 출력 (디버그용)
+            const collections = this.hidDevice.collections ?? [];
+            console.log('[USB HID] device:', this.hidDevice.productName,
+                '| collections:', collections.length,
+                '| outputReports:', collections.map(c =>
+                    c.outputReports?.map(r => `id=0x${r.reportId.toString(16)} items=${r.items?.length}`)
+                ).flat()
+            );
+
+            // Report ID 자동 감지: outputReports에서 첫 번째 ID 사용, 없으면 0x00 (no-report-ID 장치)
+            const outputReport = collections[0]?.outputReports?.[0];
+            const reportId = outputReport?.reportId ?? 0x00;
+
+            // 패킷 크기: reportId=0이면 no-report-ID → data=65bytes, 아니면 data=64bytes (reportId 자동 prepend)
+            const packetSize = reportId === 0 ? 65 : 64;
+            const data = new Uint8Array(packetSize);
+            if (reportId === 0) {
+                // no-report-ID 장치: data[0]=0x00(dummy), data[1..] = frame (slaveId 제외)
+                data.set(frame.slice(1), 1);
+            } else {
+                // slaveId 바이트 제외: USB HID는 slaveId 없이 FC부터 시작
+                data.set(frame.slice(1));
+            }
+
+            console.log(`[USB HID] sendReport(reportId=0x${reportId.toString(16)}, dataLen=${packetSize})`);
+            this.showToast(`sendReport(id=0x${reportId.toString(16)}, ${packetSize}B) 전송 중…`, 'info');
+
+            // 리스너 등록 후 sendReport (sendReport 실패 시 리스너 정리)
+            let _resolve, _reject, _tid, _handler;
+            const responsePromise = new Promise((resolve, reject) => {
+                _resolve = resolve; _reject = reject;
+                _tid = setTimeout(() => {
+                    this.hidDevice.removeEventListener('inputreport', _handler);
+                    reject(new Error('timeout'));
+                }, 2000);
+                _handler = (event) => {
+                    clearTimeout(_tid);
+                    this.hidDevice.removeEventListener('inputreport', _handler);
+                    resolve(new Uint8Array(event.data.buffer));
+                };
+                this.hidDevice.addEventListener('inputreport', _handler);
+            });
+
+            try {
+                await this.hidDevice.sendReport(reportId, data);
+            } catch (sendErr) {
+                clearTimeout(_tid);
+                this.hidDevice.removeEventListener('inputreport', _handler);
+                _reject(sendErr);
+                throw sendErr;
+            }
+
+            this.addMonitorEntry('sent', frame);
+            this.showToast('sendReport 완료, 응답 대기 중…', 'info');
+
+            const response = await responsePromise;
+
+            // USB HID 응답은 Report ID가 WebHID에서 제거되어 event.data가 FC부터 시작함
+            // parseCANopenResponse는 [slaveId][FC][MEI]... 구조를 기대하므로 slaveId 앞에 삽입
+            const fullResponse = new Uint8Array(response.length + 1);
+            fullResponse[0] = slaveId;
+            fullResponse.set(response, 1);
+
+            // numData 위치: [11]=hi, [12]=lo (slaveId 삽입 후 기존 오프셋 그대로)
+            const numData  = (fullResponse[11] << 8) | fullResponse[12];
+            const frameLen = 13 + numData; // header(13) + data (CRC 없음)
+            const parsed   = this.modbus.parseCANopenResponse(fullResponse.slice(0, frameLen), { skipCRC: true });
+            this.addMonitorEntry('received', fullResponse.slice(0, frameLen));
+
+            const MOTOR_ID_MAP = { 0x1000: 'Sirocco Motor', 0x2000: 'Axial Motor' };
+            const hexVal  = `0x${parsed.value.toString(16).toUpperCase().padStart(4, '0')}`;
+            const name    = MOTOR_ID_MAP[parsed.value] ?? '알 수 없음';
+            if (el) el.textContent = `${name}  ${hexVal}`;
+            this._setOvBadge('if-usb', 'pass');
+
+        } catch (err) {
+            console.error('[USB HID]', err);
+            this.showToast(`USB HID 오류: ${err.message}`, 'error');
+            if (el) el.textContent = err.message === 'timeout' ? 'timeout' : 'ERR';
+            this._setOvBadge('if-usb', 'fail');
+        }
     }
 
     async runOvMotorId() {
