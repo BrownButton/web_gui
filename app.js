@@ -10574,14 +10574,14 @@ class ModbusDashboard {
         if (!card) return;
         if (ModbusDashboard._OV_NO_BORDER_IDS.has(id)) return; // 테두리 효과 없음
         const borderMap = {
-            pass:    '#6fcf97',  // 초록
+            pass:    '#e9ecef',  // 기본 (테두리 효과 없음)
             fail:    '#eb8a90',  // 빨강
-            running: '#fdba74',  // 연한 주황
-            live:    '#6fcf97',  // 초록 (+ 애니메이션)
+            running: '#e9ecef',  // 기본 (테두리 효과 없음)
+            live:    '#e9ecef',  // 기본 (테두리 효과 없음)
             pending: '#e9ecef',  // 기본 회색
         };
         card.style.borderColor = borderMap[status] || borderMap.pending;
-        card.style.borderWidth = status === 'pending' ? '1px' : '2px';
+        card.style.borderWidth = '1px';
         card.classList.toggle('ov-card-live', status === 'live');
     }
 

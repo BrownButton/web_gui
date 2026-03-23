@@ -7983,27 +7983,13 @@ textarea:disabled {
 }
 
 
-/* HW Overview — 클릭 가능한 카드 호버 이펙트 */
+/* HW Overview — 클릭 가능한 카드 (호버/transform 효과 없음) */
 .ov-card-clickable {
-    transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.ov-card-clickable:not(.ov-card-running):hover {
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07) !important;
-    border-color: #ced4da !important;
-    transform: translateY(-1px);
-}
-.ov-card-clickable:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
-}
-/* 차트 실행 중 — 파란 테두리 유지 (hover 포함) */
+/* 차트 실행 중 — 파란 테두리 유지 */
 .ov-card-clickable.ov-card-running {
     border-color: #60a5fa !important;
     border-width: 2px !important;
     box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15) !important;
-}
-.ov-card-clickable.ov-card-running:hover {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
-    transform: translateY(-1px);
 }
