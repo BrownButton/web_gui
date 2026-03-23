@@ -348,7 +348,9 @@ buildCANopenDownloadFrame(slaveId, index, subIndex, value, size = 4) {
 /**
  * FC 0x2B / MEI 0x0D 응답 파싱
  * @param {Uint8Array} frame  CRC 포함 전체 프레임
- * @returns {{ cs, index, subIndex, value, abortCode } | null}
+{% raw %}
+ * @returns {{ cs, index, subIndex, value, abortCode } | null}}
+{% endraw %}
  */
 parseCANopenResponse(frame) {
     if (frame[1] === 0xAB) {
