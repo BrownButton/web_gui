@@ -10489,14 +10489,6 @@ class ModbusDashboard {
             values.push(get(`ov-${ch}-rms`));
         }
 
-        // PASS/FAIL: 각 RMS가 Aging Current ± 10% 범위 내
-        const agingCurrent = parseFloat(document.getElementById('ovInverterCurrent')?.value ?? '0');
-        const lo = agingCurrent * 0.9;
-        const hi = agingCurrent * 1.1;
-        const rmsValues = channels.map(ch => parseFloat(get(`ov-${ch}-rms`)));
-        const pass = rmsValues.every(v => !isNaN(v) && v >= lo && v <= hi);
-        values.push(pass ? 'PASS' : 'FAIL');
-
         navigator.clipboard.writeText(values.join('\t'))
             .then(() => this.showToast('클립보드에 복사되었습니다', 'success'))
             .catch(() => this.showToast('클립보드 복사 실패', 'error'));
