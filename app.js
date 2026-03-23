@@ -10484,8 +10484,8 @@ class ModbusDashboard {
         const channels = ['iu', 'iv', 'iw'];
         const values = [];
         for (const ch of channels) {
-            values.push(get(`ov-${ch}-max`));
             values.push(get(`ov-${ch}-min`));
+            values.push(get(`ov-${ch}-max`));
             values.push(get(`ov-${ch}-rms`));
         }
 
