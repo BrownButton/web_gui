@@ -2099,10 +2099,11 @@
                                                             <span style="font-size: 11px; color: #6c757d;">Hz</span>
                                                         </div>
                                                     </div>
-                                                    <!-- Start / Stop 버튼 -->
+                                                    <!-- Start / Stop / Copy 버튼 -->
                                                     <div style="display: flex; gap: 6px; align-self: flex-end;">
                                                         <button id="ovInverterStartBtn" class="btn btn-primary btn-sm" style="font-size: 11px; padding: 4px 14px;" onclick="app.startOvInverter()">▶ Start</button>
                                                         <button id="ovInverterStopBtn" class="btn btn-sm" style="font-size: 11px; padding: 4px 14px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="app.stopOvInverter()">■ Stop</button>
+                                                        <button class="btn btn-sm" style="font-size: 11px; padding: 4px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="app.copyInverterResults()">Copy</button>
                                                     </div>
                                                 </div>
                                                 <!-- 본문: 좌측 채널 패널 + 우측 캔버스 -->
@@ -2122,6 +2123,10 @@
                                                                 <span style="font-size: 9px; color: #adb5bd;">max</span>
                                                                 <span id="ov-iu-max" style="font-size: 9px; font-family: monospace; color: #e74c3c; min-width: 34px;">-</span>
                                                             </div>
+                                                            <div style="display: flex; gap: 8px; padding-left: 17px; margin-top: 2px;">
+                                                                <span style="font-size: 9px; color: #adb5bd;">rms</span>
+                                                                <span id="ov-iu-rms" style="font-size: 9px; font-family: monospace; color: #8e44ad; min-width: 34px;">-</span>
+                                                            </div>
                                                         </div>
                                                         <!-- Iv -->
                                                         <div style="background: #fafafa; border-radius: 6px; padding: 6px 8px;">
@@ -2136,6 +2141,10 @@
                                                                 <span style="font-size: 9px; color: #adb5bd;">max</span>
                                                                 <span id="ov-iv-max" style="font-size: 9px; font-family: monospace; color: #e74c3c; min-width: 34px;">-</span>
                                                             </div>
+                                                            <div style="display: flex; gap: 8px; padding-left: 17px; margin-top: 2px;">
+                                                                <span style="font-size: 9px; color: #adb5bd;">rms</span>
+                                                                <span id="ov-iv-rms" style="font-size: 9px; font-family: monospace; color: #8e44ad; min-width: 34px;">-</span>
+                                                            </div>
                                                         </div>
                                                         <!-- Iw -->
                                                         <div style="background: #fafafa; border-radius: 6px; padding: 6px 8px;">
@@ -2149,6 +2158,10 @@
                                                                 <span id="ov-iw-min" style="font-size: 9px; font-family: monospace; color: #3498db; min-width: 34px;">-</span>
                                                                 <span style="font-size: 9px; color: #adb5bd;">max</span>
                                                                 <span id="ov-iw-max" style="font-size: 9px; font-family: monospace; color: #e74c3c; min-width: 34px;">-</span>
+                                                            </div>
+                                                            <div style="display: flex; gap: 8px; padding-left: 17px; margin-top: 2px;">
+                                                                <span style="font-size: 9px; color: #adb5bd;">rms</span>
+                                                                <span id="ov-iw-rms" style="font-size: 9px; font-family: monospace; color: #8e44ad; min-width: 34px;">-</span>
                                                             </div>
                                                         </div>
                                                     </div>

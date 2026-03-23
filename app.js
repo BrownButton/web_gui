@@ -1222,6 +1222,7 @@ class ModbusDashboard {
         this.miniChartCurrent = null;
         this.miniChartRunning = { hall: false, current: false };
         this._fc64Busy = false; // FC64 전환(stop/start) 구간에서 버스 점유 표시
+        this._currentRmsData = [{sumSq:0,count:0},{sumSq:0,count:0},{sumSq:0,count:0}];
 
         // HW Overview 통합 폴링 (탭 진입 시 자동 시작)
         this.ovPollingRunning = false;
@@ -10401,6 +10402,13 @@ class ModbusDashboard {
 
         this.miniChartRunning[type] = true; // 이후 _isFc64Active는 miniChartRunning으로 유지됨
         this._fc64Busy = false;
+        if (type === 'current') {
+            this._currentRmsData = [{sumSq:0,count:0},{sumSq:0,count:0},{sumSq:0,count:0}];
+            ['ov-iu-rms','ov-iv-rms','ov-iw-rms'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = '-';
+            });
+        }
         this._updateMiniChartBtn(type, true);
         this._miniChartDataLoop(type, slaveId, chart.channels.length, period * 0.125);
     }
@@ -10416,6 +10424,7 @@ class ModbusDashboard {
         const maxIds = type === 'hall'
             ? ['ov-hall-u-max', 'ov-hall-v-max', 'ov-hall-w-max']
             : ['ov-iu-max', 'ov-iv-max', 'ov-iw-max'];
+        const rmsIds = type === 'current' ? ['ov-iu-rms', 'ov-iv-rms', 'ov-iw-rms'] : null;
 
         while (this.miniChartRunning[type]) {
             if (!this.writer) { await this.delay(50); continue; }
@@ -10434,15 +10443,26 @@ class ModbusDashboard {
                     const val = parsed.data[ci * samplesPerCh + s];
                     if (val === undefined) continue;
                     chart.addDataPoint(ci, val);
+                    // RMS 누적 (current 차트만)
+                    if (rmsIds && this._currentRmsData[ci]) {
+                        this._currentRmsData[ci].sumSq += val * val;
+                        this._currentRmsData[ci].count++;
+                    }
                     if (s === samplesPerCh - 1) {
                         const el = document.getElementById(valueIds[ci]);
                         if (el) el.textContent = val.toFixed(3);
-                        // min/max 업데이트 (hall 차트만)
                         const ch = chart.channels[ci];
                         const minEl = minIds[ci] ? document.getElementById(minIds[ci]) : null;
                         const maxEl = maxIds[ci] ? document.getElementById(maxIds[ci]) : null;
                         if (minEl && ch.min !== undefined) minEl.textContent = ch.min.toFixed(3);
                         if (maxEl && ch.max !== undefined) maxEl.textContent = ch.max.toFixed(3);
+                        // RMS 표시 업데이트
+                        if (rmsIds) {
+                            const d = this._currentRmsData[ci];
+                            const rmsEl = document.getElementById(rmsIds[ci]);
+                            if (rmsEl && d.count > 0)
+                                rmsEl.textContent = Math.sqrt(d.sumSq / d.count).toFixed(3);
+                        }
                     }
                 }
             }
@@ -10451,6 +10471,29 @@ class ModbusDashboard {
             // FC64 요청 사이에 대기 중인 큐 명령 소진 (버스 충돌 방지)
             if (this.commandQueue.length > 0) await this._drainCommandQueue();
         }
+    }
+
+    copyInverterResults() {
+        const get = id => document.getElementById(id)?.textContent?.trim() ?? '-';
+        const channels = ['iu', 'iv', 'iw'];
+        const values = [];
+        for (const ch of channels) {
+            values.push(get(`ov-${ch}-max`));
+            values.push(get(`ov-${ch}-min`));
+            values.push(get(`ov-${ch}-rms`));
+        }
+
+        // PASS/FAIL: 각 RMS가 Aging Current ± 10% 범위 내
+        const agingCurrent = parseFloat(document.getElementById('ovInverterCurrent')?.value ?? '0');
+        const lo = agingCurrent * 0.9;
+        const hi = agingCurrent * 1.1;
+        const rmsValues = channels.map(ch => parseFloat(get(`ov-${ch}-rms`)));
+        const pass = rmsValues.every(v => !isNaN(v) && v >= lo && v <= hi);
+        values.push(pass ? 'PASS' : 'FAIL');
+
+        navigator.clipboard.writeText(values.join('\t'))
+            .then(() => this.showToast('클립보드에 복사되었습니다', 'success'))
+            .catch(() => this.showToast('클립보드 복사 실패', 'error'));
     }
 
     async stopMiniChart(type) {
