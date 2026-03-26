@@ -2592,6 +2592,41 @@ class ModbusDashboard {
     }
 
     /**
+     * 동일 포트를 새 통신 설정으로 재접속 (OS 검증용).
+     * requestPort() 없이 기존 포트 참조를 재사용하므로 사용자 제스처 불필요.
+     *
+     * @param {number} baudRate  - 새 Baudrate (예: 9600)
+     * @param {string} parity    - 'none' | 'even' | 'odd'
+     * @param {number} stopBits  - 1 | 2
+     */
+    async reconnectSerial(baudRate, parity, stopBits = 1) {
+        const port = this.port;
+        if (!port) throw new Error('포트 참조 없음 — 먼저 Connect 하세요');
+
+        // 1. 현재 연결 종료 (this.port = null 로 설정됨)
+        await this.disconnect();
+
+        // 2. 사이드바 UI 동기화
+        const setEl = (id, val) => { const e = document.getElementById(id); if (e) e.value = String(val); };
+        setEl('sidebar-baudRate', baudRate);
+        setEl('sidebar-parity',   parity);
+        setEl('sidebar-stopBits', stopBits);
+
+        // 3. 저장해 둔 포트를 새 설정으로 재오픈
+        await port.open({ baudRate, parity, stopBits, dataBits: 8, flowControl: 'none' });
+
+        // 4. 대시보드 상태 복원
+        this.port    = port;
+        this.writer  = port.writable.getWriter();
+        this.startReading();
+        this.isConnected = true;
+        this.updateConnectionStatus(true);
+        this.saveSerialSettings({ baudRate, dataBits: 8, parity, stopBits });
+
+        this.showToast(`재접속 완료: ${baudRate}bps, ${parity}, Stop${stopBits}`, 'success');
+    }
+
+    /**
      * Start reading from serial port
      */
     async startReading() {
@@ -6931,8 +6966,8 @@ class ModbusDashboard {
         }
 
         try {
-            // Send software reset command (write 1 to SOFTWARE_RESET register)
-            await this.writeRegister(device.slaveId, this.REGISTERS.SOFTWARE_RESET, 1);
+            // Send software reset command: FC06, 0xD000, bit3(4번째 비트) set = 0x0008
+            await this.writeRegister(device.slaveId, 0xD000, 0x0008);
             this.showToast(`${device.name}: 소프트웨어 리셋이 완료되었습니다`, 'success');
 
             // Mark device as offline temporarily
@@ -13353,6 +13388,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new ModbusDashboard();
     window.app = window.dashboard;
     window.osTestManager = new OSTestManager();
+    window.osTestManager.renderTestList();
 
     // Device Setup Tab Switching
     const deviceSetupTabs = document.querySelectorAll('.device-setup-tab');
@@ -13492,13 +13528,13 @@ document.addEventListener('DOMContentLoaded', () => {
         window.osTestManager.resetAllTests();
     });
 
-    // Test item header click to expand/collapse
-    document.querySelectorAll('.os-test-header').forEach(header => {
-        header.addEventListener('click', () => {
-            const testItem = header.closest('.os-test-item');
-            const testId = testItem.dataset.testId;
-            window.osTestManager.expandTestItem(testId);
-        });
+    // Test item header click to expand/collapse (delegated — works for dynamically rendered items)
+    document.getElementById('osTestListContainer')?.addEventListener('click', (e) => {
+        const header = e.target.closest('.os-test-header');
+        if (!header) return;
+        const testItem = header.closest('.os-test-item');
+        if (!testItem) return;
+        window.osTestManager.expandTestItem(testItem.dataset.testId);
     });
 
     // Start/Stop Test buttons (delegated event handling)

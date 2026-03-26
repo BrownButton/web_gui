@@ -740,6 +740,106 @@ class OSTestManager {
     }
 
     // ================================================================
+    //  동적 테스트 목록 렌더링
+    // ================================================================
+
+    /**
+     * JS 테스트 정의로부터 DOM 항목을 동적 생성.
+     * 기존 하드코딩된 HTML을 완전히 대체한다.
+     */
+    renderTestList() {
+        const container = document.getElementById('osTestListContainer');
+        if (!container) return;
+
+        // 카테고리별 그룹화 (삽입 순서 유지)
+        const groups = new Map();
+        for (const test of Object.values(this.tests)) {
+            const cat = test.category || '기타';
+            if (!groups.has(cat)) groups.set(cat, []);
+            groups.get(cat).push(test);
+        }
+
+        container.innerHTML = '';
+        for (const [cat, tests] of groups) {
+            const section = document.createElement('section');
+            section.style.marginBottom = '28px';
+            section.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <h3 style="margin:0;font-size:17px;font-weight:600;color:#1a1a1a;">${cat}</h3>
+                    <span style="font-size:12px;color:#6c757d;">${tests.length} tests</span>
+                </div>
+                <div style="display:grid;gap:10px;">
+                    ${tests.map(t => this._buildTestItemHtml(t)).join('')}
+                </div>`;
+            container.appendChild(section);
+        }
+
+        this.updateTestStatus();
+    }
+
+    _buildTestItemHtml(test) {
+        const esc = s => String(s ?? '-').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `
+<div class="os-test-item" data-test-id="${test.id}" style="background:white;border:1px solid #e9ecef;border-radius:8px;overflow:hidden;transition:all 0.2s;">
+  <div class="os-test-header" style="padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:14px;font-weight:500;color:#1a1a1a;margin-bottom:4px;">${test.number ? `[${esc(test.number)}]  ` : ''}${esc(test.title)}</div>
+      <div style="font-size:12px;color:#6c757d;">${esc(test.description)}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;margin-left:12px;">
+      <span class="test-status-badge" style="padding:4px 12px;background:#e9ecef;color:#6c757d;border-radius:12px;font-size:12px;font-weight:500;">Pending</span>
+      <span class="test-expand-icon" style="font-size:18px;color:#6c757d;transition:transform 0.3s;">▼</span>
+    </div>
+  </div>
+  <div class="os-test-content" style="display:none;border-top:1px solid #e9ecef;">
+    <div style="padding:20px;background:#f8f9fa;">
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;font-size:13px;">
+        <div><div style="color:#6c757d;margin-bottom:4px;">시험 분류</div><div style="color:#1a1a1a;font-weight:500;" class="test-category">${esc(test.category)}</div></div>
+        <div><div style="color:#6c757d;margin-bottom:4px;">시험 번호</div><div style="color:#1a1a1a;font-weight:500;" class="test-number">${esc(test.number)}</div></div>
+        <div style="grid-column:1/-1;"><div style="color:#6c757d;margin-bottom:4px;">시험 목적</div><div style="color:#1a1a1a;line-height:1.5;" class="test-purpose">${esc(test.purpose)}</div></div>
+        <div><div style="color:#6c757d;margin-bottom:4px;">적용 모델</div><div style="color:#1a1a1a;" class="test-model">${esc(test.model)}</div></div>
+        <div><div style="color:#6c757d;margin-bottom:4px;">시험 장비</div><div style="color:#1a1a1a;" class="test-equipment">${esc(test.equipment)}</div></div>
+      </div>
+    </div>
+    <div style="padding:20px;background:#f8f9fa;border-top:1px solid #e9ecef;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h4 style="margin:0;font-size:15px;font-weight:600;">테스트 실행</h4>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary btn-sm test-start-btn">▶ Start Test</button>
+          <button class="btn btn-secondary btn-sm test-stop-btn" style="display:none;">⏹ Stop</button>
+        </div>
+      </div>
+      <div style="background:#e9ecef;height:6px;border-radius:3px;overflow:hidden;">
+        <div class="test-progress-bar" style="height:100%;background:linear-gradient(90deg,#667eea,#764ba2);width:0%;transition:width 0.3s;"></div>
+      </div>
+      <div class="test-progress-text" style="margin-top:6px;font-size:12px;color:#6c757d;text-align:center;">테스트를 시작하려면 Start Test 버튼을 클릭하세요</div>
+    </div>
+    <div style="padding:20px;">
+      <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600;">시험 단계</h4>
+      <div class="test-steps-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <div style="padding:0 20px 20px 20px;">
+      <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600;">실행 로그</h4>
+      <div class="test-log-container" style="background:#1e1e1e;color:#d4d4d4;padding:12px;border-radius:4px;font-family:'Consolas','Monaco',monospace;font-size:11px;max-height:200px;overflow-y:auto;line-height:1.5;">
+        <div style="color:#6c757d;">테스트 로그가 여기에 표시됩니다...</div>
+      </div>
+    </div>
+    <div style="padding:0 20px 20px 20px;">
+      <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600;">판정 기준</h4>
+      <div style="padding:12px;background:#e7f3ff;border-left:4px solid #2196f3;border-radius:4px;">
+        <div style="font-size:13px;color:#1a1a1a;" class="test-criteria">${esc(test.criteria)}</div>
+      </div>
+    </div>
+    <div style="padding:20px;background:#f8f9fa;border-top:1px solid #e9ecef;">
+      <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600;">테스트 결과</h4>
+      <div class="test-result-display" style="display:none;"></div>
+      <div class="test-result-pending" style="padding:12px;background:#e9ecef;border-radius:4px;text-align:center;color:#6c757d;font-size:13px;">테스트를 실행하면 결과가 자동으로 표시됩니다</div>
+    </div>
+  </div>
+</div>`;
+    }
+
+    // ================================================================
     //  유틸리티
     // ================================================================
 
