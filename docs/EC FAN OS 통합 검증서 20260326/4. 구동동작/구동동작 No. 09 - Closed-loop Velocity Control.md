@@ -1,4 +1,4 @@
-# 구동동작 No. 09 - Closed-loop Velocity Control
+﻿# 구동동작 No. 09 - Closed-loop Velocity Control
 
 ## 시험 항목
 
@@ -77,8 +77,10 @@ Operating Mode [0xD106]을 Closed-loop Velocity(0x0000)로 설정하고 Set Poin
 - Command Velocity [0xD051] 파라미터의 값이 100으로 확인 (속도 지령 100rpm 출력 확인)
 - Actual Speed [0xD02D]가 100rpm에 추종
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

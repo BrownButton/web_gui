@@ -1,4 +1,4 @@
-# 보호동작 No. 11 - Error 0x37 Sinusoidal encoder amplitude too high
+﻿# 보호동작 No. 11 - Error 0x37 Sinusoidal encoder amplitude too high
 
 ## 시험 항목
 
@@ -47,8 +47,10 @@
 - 엔코더 신호 진폭 과대 시 보호 동작을 수행함
 - Motor Status [0xD011] Bit 4 (FB) 및 Bit 6 (HLL) Set 확인
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

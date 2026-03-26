@@ -1,4 +1,4 @@
-# 구동동작 No. 07 - Set Value
+﻿# 구동동작 No. 07 - Set Value
 
 ## 시험 항목
 
@@ -68,11 +68,17 @@ Open-loop 및 Closed-loop Velocity 모드에서 Set Point [0xD001]에 다양한 
 
 ### 판정 기준
 
-- Set Point 값에 따라 토크/속도가 정상 비례하여 제어됨
-- Command Torque [0xD050] 또는 Actual Speed [0xD02D] 파라미터가 기대값에 일치 또는 추종
+| 케이스 | 판정 조건 |
+|--------|----------|
+| Open-loop SP | 0% / 10% / 50% / 100% Set Point 각각에 대해 Command Torque가 기대값에 일치 |
+| Closed-loop SP | 0 / 100 / 200 / 1000 / 1600 RPM Set Point 각각에 대해 Actual Speed가 기대값에 추종 |
+
+**합격 조건**: Open-loop / Closed-loop 모드 모두 전 설정 포인트에서 정상 추종
 
 ## 시험 결과
 
-| 시험 일자 | 시험자 | 판정 | 비고 |
-|----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+| 시험 일자 | 시험자 | 케이스 | 판정 | 비고 |
+|----------|--------|--------|------|------|
+|          |        | Open-loop SP | □ 합격 / □ 불합격 | |
+|          |        | Closed-loop SP | □ 합격 / □ 불합격 | |
+|          |        | **종합** | □ 합격 / □ 불합격 | |

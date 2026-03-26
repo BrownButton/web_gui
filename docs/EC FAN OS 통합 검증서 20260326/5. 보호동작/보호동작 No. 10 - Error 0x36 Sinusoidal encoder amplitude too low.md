@@ -1,4 +1,4 @@
-# 보호동작 No. 10 - Error 0x36 Sinusoidal encoder amplitude too low
+﻿# 보호동작 No. 10 - Error 0x36 Sinusoidal encoder amplitude too low
 
 ## 시험 항목
 
@@ -48,8 +48,10 @@
 - Motor Status [0xD011] Bit 4 (FB) 및 Bit 6 (HLL) Set 확인
 - 예상 Motor Status 값: 0x0050
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

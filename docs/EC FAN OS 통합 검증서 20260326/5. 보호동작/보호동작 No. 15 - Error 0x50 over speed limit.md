@@ -1,4 +1,4 @@
-# 보호동작 No. 15 - Error 0x50 over speed limit
+﻿# 보호동작 No. 15 - Error 0x50 over speed limit
 
 ## 시험 항목
 
@@ -64,8 +64,10 @@ Open-loop 모드에서 Fan Blade를 제거한 상태로 높은 토크 지령을 
 - Motor Status [0xD011] Bit 4 (FB) 및 Bit 8 (N_Limit) Set 확인
 - 예상 Motor Status 값: **0x0110**
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

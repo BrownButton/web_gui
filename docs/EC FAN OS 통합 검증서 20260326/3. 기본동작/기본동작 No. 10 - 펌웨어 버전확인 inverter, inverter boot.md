@@ -1,4 +1,4 @@
-# 기본동작 No. 10 - 펌웨어 버전확인 inverter, inverter boot
+﻿# 기본동작 No. 10 - 펌웨어 버전확인 inverter, inverter boot
 
 ## 시험 항목
 
@@ -50,8 +50,10 @@ Commutation Controller Software Version [0xD005] 및 Commutation Controller Soft
 - Inverter SW Version(0xD005) 파라미터가 현재 탑재된 인버터 펌웨어 버전과 일치
 - Inverter Boot Version(0xD004) 파라미터가 정상 출력
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

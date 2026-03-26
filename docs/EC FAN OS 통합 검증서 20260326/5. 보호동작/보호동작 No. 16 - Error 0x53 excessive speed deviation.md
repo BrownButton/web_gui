@@ -1,4 +1,4 @@
-# 보호동작 No. 16 - Error 0x53 excessive speed deviation
+﻿# 보호동작 No. 16 - Error 0x53 excessive speed deviation
 
 ## 시험 항목
 
@@ -54,8 +54,10 @@ Closed-loop Velocity 모드에서 목표 속도를 설정하고 팬을 물리적
 - 속도 편차 과대 조건 발생 시 드라이브가 보호 동작을 수행함
 - Motor Status [0xD011] Bit 4 (FB) Set 확인
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

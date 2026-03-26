@@ -1,4 +1,4 @@
-# 보호동작 No. 06 - Error 0x22 drive temperature 1
+﻿# 보호동작 No. 06 - Error 0x22 drive temperature 1
 
 ## 시험 항목
 
@@ -54,8 +54,10 @@ Board 온도(Electronics Temperature [0xD017])를 강제로 상승시켜 과온 
 - 드라이브 과온 조건 발생 시 보호 동작을 수행함
 - Motor Status [0xD011] Bit 4 (FB) Set 확인
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

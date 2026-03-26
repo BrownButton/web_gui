@@ -1,4 +1,4 @@
-# 보호동작 No. 18 - Warning 0x01 DC Link under voltage
+﻿# 보호동작 No. 18 - Warning 0x01 DC Link under voltage
 
 ## 시험 항목
 
@@ -45,8 +45,10 @@ DC Link 전압이 Warning 임계값 이하로 내려갔을 때 Warning 신호가
 - Warning Status [0xD012] Bit 0 (0x0001) Set 확인
 - Warning 상태에서의 드라이브 동작 정책 확인 (운전 계속 또는 속도 제한)
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

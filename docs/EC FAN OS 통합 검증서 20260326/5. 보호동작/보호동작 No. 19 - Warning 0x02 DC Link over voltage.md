@@ -1,4 +1,4 @@
-# 보호동작 No. 19 - Warning 0x02 DC Link over voltage
+﻿# 보호동작 No. 19 - Warning 0x02 DC Link over voltage
 
 ## 시험 항목
 
@@ -46,8 +46,10 @@ DC Link 전압이 Warning 과전압 임계값을 초과했을 때 Warning 신호
 - Warning Status [0xD012] Bit 1 (0x0002) Set 확인
 - Warning 상태에서의 드라이브 동작 정책 확인
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

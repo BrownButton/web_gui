@@ -1,4 +1,4 @@
-# 기본동작 No. 09 - 펌웨어 버전확인 main, main boot
+﻿# 기본동작 No. 09 - 펌웨어 버전확인 main, main boot
 
 ## 시험 항목
 
@@ -50,8 +50,10 @@ Bus Controller Software Version [0xD003] 및 Bus Controller Software Name [0xD00
 - Main SW Version(0xD003) 파라미터가 현재 탑재된 펌웨어 버전과 일치
 - Main Boot Version(0xD002) 파라미터가 정상 출력
 
+**합격 조건**: 위 판정 조건 모두 만족
+
 ## 시험 결과
 
 | 시험 일자 | 시험자 | 판정 | 비고 |
 |----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+|          |        | □ 합격 / □ 불합격 |      |

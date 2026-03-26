@@ -1,4 +1,4 @@
-# 구동동작 No. 06 - 구동 모드 설정 (Operation mode)
+﻿# 구동동작 No. 06 - 구동 모드 설정 (Operation mode)
 
 ## 시험 항목
 
@@ -85,11 +85,17 @@ Operating Mode [0xD106]을 Open-loop(0x0002) 및 Closed-loop Velocity(0x0000)로
 
 ### 판정 기준
 
-- Operating Mode = 0x0002 (Open-loop): Command Torque [0xD050] = 10 (10%) 출력 확인
-- Operating Mode = 0x0000 (Closed-loop Velocity): Actual Speed [0xD02D]가 100rpm에 추종 확인
+| 케이스 | 판정 조건 |
+|--------|----------|
+| Open-loop (0x0002) | Set Point 10% 인가 시 Command Torque [0xD050] = 10 출력 확인 |
+| Closed-loop Velocity (0x0000) | Set Point 100rpm 지령 시 Actual Speed [0xD02D]가 100rpm에 추종 확인 |
+
+**합격 조건**: Open-loop / Closed-loop 양 모드 모두 정상 동작
 
 ## 시험 결과
 
-| 시험 일자 | 시험자 | 판정 | 비고 |
-|----------|--------|------|------|
-|          |        | 합격 / 불합격 |      |
+| 시험 일자 | 시험자 | 케이스 | 판정 | 비고 |
+|----------|--------|--------|------|------|
+|          |        | Open-loop | □ 합격 / □ 불합격 | |
+|          |        | Closed-loop Velocity | □ 합격 / □ 불합격 | |
+|          |        | **종합** | □ 합격 / □ 불합격 | |
