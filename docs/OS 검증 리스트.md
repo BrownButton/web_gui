@@ -15,15 +15,14 @@ OS 검증 리스트
 3. 기본동작
     3-01. Software Reset
     3-02. Alarm Reset
-    3-02. 전류제한 파라미터 설정
-    3-03. 구동 방향 설정 (CW, CCW)
-    3-04. EEPROM Save
-    3-05. DCLink V
-    3-06. Board 온도
-    3-07. IGBT 온도
-    3-08. 펌웨어 버전확인 main/main boot
-    3-09. 펌웨어 버전확인 inverter/inverter boot
-    3-10. OS 다운로드
+    3-03. 전류제한 파라미터 설정
+    3-04. 구동 방향 설정 (CW, CCW)
+    3-05. EEPROM Save
+    3-06. DCLink V
+    3-07. Board 온도
+    3-08. IGBT 온도
+    3-09. 펌웨어 버전확인 main/main boot
+    3-10. 펌웨어 버전확인 inverter/inverter boot
     3-11. main OS 다운로드
     3-12. inverter OS 다운로드
     3-13. OS 다운로드 중, 분리 예외처리

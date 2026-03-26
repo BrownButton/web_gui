@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(sed -n '1608,1659p' /d/git/web_gui/index.html)",
+      "Bash(sed -n '1660,1687p' /d/git/web_gui/index.html)",
+      "Bash(sed -n '1688,1743p' /d/git/web_gui/index.html)",
+      "Bash(sed -n '1744,1788p' /d/git/web_gui/index.html)",
+      "Bash(sed -n '1789,1846p' /d/git/web_gui/index.html)",
+      "Bash(sed -n '1847,1885p' /d/git/web_gui/index.html)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(python3 -c \":*)",
+      "Bash(ls -la /d/git/web_gui/*.js)"
     ]
   }
 }
