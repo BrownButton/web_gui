@@ -21,11 +21,9 @@ OS 검증 리스트
     3-06. DCLink V
     3-07. Board 온도
     3-08. IGBT 온도
-    3-09. 펌웨어 버전확인 main/main boot
-    3-10. 펌웨어 버전확인 inverter/inverter boot
-    3-11. main OS 다운로드
-    3-12. inverter OS 다운로드
-    3-13. OS 다운로드 중, 분리 예외처리
+    3-09. 드라이브 펌웨어 버전정보 확인 (main, inverter)
+    3-10. 통신 인터페이스 기반 Main Firmware 다운로드 기능 검증 및 플래싱 중단(Blackout)시 Bootloader 안전 복구 통합 검증
+    3-11. 통신 인터페이스 기반 Inverter Firmware 다운로드 기능 검증 및 플래싱 중단(Blackout)시 Bootloader 안전 복구 통합 검증
 
 4. 구동동작
     4-01. Set Value Source 입력 방식 설정 - PWM 입력
