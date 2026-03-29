@@ -7582,6 +7582,29 @@ class ModbusDashboard {
     }
 
     /**
+     * 임의 raw 프레임을 전송하고 응답을 기다린다 (CRC 재계산 없음).
+     * 테스트 목적으로 고의로 훼손된 프레임 전송 시 사용.
+     * 큐를 통해 안전하게 전송되므로 폴링 중에도 버스 충돌 없음.
+     * @param {Uint8Array} frame - 전송할 raw 바이트 (CRC 포함, 재계산 안 함)
+     * @param {number} slaveId  - 응답 대기 slave ID (무응답 확인이면 timeout으로 null 반환)
+     * @returns {Promise<number|null>} 응답값 또는 null (timeout/exception)
+     */
+    async sendRawFrameWithTimeout(frame, slaveId) {
+        if (this.simulatorEnabled) {
+            // 시뮬레이터는 CRC를 검증하지 않으므로 정상 응답이 올 수 있음 — null 강제 반환
+            return null;
+        }
+        if (!this.writer) return null;
+
+        if (this.autoPollingTimer || this._isFc64Active) {
+            return new Promise((resolve, reject) => {
+                this.commandQueue.push({ type: 'read', frame, slaveId, address: 0, resolve, reject });
+            });
+        }
+        return await this.sendAndWaitResponse(frame, slaveId);
+    }
+
+    /**
      * Send frame and wait for response with timeout
      */
     async sendAndWaitResponse(frame, expectedSlaveId) {
