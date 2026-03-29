@@ -521,31 +521,62 @@ window.OSTestModules.push({
             const self = this;
             self.checkConnection();
 
-            self.addLog('info', '[Phase 2] DC Link 전압 읽기 (0xD013, FC04)');
+            // ── Phase 2: DC Link 전압 읽기 ────────────────────────────────────
+            self.addLog('═'.repeat(52), 'info');
+            self.addLog('[Phase 2] DC Link 전압 읽기', 'info');
+            self.addLog('  대상 레지스터: 0xD013  (FC04 Input Register, Slave 1)', 'info');
+            self.addLog('  TX: 01 04 D0 13 00 01 [CRC]', 'info');
+            self.updateProgress(20, 'Phase 2: DC Link 전압 읽기');
+
             const dcVoltage = await window.dashboard.readInputRegisterWithTimeout(1, 0xD013);
             if (dcVoltage === null || dcVoltage === undefined) {
+                self.addLog('  RX: 응답 없음 → 테스트 중단', 'error');
                 return { status: 'fail', message: 'DC Link 전압 읽기 실패', details: '0xD013 FC04 응답 없음' };
             }
-            self.addLog('info', `DC Link 전압: ${dcVoltage} (0x${dcVoltage.toString(16).toUpperCase().padStart(4, '0')})`);
 
-            // 정상 범위: 480~600V (실제 단위 확인 필요)
-            const inRange = dcVoltage >= 483 && dcVoltage <= 591;
-            self.addLog('info', `범위 검사(483~591): ${inRange ? 'PASS' : 'WARNING — 범위 벗어남'}`);
+            const dcHex     = dcVoltage.toString(16).toUpperCase().padStart(4, '0');
+            const inRange   = dcVoltage >= 483 && dcVoltage <= 591;
+            self.addLog(`  RX: 0x${dcHex} = ${dcVoltage} (raw)`, 'info');
+            self.addLog(`  정상 범위: 483 ~ 591  →  읽기값 ${dcVoltage} ${inRange ? '✔ 범위 내' : '✘ 범위 벗어남'}`, inRange ? 'success' : 'warn');
+            self.updateProgress(50, 'Phase 2 완료');
 
-            // Phase 3: Read-Only 쓰기 방어 확인
-            self.addLog('info', '[Phase 3] Read-Only 주소 쓰기 시도 (0xD013 ← 0x0320)');
+            // ── Phase 3: Read-Only 쓰기 방어 확인 ────────────────────────────
+            self.addLog('─'.repeat(52), 'info');
+            self.addLog('[Phase 3] Read-Only 주소 쓰기 시도 → 거부 여부 확인', 'info');
+            self.addLog('  쓰기값: 0x0320 = 800  (Input Register 영역에 FC06 쓰기)', 'info');
+            self.addLog('  TX(Write FC06): 01 06 D0 13 03 20 [CRC]', 'info');
+            self.updateProgress(65, 'Phase 3: Read-Only 쓰기 시도');
+
             await window.dashboard.writeRegister(1, 0xD013, 0x0320);
             await new Promise(r => setTimeout(r, 200));
+            self.addLog('  200 ms 대기 후 읽기 검증...', 'info');
+            self.addLog('  TX(Read  FC04): 01 04 D0 13 00 01 [CRC]', 'info');
+
             const readAfterWrite = await window.dashboard.readInputRegisterWithTimeout(1, 0xD013);
-            const writeRejected = (readAfterWrite !== null && readAfterWrite !== 0x0320);
-            self.addLog('info', `쓰기 후 값: ${readAfterWrite !== null ? readAfterWrite : 'null'} → ${writeRejected ? 'Read-Only 보호 확인(PASS)' : '쓰기 반영됨(경고)'}`);
+            const writeRejected  = (readAfterWrite !== null && readAfterWrite !== 0x0320);
+            self.updateProgress(85, 'Phase 3: 결과 확인');
+
+            if (readAfterWrite === null) {
+                self.addLog('  RX: 응답 없음', 'warn');
+            } else {
+                const afterHex = readAfterWrite.toString(16).toUpperCase().padStart(4, '0');
+                self.addLog(`  RX: 0x${afterHex} = ${readAfterWrite}`, 'info');
+                self.addLog(
+                    writeRejected
+                        ? `  0x0320 반영되지 않음 (실제값: ${readAfterWrite}) → ✔ Read-Only 보호 확인 — PASS`
+                        : `  0x0320 그대로 반영됨 → ✘ Read-Only 보호 미작동 — WARNING`,
+                    writeRejected ? 'success' : 'warn'
+                );
+            }
+
+            self.addLog('═'.repeat(52), 'info');
+            self.updateProgress(100, '테스트 완료');
 
             return {
                 status: inRange ? 'pass' : 'warn',
                 message: inRange ? 'DC Link 전압 정상 범위 확인' : 'DC Link 전압 범위 경고',
                 details: [
-                    `DC Link 전압: ${dcVoltage} (정상범위 483~591)`,
-                    `범위 내: ${inRange ? 'PASS' : 'WARNING'}`,
+                    `DC Link 전압: ${dcVoltage} (0x${dcHex})  정상범위 483~591  → ${inRange ? 'PASS' : 'WARNING'}`,
                     `Read-Only 보호: ${writeRejected ? 'PASS' : 'WARNING'}`,
                     'Note: CLAUDE.md 기준 0xD013. docx 기재 0xD019와 다름 — 실기 확인 필요',
                 ].join('\n'),
