@@ -1168,6 +1168,7 @@ class ModbusDashboard {
         this.scanAborted = false;
         this.scanResolve = null;  // Callback for scan response
         this.scanExpectedSlaveId = null;  // Expected slave ID for scan response
+        this.serialPortScanActive = false;  // Serial port scan in progress
 
         // Auto polling for device status
         this.autoPollingEnabled = true;
@@ -1572,6 +1573,7 @@ class ModbusDashboard {
 
         // Auto Scan controls
         this.initAutoScanUI();
+        this.initSerialPortScanUI();
 
         // Firmware upload controls
         this.initFirmwareUI();
@@ -2599,7 +2601,7 @@ class ModbusDashboard {
      * @param {string} parity    - 'none' | 'even' | 'odd'
      * @param {number} stopBits  - 1 | 2
      */
-    async reconnectSerial(baudRate, parity, stopBits = 1) {
+    async reconnectSerial(baudRate, parity, stopBits = 1, silent = false) {
         const port = this.port;
         if (!port) throw new Error('포트 참조 없음 — 먼저 Connect 하세요');
 
@@ -2623,7 +2625,7 @@ class ModbusDashboard {
         this.updateConnectionStatus(true);
         this.saveSerialSettings({ baudRate, dataBits: 8, parity, stopBits });
 
-        this.showToast(`재접속 완료: ${baudRate}bps, ${parity}, Stop${stopBits}`, 'success');
+        if (!silent) this.showToast(`재접속 완료: ${baudRate}bps, ${parity}, Stop${stopBits}`, 'success');
     }
 
     /**
@@ -8661,6 +8663,183 @@ class ModbusDashboard {
                 this.saveSettings();
             });
         }
+    }
+
+    /**
+     * Initialize Serial Port Scan UI event listeners
+     */
+    initSerialPortScanUI() {
+        const startBtn = document.getElementById('spScanStartBtn');
+        const stopBtn = document.getElementById('spScanStopBtn');
+        if (startBtn) startBtn.addEventListener('click', () => this.startSerialPortScan());
+        if (stopBtn)  stopBtn.addEventListener('click',  () => this.stopSerialPortScan());
+    }
+
+    /**
+     * Scan through serial port setting combinations (baudRate × parity × stopBits)
+     * and run device scan on each combination.
+     */
+    async startSerialPortScan() {
+        if (!this.isConnected || !this.port) {
+            this.showToast('시리얼 포트에 먼저 연결하세요', 'warning');
+            return;
+        }
+        if (this.isScanning || this.serialPortScanActive) {
+            this.showToast('이미 스캔 중입니다', 'warning');
+            return;
+        }
+
+        // Collect selected options
+        const baudRates  = [...document.querySelectorAll('.spScan-baudRate:checked')].map(e => parseInt(e.value));
+        const parities   = [...document.querySelectorAll('.spScan-parity:checked')].map(e => e.value);
+        const stopBitOpts = [...document.querySelectorAll('.spScan-stopBits:checked')].map(e => parseInt(e.value));
+
+        if (!baudRates.length || !parities.length || !stopBitOpts.length) {
+            this.showToast('스캔할 설정을 최소 하나씩 선택하세요', 'warning');
+            return;
+        }
+
+        // Build all combinations
+        const combos = [];
+        for (const baud of baudRates)
+            for (const parity of parities)
+                for (const stop of stopBitOpts)
+                    combos.push({ baudRate: baud, parity, stopBits: stop });
+
+        // Save original settings to restore after scan
+        const origBaud   = parseInt(document.getElementById('sidebar-baudRate')?.value) || 19200;
+        const origParity = document.getElementById('sidebar-parity')?.value || 'even';
+        const origStop   = parseInt(document.getElementById('sidebar-stopBits')?.value) || 1;
+
+        this.serialPortScanActive = true;
+        this.scanAborted = false;
+
+        const startBtn       = document.getElementById('spScanStartBtn');
+        const stopBtn        = document.getElementById('spScanStopBtn');
+        const progressWrap   = document.getElementById('spScanProgress');
+        const progressBar    = document.getElementById('spScanProgressBar');
+        const progressText   = document.getElementById('spScanProgressText');
+        const resultsDiv     = document.getElementById('spScanResults');
+        const resultsList    = document.getElementById('spScanResultsList');
+
+        if (startBtn)     startBtn.disabled = true;
+        if (stopBtn)      stopBtn.disabled  = false;
+        if (progressWrap) progressWrap.style.display = 'block';
+        if (resultsDiv)   resultsDiv.style.display   = 'none';
+        if (progressBar)  progressBar.style.width    = '0%';
+
+        const allResults = []; // { baudRate, parity, stopBits, foundIds, error? }
+
+        for (let i = 0; i < combos.length; i++) {
+            if (this.scanAborted) break;
+
+            const { baudRate, parity, stopBits } = combos[i];
+            const pct = Math.round((i / combos.length) * 100);
+            if (progressBar)  progressBar.style.width = `${pct}%`;
+            if (progressText) progressText.textContent =
+                `(${i + 1}/${combos.length}) ${baudRate} bps · ${parity} · Stop ${stopBits} — 스캔 중...`;
+
+            try {
+                await this.reconnectSerial(baudRate, parity, stopBits, true /* silent */);
+                await new Promise(r => setTimeout(r, 300)); // 포트 안정화 대기
+                const foundIds = await this._scanAllSlaveIds();
+                allResults.push({ baudRate, parity, stopBits, foundIds });
+            } catch (e) {
+                allResults.push({ baudRate, parity, stopBits, foundIds: [], error: e.message });
+            }
+        }
+
+        // 원래 설정으로 복원
+        try {
+            if (progressText) progressText.textContent = '원래 설정으로 복원 중...';
+            await this.reconnectSerial(origBaud, origParity, origStop, true);
+        } catch (e) {
+            this.showToast(`원래 설정 복원 실패: ${e.message}`, 'error');
+        }
+
+        this.serialPortScanActive = false;
+        if (startBtn)    startBtn.disabled = false;
+        if (stopBtn)     stopBtn.disabled  = true;
+        if (progressBar) progressBar.style.width = '100%';
+
+        const successResults = allResults.filter(r => r.foundIds.length > 0);
+        if (progressText) progressText.textContent = this.scanAborted
+            ? `스캔 중단 — 장치 발견된 설정: ${successResults.length}개`
+            : `스캔 완료 — 장치 발견된 설정: ${successResults.length}개`;
+
+        // 결과 표시
+        if (resultsDiv && resultsList) {
+            resultsDiv.style.display = 'block';
+            if (allResults.length === 0 || successResults.length === 0) {
+                resultsList.innerHTML = '<p style="color:#6c757d;">어떤 설정에서도 장치를 찾지 못했습니다.</p>';
+            } else {
+                resultsList.innerHTML = allResults.map(r => {
+                    const label = `${r.baudRate} bps · ${r.parity} · Stop ${r.stopBits}`;
+                    if (r.error) {
+                        return `<div style="padding:8px;margin-bottom:5px;border-radius:4px;background:white;border:1px solid #f5c6cb;color:#721c24;">
+                            <strong>${label}</strong> — 오류: ${r.error}
+                        </div>`;
+                    }
+                    if (r.foundIds.length === 0) return '';
+                    const idList = r.foundIds.map(id => `ID ${id}`).join(', ');
+                    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;margin-bottom:5px;border-radius:4px;background:white;border:1px solid #c3e6cb;">
+                        <div>
+                            <strong style="color:#155724;">${label}</strong><br>
+                            <span style="font-size:12px;color:#6c757d;">발견된 장치: ${idList}</span>
+                        </div>
+                        <button class="btn btn-sm btn-primary spScan-applyBtn"
+                            data-baud="${r.baudRate}" data-parity="${r.parity}" data-stop="${r.stopBits}">
+                            이 설정 적용
+                        </button>
+                    </div>`;
+                }).filter(Boolean).join('') || '<p style="color:#6c757d;">장치를 발견한 설정이 없습니다.</p>';
+
+                // "이 설정 적용" 버튼 리스너
+                resultsList.querySelectorAll('.spScan-applyBtn').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const baud  = parseInt(btn.dataset.baud);
+                        const parity = btn.dataset.parity;
+                        const stop  = parseInt(btn.dataset.stop);
+                        await this.reconnectSerial(baud, parity, stop);
+                        if (this.autoScanEnabled) {
+                            setTimeout(() => this.startDeviceScan(true), 500);
+                        }
+                    });
+                });
+            }
+        }
+
+        this.showToast(
+            successResults.length > 0
+                ? `포트 스캔 완료: ${successResults.length}개 설정에서 장치 발견`
+                : '포트 스캔 완료: 장치를 찾지 못했습니다',
+            successResults.length > 0 ? 'success' : 'info'
+        );
+    }
+
+    /**
+     * Abort an in-progress serial port scan
+     */
+    stopSerialPortScan() {
+        if (!this.serialPortScanActive) return;
+        this.scanAborted = true;
+        this.showToast('포트 스캔을 중단합니다...', 'info');
+    }
+
+    /**
+     * Internal: scan all slave IDs in the configured range, return array of found IDs.
+     * Does NOT update the device list or show scan UI.
+     */
+    async _scanAllSlaveIds() {
+        this.isScanning = true;
+        const found = [];
+        for (let slaveId = this.scanRangeStart; slaveId <= this.scanRangeEnd; slaveId++) {
+            if (this.scanAborted) break;
+            const response = await this.scanSlaveId(slaveId);
+            if (response !== null) found.push(slaveId);
+        }
+        this.isScanning = false;
+        return found;
     }
 
     /**
