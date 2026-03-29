@@ -2328,6 +2328,17 @@ class ModbusDashboard {
         document.getElementById('modal-simSlaveId').value = this.simulator.slaveId;
         document.getElementById('modal-simDelay').value = this.simulator.responseDelay;
 
+        // Sync auto scan toggle
+        const autoScanToggle = document.getElementById('autoScanEnabled');
+        const autoScanStatus = document.getElementById('autoScanStatus');
+        if (autoScanToggle) {
+            autoScanToggle.checked = this.autoScanEnabled;
+            if (autoScanStatus) {
+                autoScanStatus.textContent = this.autoScanEnabled ? '활성' : '비활성';
+                autoScanStatus.classList.toggle('active', this.autoScanEnabled);
+            }
+        }
+
         // Sync polling settings
         document.getElementById('pollingInterval').value = this.autoPollingInterval;
         document.getElementById('pollingTimeout').value = this.pollingTimeout;
@@ -4299,6 +4310,18 @@ class ModbusDashboard {
                     scanRemoveNotFoundStatus.textContent = this.scanRemoveNotFound ? '활성' : '비활성';
                     scanRemoveNotFoundStatus.classList.toggle('active', this.scanRemoveNotFound);
                 }
+            }
+        }
+
+        // Always sync autoScanEnabled UI to match the current value
+        // (handles the case where no stored settings exist but this.autoScanEnabled defaults to true)
+        const autoScanToggle = document.getElementById('autoScanEnabled');
+        const autoScanStatus = document.getElementById('autoScanStatus');
+        if (autoScanToggle) {
+            autoScanToggle.checked = this.autoScanEnabled;
+            if (autoScanStatus) {
+                autoScanStatus.textContent = this.autoScanEnabled ? '활성' : '비활성';
+                autoScanStatus.classList.toggle('active', this.autoScanEnabled);
             }
         }
 
