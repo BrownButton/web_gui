@@ -1318,6 +1318,150 @@ window.OSTestModules.push({
             ]
         }
 
+        // ── 5-23. 엔코더 보정 에러 ────────────────────────────────────────────
+        'prot-enc-cal': {
+            id: 'prot-enc-cal',
+            category: '보호동작',
+            number: '5-23',
+            title: '엔코더 보정 에러 보호',
+            description: '엔코더 보정 오류 발생 시 드라이브 보호 동작 검증',
+            purpose: '엔코더 보정(Calibration) 중 이상이 발생했을 때 드라이브가 보호 동작을 수행하는지 확인한다. 보정 오류 조건 유발 후 에러 검출 및 알람 리셋 동작을 검증한다.',
+            model: 'EC-FAN',
+            equipment: 'EC FAN 1EA, USB to RS485 Converter',
+            criteria: '엔코더 보정 오류 발생 시 드라이브가 보호 동작 수행 / 에러 코드 확인 / 알람 리셋 후 정상 복귀',
+            steps: [
+                { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
+                { type: 'check_comm_settings', label: 'Baudrate / Parity 설정 확인' },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD011,
+                    label: '현재 Motor Status [0xD011] 확인 (정상: 0x0000)',
+                    softFail: true
+                },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD010,
+                    label: '현재 에러 코드 레지스터 [0xD010] 확인',
+                    softFail: true
+                },
+                {
+                    type: 'wait_countdown',
+                    seconds: 30,
+                    message: '[Phase 2 — 엔코더 보정 오류 유발]\n' +
+                             '엔코더 보정 절차 중 이상 조건을 만드세요:\n' +
+                             '① 엔코더 신호선을 일시 분리 후 보정 명령 전송\n' +
+                             '② 또는 제조사 FCT 프로시저로 보정 오류 주입\n' +
+                             '드라이브가 에러를 검출할 때까지 대기합니다.'
+                },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD011,
+                    label: 'Motor Status [0xD011] — 엔코더 보정 에러 검출 확인',
+                    softFail: true
+                },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD010,
+                    label: '에러 코드 레지스터 [0xD010] — 보정 에러 코드 확인',
+                    softFail: true
+                },
+                {
+                    type: 'write_holding',
+                    slaveId: 1,
+                    address: 0xD000,
+                    value: 0x0002,
+                    label: '알람 리셋 [0xD000=0x0002]',
+                    softFail: true
+                },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD011,
+                    label: '리셋 후 Motor Status 확인 (에러 해제 여부)',
+                    softFail: true
+                }
+            ]
+        },
+
+        // ── 5-24. 엔코더 신호 이상 보호 ──────────────────────────────────────
+        'prot-enc-sig': {
+            id: 'prot-enc-sig',
+            category: '보호동작',
+            number: '5-24',
+            title: '엔코더 신호 이상 보호',
+            description: '엔코더 신호 이상(단선, 노이즈, 신호 소실) 발생 시 보호 동작 검증',
+            purpose: '엔코더 신호에 이상(단선, 노이즈 유입, 신호 소실 등)이 발생했을 때 드라이브가 보호 동작을 수행하는지 확인한다. 신호 이상 상태에서의 에러 검출 및 복구 동작을 검증한다.',
+            model: 'EC-FAN',
+            equipment: 'EC FAN 1EA, USB to RS485 Converter',
+            criteria: '엔코더 신호 이상 발생 시 드라이브가 보호 동작 수행 / 에러 코드 확인 / 신호 복구 후 정상 복귀',
+            steps: [
+                { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
+                { type: 'check_comm_settings', label: 'Baudrate / Parity 설정 확인' },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD011,
+                    label: '현재 Motor Status [0xD011] 확인 (정상: 0x0000)',
+                    softFail: true
+                },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD010,
+                    label: '현재 에러 코드 레지스터 [0xD010] 확인',
+                    softFail: true
+                },
+                {
+                    type: 'wait_countdown',
+                    seconds: 30,
+                    message: '[Phase 2 — 엔코더 신호 이상 조건 유발]\n' +
+                             '모터 구동 중 아래 방법 중 하나로 엔코더 신호 이상을 유발하세요:\n' +
+                             '① 엔코더 신호선(A/B/Z 채널) 중 하나를 일시 단선\n' +
+                             '② 엔코더 전원선을 일시 차단\n' +
+                             '드라이브가 에러를 검출할 때까지 대기합니다.'
+                },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD011,
+                    label: 'Motor Status [0xD011] — 엔코더 신호 이상 에러 검출 확인',
+                    softFail: true
+                },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD010,
+                    label: '에러 코드 레지스터 [0xD010] — 엔코더 관련 에러 코드 확인',
+                    softFail: true
+                },
+                {
+                    type: 'wait_countdown',
+                    seconds: 20,
+                    message: '[Phase 3 — 복구]\n' +
+                             '엔코더 신호선을 정상 연결 상태로 복구하세요.'
+                },
+                {
+                    type: 'write_holding',
+                    slaveId: 1,
+                    address: 0xD000,
+                    value: 0x0002,
+                    label: '알람 리셋 [0xD000=0x0002]',
+                    softFail: true
+                },
+                {
+                    type: 'read_input',
+                    slaveId: 1,
+                    address: 0xD011,
+                    label: '리셋 후 Motor Status 확인 (에러 해제 및 정상 복귀)',
+                    softFail: true
+                }
+            ]
+        }
+
     }, // end tests
 
     executors: {}
