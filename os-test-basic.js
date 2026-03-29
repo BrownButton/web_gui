@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OS Test Module - 기본동작
  *
  * 검증서: docs/EC FAN OS 통합 검증서 20260328/3. 기본동작/
@@ -31,36 +31,36 @@ window._basicAlarmResetExecutor = async function () {
     self.checkConnection();
 
     // Phase 2-1: 현재 상태 읽기 (Motor Status)
-    self.addLog('info', '[Phase 2-1] Motor Status 읽기 (0xD011, FC04)');
+    self.addLog('[Phase 2-1] Motor Status 읽기 (0xD011, FC04)', 'info');
     const motorStatus = await window.dashboard.readInputRegisterWithTimeout(1, 0xD011);
     if (motorStatus === null || motorStatus === undefined) {
         return { status: 'fail', message: 'Motor Status 읽기 실패', details: '0xD011 FC04 응답 없음' };
     }
-    self.addLog('info', `Motor Status: 0x${motorStatus.toString(16).toUpperCase().padStart(4, '0')}`);
+    self.addLog(`Motor Status: 0x${motorStatus.toString(16).toUpperCase().padStart(4, '0')}`, 'info');
 
     // Phase 2-2: 정상 구동 중 Alarm Reset 전송
-    self.addLog('info', '[Phase 2-2] Alarm Reset 명령 전송 (0x800E ← 0x0001)');
+    self.addLog('[Phase 2-2] Alarm Reset 명령 전송 (0x800E ← 0x0001)', 'info');
     await window.dashboard.writeRegister(1, 0x800E, 0x0001);
     await new Promise(r => setTimeout(r, 300));
 
     // Phase 3: 알람 유발 안내 + 카운트다운
-    self.addLog('warn', '[Phase 3] 알람 유발 안내');
-    self.addLog('info', '장치에 알람 조건을 발생시킨 뒤 아래 카운트다운이 끝나면 자동으로 Alarm Reset을 전송합니다.');
+    self.addLog('[Phase 3] 알람 유발 안내', 'warn');
+    self.addLog('장치에 알람 조건을 발생시킨 뒤 아래 카운트다운이 끝나면 자동으로 Alarm Reset을 전송합니다.', 'info');
     await self._runStep({ type: 'wait_countdown', seconds: 20, message: '알람 유발 후 대기 (20초)' }, 0);
 
-    self.addLog('info', '[Phase 3] Alarm Reset 재전송');
+    self.addLog('[Phase 3] Alarm Reset 재전송', 'info');
     await window.dashboard.writeRegister(1, 0x800E, 0x0001);
     await new Promise(r => setTimeout(r, 500));
 
     const statusAfter = await window.dashboard.readInputRegisterWithTimeout(1, 0xD011);
-    self.addLog('info', `리셋 후 Motor Status: ${statusAfter !== null ? '0x' + statusAfter.toString(16).toUpperCase().padStart(4, '0') : 'null'}`);
+    self.addLog(`리셋 후 Motor Status: ${statusAfter !== null ? '0x' + statusAfter.toString(16).toUpperCase().padStart(4, '0') : 'null'}`, 'info');
 
     // Phase 4: 비정상 코드 쓰기 → 예외 확인
-    self.addLog('info', '[Phase 4] 비정상 Alarm Reset 코드 전송 (0x800E ← 0xFFFF)');
+    self.addLog('[Phase 4] 비정상 Alarm Reset 코드 전송 (0x800E ← 0xFFFF)', 'info');
     await window.dashboard.writeRegister(1, 0x800E, 0xFFFF);
     await new Promise(r => setTimeout(r, 300));
     const statusAfterInvalid = await window.dashboard.readInputRegisterWithTimeout(1, 0xD011);
-    self.addLog('info', `비정상 코드 후 Motor Status: ${statusAfterInvalid !== null ? '0x' + statusAfterInvalid.toString(16).toUpperCase().padStart(4, '0') : 'null'}`);
+    self.addLog(`비정상 코드 후 Motor Status: ${statusAfterInvalid !== null ? '0x' + statusAfterInvalid.toString(16).toUpperCase().padStart(4, '0') : 'null'}`, 'info');
 
     return {
         status: 'pass',
@@ -394,30 +394,30 @@ window.OSTestModules.push({
             self.checkConnection();
 
             // 기존값 저장
-            self.addLog('info', '[Phase 1] 구동 방향 기존값 읽기 (0xD102)');
+            self.addLog('[Phase 1] 구동 방향 기존값 읽기 (0xD102)', 'info');
             const origDir = await window.dashboard.readRegisterWithTimeout(1, 0xD102);
             if (origDir === null || origDir === undefined) {
                 return { status: 'fail', message: '방향 레지스터 읽기 실패', details: '0xD102 FC03 응답 없음' };
             }
-            self.addLog('info', `기존 방향: ${origDir === 0 ? 'CCW(0)' : origDir === 1 ? 'CW(1)' : `Unknown(${origDir})`}`);
+            self.addLog(`기존 방향: ${origDir === 0 ? 'CCW(0)' : origDir === 1 ? 'CW(1)' : `Unknown(${origDir})`}`, 'info');
 
             // Phase 2: 반대 방향으로 변경
             const newDir = origDir === 0 ? 1 : 0;
-            self.addLog('info', `[Phase 2] 방향 변경: ${newDir === 0 ? 'CCW(0)' : 'CW(1)'} 쓰기`);
+            self.addLog(`[Phase 2] 방향 변경: ${newDir === 0 ? 'CCW(0)' : 'CW(1)'} 쓰기`, 'info');
             await window.dashboard.writeRegister(1, 0xD102, newDir);
             await new Promise(r => setTimeout(r, 200));
 
             // Phase 2-2: EEPROM Save
-            self.addLog('info', '[Phase 2-2] EEPROM Save (0xD000 ← 0x0004)');
+            self.addLog('[Phase 2-2] EEPROM Save (0xD000 ← 0x0004)', 'info');
             await window.dashboard.writeRegister(1, 0xD000, 0x0004);
 
             // Phase 3: 전원 재투입 안내
-            self.addLog('warn', '[Phase 3] 전원 재투입 안내');
-            self.addLog('info', '전원을 차단한 뒤 재투입하세요. 카운트다운 후 자동으로 재연결을 시도합니다.');
+            self.addLog('[Phase 3] 전원 재투입 안내', 'warn');
+            self.addLog('전원을 차단한 뒤 재투입하세요. 카운트다운 후 자동으로 재연결을 시도합니다.', 'info');
             await self._runStep({ type: 'wait_countdown', seconds: 15, message: '전원 재투입 대기 (15초)' }, 0);
 
             // Phase 3-2: 재연결 후 읽기
-            self.addLog('info', '[Phase 3-2] 재연결 후 방향 읽기');
+            self.addLog('[Phase 3-2] 재연결 후 방향 읽기', 'info');
             let readAfterPower = null;
             for (let i = 0; i < 3; i++) {
                 readAfterPower = await window.dashboard.readRegisterWithTimeout(1, 0xD102);
@@ -426,18 +426,18 @@ window.OSTestModules.push({
             }
 
             const dirVerified = readAfterPower === newDir;
-            self.addLog('info', `재투입 후 방향: ${readAfterPower !== null ? readAfterPower : 'null'} (기대: ${newDir}) → ${dirVerified ? 'PASS' : 'FAIL'}`);
+            self.addLog(`재투입 후 방향: ${readAfterPower !== null ? readAfterPower : 'null'} (기대: ${newDir}) → ${dirVerified ? 'PASS' : 'FAIL'}`, 'info');
 
             // Phase 4: 비정상값 쓰기
-            self.addLog('info', '[Phase 4] 비정상값 쓰기 (0xD102 ← 0xFFFF)');
+            self.addLog('[Phase 4] 비정상값 쓰기 (0xD102 ← 0xFFFF)', 'info');
             await window.dashboard.writeRegister(1, 0xD102, 0xFFFF);
             await new Promise(r => setTimeout(r, 200));
             const readAfterInvalid = await window.dashboard.readRegisterWithTimeout(1, 0xD102);
             const invalidRejected = (readAfterInvalid !== null && readAfterInvalid !== 0xFFFF);
-            self.addLog('info', `비정상값 후 방향: ${readAfterInvalid !== null ? readAfterInvalid : 'null'} → ${invalidRejected ? '범위 초과 거부 확인' : '경고: 값 변경됨'}`);
+            self.addLog(`비정상값 후 방향: ${readAfterInvalid !== null ? readAfterInvalid : 'null'} → ${invalidRejected ? '범위 초과 거부 확인' : '경고: 값 변경됨'}`, 'info');
 
             // 복원
-            self.addLog('info', '[복원] 기존 방향 복원');
+            self.addLog('[복원] 기존 방향 복원', 'info');
             await window.dashboard.writeRegister(1, 0xD102, origDir);
             await window.dashboard.writeRegister(1, 0xD000, 0x0004);
 
@@ -459,31 +459,31 @@ window.OSTestModules.push({
             self.checkConnection();
 
             // Phase 1: 기존 Setpoint 저장
-            self.addLog('info', '[Phase 1] 기존 Setpoint 읽기 (0xD001)');
+            self.addLog('[Phase 1] 기존 Setpoint 읽기 (0xD001)', 'info');
             const origSetpoint = await window.dashboard.readRegisterWithTimeout(1, 0xD001);
             if (origSetpoint === null || origSetpoint === undefined) {
                 return { status: 'fail', message: 'Setpoint 읽기 실패', details: '0xD001 FC03 응답 없음' };
             }
-            self.addLog('info', `기존 Setpoint: ${origSetpoint}`);
+            self.addLog(`기존 Setpoint: ${origSetpoint}`, 'info');
 
             // Phase 2-1: 테스트용 Setpoint 쓰기
             const testSetpoint = 0x1000;
-            self.addLog('info', `[Phase 2-1] 테스트 Setpoint 쓰기: 0x${testSetpoint.toString(16).toUpperCase()}`);
+            self.addLog(`[Phase 2-1] 테스트 Setpoint 쓰기: 0x${testSetpoint.toString(16).toUpperCase()}`, 'info');
             await window.dashboard.writeRegister(1, 0xD001, testSetpoint);
             await new Promise(r => setTimeout(r, 200));
 
             // Phase 2-2: EEPROM Save
-            self.addLog('info', '[Phase 2-2] EEPROM Save (0xD000 ← 0x0004)');
+            self.addLog('[Phase 2-2] EEPROM Save (0xD000 ← 0x0004)', 'info');
             await window.dashboard.writeRegister(1, 0xD000, 0x0004);
             await new Promise(r => setTimeout(r, 500));
 
             // Phase 2-3: 전원 재투입 안내
-            self.addLog('warn', '[Phase 2-3] 전원 재투입 안내');
-            self.addLog('info', '전원을 차단한 뒤 재투입하세요. EEPROM 저장값 유지 여부를 확인합니다.');
+            self.addLog('[Phase 2-3] 전원 재투입 안내', 'warn');
+            self.addLog('전원을 차단한 뒤 재투입하세요. EEPROM 저장값 유지 여부를 확인합니다.', 'info');
             await self._runStep({ type: 'wait_countdown', seconds: 20, message: '전원 재투입 대기 (20초)' }, 0);
 
             // Phase 2-4: 재연결 후 읽기
-            self.addLog('info', '[Phase 2-4] 재연결 후 Setpoint 읽기');
+            self.addLog('[Phase 2-4] 재연결 후 Setpoint 읽기', 'info');
             let readAfterPower = null;
             for (let i = 0; i < 3; i++) {
                 readAfterPower = await window.dashboard.readRegisterWithTimeout(1, 0xD001);
@@ -492,15 +492,15 @@ window.OSTestModules.push({
             }
 
             const eepromVerified = readAfterPower === testSetpoint;
-            self.addLog('info', `재투입 후 Setpoint: ${readAfterPower !== null ? readAfterPower : 'null'} (기대: ${testSetpoint}) → ${eepromVerified ? 'PASS' : 'FAIL'}`);
+            self.addLog(`재투입 후 Setpoint: ${readAfterPower !== null ? readAfterPower : 'null'} (기대: ${testSetpoint}) → ${eepromVerified ? 'PASS' : 'FAIL'}`, 'info');
 
             // Phase 3: 비정상 EEPROM 코드 쓰기
-            self.addLog('info', '[Phase 3] 비정상 EEPROM 코드 쓰기 (0xD000 ← 0xFFFF)');
+            self.addLog('[Phase 3] 비정상 EEPROM 코드 쓰기 (0xD000 ← 0xFFFF)', 'info');
             await window.dashboard.writeRegister(1, 0xD000, 0xFFFF);
             await new Promise(r => setTimeout(r, 300));
 
             // 복원
-            self.addLog('info', '[복원] 기존 Setpoint 복원 + EEPROM 저장');
+            self.addLog('[복원] 기존 Setpoint 복원 + EEPROM 저장', 'info');
             await window.dashboard.writeRegister(1, 0xD001, origSetpoint);
             await window.dashboard.writeRegister(1, 0xD000, 0x0004);
 
@@ -588,12 +588,12 @@ window.OSTestModules.push({
             const self = this;
             self.checkConnection();
 
-            self.addLog('info', '[Phase 2] Board 온도 읽기 (0xD017, FC04)');
+            self.addLog('[Phase 2] Board 온도 읽기 (0xD017, FC04)', 'info');
             const boardTemp = await window.dashboard.readInputRegisterWithTimeout(1, 0xD017);
             if (boardTemp === null || boardTemp === undefined) {
                 return { status: 'fail', message: 'Board 온도 읽기 실패', details: '0xD017 FC04 응답 없음' };
             }
-            self.addLog('info', `Board 온도: ${boardTemp}°C`);
+            self.addLog(`Board 온도: ${boardTemp}°C`, 'info');
 
             // 비정상값 체크: 0=단선, >=200=오버플로우
             if (boardTemp === 0) {
@@ -604,15 +604,15 @@ window.OSTestModules.push({
             }
 
             const inRange = boardTemp >= 5 && boardTemp <= 80;
-            self.addLog('info', `범위 검사(5~80°C): ${inRange ? 'PASS' : 'WARNING'}`);
+            self.addLog(`범위 검사(5~80°C): ${inRange ? 'PASS' : 'WARNING'}`, 'info');
 
             // Phase 3: Read-Only 쓰기 방어
-            self.addLog('info', '[Phase 3] Read-Only 쓰기 시도 (0xD017 ← 0x0019)');
+            self.addLog('[Phase 3] Read-Only 쓰기 시도 (0xD017 ← 0x0019)', 'info');
             await window.dashboard.writeRegister(1, 0xD017, 0x0019);
             await new Promise(r => setTimeout(r, 200));
             const readAfterWrite = await window.dashboard.readInputRegisterWithTimeout(1, 0xD017);
             const writeRejected = (readAfterWrite !== null && readAfterWrite !== 0x0019);
-            self.addLog('info', `쓰기 후 값: ${readAfterWrite !== null ? readAfterWrite : 'null'} → ${writeRejected ? 'Read-Only 보호 확인(PASS)' : '쓰기 반영됨(경고)'}`);
+            self.addLog(`쓰기 후 값: ${readAfterWrite !== null ? readAfterWrite : 'null'} → ${writeRejected ? 'Read-Only 보호 확인(PASS)' : '쓰기 반영됨(경고)'}`, 'info');
 
             return {
                 status: inRange ? 'pass' : 'warn',
@@ -630,12 +630,12 @@ window.OSTestModules.push({
             const self = this;
             self.checkConnection();
 
-            self.addLog('info', '[Phase 2] 인버터 모듈 온도 읽기 (0xD015, FC04)');
+            self.addLog('[Phase 2] 인버터 모듈 온도 읽기 (0xD015, FC04)', 'info');
             const moduleTemp = await window.dashboard.readInputRegisterWithTimeout(1, 0xD015);
             if (moduleTemp === null || moduleTemp === undefined) {
                 return { status: 'fail', message: '모듈 온도 읽기 실패', details: '0xD015 FC04 응답 없음' };
             }
-            self.addLog('info', `인버터 모듈 온도: ${moduleTemp}°C`);
+            self.addLog(`인버터 모듈 온도: ${moduleTemp}°C`, 'info');
 
             if (moduleTemp === 0) {
                 return { status: 'fail', message: '모듈 온도 센서 단선 의심', details: `읽기값: ${moduleTemp}` };
@@ -645,15 +645,15 @@ window.OSTestModules.push({
             }
 
             const inRange = moduleTemp >= 5 && moduleTemp <= 80;
-            self.addLog('info', `범위 검사(5~80°C): ${inRange ? 'PASS' : 'WARNING'}`);
+            self.addLog(`범위 검사(5~80°C): ${inRange ? 'PASS' : 'WARNING'}`, 'info');
 
             // Phase 3: Read-Only 쓰기 방어
-            self.addLog('info', '[Phase 3] Read-Only 쓰기 시도 (0xD015 ← 0x0019)');
+            self.addLog('[Phase 3] Read-Only 쓰기 시도 (0xD015 ← 0x0019)', 'info');
             await window.dashboard.writeRegister(1, 0xD015, 0x0019);
             await new Promise(r => setTimeout(r, 200));
             const readAfterWrite = await window.dashboard.readInputRegisterWithTimeout(1, 0xD015);
             const writeRejected = (readAfterWrite !== null && readAfterWrite !== 0x0019);
-            self.addLog('info', `쓰기 후 값: ${readAfterWrite !== null ? readAfterWrite : 'null'} → ${writeRejected ? 'Read-Only 보호 확인(PASS)' : '쓰기 반영됨(경고)'}`);
+            self.addLog(`쓰기 후 값: ${readAfterWrite !== null ? readAfterWrite : 'null'} → ${writeRejected ? 'Read-Only 보호 확인(PASS)' : '쓰기 반영됨(경고)'}`, 'info');
 
             return {
                 status: inRange ? 'pass' : 'warn',
@@ -682,21 +682,21 @@ window.OSTestModules.push({
             let allValid = true;
 
             for (const reg of regs) {
-                self.addLog('info', `[Phase 2] ${reg.label} 읽기 (0x${reg.addr.toString(16).toUpperCase()})`);
+                self.addLog(`[Phase 2] ${reg.label} 읽기 (0x${reg.addr.toString(16).toUpperCase()})`, 'info');
                 const val = await window.dashboard.readInputRegisterWithTimeout(1, reg.addr);
                 const valid = val !== null && val !== undefined && val !== 0;
                 results.push({ ...reg, val, valid });
-                self.addLog('info', `  ${reg.label}: ${val !== null ? val : 'null'} → ${valid ? 'PASS' : 'FAIL(0 또는 null)'}`);
+                self.addLog(`  ${reg.label}: ${val !== null ? val : 'null'} → ${valid ? 'PASS' : 'FAIL(0 또는 null)'}`, 'info');
                 if (!valid) allValid = false;
             }
 
             // Phase 3: Read-Only 쓰기 방어
-            self.addLog('info', '[Phase 3] Read-Only 쓰기 시도 (0xD003 ← 0xFFFF)');
+            self.addLog('[Phase 3] Read-Only 쓰기 시도 (0xD003 ← 0xFFFF)', 'info');
             await window.dashboard.writeRegister(1, 0xD003, 0xFFFF);
             await new Promise(r => setTimeout(r, 200));
             const readAfterWrite = await window.dashboard.readInputRegisterWithTimeout(1, 0xD003);
             const writeRejected = (readAfterWrite !== null && readAfterWrite !== 0xFFFF);
-            self.addLog('info', `쓰기 후 값: ${readAfterWrite !== null ? readAfterWrite : 'null'} → ${writeRejected ? 'Read-Only 보호 확인(PASS)' : '경고'}`);
+            self.addLog(`쓰기 후 값: ${readAfterWrite !== null ? readAfterWrite : 'null'} → ${writeRejected ? 'Read-Only 보호 확인(PASS)' : '경고'}`, 'info');
 
             return {
                 status: allValid ? 'pass' : 'fail',
@@ -712,21 +712,21 @@ window.OSTestModules.push({
             self.checkConnection();
 
             // Phase 1: 업데이트 전 버전 읽기
-            self.addLog('info', '[Phase 1] Main SW 버전 읽기 (0xD003, FC04)');
+            self.addLog('[Phase 1] Main SW 버전 읽기 (0xD003, FC04)', 'info');
             const verBefore = await window.dashboard.readInputRegisterWithTimeout(1, 0xD003);
             if (verBefore === null || verBefore === undefined) {
                 return { status: 'fail', message: 'Main SW 버전 읽기 실패', details: '0xD003 FC04 응답 없음' };
             }
-            self.addLog('info', `업데이트 전 Main SW 버전: ${verBefore}`);
+            self.addLog(`업데이트 전 Main SW 버전: ${verBefore}`, 'info');
 
             // Phase 2: OS 다운로드 안내
-            self.addLog('warn', '[Phase 2] Main OS 다운로드 안내');
-            self.addLog('info', 'OS 업데이트 툴을 사용하여 Main F/W 다운로드를 진행하세요.');
-            self.addLog('info', '다운로드 완료 후 장치가 자동으로 재부팅됩니다.');
+            self.addLog('[Phase 2] Main OS 다운로드 안내', 'warn');
+            self.addLog('OS 업데이트 툴을 사용하여 Main F/W 다운로드를 진행하세요.', 'info');
+            self.addLog('다운로드 완료 후 장치가 자동으로 재부팅됩니다.', 'info');
             await self._runStep({ type: 'wait_countdown', seconds: 60, message: 'Main OS 다운로드 대기 (60초)' }, 0);
 
             // Phase 3: 재연결 후 버전 읽기
-            self.addLog('info', '[Phase 3] 재연결 후 Main SW 버전 읽기');
+            self.addLog('[Phase 3] 재연결 후 Main SW 버전 읽기', 'info');
             let verAfter = null;
             for (let i = 0; i < 5; i++) {
                 verAfter = await window.dashboard.readInputRegisterWithTimeout(1, 0xD003);
@@ -735,7 +735,7 @@ window.OSTestModules.push({
             }
 
             const versionChanged = verAfter !== null && verAfter !== verBefore;
-            self.addLog('info', `업데이트 후 Main SW 버전: ${verAfter !== null ? verAfter : 'null'} → ${versionChanged ? '버전 변경 확인(PASS)' : '버전 동일 또는 읽기 실패'}`);
+            self.addLog(`업데이트 후 Main SW 버전: ${verAfter !== null ? verAfter : 'null'} → ${versionChanged ? '버전 변경 확인(PASS)' : '버전 동일 또는 읽기 실패'}`, 'info');
 
             return {
                 status: versionChanged ? 'pass' : 'warn',
@@ -754,21 +754,21 @@ window.OSTestModules.push({
             self.checkConnection();
 
             // Phase 1: 업데이트 전 버전 읽기
-            self.addLog('info', '[Phase 1] Inverter SW 버전 읽기 (0xD005, FC04)');
+            self.addLog('[Phase 1] Inverter SW 버전 읽기 (0xD005, FC04)', 'info');
             const verBefore = await window.dashboard.readInputRegisterWithTimeout(1, 0xD005);
             if (verBefore === null || verBefore === undefined) {
                 return { status: 'fail', message: 'Inverter SW 버전 읽기 실패', details: '0xD005 FC04 응답 없음' };
             }
-            self.addLog('info', `업데이트 전 Inverter SW 버전: ${verBefore}`);
+            self.addLog(`업데이트 전 Inverter SW 버전: ${verBefore}`, 'info');
 
             // Phase 2: OS 다운로드 안내
-            self.addLog('warn', '[Phase 2] Inverter OS 다운로드 안내');
-            self.addLog('info', 'OS 업데이트 툴을 사용하여 Inverter F/W 다운로드를 진행하세요.');
-            self.addLog('info', '다운로드 완료 후 장치가 자동으로 재부팅됩니다.');
+            self.addLog('[Phase 2] Inverter OS 다운로드 안내', 'warn');
+            self.addLog('OS 업데이트 툴을 사용하여 Inverter F/W 다운로드를 진행하세요.', 'info');
+            self.addLog('다운로드 완료 후 장치가 자동으로 재부팅됩니다.', 'info');
             await self._runStep({ type: 'wait_countdown', seconds: 60, message: 'Inverter OS 다운로드 대기 (60초)' }, 0);
 
             // Phase 3: 재연결 후 버전 읽기
-            self.addLog('info', '[Phase 3] 재연결 후 Inverter SW 버전 읽기');
+            self.addLog('[Phase 3] 재연결 후 Inverter SW 버전 읽기', 'info');
             let verAfter = null;
             for (let i = 0; i < 5; i++) {
                 verAfter = await window.dashboard.readInputRegisterWithTimeout(1, 0xD005);
@@ -777,7 +777,7 @@ window.OSTestModules.push({
             }
 
             const versionChanged = verAfter !== null && verAfter !== verBefore;
-            self.addLog('info', `업데이트 후 Inverter SW 버전: ${verAfter !== null ? verAfter : 'null'} → ${versionChanged ? '버전 변경 확인(PASS)' : '버전 동일 또는 읽기 실패'}`);
+            self.addLog(`업데이트 후 Inverter SW 버전: ${verAfter !== null ? verAfter : 'null'} → ${versionChanged ? '버전 변경 확인(PASS)' : '버전 동일 또는 읽기 실패'}`, 'info');
 
             return {
                 status: versionChanged ? 'pass' : 'warn',
