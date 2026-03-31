@@ -22,9 +22,10 @@ holding,0xD12D,Point 2 Y-coordinate,N,아날로그 입력 또는 PWM 입력 신�
 holding,0xD12F,Limitation Control,N,"0번 비트 set: Power limit 활성화, 1번 비트 set: Current Limit 활성화"
 holding,0xD135,Maximum permissible power,N,허용 가능한 최대 파워 설정
 holding,0xD136,Max. power at derating end,N,모듈과 모터의 온도를 토대로 출력을 디레이팅 하는 기능
-holding,0xD137,Module temperature power derating start,N,모듈 온도 파워 디레이팅 시작점
+holding,0xD137,Module temperature power derating start,Y,모듈 온도 파워 디레이팅 시작점
 holding,0xD138,Module temperature power derating end,Y,모듈 온도 파워 디레이팅 종료점
 holding,0xD13B,Maximum coil current,Y,전류 제한이 활성화 되면 모터 코일전류(rms값)를 이 파라미터에 설정된 값으로 제한
+holding,0xD147,Sensor actual value source,Y,지령으로 선택된 센서의 지령값
 holding,0xD14D,Motor temperature power derating start address,N,모터 온도 파워 디레이팅 시작 주소
 holding,0xD14E,Motor temperature power derating end address,N,모터 온도 파워 디레이팅 종료 주소
 holding,0xD145,Speed limit for running monitoring,N,"실행 모니터링 속도제한, 속도 피드백이 이 파라미터에 설정된 속도보다 낮을 경우 오류 해제 (n_Low)"
@@ -111,8 +112,12 @@ input,0xD017,Electronics temperature,Y,제어부 Temperature 값
 input,0xD018,Current direction of rotation,N,현재 회전 방향
 input,0xD019,Current modulation level,Y,전류 제한 레벨
 input,0xD01A,Current set value,N,현재 설정값
+input,0xD01B,Sensor actual value address,Y,선택된 실제 센서 값
 input,0xD01C,Enable/Disable input state,N,Enable/Disable 입력 상태
 input,0xD021,Current power (Relative),N,상대 전력
+input,0xD023,Sensor actual value 1,Y,AIN1의 현재 측정값
+input,0xD024,Sensor actual value 2,Y,AIN2의 현재 측정값
+input,0xD028,Current set value source,Y,현재 사용 중인 소스 (0=AIN1, 1=RS485, 2=AIN2, 3=PWMIn3, 255=Fail-safe)
 input,0xD02D,Actual speed [RPM] (Absolute),Y,절대 속도 [RPM]
 input,0xD03D,Line Voltage,N,라인 전압
 input,0xD050,Command speed,Y,지령 속도
