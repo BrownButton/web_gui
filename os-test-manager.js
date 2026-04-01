@@ -352,7 +352,7 @@ class OSTestManager {
         // 단일 step 실행 모드: 목표 step 완료 시 중단 플래그 설정
         if (this.singleStepTarget !== null &&
             index === this.singleStepTarget &&
-            (status === 'success' || status === 'error')) {
+            (status === 'success' || status === 'error' || status === 'warning')) {
             this.shouldStopTest   = true;
         }
     }
@@ -365,6 +365,7 @@ class OSTestManager {
         const S = {
             running: { bg: '#e0e7ff', border: '#667eea', dot: '#667eea', icon: '⏳' },
             success: { bg: '#d4edda', border: '#28a745', dot: '#28a745', icon: '✓'  },
+            warning: { bg: '#fff3cd', border: '#ffc107', dot: '#ffc107', icon: '⚠'  },
             error:   { bg: '#f8d7da', border: '#dc3545', dot: '#dc3545', icon: '✗'  }
         }[status];
         if (!S) return;
@@ -817,6 +818,90 @@ class OSTestManager {
         );
     }
 
+    async runCategoryTests(category) {
+        if (this.isTestRunning) {
+            window.dashboard?.showToast('테스트가 이미 실행 중입니다.', 'warning');
+            return;
+        }
+
+        const section = document.querySelector(`section[data-category="${CSS.escape(category)}"]`);
+        const btn = section?.querySelector('.os-run-category-btn');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 실행 중...'; }
+
+        const testIds = Object.keys(this.tests).filter(id => (this.tests[id].category || '기타') === category);
+        let passCount = 0, failCount = 0;
+
+        // 해당 카테고리 결과·로그·단계 상태 초기화
+        for (const id of testIds) {
+            delete this.results[id];
+            delete this.testLogs[id];
+            delete this.testStepResults[id];
+        }
+        this.saveResults();
+        this.updateTestStatus();
+
+        // 해당 카테고리 아코디언 닫기
+        testIds.forEach(id => {
+            const item = document.querySelector(`.os-test-item[data-test-id="${id}"]`);
+            if (!item) return;
+            item.querySelector('.os-test-content').style.display = 'none';
+            item.querySelector('.test-expand-icon').style.transform = 'rotate(0deg)';
+        });
+
+        for (const testId of testIds) {
+            if (this.shouldStopTest) break;
+
+            const test = this.tests[testId];
+            this._setTestBadge(testId, 'running');
+            await this.delay(20);
+
+            this.currentTest    = testId;
+            this.isTestRunning  = true;
+            this.shouldStopTest = false;
+            this.stepContext    = {};
+
+            try {
+                const executor = this.executors[testId];
+                const result = executor
+                    ? await executor.call(this)
+                    : await this.executeStepDefinitions(test.steps);
+
+                this.results[testId] = {
+                    result: result.status,
+                    notes: result.details || '',
+                    timestamp: new Date().toISOString(),
+                    completedSteps: result.status === 'pass' ? test.steps.length : 0
+                };
+                if (result.status === 'pass') passCount++;
+                else failCount++;
+            } catch (e) {
+                this.results[testId] = {
+                    result: 'fail',
+                    notes: `오류: ${e.message}`,
+                    timestamp: new Date().toISOString(),
+                    completedSteps: 0
+                };
+                failCount++;
+            } finally {
+                this.isTestRunning = false;
+            }
+
+            this._setTestBadge(testId, this.results[testId].result);
+        }
+
+        this.currentTest = null;
+        this.shouldStopTest = false;
+        this.saveResults();
+        this.updateTestStatus();
+
+        if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
+
+        window.dashboard?.showToast(
+            `[${category}] 완료: ${passCount}/${testIds.length} 합격, ${failCount}개 불합격`,
+            failCount === 0 ? 'success' : 'warning'
+        );
+    }
+
     resetAllTests() {
         this.results = {};
         this.testLogs = {};
@@ -1116,14 +1201,21 @@ class OSTestManager {
         for (const [cat, tests] of groups) {
             const section = document.createElement('section');
             section.style.marginBottom = '28px';
+            section.dataset.category = cat;
             section.innerHTML = `
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                     <h3 style="margin:0;font-size:17px;font-weight:600;color:#1a1a1a;">${cat}</h3>
-                    <span style="font-size:12px;color:#6c757d;">${tests.length} tests</span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:12px;color:#6c757d;">${tests.length} tests</span>
+                        <button class="btn btn-success btn-sm os-run-category-btn" style="font-size:12px;padding:3px 10px;">▶ Run</button>
+                    </div>
                 </div>
                 <div style="display:grid;gap:10px;">
                     ${tests.map(t => this._buildTestItemHtml(t)).join('')}
                 </div>`;
+            section.querySelector('.os-run-category-btn').addEventListener('click', () => {
+                this.runCategoryTests(cat);
+            });
             container.appendChild(section);
         }
 

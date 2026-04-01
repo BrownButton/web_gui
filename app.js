@@ -8050,7 +8050,7 @@ class ModbusDashboard {
      * @returns {Promise<{cs, index, subIndex, value, abortCode, error}|null>}
      */
     async writeCANopenObject(slaveId, index, subIndex, value, size = 4) {
-        const frame = this.modbus.buildCANopenDownload(slaveId, index, subIndex, value, size);
+        const frame = this.modbus.buildCANopenDownload(slaveId, index, subIndex, value, 0);
 
         if (this.writer) {
             if (this.autoPollingTimer || this._isFc64Active) {

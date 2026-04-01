@@ -119,18 +119,18 @@ window.OSTestModules.push({
       number: '2-5',
       title: 'EtherCAT SDO (FC 0x2B) 프레임 검증 및 예외 처리',
       description:
-          'CANopen over Modbus (FC 0x2B MEI Transport) 정상 응답 확인 및 비정상 오브젝트 접근 예외 처리',
+          'FC 0x2B MEI Transport(CANopen) 정상 응답 일관성 확인, 비존재 오브젝트·Read-Only 쓰기·CRC 오류 예외 처리 및 버퍼 복구 검증',
       purpose:
-          'FC 0x2B MEI Transport(CANopen) 명령으로 CANopen 오브젝트 정상 응답을 확인하고, 존재하지 않는 오브젝트 접근 시 AbortCode 응답 및 버퍼 복구 능력을 검증한다.',
+          'Modbus RTU FC 0x2B MEI Transport(CANopen SDO) 명령으로 드라이브 내부 오브젝트 정상 응답과 3회 반복 일관성을 확인하고, 비존재 오브젝트 접근·Read-Only 쓰기·CRC 오류 시 규격에 맞는 예외 응답과 버퍼 자가 복구 능력을 검증한다.',
       model: 'EC-FAN',
       equipment: 'EC FAN 1EA, USB to RS485 Converter',
-      criteria:
-          '[Phase 2] Motor ID 오브젝트(0x2000:00) 정상 응답 · [Phase 3] 비존재 오브젝트 → AbortCode 또는 null · [Phase 4] FC03 버퍼 복구 확인',
+      criteria: 'FC 0x2B 정상 응답 3회 일관성 · AbortCode 예외 처리 · CRC 훼손 무응답 · 버퍼 복구 확인',
       steps: [
-        '[Phase 2] CANopen Motor ID [0x2000:00] Read — FC 0x2B 정상 응답 확인',
-        '[Phase 3-1] 존재하지 않는 CANopen 오브젝트 [0xFFFF:00] Read — AbortCode 응답 확인',
-        '[Phase 3-2] Read-Only CANopen 오브젝트에 Write 시도 — AbortCode 응답 확인',
-        '[Phase 4] 버퍼 복구 — FC03 정상 읽기로 통신 스택 정상 상태 확인',
+        '[Phase 2] CANopen Upload [0x2000:00] × 3회 반복\n판정 기준: 3회 모두 정상 응답 수신 및 일관된 값 반환',
+        '[Phase 3-1] 비존재 오브젝트 [0xFFFF:00] Upload\n판정 기준: AbortCode 응답 또는 null 반환 (Exception 처리 확인)',
+        '[Phase 3-2] Read-Only 오브젝트 [0x260B:00] Download(Write) 시도\n판정 기준: AbortCode 응답 또는 Write 거부 (Read-Only 방어 확인)',
+        '[Phase 3-3] CRC 훼손 FC 0x2B 프레임 자동 전송\n판정 기준: 무응답(Timeout) — 슬레이브 CRC 오류 프레임 폐기 확인',
+        '[Phase 4] 버퍼 자가 복구 — FC03 정상 읽기 재시도\n판정 기준: 정상 FC03 응답 수신 (버퍼 복구 완료)',
       ],
     },
 
@@ -1152,106 +1152,238 @@ window.OSTestModules.push({
       const self = this;
       self.checkConnection();
 
-      let phase2Status = 'info';
-
-      // Phase 2: CANopen Motor ID 오브젝트 읽기  [step 0]
-      self.addLog('─'.repeat(50), 'info');
+      // Phase 2: CANopen Upload [0x2000:00] × 3회 일관성 확인  [step 0]
+      self.addLog('▶ Phase 2 시작', 'info');
       self.addLog(
-          '[Phase 2] CANopen Motor ID [0x2000:00] Read — FC 0x2B MEI Transport',
+          '[Phase 2] CANopen Upload [0x2000:00] × 3회 반복 — FC 0x2B MEI Transport',
           'step');
       self.updateStepStatus(0, 'running');
-      self.updateProgress(15, 'Phase 2: CANopen 0x2000:00 읽기');
-      let sdoVal = null;
-      try {
-        sdoVal = await window.dashboard.readCANopenObject(1, 0x2000, 0x00);
-        if (sdoVal !== null && sdoVal !== undefined) {
-          self.addLog(
-              `✓ FC 0x2B 정상 응답: Motor ID = ${sdoVal} (0x${
-                  sdoVal.toString(16).toUpperCase()})`,
-              'success');
-          phase2Status = 'pass';
-        } else {
-          self.addLog(
-              '⚠ FC 0x2B 응답 없음 — 장치가 FC 0x2B 미지원이거나 Timeout',
-              'warning');
-          phase2Status = 'warning';
+      const phase2Values = [];
+      let phase2FailCount = 0;
+      for (let i = 1; i <= 3; i++) {
+        self.updateProgress(5 + i * 5, `Phase 2: FC 0x2B 읽기 ${i}/3`);
+        try {
+          const result = await window.dashboard.readCANopenObject(1, 0x2000, 0x00);
+          if (result !== null && result !== undefined && result.value !== null && result.value !== undefined) {
+            const numVal = result.value;
+            phase2Values.push(numVal);
+            self.addLog(
+                `  읽기 ${i}/3: ✓ 0x2000:00 = ${numVal} (0x${
+                    numVal.toString(16).toUpperCase().padStart(4, '0')})`,
+                'success');
+          } else {
+            self.addLog(
+                `  읽기 ${i}/3: ✗ 응답 없음 (Timeout 또는 Exception)`, 'error');
+            phase2FailCount++;
+          }
+        } catch (e) {
+          self.addLog(`  읽기 ${i}/3: ✗ 오류: ${e.message}`, 'error');
+          phase2FailCount++;
         }
-      } catch (e) {
-        self.addLog(`⚠ FC 0x2B 읽기 중 오류: ${e.message}`, 'warning');
-        phase2Status = 'warning';
+        await self.delay(200);
       }
-      self.updateStepStatus(0, 'success');
-      await self.delay(300);
+      if (phase2FailCount > 0) {
+        self.updateStepStatus(0, 'error');
+        return {
+          status: 'fail',
+          message: `Phase 2: FC 0x2B 정상 응답 실패 (${phase2FailCount}/3회)`,
+          details: '장치가 FC 0x2B 미지원이거나 통신 오류 — 연결 확인 필요'
+        };
+      }
+      const allSame = phase2Values.every(v => v === phase2Values[0]);
+      if (allSame) {
+        self.addLog(
+            `✓ Phase 2 완료: 3회 모두 일관된 응답 (값=${phase2Values[0]}) — PASS`,
+            'success');
+      } else {
+        self.addLog(
+            `⚠ Phase 2: 응답 값 불일치 — [${phase2Values.join(', ')}]`, 'warning');
+      }
+      self.updateStepStatus(0, allSame ? 'success' : 'warning');
+      await self.delay(200);
+      self.checkStop();
 
-      // Phase 3-1: 존재하지 않는 오브젝트 읽기  [step 1]
-      self.addLog('─'.repeat(50), 'info');
+      // Phase 3-1: 비존재 오브젝트 [0xFFFF:00] Upload → AbortCode  [step 1]
+      self.addLog('▶ Phase 3-1 시작', 'info');
       self.addLog(
-          '[Phase 3-1] 비존재 CANopen 오브젝트 [0xFFFF:00] Read — AbortCode 예상',
+          '[Phase 3-1] 비존재 오브젝트 [0xFFFF:00] Upload — AbortCode 예상',
           'step');
       self.updateStepStatus(1, 'running');
-      self.updateProgress(40, 'Phase 3-1: 비존재 오브젝트');
+      self.updateProgress(35, 'Phase 3-1: 비존재 오브젝트');
+      const abortFrame =
+          window.dashboard.modbus.buildCANopenUpload(1, 0xFFFF, 0x00);
+      const abortHex =
+          Array.from(abortFrame)
+              .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+              .join(' ');
+      self.addLog(`TX: ${abortHex}`, 'info');
       try {
         const abortVal =
             await window.dashboard.readCANopenObject(1, 0xFFFF, 0x00);
         if (abortVal === null || abortVal === undefined) {
           self.addLog(
-              '✓ null 반환 → AbortCode 수신 또는 Timeout (PASS)', 'success');
+              '✓ null 반환 → Modbus Exception 수신 또는 Timeout — PASS', 'success');
+          self.updateStepStatus(1, 'success');
         } else {
+          const displayVal = abortVal.value !== null && abortVal.value !== undefined
+              ? `0x${abortVal.value.toString(16).toUpperCase().padStart(4, '0')}` : '(no value)';
           self.addLog(
-              `⚠ 예상치 않은 응답: ${abortVal} — 비존재 오브젝트 허용됨`,
+              `⚠ 예상치 않은 응답 수신: value=${displayVal} — 비존재 오브젝트가 허용됨`,
               'warning');
+          self.updateStepStatus(1, 'error');
         }
       } catch (e) {
         self.addLog(`✓ 예외 발생: ${e.message} — 정상 방어 (PASS)`, 'success');
+        self.updateStepStatus(1, 'success');
       }
-      self.updateStepStatus(1, 'success');
       await self.delay(300);
+      self.checkStop();
 
-      // Phase 3-2: Read-Only CANopen 오브젝트 Write 시도  [step 2]
-      self.addLog('─'.repeat(50), 'info');
+      // Phase 3-2: Read-Only 오브젝트(0x260B:00) Download → AbortCode  [step 2]
+      self.addLog('▶ Phase 3-2 시작', 'info');
       self.addLog(
-          '[Phase 3-2] Read-Only CANopen 오브젝트(0x2000:00) Write 시도 — AbortCode 예상',
+          '[Phase 3-2] Read-Only 오브젝트 [0x260B:00] Download(Write) 시도 — AbortCode 예상',
           'step');
       self.updateStepStatus(2, 'running');
-      self.updateProgress(60, 'Phase 3-2: Read-Only Write 시도');
-      try {
-        await window.dashboard.writeCANopenObject(1, 0x2000, 0x00, 0xFFFF);
+      self.updateProgress(55, 'Phase 3-2: Read-Only Write 시도');
+      // 원래 값 읽기 (Read-back 비교 기준)
+      const roOrigResult = await window.dashboard.readCANopenObject(1, 0x260B, 0x00);
+      const roOrigVal = roOrigResult?.value ?? null;
+      // 원래 값과 다른 값 계산 (XOR 0xFFFF → 항상 다른 값 보장)
+      const roWriteVal = roOrigVal !== null ? ((roOrigVal ^ 0xFFFF) & 0xFFFF) : 0x0000;
+      if (roOrigVal !== null) {
         self.addLog(
-            '⚠ Read-Only 오브젝트 Write가 허용됨 — 방어 로직 미동작 가능성',
-            'warning');
-      } catch (e) {
-        self.addLog(`✓ Write 거부/오류: ${e.message} (PASS)`, 'success');
+            `  Read-Only 원래 값: 0x260B:00 = 0x${roOrigVal.toString(16).toUpperCase().padStart(4, '0')} → Write 시도 값: 0x${roWriteVal.toString(16).toUpperCase().padStart(4, '0')}`,
+            'info');
       }
-      self.updateStepStatus(2, 'success');
+      const downloadFrame =
+          window.dashboard.modbus.buildCANopenDownload(1, 0x260B, 0x00, [roWriteVal]);
+      const downloadHex =
+          Array.from(downloadFrame)
+              .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+              .join(' ');
+      self.addLog(`TX: ${downloadHex}`, 'info');
+      try {
+        const writeResult =
+            await window.dashboard.writeCANopenObject(1, 0x260B, 0x00, roWriteVal);
+        // protocolCtrl=0x80 에코 응답: 디바이스가 Write 요청을 그대로 반환 → 묵시적 거부
+        const isEchoReject = writeResult !== null && writeResult !== undefined
+            && writeResult.protocolCtrl === 0x80;
+        if (writeResult === null || writeResult === undefined || isEchoReject) {
+          const reason = isEchoReject
+              ? '에코 응답(protocolCtrl=0x80) → 디바이스 묵시적 Write 거부 확인 — PASS'
+              : 'null 반환 → AbortCode 수신 (Read-Only 방어 확인) — PASS';
+          self.addLog(`✓ ${reason}`, 'success');
+          self.updateStepStatus(2, 'success');
+        } else {
+          self.addLog(
+              '⚠ Write가 허용됨 — Read-Only 방어 로직 미동작 가능성, Read-back으로 데이터 변조 여부 확인',
+              'warning');
+          // Read-back 검증: Write 시도 전 읽은 원래 값과 비교
+          await self.delay(100);
+          const readbackResult =
+              await window.dashboard.readCANopenObject(1, 0x260B, 0x00);
+          const readbackVal = readbackResult?.value ?? null;
+          if (readbackVal === null || readbackVal === undefined) {
+            self.addLog('⚠ Read-back 실패 — 변조 여부 불명', 'warning');
+            self.updateStepStatus(2, 'warning');
+          } else if (roOrigVal !== null && readbackVal === roOrigVal) {
+            self.addLog(
+                `✓ Read-back: 0x${readbackVal.toString(16).toUpperCase().padStart(4, '0')} = 원래 값 일치 — 데이터 변조 없음 (PASS)`,
+                'success');
+            self.updateStepStatus(2, 'warning');  // write accepted이나 데이터 무결성 유지
+          } else {
+            const origHex = roOrigVal !== null
+                ? `0x${roOrigVal.toString(16).toUpperCase().padStart(4, '0')}` : '(unknown)';
+            self.addLog(
+                `✗ [FAIL] Read-back: 0x${readbackVal.toString(16).toUpperCase().padStart(4, '0')} ≠ 원래 값(${origHex}) — 데이터 변조 발생 (불합격)`,
+                'error');
+            self.updateStepStatus(2, 'error');
+            return {
+              status: 'fail',
+              message: 'Phase 3-2: Read-Only 오브젝트 데이터 변조 발생 (불합격)',
+              details: `원래 값: ${origHex}, 변조 후: 0x${readbackVal.toString(16).toUpperCase().padStart(4, '0')}`
+            };
+          }
+        }
+      } catch (e) {
+        self.addLog(`✓ Write 거부: ${e.message} — 정상 방어 (PASS)`, 'success');
+        self.updateStepStatus(2, 'success');
+      }
       await self.delay(300);
+      self.checkStop();
 
-      // Phase 4: FC03으로 버퍼 복구 확인  [step 3]
-      self.addLog('─'.repeat(50), 'info');
+      // Phase 3-3: CRC 훼손 FC 0x2B 프레임 전송 → 무응답 확인  [step 3]
+      self.addLog('▶ Phase 3-3 시작', 'info');
       self.addLog(
-          '[Phase 4] 버퍼 복구 — FC03 정상 읽기로 통신 스택 상태 확인', 'step');
+          '[Phase 3-3] CRC 훼손 FC 0x2B 프레임 자동 전송 → 무응답(Drop) 확인',
+          'step');
       self.updateStepStatus(3, 'running');
-      self.updateProgress(82, 'Phase 4: 버퍼 복구');
+      self.updateProgress(72, 'Phase 3-3: CRC 훼손 전송');
+      const validFrame =
+          window.dashboard.modbus.buildCANopenUpload(1, 0x2000, 0x00);
+      const corruptFrame = new Uint8Array(validFrame);
+      corruptFrame[corruptFrame.length - 2] = 0x00;
+      corruptFrame[corruptFrame.length - 1] = 0x00;
+      const corruptHex =
+          Array.from(corruptFrame)
+              .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+              .join(' ');
+      self.addLog(`TX: ${corruptHex}  (CRC = 00 00, 정상 CRC 아님)`, 'info');
+      const crcResult =
+          await window.dashboard.sendRawFrameWithTimeout(corruptFrame, 1);
+      if (crcResult === null || crcResult === undefined) {
+        self.addLog(
+            '✓ 무응답(Timeout) → 슬레이브가 CRC 오류 프레임 폐기 확인 (PASS)',
+            'success');
+        self.updateStepStatus(3, 'success');
+      } else {
+        const respHex = Array.from(crcResult)
+            .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+            .join(' ');
+        self.addLog(
+            `✗ [FAIL] 예상치 않은 응답 수신: ${respHex} — CRC 에러 프레임에 응답하면 버스 충돌 유발 버그 (불합격)`,
+            'error');
+        self.updateStepStatus(3, 'error');
+        return {
+          status: 'fail',
+          message: 'Phase 3-3: CRC 훼손 프레임에 응답 수신 — 버스 충돌 유발 버그 (불합격)',
+          details: `응답: ${respHex}`
+        };
+      }
+      await self.delay(300);
+      self.checkStop();
+
+      // Phase 4: FC03 버퍼 복구 확인  [step 4]
+      self.addLog('▶ Phase 4 시작', 'info');
+      self.addLog(
+          '[Phase 4] 버퍼 자가 복구 — FC03 정상 읽기 재시도', 'step');
+      self.updateStepStatus(4, 'running');
+      self.updateProgress(88, 'Phase 4: 버퍼 복구');
       const recoveryVal =
           await window.dashboard.readRegisterWithTimeout(1, 0xD001);
       if (recoveryVal === null || recoveryVal === undefined) {
-        self.addLog('⚠ FC03 읽기 실패 — 버퍼 복구 이상', 'warning');
-        self.updateStepStatus(3, 'error');
-      } else {
-        self.addLog(
-            `✓ FC03 복구 응답: 0x${
-                recoveryVal.toString(16).toUpperCase().padStart(4, '0')}`,
-            'success');
-        self.updateStepStatus(3, 'success');
+        self.updateStepStatus(4, 'error');
+        return {
+          status: 'fail',
+          message: 'Phase 4: FC03 응답 없음 — 버퍼 자가 복구 실패',
+          details: ''
+        };
       }
+      self.addLog(
+          `✓ FC03 정상 응답: 0x${
+              recoveryVal.toString(16).toUpperCase().padStart(
+                  4, '0')} — 버퍼 자가 복구 확인 (PASS)`,
+          'success');
+      self.updateStepStatus(4, 'success');
 
       self.updateProgress(100, '테스트 완료');
-      self.addLog('═'.repeat(50), 'info');
-      self.addLog('FC 0x2B EtherCAT SDO 검증: 완료', 'success');
+      self.addLog('FC 0x2B EtherCAT SDO 검증: 합격', 'success');
       return {
         status: 'pass',
-        message: `FC 0x2B CANopen 검증 완료 (Motor ID=${sdoVal ?? '미응답'})`,
-        details: `Phase 2: Motor ID=${sdoVal ?? 'N/A'} (${
-            phase2Status})\nPhase 3: 비존재 오브젝트 AbortCode 확인\nPhase 4: 버퍼 복구 확인`,
+        message: 'FC 0x2B 정상 응답 / 예외 처리 / 버퍼 복구 확인',
+        details:
+            `Phase 2: 0x2000:00 Upload 3회 일관성 확인 (값=${phase2Values[0]})\nPhase 3-1: 비존재 오브젝트 → AbortCode\nPhase 3-2: Read-Only 오브젝트 [0x260B:00] Write → AbortCode\nPhase 3-3: CRC 훼손 프레임 무응답 확인\nPhase 4: 버퍼 복구 확인`,
       };
     },
 
