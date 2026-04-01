@@ -105,7 +105,7 @@ window.OSTestModules.push({
       criteria: 'FC10 성공 응답 · FC03 Read-back 일치 · Exception 처리 · 잘린 프레임 버퍼 복구 확인',
       steps: [
         '[Phase 2] FC10 단일 쓰기 — Set Point [0xD001] qty=1\n판정 기준: 성공 응답(01 10 D0 01 00 01 [CRC]) + FC03 Read-back 일치',
-        '[Phase 3-1] 길이 초과 예외 — qty=124(0x7C) FC10 요청\n판정 기준: Exception 0x03 (Illegal Data Value) 수신',
+        '[Phase 3-1] 길이 초과 예외 — qty=123(0x7B) FC10 요청\n판정 기준: Exception 0x03 (Illegal Data Value) 수신',
         '[Phase 3-2] Byte Count 불일치 예외 — qty=2 / ByteCount=2(0x02, 원래 4)\n판정 기준: Exception 0x03 수신 또는 무응답(Drop)',
         '[Phase 3-3] CRC 훼손 프레임 자동 전송\n판정 기준: 무응답(Timeout) — 슬레이브 CRC 오류 프레임 폐기 확인',
         '[Phase 4] 잘린 프레임(10바이트) 전송 후 버퍼 자가 복구\n판정 기준: 잘린 프레임 무응답 후 정상 FC03 읽기 즉각 응답 (원래 값 복원 포함)',
@@ -982,25 +982,26 @@ window.OSTestModules.push({
       // Phase 3-1: qty=124 길이 초과 → Exception 0x03  [step 1]
       self.addLog('▶ Phase 3-1 시작', 'info');
       self.addLog(
-          '[Phase 3-1] 길이 초과 예외 — qty=124(0x7C) FC10 요청 → Exception 0x03 예상',
+          '[Phase 3-1] 길이 초과 예외 — qty=123(0x7B) FC10 요청 → Exception 0x03 예상',
           'step');
       self.addLog(
-          '※ FC10 최대 허용 qty=123(0x7B) 초과 — 248바이트 Data 포함 프레임',
+          '※ 디바이스 FC10 구현 최대 Quantity = 15, qty=123(0x7B) 전송 — 246바이트 Data 포함 프레임 (총 255바이트)',
           'info');
       self.updateStepStatus(1, 'running');
       self.updateProgress(30, 'Phase 3-1: 길이 초과 예외');
       const excFrame = window.dashboard.modbus.buildWriteMultipleRegisters(
-          1, 0xD001, new Array(124).fill(0));
+          1, 0xD001, new Array(123).fill(0));
       const excHex =
           Array.from(excFrame.slice(0, 9))
               .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
-              .join(' ') + ' ... (248바이트 Data)';
+              .join(' ') + ' ... (246바이트 Data)';
       self.addLog(`TX: ${excHex}`, 'info');
       const excResp =
           await window.dashboard.sendAndReceive(excFrame, 500, {minLength: 5});
       if (!excResp || excResp.length < 3) {
         self.addLog('✗ 응답 없음 (Timeout)', 'error');
-        self.addLog('⚠ 슬레이브가 길이 초과 프레임을 무시한 것으로 추정', 'warning');
+        self.addLog('⚠ 슬레이브가 길이 초과 프레임에 무응답 — Exception 0x03 미수신', 'warning');
+        self.updateStepStatus(1, 'warning');
       } else if ((excResp[1] & 0x80) && excResp[2] === 0x03) {
         const rxHex =
             Array.from(excResp)
@@ -1009,14 +1010,15 @@ window.OSTestModules.push({
         self.addLog(
             '✓ Exception 0x03 (Illegal Data Value) 수신 — PASS', 'success');
         self.addLog(`RX: ${rxHex}`, 'info');
+        self.updateStepStatus(1, 'success');
       } else {
         const rxHex =
             Array.from(excResp)
                 .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
                 .join(' ');
         self.addLog(`⚠ 예상치 않은 응답: ${rxHex}`, 'warning');
+        self.updateStepStatus(1, 'warning');
       }
-      self.updateStepStatus(1, 'success');
       await self.delay(300);
       self.checkStop();
 
@@ -1047,6 +1049,7 @@ window.OSTestModules.push({
         self.addLog(
             '✓ 무응답(Drop) → 슬레이브가 Byte Count 불일치 프레임 폐기 확인 (PASS)',
             'success');
+        self.updateStepStatus(2, 'success');
       } else if ((mismatchResp[1] & 0x80) && mismatchResp[2] === 0x03) {
         const rxHex =
             Array.from(mismatchResp)
@@ -1055,14 +1058,15 @@ window.OSTestModules.push({
         self.addLog(
             '✓ Exception 0x03 (Illegal Data Value) 수신 — PASS', 'success');
         self.addLog(`RX: ${rxHex}`, 'info');
+        self.updateStepStatus(2, 'success');
       } else {
         const rxHex =
             Array.from(mismatchResp)
                 .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
                 .join(' ');
         self.addLog(`⚠ 예상치 않은 응답: ${rxHex}`, 'warning');
+        self.updateStepStatus(2, 'warning');
       }
-      self.updateStepStatus(2, 'success');
       await self.delay(300);
       self.checkStop();
 
@@ -1139,7 +1143,7 @@ window.OSTestModules.push({
         status: 'pass',
         message: 'FC 0x10 성공 응답 / 예외 처리 / 버퍼 복구 확인',
         details:
-            'Phase 2: FC10 qty=1 성공 응답 + FC03 Read-back 확인\nPhase 3-1: qty=124 길이 초과 → Exception 0x03\nPhase 3-2: Byte Count 불일치 → Exception 0x03 또는 Drop\nPhase 3-3: CRC 훼손 프레임 무응답 확인\nPhase 4: 잘린 프레임 후 버퍼 복구 확인',
+            'Phase 2: FC10 qty=1 성공 응답 + FC03 Read-back 확인\nPhase 3-1: qty=123 길이 초과 → Exception 0x03\nPhase 3-2: Byte Count 불일치 → Exception 0x03 또는 Drop\nPhase 3-3: CRC 훼손 프레임 무응답 확인\nPhase 4: 잘린 프레임 후 버퍼 복구 확인',
       };
     },
 
