@@ -208,12 +208,16 @@ class OSTestManager {
             const stopBtn     = testItem.querySelector('.test-stop-btn');
             const savePngBtn  = testItem.querySelector('.test-save-png-btn');
             const saveLogBtn  = testItem.querySelector('.test-save-log-btn');
+            const copyPngBtn  = testItem.querySelector('.test-copy-png-btn');
+            const copyLogBtn  = testItem.querySelector('.test-copy-log-btn');
             const progressBar = testItem.querySelector('.test-progress-bar');
             const progressTxt = testItem.querySelector('.test-progress-text');
             if (startBtn)   startBtn.style.display   = 'inline-block';
             if (stopBtn)    stopBtn.style.display     = 'none';
             if (savePngBtn) savePngBtn.onclick = () => this.saveTestScreenshot(testId);
             if (saveLogBtn) saveLogBtn.onclick = () => this.saveTestLog(testId);
+            if (copyPngBtn) copyPngBtn.onclick = () => this.copyTestScreenshot(testId);
+            if (copyLogBtn) copyLogBtn.onclick = () => this.copyTestLog(testId);
 
             const hasStoredLog  = this.testLogs[testId]?.length > 0;
             const hasStoredSteps = this.testStepResults[testId] && Object.keys(this.testStepResults[testId]).length > 0;
@@ -639,6 +643,87 @@ class OSTestManager {
         a.download = filename;
         a.click();
         URL.revokeObjectURL(a.href);
+    }
+
+    async copyTestScreenshot(testId) {
+        if (typeof html2canvas === 'undefined') {
+            alert('html2canvas 라이브러리가 로드되지 않았습니다.');
+            return;
+        }
+        const testItem = document.querySelector(`.os-test-item[data-test-id="${testId}"]`);
+        if (!testItem) return;
+
+        try {
+            const canvas = await html2canvas(testItem, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            canvas.toBlob(async blob => {
+                try {
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                    window.dashboard?.showToast('PNG가 클립보드에 복사되었습니다.', 'success');
+                } catch (e) {
+                    alert(`클립보드 복사 실패: ${e.message}`);
+                }
+            }, 'image/png');
+        } catch (e) {
+            alert(`캡처 실패: ${e.message}`);
+        }
+    }
+
+    async copyTestLog(testId) {
+        const test      = this.getTest(testId);
+        const range     = this.testTimeRange[testId];
+        const logs      = this.testLogs[testId] || [];
+
+        const lines = [];
+
+        lines.push('='.repeat(60));
+        lines.push(`테스트 항목  : [${test?.number}] ${test?.title}`);
+        lines.push(`시작 시각    : ${range?.start ? new Date(range.start).toLocaleString() : '-'}`);
+        lines.push(`종료 시각    : ${range?.end   ? new Date(range.end).toLocaleString()   : '-'}`);
+        lines.push(`저장 시각    : ${new Date().toLocaleString()}`);
+        lines.push('='.repeat(60));
+        lines.push('');
+
+        lines.push('[실행 로그]');
+        lines.push('-'.repeat(60));
+        if (logs.length === 0) {
+            lines.push('(로그 없음)');
+        } else {
+            logs.forEach(({ message, type, ts }) => {
+                lines.push(`[${ts}] [${type.toUpperCase()}] ${message}`);
+            });
+        }
+        lines.push('');
+
+        lines.push('[패킷 로그]');
+        lines.push('-'.repeat(60));
+        const entries = (window.dashboard?.monitorEntries || []).filter(e =>
+            range?.start && e.timestamp >= range.start &&
+            (!range.end || e.timestamp <= range.end)
+        );
+        if (entries.length === 0) {
+            lines.push('(패킷 없음)');
+        } else {
+            entries.forEach(({ type, dataOrMessage, timeStr, deltaStr }) => {
+                const dir = type === 'sent' ? 'TX' : type === 'received' ? 'RX' : 'ER';
+                let data;
+                if (dataOrMessage instanceof Uint8Array) {
+                    data = Array.from(dataOrMessage).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+                } else {
+                    data = String(dataOrMessage);
+                }
+                const delta = deltaStr ? `  (${deltaStr})` : '';
+                lines.push(`[${timeStr}] ${dir}  ${data}${delta}`);
+            });
+        }
+        lines.push('');
+        lines.push('='.repeat(60));
+
+        try {
+            await navigator.clipboard.writeText(lines.join('\n'));
+            window.dashboard?.showToast('로그가 클립보드에 복사되었습니다.', 'success');
+        } catch (e) {
+            alert(`클립보드 복사 실패: ${e.message}`);
+        }
     }
 
     _fileTimestamp() {
@@ -1104,6 +1189,8 @@ class OSTestManager {
       <div class="test-result-pending" style="padding:12px;background:#e9ecef;border-radius:4px;text-align:center;color:#6c757d;font-size:13px;">테스트를 실행하면 결과가 자동으로 표시됩니다</div>
     </div>
     <div style="padding:12px 20px 20px 20px;background:#f8f9fa;border-top:1px solid #e9ecef;display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-sm test-copy-png-btn" style="background:#6c757d;color:#fff;border:none;">📋 Copy PNG</button>
+      <button class="btn btn-sm test-copy-log-btn" style="background:#6c757d;color:#fff;border:none;">📋 Copy Log</button>
       <button class="btn btn-sm test-save-png-btn" style="background:#6c757d;color:#fff;border:none;">📷 Save PNG</button>
       <button class="btn btn-sm test-save-log-btn" style="background:#6c757d;color:#fff;border:none;">📄 Save Log</button>
     </div>

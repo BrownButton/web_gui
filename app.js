@@ -10091,7 +10091,7 @@ class ModbusDashboard {
                     const response = new Uint8Array(this.responseBuffer);
                     // Skip CRC check if requested, or verify CRC
                     if (skipCRC || this.modbus.verifyCRC(response)) {
-                        this.addMonitorEntry('rx', response);
+                        // 'received' 엔트리는 tryParseFrame()이 이미 기록하므로 중복 기록 생략
                         resolve(response);
                         return;
                     }
@@ -13731,8 +13731,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show selected subtab content
             if (targetSubtab === 'os-verification') {
                 document.getElementById('manufactureOsVerification').style.display = 'block';
-            } else if (targetSubtab === 'hardware-test') {
-                document.getElementById('manufactureHardwareTest').style.display = 'flex';
             } else if (targetSubtab === 'tuning') {
                 document.getElementById('manufactureTuning').style.display = 'block';
             } else if (targetSubtab === 'offset') {
