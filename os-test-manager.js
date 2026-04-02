@@ -210,6 +210,7 @@ class OSTestManager {
             const saveLogBtn  = testItem.querySelector('.test-save-log-btn');
             const copyPngBtn  = testItem.querySelector('.test-copy-png-btn');
             const copyLogBtn  = testItem.querySelector('.test-copy-log-btn');
+            const saveLsmBtn  = testItem.querySelector('.test-save-lsm-btn');
             const progressBar = testItem.querySelector('.test-progress-bar');
             const progressTxt = testItem.querySelector('.test-progress-text');
             if (startBtn)   startBtn.style.display   = 'inline-block';
@@ -218,6 +219,7 @@ class OSTestManager {
             if (saveLogBtn) saveLogBtn.onclick = () => this.saveTestLog(testId);
             if (copyPngBtn) copyPngBtn.onclick = () => this.copyTestScreenshot(testId);
             if (copyLogBtn) copyLogBtn.onclick = () => this.copyTestLog(testId);
+            if (saveLsmBtn) saveLsmBtn.style.display = (testId === 'basic03' || testId === 'basic06') ? 'inline-block' : 'none';
 
             const hasStoredLog  = this.testLogs[testId]?.length > 0;
             const hasStoredSteps = this.testStepResults[testId] && Object.keys(this.testStepResults[testId]).length > 0;
@@ -1269,12 +1271,6 @@ class OSTestManager {
         <div style="color:#6c757d;">테스트 로그가 여기에 표시됩니다...</div>
       </div>
     </div>
-    <div style="padding:0 20px 20px 20px;">
-      <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600;">판정 기준</h4>
-      <div style="padding:12px;background:#e7f3ff;border-left:4px solid #2196f3;border-radius:4px;">
-        <div style="font-size:13px;color:#1a1a1a;" class="test-criteria">${esc(test.criteria)}</div>
-      </div>
-    </div>
     <div style="padding:20px;background:#f8f9fa;border-top:1px solid #e9ecef;">
       <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600;">테스트 결과</h4>
       <div class="test-result-display" style="display:none;"></div>
@@ -1285,6 +1281,7 @@ class OSTestManager {
       <button class="btn btn-sm test-copy-log-btn" style="background:#6c757d;color:#fff;border:none;">📋 Copy Log</button>
       <button class="btn btn-sm test-save-png-btn" style="background:#6c757d;color:#fff;border:none;">📷 Save PNG</button>
       <button class="btn btn-sm test-save-log-btn" style="background:#6c757d;color:#fff;border:none;">📄 Save Log</button>
+      <button class="btn btn-sm test-save-lsm-btn" style="background:#6c757d;color:#fff;border:none;display:none;">💾 Save LSM</button>
     </div>
   </div>
 </div>`;
@@ -1295,10 +1292,23 @@ class OSTestManager {
     // ================================================================
 
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms)).then(() => {
-            // single-step 완료 후 executor를 자연스럽게 중단
-            if (this.shouldStopTest && this.singleStepTarget !== null)
-                throw new Error('__singleStepDone__');
+        return new Promise((resolve, reject) => {
+            const start = Date.now();
+            const TICK  = 50; // ms 단위로 shouldStopTest 폴링
+            const tick = () => {
+                // Stop 버튼 → 즉시 중단
+                if (this.shouldStopTest) {
+                    if (this.singleStepTarget !== null)
+                        reject(new Error('__singleStepDone__'));
+                    else
+                        reject(new Error('__stopped__'));
+                    return;
+                }
+                const remaining = ms - (Date.now() - start);
+                if (remaining <= 0) { resolve(); return; }
+                setTimeout(tick, Math.min(TICK, remaining));
+            };
+            setTimeout(tick, Math.min(TICK, ms));
         });
     }
     toHex4(v) { return (v ?? 0).toString(16).toUpperCase().padStart(4, '0'); }

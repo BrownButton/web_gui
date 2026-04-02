@@ -2273,9 +2273,13 @@
                                 <div class="chart-setting-item">
                                     <label for="chartSampleRate">Period</label>
                                     <select id="chartSampleRate">
-                                        <option value="160">20 ms</option>
+                                        <option value="8">1 ms</option>
+                                        <option value="16">2 ms</option>
+                                        <option value="40">5 ms</option>
+                                        <option value="80">10 ms</option>
+                                        <option value="160" selected>20 ms</option>
                                         <option value="800">100 ms</option>
-                                        <option value="1600" selected>200 ms</option>
+                                        <option value="1600">200 ms</option>
                                         <option value="4000">500 ms</option>
                                         <option value="8000">1 s</option>
                                     </select>
@@ -2335,6 +2339,15 @@
                             </div>
                         </div>
 
+                        <!-- Y-axis Mode Selector -->
+                        <div class="chart-yaxis-mode-panel">
+                            <span class="yaxis-mode-label">Y-Axis:</span>
+                            <button class="yaxis-mode-btn active" id="yAxisModeA" title="Independent Y-axes per channel">A</button>
+                            <button class="yaxis-mode-btn" id="yAxisModeB" title="Normalize 0–100% per channel">B</button>
+                            <button class="yaxis-mode-btn" id="yAxisModeC" title="Scale × Offset per channel">C</button>
+                            <span class="yaxis-mode-hint" id="yAxisModeHint">Independent</span>
+                        </div>
+
                         <!-- Channel Configuration -->
                         <div class="chart-channel-panel">
                             <div class="channel-config" data-channel="0">
@@ -2344,12 +2357,20 @@
                                     <span class="channel-name">CH1</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh1Addr">Ch#:</label>
-                                    <input type="number" id="chartCh1Addr" value="1" min="0" max="254" placeholder="0-254">
+                                    <button class="param-picker-trigger" id="chartCh1Trigger" type="button">
+                                        <span class="param-picker-trigger-label">채널 선택...</span>
+                                        <span class="param-picker-trigger-arrow">▾</span>
+                                    </button>
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
                                     <span class="channel-current-value" id="chartCh1Value">--</span>
+                                </div>
+                                <div class="channel-scale-offset" style="display:none">
+                                    <span class="scale-offset-label">×</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh1Scale" value="1" step="0.1">
+                                    <span class="scale-offset-label">+</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh1Offset" value="0" step="1">
                                 </div>
                             </div>
                             <div class="channel-config" data-channel="1">
@@ -2359,12 +2380,20 @@
                                     <span class="channel-name">CH2</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh2Addr">Ch#:</label>
-                                    <input type="number" id="chartCh2Addr" value="2" min="0" max="254" placeholder="0-254">
+                                    <button class="param-picker-trigger" id="chartCh2Trigger" type="button">
+                                        <span class="param-picker-trigger-label">채널 선택...</span>
+                                        <span class="param-picker-trigger-arrow">▾</span>
+                                    </button>
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
                                     <span class="channel-current-value" id="chartCh2Value">--</span>
+                                </div>
+                                <div class="channel-scale-offset" style="display:none">
+                                    <span class="scale-offset-label">×</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh2Scale" value="1" step="0.1">
+                                    <span class="scale-offset-label">+</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh2Offset" value="0" step="1">
                                 </div>
                             </div>
                             <div class="channel-config" data-channel="2">
@@ -2374,12 +2403,20 @@
                                     <span class="channel-name">CH3</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh3Addr">Ch#:</label>
-                                    <input type="number" id="chartCh3Addr" value="3" min="0" max="254" placeholder="0-254">
+                                    <button class="param-picker-trigger" id="chartCh3Trigger" type="button">
+                                        <span class="param-picker-trigger-label">채널 선택...</span>
+                                        <span class="param-picker-trigger-arrow">▾</span>
+                                    </button>
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
                                     <span class="channel-current-value" id="chartCh3Value">--</span>
+                                </div>
+                                <div class="channel-scale-offset" style="display:none">
+                                    <span class="scale-offset-label">×</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh3Scale" value="1" step="0.1">
+                                    <span class="scale-offset-label">+</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh3Offset" value="0" step="1">
                                 </div>
                             </div>
                             <div class="channel-config" data-channel="3">
@@ -2389,12 +2426,20 @@
                                     <span class="channel-name">CH4</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh4Addr">Ch#:</label>
-                                    <input type="number" id="chartCh4Addr" value="4" min="0" max="254" placeholder="0-254">
+                                    <button class="param-picker-trigger" id="chartCh4Trigger" type="button">
+                                        <span class="param-picker-trigger-label">채널 선택...</span>
+                                        <span class="param-picker-trigger-arrow">▾</span>
+                                    </button>
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
                                     <span class="channel-current-value" id="chartCh4Value">--</span>
+                                </div>
+                                <div class="channel-scale-offset" style="display:none">
+                                    <span class="scale-offset-label">×</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh4Scale" value="1" step="0.1">
+                                    <span class="scale-offset-label">+</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh4Offset" value="0" step="1">
                                 </div>
                             </div>
                         </div>
@@ -3059,6 +3104,7 @@
     <script src="os-test-manager.js"></script>
     <script src="os-test-rs485.js"></script>
     <script src="os-test-modbus.js"></script>
+    <script src="lsm-exporter.js"></script>
     <script src="os-test-basic.js"></script>
     <script src="os-test-drive.js"></script>
     <script src="os-test-protection.js"></script>

@@ -118,6 +118,85 @@ window.OSTestModules.push({
             const passed = [];
             const failed = [];
 
+            // ── 바둑판 그리드 삽입 ────────────────────────────────────────────
+            const BAUDS    = [9600, 19200, 38400, 57600, 115200];
+            const PARITIES = ['8E1', '8O1', '8N2', '8N1'];
+
+            const testItem = document.querySelector('.os-test-item[data-test-id="rs1"]');
+            if (testItem) {
+                testItem.querySelector('.rs1-grid-section')?.remove();
+                const gridSection = document.createElement('div');
+                gridSection.className = 'rs1-grid-section';
+                gridSection.style.cssText = 'padding:0 20px 20px 20px;';
+
+                const colStyle = `display:grid;grid-template-columns:72px repeat(${PARITIES.length},1fr);gap:4px;`;
+                let headerRow = `<div style="font-size:11px;color:#6c757d;padding:4px 0;"></div>`;
+                PARITIES.forEach(p => {
+                    headerRow += `<div style="font-size:11px;font-weight:600;color:#495057;text-align:center;padding:4px 2px;">${p}</div>`;
+                });
+
+                let bodyRows = '';
+                BAUDS.forEach(baud => {
+                    bodyRows += `<div style="font-size:11px;font-weight:600;color:#495057;display:flex;align-items:center;padding:2px 0;">${baud}</div>`;
+                    PARITIES.forEach(parity => {
+                        const idx = combos.findIndex(c => c.baud === baud && c.parity === parity);
+                        const isDefault = combos[idx]?.isDefault;
+                        bodyRows += `<div id="rs1-cell-${idx}"
+                            style="border-radius:6px;height:36px;display:flex;align-items:center;justify-content:center;
+                                   font-size:12px;font-weight:600;font-family:monospace;
+                                   background:#f0f0f0;color:#adb5bd;${isDefault ? 'outline:2px solid #3498db;outline-offset:-2px;' : ''}">
+                            —
+                        </div>`;
+                    });
+                });
+
+                gridSection.innerHTML = `
+                    <div style="background:white;border:1px solid #e9ecef;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+                        <div style="padding:10px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:13px;font-weight:600;color:#1a1a1a;">조합별 결과</span>
+                            <span style="font-size:11px;color:#6c757d;">파란 테두리 = 기본값(19200 × 8E1)</span>
+                        </div>
+                        <div style="padding:12px 16px;">
+                            <div style="${colStyle}">${headerRow}${bodyRows}</div>
+                            <div style="margin-top:10px;display:flex;gap:12px;font-size:11px;color:#6c757d;">
+                                <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#d4edda;margin-right:3px;"></span>합격</span>
+                                <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#f8d7da;margin-right:3px;"></span>불합격</span>
+                                <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#fff3cd;margin-right:3px;"></span>진행 중</span>
+                            </div>
+                        </div>
+                    </div>`;
+
+                const logDiv = [...testItem.querySelector('.os-test-content').children]
+                    .find(el => el.querySelector('.test-log-container'));
+                if (logDiv) logDiv.parentElement.insertBefore(gridSection, logDiv);
+                else testItem.querySelector('.os-test-content').appendChild(gridSection);
+
+                const contentEl = testItem.querySelector('.os-test-content');
+                if (contentEl && contentEl.style.display !== 'block') {
+                    contentEl.style.display = 'block';
+                    const expandIcon = testItem.querySelector('.test-expand-icon');
+                    if (expandIcon) expandIcon.style.transform = 'rotate(180deg)';
+                }
+            }
+
+            const setCellState = (idx, state) => {
+                const cell = document.getElementById(`rs1-cell-${idx}`);
+                if (!cell) return;
+                const isDefault = combos[idx]?.isDefault;
+                const outline = isDefault ? 'outline:2px solid #3498db;outline-offset:-2px;' : '';
+                const map = {
+                    running: { bg: '#fff3cd', color: '#856404', text: '…'  },
+                    success: { bg: '#d4edda', color: '#155724', text: '✔'  },
+                    error:   { bg: '#f8d7da', color: '#721c24', text: '✘'  },
+                };
+                const s = map[state] || { bg: '#f0f0f0', color: '#adb5bd', text: '—' };
+                cell.style.cssText = `border-radius:6px;height:36px;display:flex;align-items:center;justify-content:center;
+                    font-size:14px;font-weight:700;font-family:monospace;
+                    background:${s.bg};color:${s.color};${outline}`;
+                cell.textContent = s.text;
+            };
+
+            // ── 테스트 루프 ───────────────────────────────────────────────────
             self.addLog(`총 ${total}개 조합 순차 검증 시작`, 'info');
             self.addLog('초기 설정: 19200bps, Even, Stop1, Node 1', 'info');
 
@@ -129,74 +208,61 @@ window.OSTestModules.push({
 
                 self.updateStepStatus(i, 'running');
                 self.updateProgress(Math.round((i / total) * 90) + 5, `[${i + 1}/${total}]  ${label}`);
-                self.addLog(`\n──────────────────────────────────`, 'info');
+                setCellState(i, 'running');
                 self.addLog(`[Case ${i + 1}/${total}]  ${label}`, 'step');
 
                 try {
                     if (c.isDefault) {
-                        // 기본 조합: 설정 변경·리셋 없이 폴링만 수행
                         self.addLog('기본값 조합 — 설정 변경 없이 10회 폴링 진행', 'info');
                         await self._rs1Poll(1, c.baudReg, label);
-
                     } else {
-                        // 1. 레지스터 쓰기 + EEPROM 저장
                         self.addLog(`[0xD149] Baudrate = ${c.baudReg}  (${c.baud}bps)`, 'step');
                         await window.dashboard.writeRegister(1, 0xD149, c.baudReg);
                         self.addLog(`[0xD14A] Parity = ${c.parityReg}  (${c.parity})`, 'step');
                         await window.dashboard.writeRegister(1, 0xD14A, c.parityReg);
 
-
-                        // 2. Software Reset → 재부팅 대기
                         self.addLog('Software Reset  (0xD000 = 0x0008)', 'step');
                         await window.dashboard.writeRegister(1, 0xD000, 0x0008);
                         self.addLog('재부팅 대기 (3초)...', 'info');
                         await self.delay(3000);
 
-                        // 3. 새 설정으로 자동 재접속
                         self.addLog(`자동 재접속: ${c.baud}bps, ${c.parity}`, 'step');
                         await window.dashboard.reconnectSerial(c.baud, c.webParity, c.webStop);
 
-                        // 4. 10회 폴링 검증
                         await self._rs1Poll(1, c.baudReg, label);
 
-                        // 5. 기본값 복원 + EEPROM 저장
                         self.addLog('[0xD149] 기본값 복원: 19200bps (4)', 'step');
                         await window.dashboard.writeRegister(1, 0xD149, 4);
                         self.addLog('[0xD14A] 기본값 복원: 8E1 (0)', 'step');
                         await window.dashboard.writeRegister(1, 0xD14A, 0);
 
-
-                        // 6. Software Reset → 재부팅 대기
                         self.addLog('Software Reset  (0xD000 = 0x0008)', 'step');
                         await window.dashboard.writeRegister(1, 0xD000, 0x0008);
                         self.addLog('재부팅 대기 (3초)...', 'info');
                         await self.delay(3000);
 
-                        // 7. 기본 설정으로 자동 재접속
                         self.addLog('자동 재접속: 19200bps, Even, Stop1', 'step');
                         await window.dashboard.reconnectSerial(19200, 'even', 1);
                     }
 
                     passed.push(label);
                     self.updateStepStatus(i, 'success');
-                    self.addLog(`✓ ${label}  합격`, 'success');
+                    setCellState(i, 'success');
+                    self.addLog(`✔ ${label}  합격`, 'success');
 
                 } catch (e) {
                     failed.push(label);
                     self.updateStepStatus(i, 'error');
-                    self.addLog(`✗ ${label}  불합격: ${e.message}`, 'error');
-                    // 실패해도 다음 케이스 계속 진행
+                    setCellState(i, 'error');
+                    self.addLog(`✘ ${label}  불합격: ${e.message}`, 'error');
                 }
 
                 await self.delay(300);
             }
 
-            // 최종 요약
-            self.addLog('\n══════════════════════════════════', 'info');
             self.addLog('결과 요약', 'step');
             self.addLog(`합격 (${passed.length}): ${passed.join(', ') || '없음'}`, passed.length ? 'success' : 'info');
             self.addLog(`불합격 (${failed.length}): ${failed.join(', ') || '없음'}`, failed.length ? 'error' : 'info');
-            self.addLog('══════════════════════════════════', 'info');
 
             self.updateProgress(100, '테스트 완료');
             const ok = failed.length === 0;
@@ -223,7 +289,7 @@ window.OSTestModules.push({
                 const label = 'Node ID 최솟값 (1)';
                 self.updateStepStatus(0, 'running');
                 self.updateProgress(5, `[1/${total}]  ${label}`);
-                self.addLog('\n──────────────────────────────────', 'info');
+
                 self.addLog(`[Sub 1/${total}]  ${label}`, 'step');
 
                 try {
@@ -270,7 +336,7 @@ window.OSTestModules.push({
                 const label = 'Node ID 최댓값 (247)';
                 self.updateStepStatus(1, 'running');
                 self.updateProgress(35, `[2/${total}]  ${label}`);
-                self.addLog('\n──────────────────────────────────', 'info');
+
                 self.addLog(`[Sub 2/${total}]  ${label}`, 'step');
 
                 try {
@@ -333,7 +399,7 @@ window.OSTestModules.push({
                 const label = 'Node ID 예외값 거부  (248 / 255 / 0xFFFF)';
                 self.updateStepStatus(2, 'running');
                 self.updateProgress(75, `[3/${total}]  ${label}`);
-                self.addLog('\n──────────────────────────────────', 'info');
+
                 self.addLog(`[Sub 3/${total}]  ${label}`, 'step');
 
                 try {
@@ -370,11 +436,11 @@ window.OSTestModules.push({
             }
 
             // 최종 요약
-            self.addLog('\n══════════════════════════════════', 'info');
+
             self.addLog('결과 요약', 'step');
             self.addLog(`합격 (${passed.length}): ${passed.join(', ') || '없음'}`, passed.length ? 'success' : 'info');
             self.addLog(`불합격 (${failed.length}): ${failed.join(', ') || '없음'}`, failed.length ? 'error' : 'info');
-            self.addLog('══════════════════════════════════', 'info');
+
 
             self.updateProgress(100, '테스트 완료');
             const ok = failed.length === 0;
@@ -401,7 +467,7 @@ window.OSTestModules.push({
                 const label = 'Broadcast FC06 Write — 실행 확인 + 무응답';
                 self.updateStepStatus(0, 'running');
                 self.updateProgress(5, `[1/${total}]  ${label}`);
-                self.addLog('\n──────────────────────────────────', 'info');
+
                 self.addLog(`[Sub 1/${total}]  ${label}`, 'step');
 
                 try {
@@ -465,7 +531,7 @@ window.OSTestModules.push({
                 const label = 'Broadcast FC03 Read — 완전 Drop';
                 self.updateStepStatus(1, 'running');
                 self.updateProgress(38, `[2/${total}]  ${label}`);
-                self.addLog('\n──────────────────────────────────', 'info');
+
                 self.addLog(`[Sub 2/${total}]  ${label}`, 'step');
 
                 try {
@@ -504,7 +570,7 @@ window.OSTestModules.push({
                 const label = 'Broadcast 10회 후 Unicast 즉각 복구';
                 self.updateStepStatus(2, 'running');
                 self.updateProgress(68, `[3/${total}]  ${label}`);
-                self.addLog('\n──────────────────────────────────', 'info');
+
                 self.addLog(`[Sub 3/${total}]  ${label}`, 'step');
 
                 try {
@@ -547,11 +613,11 @@ window.OSTestModules.push({
             }
 
             // 최종 요약
-            self.addLog('\n══════════════════════════════════', 'info');
+
             self.addLog('결과 요약', 'step');
             self.addLog(`합격 (${passed.length}): ${passed.join(', ') || '없음'}`, passed.length ? 'success' : 'info');
             self.addLog(`불합격 (${failed.length}): ${failed.join(', ') || '없음'}`, failed.length ? 'error' : 'info');
-            self.addLog('══════════════════════════════════', 'info');
+
 
             self.updateProgress(100, '테스트 완료');
             const ok = failed.length === 0;

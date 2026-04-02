@@ -7377,6 +7377,73 @@ select:focus {
     color: white;
 }
 
+/* Y-Axis Mode Panel */
+.chart-yaxis-mode-panel {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.yaxis-mode-label {
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 600;
+    margin-right: 2px;
+}
+
+.yaxis-mode-btn {
+    width: 28px;
+    height: 28px;
+    border: 1.5px solid #ced4da;
+    border-radius: 5px;
+    background: white;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.yaxis-mode-btn:hover {
+    border-color: #3498db;
+    color: #3498db;
+}
+
+.yaxis-mode-btn.active {
+    background: #3498db;
+    border-color: #3498db;
+    color: white;
+}
+
+.yaxis-mode-hint {
+    font-size: 11px;
+    color: #adb5bd;
+    margin-left: 4px;
+}
+
+/* Scale/Offset inputs (Mode C) */
+.channel-scale-offset {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.scale-offset-label {
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.scale-offset-input {
+    width: 55px;
+    padding: 3px 6px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'Consolas', monospace;
+}
+
 /* Channel Configuration Panel */
 .chart-channel-panel {
     display: flex;

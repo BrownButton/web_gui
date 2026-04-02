@@ -18,11 +18,14 @@ class ChartManager {
 
         // Channel configuration
         this.channels = [
-            { enabled: true, color: '#3498db', data: [], name: 'CH1', address: 0xD011 },
-            { enabled: true, color: '#e74c3c', data: [], name: 'CH2', address: 0xD001 },
-            { enabled: false, color: '#2ecc71', data: [], name: 'CH3', address: 0x0000 },
-            { enabled: false, color: '#f39c12', data: [], name: 'CH4', address: 0x0000 }
+            { enabled: true, color: '#3498db', data: [], name: 'CH1', address: 0xD011, scale: 1, offset: 0, chYMin: null, chYMax: null },
+            { enabled: true, color: '#e74c3c', data: [], name: 'CH2', address: 0xD001, scale: 1, offset: 0, chYMin: null, chYMax: null },
+            { enabled: false, color: '#2ecc71', data: [], name: 'CH3', address: 0x0000, scale: 1, offset: 0, chYMin: null, chYMax: null },
+            { enabled: false, color: '#f39c12', data: [], name: 'CH4', address: 0x0000, scale: 1, offset: 0, chYMin: null, chYMax: null }
         ];
+
+        // Y-axis display mode: 'independent' | 'normalize' | 'scaleoffset'
+        this.yAxisMode = 'independent';
 
         // Mode settings
         this.mode = 'continuous'; // 'continuous' | 'trigger'
@@ -443,24 +446,53 @@ class ChartManager {
     }
 
     calculateAutoScale() {
-        let min = Infinity;
-        let max = -Infinity;
-
-        for (const ch of this.channels) {
-            if (!ch.enabled) continue;
-            for (const point of ch.data) {
-                if (point.v < min) min = point.v;
-                if (point.v > max) max = point.v;
+        if (this.yAxisMode === 'independent') {
+            for (const ch of this.channels) {
+                if (!ch.enabled || ch.data.length === 0) {
+                    ch.chYMin = 0; ch.chYMax = 100; continue;
+                }
+                let min = Infinity, max = -Infinity;
+                for (const point of ch.data) {
+                    if (point.v < min) min = point.v;
+                    if (point.v > max) max = point.v;
+                }
+                const range = max - min || 1;
+                ch.chYMin = min - range * this.margin;
+                ch.chYMax = max + range * this.margin;
             }
-        }
-
-        if (min === Infinity || max === -Infinity) {
+        } else if (this.yAxisMode === 'normalize') {
+            for (const ch of this.channels) {
+                if (!ch.enabled || ch.data.length === 0) {
+                    ch.chYMin = 0; ch.chYMax = 1; continue;
+                }
+                let min = Infinity, max = -Infinity;
+                for (const point of ch.data) {
+                    if (point.v < min) min = point.v;
+                    if (point.v > max) max = point.v;
+                }
+                ch.chYMin = min;
+                ch.chYMax = max === min ? min + 1 : max;
+            }
             this.yMin = 0;
             this.yMax = 100;
         } else {
-            const range = max - min || 1;
-            this.yMin = min - range * this.margin;
-            this.yMax = max + range * this.margin;
+            // scaleoffset: apply per-channel scale+offset, then global range
+            let min = Infinity, max = -Infinity;
+            for (const ch of this.channels) {
+                if (!ch.enabled) continue;
+                for (const point of ch.data) {
+                    const v = point.v * ch.scale + ch.offset;
+                    if (v < min) min = v;
+                    if (v > max) max = v;
+                }
+            }
+            if (min === Infinity || max === -Infinity) {
+                this.yMin = 0; this.yMax = 100;
+            } else {
+                const range = max - min || 1;
+                this.yMin = min - range * this.margin;
+                this.yMax = max + range * this.margin;
+            }
         }
     }
 
@@ -578,6 +610,14 @@ class ChartManager {
 
     // Rendering
     render() {
+        // Adjust left margin based on Y-axis mode
+        if (this.yAxisMode === 'independent') {
+            const numActive = this.channels.filter(ch => ch.enabled).length;
+            this.chartMargins.left = 60 + 50 * Math.max(0, numActive - 1);
+        } else {
+            this.chartMargins.left = 60;
+        }
+
         const ctx = this.ctx;
         const width = this.width;
         const height = this.height;
@@ -645,17 +685,28 @@ class ChartManager {
             ctx.stroke();
         }
 
-        // Horizontal grid lines — data-aligned (value)
-        const visMinY = this.screenToChartY(bottom);
-        const visMaxY = this.screenToChartY(top);
-        const yStep = this.niceStep(visMaxY - visMinY, 8);
-        const yStart = Math.ceil(visMinY / yStep) * yStep;
-        for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
-            const sy = this.chartToScreenY(v);
-            ctx.beginPath();
-            ctx.moveTo(left, sy);
-            ctx.lineTo(right, sy);
-            ctx.stroke();
+        // Horizontal grid lines
+        if (this.yAxisMode === 'independent') {
+            // 8 evenly spaced lines (no value-based alignment)
+            for (let i = 0; i <= 8; i++) {
+                const sy = top + (i / 8) * (bottom - top);
+                ctx.beginPath();
+                ctx.moveTo(left, sy);
+                ctx.lineTo(right, sy);
+                ctx.stroke();
+            }
+        } else {
+            const visMinY = this.screenToChartY(bottom);
+            const visMaxY = this.screenToChartY(top);
+            const yStep = this.niceStep(visMaxY - visMinY, 8);
+            const yStart = Math.ceil(visMinY / yStep) * yStep;
+            for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
+                const sy = this.chartToScreenY(v);
+                ctx.beginPath();
+                ctx.moveTo(left, sy);
+                ctx.lineTo(right, sy);
+                ctx.stroke();
+            }
         }
     }
 
@@ -666,48 +717,97 @@ class ChartManager {
         const top = this.chartMargins.top;
         const bottom = this.height - this.chartMargins.bottom;
 
+        // X-axis border (always)
         ctx.strokeStyle = '#adb5bd';
         ctx.lineWidth = 1;
-
-        // Y-axis border
-        ctx.beginPath();
-        ctx.moveTo(left, top);
-        ctx.lineTo(left, bottom);
-        ctx.stroke();
-
-        // X-axis border
         ctx.beginPath();
         ctx.moveTo(left, bottom);
         ctx.lineTo(right, bottom);
         ctx.stroke();
 
-        ctx.fillStyle = '#6c757d';
-        ctx.font = '10px Consolas, monospace';
-
-        // Y-axis labels — same ticks as grid
-        const visMinY = this.screenToChartY(bottom);
-        const visMaxY = this.screenToChartY(top);
-        const yStep = this.niceStep(visMaxY - visMinY, 8);
-        const yStart = Math.ceil(visMinY / yStep) * yStep;
-        const yDecimals = yStep >= 1 ? 0 : yStep >= 0.1 ? 1 : yStep >= 0.01 ? 2 : 3;
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
-            const sy = this.chartToScreenY(v);
-            ctx.fillText(v.toFixed(yDecimals), left - 5, sy);
-        }
-
-        // X-axis labels — same ticks as grid
+        // X-axis labels
         const visMinX = this.screenToChartX(left);
         const visMaxX = this.screenToChartX(right);
         const xStep = this.niceStep(visMaxX - visMinX, 10);
         const xStart = Math.ceil(visMinX / xStep) * xStep;
+        ctx.fillStyle = '#6c757d';
+        ctx.font = '10px Consolas, monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         for (let t = xStart; t <= visMaxX + xStep * 0.01; t += xStep) {
             if (t < 0) continue;
             const sx = this.chartToScreenX(t);
             ctx.fillText(this.formatTime(t), sx, bottom + 5);
+        }
+
+        if (this.yAxisMode === 'independent') {
+            // Per-channel colored Y-axes
+            const activeChannels = this.channels
+                .map((ch, i) => ({ ch, i }))
+                .filter(({ ch }) => ch.enabled);
+
+            ctx.textBaseline = 'middle';
+            activeChannels.forEach(({ ch }, activeIdx) => {
+                const axisX = left - 50 * activeIdx;
+                const yMin = ch.chYMin ?? 0;
+                const yMax = ch.chYMax ?? 100;
+
+                // Axis line
+                ctx.strokeStyle = ch.color;
+                ctx.lineWidth = activeIdx === 0 ? 1.5 : 1;
+                ctx.beginPath();
+                ctx.moveTo(axisX, top);
+                ctx.lineTo(axisX, bottom);
+                ctx.stroke();
+
+                // Ticks and labels (5 divisions)
+                ctx.fillStyle = ch.color;
+                ctx.font = '9px Consolas, monospace';
+                ctx.textAlign = 'right';
+                const tickCount = 4;
+                const range = yMax - yMin || 1;
+                const decimals = Math.abs(range) >= 100 ? 0 : Math.abs(range) >= 10 ? 1 : 2;
+                for (let t = 0; t <= tickCount; t++) {
+                    const frac = t / tickCount;
+                    const val = yMin + frac * range;
+                    const sy = this.valueToScreenY(val, yMin, yMax);
+                    ctx.strokeStyle = ch.color;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(axisX, sy);
+                    ctx.lineTo(axisX - 4, sy);
+                    ctx.stroke();
+                    ctx.fillText(val.toFixed(decimals), axisX - 6, sy);
+                }
+
+                // Channel name at top
+                ctx.font = 'bold 9px Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(ch.name, axisX, top - 6);
+            });
+        } else {
+            // Single Y-axis
+            ctx.strokeStyle = '#adb5bd';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(left, top);
+            ctx.lineTo(left, bottom);
+            ctx.stroke();
+
+            const visMinY = this.screenToChartY(bottom);
+            const visMaxY = this.screenToChartY(top);
+            const yStep = this.niceStep(visMaxY - visMinY, 8);
+            const yStart = Math.ceil(visMinY / yStep) * yStep;
+            const yDecimals = yStep >= 1 ? 0 : yStep >= 0.1 ? 1 : yStep >= 0.01 ? 2 : 3;
+            ctx.fillStyle = '#6c757d';
+            ctx.font = '10px Consolas, monospace';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            const yUnitLabel = this.yAxisMode === 'normalize' ? '%' : '';
+            for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
+                const sy = this.chartToScreenY(v);
+                ctx.fillText(v.toFixed(yDecimals) + yUnitLabel, left - 5, sy);
+            }
         }
     }
 
@@ -745,7 +845,18 @@ class ChartManager {
             let started = false;
             for (const point of ch.data) {
                 const x = this.chartToScreenX(point.t);
-                const y = this.chartToScreenY(point.v);
+                let y;
+                if (this.yAxisMode === 'independent') {
+                    y = this.valueToScreenY(point.v, ch.chYMin ?? 0, ch.chYMax ?? 100);
+                } else if (this.yAxisMode === 'normalize') {
+                    const range = (ch.chYMax ?? 1) - (ch.chYMin ?? 0);
+                    const normalized = range !== 0
+                        ? ((point.v - (ch.chYMin ?? 0)) / range) * 100
+                        : 50;
+                    y = this.chartToScreenY(normalized);
+                } else {
+                    y = this.chartToScreenY(point.v * ch.scale + ch.offset);
+                }
 
                 if (!started) {
                     ctx.moveTo(x, y);
@@ -764,9 +875,16 @@ class ChartManager {
         const ctx = this.ctx;
         const left = this.chartMargins.left;
         const right = this.width - this.chartMargins.right;
-        const chartHeight = this.height - this.chartMargins.top - this.chartMargins.bottom;
 
-        const y = this.chartMargins.top + (1 - (this.trigger.level - this.yMin) / (this.yMax - this.yMin)) * chartHeight;
+        let y;
+        if (this.yAxisMode === 'independent') {
+            const ch = this.channels[this.trigger.channel];
+            const yMin = ch?.chYMin ?? this.yMin;
+            const yMax = ch?.chYMax ?? this.yMax;
+            y = this.valueToScreenY(this.trigger.level, yMin, yMax);
+        } else {
+            y = this.chartToScreenY(this.trigger.level);
+        }
 
         ctx.strokeStyle = '#ffc107';
         ctx.lineWidth = 1;
@@ -928,6 +1046,36 @@ class ChartManager {
         if (!this.isRunning) this.render();
     }
 
+    // Y-axis mode
+    valueToScreenY(value, yMin, yMax) {
+        const chartHeight = this.height - this.chartMargins.top - this.chartMargins.bottom;
+        const range = yMax - yMin || 1;
+        const relY = (value - yMin) / range;
+        return this.chartMargins.top + (1 - relY) * chartHeight;
+    }
+
+    setYAxisMode(mode) {
+        this.yAxisMode = mode;
+        this.calculateAutoScale();
+        if (!this.isRunning) this.render();
+    }
+
+    setChannelScale(index, scale) {
+        if (index >= 0 && index < this.channels.length) {
+            this.channels[index].scale = scale;
+            if (this.autoScale) this.calculateAutoScale();
+            if (!this.isRunning) this.render();
+        }
+    }
+
+    setChannelOffset(index, offset) {
+        if (index >= 0 && index < this.channels.length) {
+            this.channels[index].offset = offset;
+            if (this.autoScale) this.calculateAutoScale();
+            if (!this.isRunning) this.render();
+        }
+    }
+
     // Channel configuration
     setChannelEnabled(index, enabled) {
         if (index >= 0 && index < this.channels.length) {
@@ -980,12 +1128,13 @@ class ChartManager {
 //  MiniChart  —  HW Overview 인라인 차트 (경량 Canvas 렌더러)
 // ─────────────────────────────────────────────────────────
 class MiniChart {
-    constructor(canvas, channels) {
+    constructor(canvas, channels, { maxPoints = 300, displayPoints } = {}) {
         // channels: [{ name, color, chNum }]
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.channels = channels.map(ch => ({ ...ch, data: [] }));
-        this.maxPoints = 300;
+        this.maxPoints = maxPoints;
+        this.displayPoints = displayPoints ?? maxPoints;
     }
 
     addDataPoint(chIdx, value) {
@@ -1012,12 +1161,17 @@ class MiniChart {
         ctx.fillStyle = '#fafafa';
         ctx.fillRect(0, 0, W, H);
 
-        // Y축 범위 자동 계산
+        // Y축 범위 자동 계산 (표시 구간 기준)
         let min = Infinity, max = -Infinity;
-        this.channels.forEach(ch => ch.data.forEach(v => {
-            if (v < min) min = v;
-            if (v > max) max = v;
-        }));
+        this.channels.forEach(ch => {
+            const view = ch.data.length > this.displayPoints
+                ? ch.data.slice(-this.displayPoints)
+                : ch.data;
+            view.forEach(v => {
+                if (v < min) min = v;
+                if (v > max) max = v;
+            });
+        });
         if (!isFinite(min)) { min = -1; max = 1; }
         if (min === max) { min -= 1; max += 1; }
         const pad = (max - min) * 0.1;
@@ -1037,8 +1191,11 @@ class MiniChart {
             ctx.strokeStyle = ch.color;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ch.data.forEach((v, i) => {
-                const x = (i / (this.maxPoints - 1)) * W;
+            const view = ch.data.length > this.displayPoints
+                ? ch.data.slice(-this.displayPoints)
+                : ch.data;
+            view.forEach((v, i) => {
+                const x = (i / (this.displayPoints - 1)) * W;
                 const y = H - ((v - min) / (max - min)) * H;
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
@@ -2476,10 +2633,10 @@ class ModbusDashboard {
                 this.startOvPolling();
             }
 
-            // Configuration - 모터 탭이 열려있으면 motorType 자동 읽기
-            if (this.activeConfigCategory === 'motorInfo' && this.currentSetupDeviceId) {
-                const setupDevice = this.devices.find(d => d.id === this.currentSetupDeviceId);
-                if (setupDevice) setTimeout(() => this.readMotorType(setupDevice.id), 800);
+            // Configuration 탭이 열려있으면 현재 카테고리 파라미터 자동 읽기
+            if (this.currentSetupDeviceId) {
+                const cat = this.activeConfigCategory || 'motorInfo';
+                setTimeout(() => this.readConfigCategory(cat, this.currentSetupDeviceId), 800);
             }
 
             // Save settings to localStorage
@@ -5705,7 +5862,7 @@ class ModbusDashboard {
         }
 
         // Render device configuration into the modal's #deviceSetupConfig
-        this.renderDeviceSetupConfig(device);
+        this.renderDeviceSetupConfig(device, { autoRead: true });
 
         // Close button handler - restore page container content and ID
         const handleClose = () => {
@@ -8178,6 +8335,286 @@ class ModbusDashboard {
     }
 
     /**
+     * Chart channel definitions (chNum = value sent in FC 0x64 configure)
+     */
+    getChartChannels() {
+        return [
+            // Velocity
+            { name: 'Velocity Feedback',               chNum: 0x00, group: 'Velocity' },
+            { name: 'Velocity Command',                chNum: 0x01, group: 'Velocity' },
+            { name: 'Velocity Error',                  chNum: 0x02, group: 'Velocity' },
+            { name: 'Position Command Velocity',       chNum: 0x15, group: 'Velocity' },
+            // Torque
+            { name: 'Torque Feedback',                 chNum: 0x03, group: 'Torque' },
+            { name: 'Torque Command',                  chNum: 0x04, group: 'Torque' },
+            // Position
+            { name: 'Position Actual',                 chNum: 0x13, group: 'Position' },
+            { name: 'Position Demand',                 chNum: 0x14, group: 'Position' },
+            { name: 'Following Error',                 chNum: 0x05, group: 'Position' },
+            { name: 'Following Error Actual',          chNum: 0x0B, group: 'Position' },
+            // Overload
+            { name: 'Accum. Operation Overload',       chNum: 0x06, group: 'Overload' },
+            { name: 'Accum. Regen. Overload',          chNum: 0x08, group: 'Overload' },
+            { name: 'Inertia Ratio',                   chNum: 0x0A, group: 'Overload' },
+            // Electrical
+            { name: 'DC Link Voltage',                 chNum: 0x07, group: 'Electrical' },
+            { name: 'U Phase Current',                 chNum: 0x10, group: 'Electrical' },
+            { name: 'V Phase Current',                 chNum: 0x11, group: 'Electrical' },
+            { name: 'W Phase Current',                 chNum: 0x12, group: 'Electrical' },
+            // Temperature
+            { name: 'Drive Temperature 1',             chNum: 0x0C, group: 'Temperature' },
+            { name: 'Drive Temperature 2',             chNum: 0x0D, group: 'Temperature' },
+            { name: 'Encoder Temperature',             chNum: 0x0E, group: 'Temperature' },
+            // Encoder/Hall
+            { name: 'Encoder SingleTurn',              chNum: 0x09, group: 'Encoder/Hall' },
+            { name: 'Hall Signal Value',               chNum: 0x0F, group: 'Encoder/Hall' },
+            { name: 'Hall U',                          chNum: 0x16, group: 'Encoder/Hall' },
+            { name: 'Hall V',                          chNum: 0x17, group: 'Encoder/Hall' },
+            { name: 'Hall W',                          chNum: 0x18, group: 'Encoder/Hall' },
+            { name: 'Commanded Motor Phase Angle',     chNum: 0x19, group: 'Encoder/Hall' },
+            { name: 'Hall Phase Angle',                chNum: 0x1A, group: 'Encoder/Hall' },
+            { name: 'Electric Angle',                  chNum: 0x1B, group: 'Encoder/Hall' },
+            // Sensor/LMS
+            { name: 'Left Sensor Position',            chNum: 0x20, group: 'Sensor/LMS' },
+            { name: 'Right Sensor Position',           chNum: 0x21, group: 'Sensor/LMS' },
+            { name: 'L/R Position Difference',         chNum: 0x22, group: 'Sensor/LMS' },
+            { name: 'Sensor Position Internal',        chNum: 0x23, group: 'Sensor/LMS' },
+            { name: 'Left Sensor Valid (C36)',          chNum: 0x24, group: 'Sensor/LMS' },
+            { name: 'Left Sensor Valid (C37)',          chNum: 0x25, group: 'Sensor/LMS' },
+            { name: 'Left Sensor Singleturn',          chNum: 0x26, group: 'Sensor/LMS' },
+            { name: 'Right Sensor Singleturn',         chNum: 0x27, group: 'Sensor/LMS' },
+            { name: 'LMS READY',                       chNum: 0x28, group: 'Sensor/LMS' },
+            { name: 'Reserved 1 (LMS StateMachine)',   chNum: 0x29, group: 'Sensor/LMS' },
+            { name: 'ROS',                             chNum: 0x2A, group: 'Sensor/LMS' },
+            { name: 'Reserved 3 (L.Sensor Valid Raw)', chNum: 0x2B, group: 'Sensor/LMS' },
+            { name: 'Reserved 4 (R.Sensor Valid Raw)', chNum: 0x2C, group: 'Sensor/LMS' },
+            // FFT
+            { name: 'FFT Input',                       chNum: 0x36, group: 'FFT' },
+            { name: 'FFT Output',                      chNum: 0x37, group: 'FFT' },
+            // Digital Input
+            { name: 'POT',    chNum: 0x64, group: 'Digital Input' },
+            { name: 'NOT',    chNum: 0x65, group: 'Digital Input' },
+            { name: 'HOME',   chNum: 0x66, group: 'Digital Input' },
+            { name: 'STOP',   chNum: 0x67, group: 'Digital Input' },
+            { name: 'PCON',   chNum: 0x68, group: 'Digital Input' },
+            { name: 'GAIN',   chNum: 0x69, group: 'Digital Input' },
+            { name: 'P_CL',   chNum: 0x6A, group: 'Digital Input' },
+            { name: 'N_CL',   chNum: 0x6B, group: 'Digital Input' },
+            { name: 'PROBE1', chNum: 0x6C, group: 'Digital Input' },
+            { name: 'PROBE2', chNum: 0x6D, group: 'Digital Input' },
+            { name: 'EMG',    chNum: 0x6E, group: 'Digital Input' },
+            { name: 'A_RST',  chNum: 0x6F, group: 'Digital Input' },
+            { name: 'SV_ON',  chNum: 0x70, group: 'Digital Input' },
+            { name: 'START',  chNum: 0x74, group: 'Digital Input' },
+            { name: 'PAUSE',  chNum: 0x75, group: 'Digital Input' },
+            { name: 'REGT',   chNum: 0x76, group: 'Digital Input' },
+            { name: 'HSTART', chNum: 0x77, group: 'Digital Input' },
+            { name: 'ISEL0',  chNum: 0x78, group: 'Digital Input' },
+            { name: 'ISEL1',  chNum: 0x79, group: 'Digital Input' },
+            { name: 'ISEL2',  chNum: 0x7A, group: 'Digital Input' },
+            { name: 'ISEL3',  chNum: 0x7B, group: 'Digital Input' },
+            { name: 'ISEL4',  chNum: 0x7C, group: 'Digital Input' },
+            { name: 'ISEL5',  chNum: 0x7D, group: 'Digital Input' },
+            { name: 'ABS_RQ', chNum: 0x7E, group: 'Digital Input' },
+            { name: 'JSTART', chNum: 0x7F, group: 'Digital Input' },
+            { name: 'JDIR',   chNum: 0x80, group: 'Digital Input' },
+            { name: 'PCLR',   chNum: 0x81, group: 'Digital Input' },
+            { name: 'AVOR',   chNum: 0x82, group: 'Digital Input' },
+            { name: 'INHIB',  chNum: 0x83, group: 'Digital Input' },
+            // Digital Output
+            { name: 'BRAKE',  chNum: 0x84, group: 'Digital Output' },
+            { name: 'ALARM',  chNum: 0x85, group: 'Digital Output' },
+            { name: 'READY',  chNum: 0x86, group: 'Digital Output' },
+            { name: 'ZSPD',   chNum: 0x87, group: 'Digital Output' },
+            { name: 'INPOS1', chNum: 0x88, group: 'Digital Output' },
+            { name: 'TLMT',   chNum: 0x89, group: 'Digital Output' },
+            { name: 'VLMT',   chNum: 0x8A, group: 'Digital Output' },
+            { name: 'INSPD',  chNum: 0x8B, group: 'Digital Output' },
+            { name: 'WARN',   chNum: 0x8C, group: 'Digital Output' },
+            { name: 'TGON',   chNum: 0x8D, group: 'Digital Output' },
+            { name: 'INPOS2', chNum: 0x8E, group: 'Digital Output' },
+            { name: 'ORG',    chNum: 0x94, group: 'Digital Output' },
+            { name: 'EOS',    chNum: 0x95, group: 'Digital Output' },
+            { name: 'IOUT0',  chNum: 0x96, group: 'Digital Output' },
+            { name: 'IOUT1',  chNum: 0x97, group: 'Digital Output' },
+            { name: 'IOUT2',  chNum: 0x98, group: 'Digital Output' },
+            { name: 'IOUT3',  chNum: 0x99, group: 'Digital Output' },
+            { name: 'IOUT4',  chNum: 0x9A, group: 'Digital Output' },
+            { name: 'IOUT5',  chNum: 0x9B, group: 'Digital Output' },
+            // ControlWord
+            { name: 'ControlWord.0',  chNum: 0xA4, group: 'ControlWord' },
+            { name: 'ControlWord.1',  chNum: 0xA5, group: 'ControlWord' },
+            { name: 'ControlWord.2',  chNum: 0xA6, group: 'ControlWord' },
+            { name: 'ControlWord.3',  chNum: 0xA7, group: 'ControlWord' },
+            { name: 'ControlWord.4',  chNum: 0xA8, group: 'ControlWord' },
+            { name: 'ControlWord.5',  chNum: 0xA9, group: 'ControlWord' },
+            { name: 'ControlWord.6',  chNum: 0xAA, group: 'ControlWord' },
+            { name: 'ControlWord.7',  chNum: 0xAB, group: 'ControlWord' },
+            { name: 'ControlWord.8',  chNum: 0xAC, group: 'ControlWord' },
+            { name: 'ControlWord.9',  chNum: 0xAD, group: 'ControlWord' },
+            { name: 'ControlWord.10', chNum: 0xAE, group: 'ControlWord' },
+            { name: 'ControlWord.11', chNum: 0xAF, group: 'ControlWord' },
+            { name: 'ControlWord.12', chNum: 0xB0, group: 'ControlWord' },
+            { name: 'ControlWord.13', chNum: 0xB1, group: 'ControlWord' },
+            { name: 'ControlWord.14', chNum: 0xB2, group: 'ControlWord' },
+            { name: 'ControlWord.15', chNum: 0xB3, group: 'ControlWord' },
+            // StatusWord
+            { name: 'StatusWord.0',  chNum: 0xB4, group: 'StatusWord' },
+            { name: 'StatusWord.1',  chNum: 0xB5, group: 'StatusWord' },
+            { name: 'StatusWord.2',  chNum: 0xB6, group: 'StatusWord' },
+            { name: 'StatusWord.3',  chNum: 0xB7, group: 'StatusWord' },
+            { name: 'StatusWord.4',  chNum: 0xB8, group: 'StatusWord' },
+            { name: 'StatusWord.5',  chNum: 0xB9, group: 'StatusWord' },
+            { name: 'StatusWord.6',  chNum: 0xBA, group: 'StatusWord' },
+            { name: 'StatusWord.7',  chNum: 0xBB, group: 'StatusWord' },
+            { name: 'StatusWord.8',  chNum: 0xBC, group: 'StatusWord' },
+            { name: 'StatusWord.9',  chNum: 0xBD, group: 'StatusWord' },
+            { name: 'StatusWord.10', chNum: 0xBE, group: 'StatusWord' },
+            { name: 'StatusWord.11', chNum: 0xBF, group: 'StatusWord' },
+            { name: 'StatusWord.12', chNum: 0xC0, group: 'StatusWord' },
+            { name: 'StatusWord.13', chNum: 0xC1, group: 'StatusWord' },
+            { name: 'StatusWord.14', chNum: 0xC2, group: 'StatusWord' },
+            { name: 'StatusWord.15', chNum: 0xC3, group: 'StatusWord' },
+            // Other
+            { name: 'INDEX (Z-PHASE)',  chNum: 0xD0, group: 'Other' },
+            { name: 'Object Monitor 1', chNum: 0xFA, group: 'Other' },
+            { name: 'Object Monitor 2', chNum: 0xFB, group: 'Other' },
+            { name: 'Object Monitor 3', chNum: 0xFC, group: 'Other' },
+            { name: 'Object Monitor 4', chNum: 0xFD, group: 'Other' },
+        ];
+    }
+
+    /**
+     * Generate channel picker panels HTML (reuses param-picker CSS)
+     */
+    generateChannelPickerHTML() {
+        const channels = this.getChartChannels();
+        const grouped = {};
+        channels.forEach(ch => {
+            if (!grouped[ch.group]) grouped[ch.group] = [];
+            grouped[ch.group].push(ch);
+        });
+        const keys = Object.keys(grouped);
+        let catHtml = '';
+        let itemHtml = '';
+        keys.forEach((group, i) => {
+            catHtml += `<div class="param-picker-cat-item${i === 0 ? ' active' : ''}" data-group="${group}">${group}</div>`;
+            grouped[group].forEach(ch => {
+                const hex = `0x${ch.chNum.toString(16).toUpperCase().padStart(2, '0')}`;
+                itemHtml += `<div class="param-picker-item${i === 0 ? '' : ' hidden-group'}" data-value="${ch.chNum}" data-group="${group}">${ch.name}<span class="param-picker-addr">${hex}</span></div>`;
+            });
+        });
+        return `
+            <div class="param-picker-panels">
+                <div class="param-picker-cat-panel">${catHtml}</div>
+                <div class="param-picker-param-panel">${itemHtml}</div>
+            </div>`;
+    }
+
+    /**
+     * Initialize chart channel picker dropdowns (CH1~CH4)
+     * Pre-selects default channels C1~C4 (0x01~0x04).
+     */
+    initChartChannelPickers() {
+        const defaults = [0x01, 0x02, 0x03, 0x04];
+        const channels = this.getChartChannels();
+
+        for (let i = 0; i < 4; i++) {
+            const triggerBtn = document.getElementById(`chartCh${i + 1}Trigger`);
+            if (!triggerBtn) continue;
+
+            const popup = document.createElement('div');
+            popup.className = 'param-picker-popup';
+            popup.dataset.chartChIdx = String(i);
+            popup.style.display = 'none';
+            popup.innerHTML = `
+                <input type="text" class="param-picker-search" placeholder="채널 검색...">
+                ${this.generateChannelPickerHTML()}
+            `;
+            document.body.appendChild(popup);
+
+            // Category click
+            popup.querySelector('.param-picker-cat-panel').addEventListener('click', (e) => {
+                const cat = e.target.closest('.param-picker-cat-item');
+                if (!cat) return;
+                popup.querySelectorAll('.param-picker-cat-item').forEach(el => el.classList.remove('active'));
+                cat.classList.add('active');
+                const group = cat.dataset.group;
+                popup.querySelectorAll('.param-picker-item').forEach(item => {
+                    item.classList.toggle('hidden-group', item.dataset.group !== group);
+                });
+            });
+
+            // Item click
+            popup.querySelector('.param-picker-param-panel').addEventListener('click', (e) => {
+                const item = e.target.closest('.param-picker-item');
+                if (!item) return;
+                const addrEl = item.querySelector('.param-picker-addr');
+                const name = item.childNodes[0].textContent.trim();
+                const hex = addrEl ? addrEl.textContent.trim() : '';
+                triggerBtn.dataset.selectedValue = item.dataset.value;
+                triggerBtn.querySelector('.param-picker-trigger-label').textContent = `${name} (${hex})`;
+                triggerBtn.classList.add('has-selection');
+                popup.style.display = 'none';
+            });
+
+            // Search
+            const searchInput = popup.querySelector('.param-picker-search');
+            searchInput.addEventListener('input', () => {
+                const q = searchInput.value.toLowerCase().trim();
+                const catPanelEl = popup.querySelector('.param-picker-cat-panel');
+                if (q) {
+                    catPanelEl.style.display = 'none';
+                    popup.querySelectorAll('.param-picker-item').forEach(item => {
+                        item.classList.toggle('hidden-group', !item.textContent.toLowerCase().includes(q));
+                    });
+                } else {
+                    catPanelEl.style.display = '';
+                    const activeCat = catPanelEl.querySelector('.param-picker-cat-item.active');
+                    const group = activeCat ? activeCat.dataset.group : null;
+                    popup.querySelectorAll('.param-picker-item').forEach(item => {
+                        item.classList.toggle('hidden-group', group && item.dataset.group !== group);
+                    });
+                }
+            });
+
+            // Trigger click → position and show popup
+            triggerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = popup.style.display !== 'none';
+                document.querySelectorAll('.param-picker-popup').forEach(p => { p.style.display = 'none'; });
+                if (isOpen) return;
+                popup.style.display = 'block';
+                const rect = triggerBtn.getBoundingClientRect();
+                const popupW = 400;
+                const popupH = 280;
+                let left = rect.left;
+                let top = rect.bottom + 4;
+                if (left + popupW > window.innerWidth - 8) left = window.innerWidth - popupW - 8;
+                if (top + popupH > window.innerHeight - 8) top = rect.top - popupH - 4;
+                popup.style.left = left + 'px';
+                popup.style.top = top + 'px';
+                popup.style.width = popupW + 'px';
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+                setTimeout(() => searchInput.focus(), 50);
+            });
+
+            popup.addEventListener('click', (e) => e.stopPropagation());
+
+            // Pre-select default channel
+            const defNum = defaults[i];
+            const defCh = channels.find(c => c.chNum === defNum);
+            if (defCh) {
+                const hex = `0x${defNum.toString(16).toUpperCase().padStart(2, '0')}`;
+                triggerBtn.dataset.selectedValue = String(defNum);
+                triggerBtn.querySelector('.param-picker-trigger-label').textContent = `${defCh.name} (${hex})`;
+                triggerBtn.classList.add('has-selection');
+            }
+        }
+    }
+
+    /**
      * Parse address string — supports 0xD001, D001 (bare hex), 53249 (dec)
      * Delegates to parseModbusValue for unified HEX/DEC handling.
      */
@@ -10396,6 +10833,46 @@ class ModbusDashboard {
         if (exportPngBtn) {
             exportPngBtn.addEventListener('click', () => this.chartManager.exportToPNG());
         }
+
+        // Y-axis mode buttons
+        const yAxisModeA = document.getElementById('yAxisModeA');
+        const yAxisModeB = document.getElementById('yAxisModeB');
+        const yAxisModeC = document.getElementById('yAxisModeC');
+        const scaleOffsetDivs = document.querySelectorAll('.channel-scale-offset');
+
+        const modeHints = { independent: 'Independent', normalize: 'Normalize 0–100%', scaleoffset: 'Scale + Offset' };
+        const hintEl = document.getElementById('yAxisModeHint');
+        const setYAxisModeUI = (mode) => {
+            [yAxisModeA, yAxisModeB, yAxisModeC].forEach(btn => btn?.classList.remove('active'));
+            if (mode === 'independent') yAxisModeA?.classList.add('active');
+            else if (mode === 'normalize') yAxisModeB?.classList.add('active');
+            else yAxisModeC?.classList.add('active');
+            scaleOffsetDivs.forEach(d => { d.style.display = mode === 'scaleoffset' ? 'flex' : 'none'; });
+            if (hintEl) hintEl.textContent = modeHints[mode] ?? '';
+            this.chartManager.setYAxisMode(mode);
+        };
+
+        if (yAxisModeA) yAxisModeA.addEventListener('click', () => setYAxisModeUI('independent'));
+        if (yAxisModeB) yAxisModeB.addEventListener('click', () => setYAxisModeUI('normalize'));
+        if (yAxisModeC) yAxisModeC.addEventListener('click', () => setYAxisModeUI('scaleoffset'));
+
+        // Scale/Offset inputs
+        for (let i = 0; i < 4; i++) {
+            const scaleEl = document.getElementById(`chartCh${i + 1}Scale`);
+            const offsetEl = document.getElementById(`chartCh${i + 1}Offset`);
+            if (scaleEl) {
+                scaleEl.addEventListener('change', () => {
+                    this.chartManager.setChannelScale(i, parseFloat(scaleEl.value) || 1);
+                });
+            }
+            if (offsetEl) {
+                offsetEl.addEventListener('change', () => {
+                    this.chartManager.setChannelOffset(i, parseFloat(offsetEl.value) || 0);
+                });
+            }
+        }
+
+        this.initChartChannelPickers();
     }
 
     /**
@@ -10418,14 +10895,14 @@ class ModbusDashboard {
         // 진행 중인 폴링 사이클이 있으면 완료 대기
         while (this.isPolling) await this.delay(5);
 
-        // 활성화된 채널 수집: { chIdx: 0~3, chNum: 1~254 }
+        // 활성화된 채널 수집: { chIdx: 0~3, chNum: 0~254 }
         const configuredChannels = [];
         for (let i = 0; i < 4; i++) {
-            const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
-            const addrEl   = document.getElementById(`chartCh${i + 1}Addr`);
+            const enableEl  = document.getElementById(`chartCh${i + 1}Enable`);
+            const triggerEl = document.getElementById(`chartCh${i + 1}Trigger`);
             if (enableEl?.checked) {
-                const chNum = parseInt(addrEl?.value);
-                if (chNum >= 0 && chNum <= 254) {
+                const chNum = parseInt(triggerEl?.dataset.selectedValue);
+                if (!isNaN(chNum) && chNum >= 0 && chNum <= 254) {
                     configuredChannels.push({ chIdx: i, chNum });
                 }
             }
@@ -11455,7 +11932,141 @@ class ModbusDashboard {
     }
 
     /**
-     * Read a single configuration parameter from the device
+     * Configuration 파라미터 정의 — category·address·reader·apply를 하나의 맵으로 관리.
+     * 새 파라미터 추가 시 이 맵에만 항목을 추가하면 읽기·Refresh 모두 자동으로 포함됨.
+     */
+    getConfigParamMap(deviceId) {
+        const device = this.devices.find(d => d.id === parseInt(deviceId));
+        if (!device) return {};
+        return {
+            motorType:        { category: 'motorInfo',     reader: async () => {
+                const result = await this.readCANopenObject(device.slaveId, 0x2000, 0x00);
+                return (result && !result.error && result.value != null) ? result.value : null;
+            }, apply: (raw) => {
+                device.motorType = raw;
+                const el = document.getElementById(`motorType_${deviceId}`);
+                if (el) el.value = String(raw);
+                this.saveDevices();
+            }},
+            operatingMode:    { category: 'motor',         address: 0xD106, apply: (raw) => {
+                device.operationMode = raw;
+                const el = document.getElementById(`operatingMode_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            setValueSource:   { category: 'motor',         address: 0xD101, apply: (raw) => {
+                device.setValueSource = raw;
+                const el = document.getElementById(`setValueSource_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            runningDirection: { category: 'motor',         address: 0xD102, apply: (raw) => {
+                device.runningDirection = raw;
+                const el = document.getElementById(`runningDirection_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            maxSpeed:         { category: 'motor',         address: 0xD119, apply: (raw) => {
+                device.maxSpeed = raw;
+                const el = document.getElementById(`maxSpeed_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            rampUp:           { category: 'motor',         address: 0xD11F, apply: (raw) => {
+                device.rampUp = raw;
+                const el = document.getElementById(`rampUp_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            rampDown:         { category: 'motor',         address: 0xD120, apply: (raw) => {
+                device.rampDown = raw;
+                const el = document.getElementById(`rampDown_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            maxCurrent:       { category: 'protection',    address: 0xD13B, apply: (raw) => {
+                device.maxCurrent = raw / 10;
+                const el = document.getElementById(`maxCurrent_${deviceId}`);
+                if (el) el.value = device.maxCurrent;
+                this.saveDevices();
+            }},
+            tempDerating:     { category: 'protection',    address: 0xD138, apply: (raw) => {
+                device.tempDerating = raw;
+                const el = document.getElementById(`tempDerating_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            fanAddress:       { category: 'communication', address: 0xD100, apply: (raw) => {
+                const el = document.getElementById(`fanAddress_${deviceId}`);
+                if (el) el.value = raw;
+            }},
+            baudrate:         { category: 'communication', address: 0xD149, apply: (raw) => {
+                device.baudrate = raw;
+                const el = document.getElementById(`baudrate_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            parity:           { category: 'communication', address: 0xD14A, apply: (raw) => {
+                device.parity = raw;
+                const el = document.getElementById(`parity_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+        };
+    }
+
+    /**
+     * 특정 카테고리 탭의 모든 파라미터를 디바이스에서 읽어 UI에 반영.
+     * 탭 진입·Refresh 버튼에서 공통으로 호출됨.
+     */
+    async readConfigCategory(category, deviceId) {
+        const device = this.devices.find(d => d.id === parseInt(deviceId));
+        if (!device || device.slaveId === 0) return;
+        if (!this.writer && !this.simulatorEnabled) return;
+
+        const paramMap = this.getConfigParamMap(deviceId);
+        const keys = Object.keys(paramMap).filter(k => paramMap[k].category === category);
+        if (keys.length === 0) return;
+
+        // 모든 항목을 동시에 ↻ 표시
+        keys.forEach(key => {
+            const el = document.getElementById(`${key}_${deviceId}_status`);
+            if (el) { el.textContent = '↻'; el.title = 'Reading...'; }
+        });
+
+        for (const key of keys) {
+            const entry = paramMap[key];
+            const statusEl = document.getElementById(`${key}_${deviceId}_status`);
+            const inputEl  = document.getElementById(`${key}_${deviceId}`);
+
+            const raw = entry.reader
+                ? await entry.reader()
+                : await this.readRegisterWithTimeout(device.slaveId, entry.address);
+
+            if (raw !== null) {
+                entry.apply(raw);
+                if (statusEl) { statusEl.textContent = '⭕'; statusEl.title = ''; }
+                if (inputEl)  { inputEl.style.borderColor = ''; }
+            } else {
+                if (statusEl) { statusEl.textContent = '❌'; statusEl.title = 'Read failed'; }
+                if (inputEl)  {
+                    inputEl.style.borderColor = '#dc3545';
+                    if (inputEl.tagName === 'INPUT') inputEl.value = '';
+                }
+            }
+        }
+
+        // ⭕ 2초 후 자동 소멸
+        setTimeout(() => {
+            keys.forEach(key => {
+                const el = document.getElementById(`${key}_${deviceId}_status`);
+                if (el && el.textContent === '⭕') { el.textContent = ''; el.title = ''; }
+            });
+        }, 2000);
+    }
+
+    /**
+     * Read a single configuration parameter from the device (context menu 읽기)
      */
     async readConfigParam(configType, deviceId) {
         this.hideConfigMenu();
@@ -11468,74 +12079,7 @@ class ModbusDashboard {
             return;
         }
 
-        // configType → { Modbus 주소, 읽은 값으로 device 속성·UI 업데이트하는 함수 }
-        const paramMap = {
-            fanAddress:       { address: 0xD100, apply: (raw) => {
-                const el = document.getElementById(`fanAddress_${deviceId}`);
-                if (el) el.value = raw;
-            }},
-            operatingMode:    { address: 0xD106, apply: (raw) => {
-                device.operationMode = raw;
-                const el = document.getElementById(`operatingMode_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            setValueSource:   { address: 0xD101, apply: (raw) => {
-                device.setValueSource = raw;
-                const el = document.getElementById(`setValueSource_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            runningDirection: { address: 0xD102, apply: (raw) => {
-                device.runningDirection = raw;
-                const el = document.getElementById(`runningDirection_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            maxSpeed:         { address: 0xD119, apply: (raw) => {
-                device.maxSpeed = raw;
-                const el = document.getElementById(`maxSpeed_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            rampUp:           { address: 0xD11F, apply: (raw) => {
-                device.rampUp = raw;
-                const el = document.getElementById(`rampUp_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            rampDown:         { address: 0xD120, apply: (raw) => {
-                device.rampDown = raw;
-                const el = document.getElementById(`rampDown_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            maxCurrent:       { address: 0xD13B, apply: (raw) => {
-                device.maxCurrent = raw / 10;
-                const el = document.getElementById(`maxCurrent_${deviceId}`);
-                if (el) el.value = device.maxCurrent;
-                this.saveDevices();
-            }},
-            tempDerating:     { address: 0xD138, apply: (raw) => {
-                device.tempDerating = raw;
-                const el = document.getElementById(`tempDerating_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            baudrate:         { address: 0xD149, apply: (raw) => {
-                device.baudrate = raw;
-                const el = document.getElementById(`baudrate_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            parity:           { address: 0xD14A, apply: (raw) => {
-                device.parity = raw;
-                const el = document.getElementById(`parity_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-        };
-
+        const paramMap = this.getConfigParamMap(deviceId);
         const entry = paramMap[configType];
         if (!entry) return;
 
@@ -11544,7 +12088,9 @@ class ModbusDashboard {
 
         if (statusEl) { statusEl.textContent = '↻'; statusEl.title = 'Reading...'; }
 
-        const raw = await this.readRegisterWithTimeout(device.slaveId, entry.address);
+        const raw = entry.reader
+            ? await entry.reader()
+            : await this.readRegisterWithTimeout(device.slaveId, entry.address);
 
         if (raw !== null) {
             entry.apply(raw);
@@ -11583,166 +12129,11 @@ class ModbusDashboard {
             return;
         }
 
-        const allKeys = [
-            'fanAddress', 'operatingMode', 'setValueSource', 'runningDirection', 'maxSpeed',
-            'rampUp', 'rampDown', 'maxCurrent', 'tempDerating', 'baudrate', 'parity'
-        ];
-
-        // Show loading on status spans that currently exist in the DOM
-        allKeys.forEach(key => {
-            const el = document.getElementById(`${key}_${deviceId}_status`);
-            if (el) { el.textContent = '↻'; el.title = 'Reading...'; }
-        });
-
-        const setStatus = (key, text, title = '') => {
-            const el = document.getElementById(`${key}_${deviceId}_status`);
-            if (el) { el.textContent = text; el.title = title; }
-        };
-
-        // 읽기 성공: ⭕ 표시 + 빨간 테두리 제거
-        const onSuccess = (key) => {
-            setStatus(key, '⭕');
-            const el = document.getElementById(`${key}_${deviceId}`);
-            if (el) el.style.borderColor = '';
-        };
-
-        // 읽기 실패: ❌ 표시 + 빨간 테두리 + 입력값 비우기 (stale 값 혼동 방지)
-        const onFail = (key) => {
-            setStatus(key, '❌', 'Read failed');
-            const el = document.getElementById(`${key}_${deviceId}`);
-            if (el) {
-                el.style.borderColor = '#dc3545';
-                if (el.tagName === 'INPUT') el.value = '';
-            }
-        };
-
-        try {
-            // Fan Address (0xD100)
-            const fanAddr = await this.readRegisterWithTimeout(device.slaveId, 0xD100);
-            if (fanAddr !== null) {
-                const input = document.getElementById(`fanAddress_${deviceId}`);
-                if (input) input.value = fanAddr;
-                onSuccess('fanAddress');
-            } else { onFail('fanAddress'); }
-
-            // Operating Mode (0xD106)
-            const mode = await this.readRegisterWithTimeout(device.slaveId, 0xD106);
-            if (mode !== null) {
-                device.operationMode = mode;
-                const sel = document.getElementById(`operatingMode_${deviceId}`);
-                if (sel) sel.value = mode;
-                onSuccess('operatingMode');
-            } else { onFail('operatingMode'); }
-
-            // Set Value Source (0xD101)
-            const setValueSource = await this.readRegisterWithTimeout(device.slaveId, 0xD101);
-            if (setValueSource !== null) {
-                device.setValueSource = setValueSource;
-                const sel = document.getElementById(`setValueSource_${deviceId}`);
-                if (sel) sel.value = setValueSource;
-                onSuccess('setValueSource');
-            } else { onFail('setValueSource'); }
-
-            // Running Direction (0xD102)
-            const dir = await this.readRegisterWithTimeout(device.slaveId, 0xD102);
-            if (dir !== null) {
-                device.runningDirection = dir;
-                const sel = document.getElementById(`runningDirection_${deviceId}`);
-                if (sel) sel.value = dir;
-                onSuccess('runningDirection');
-            } else { onFail('runningDirection'); }
-
-            // Maximum Speed (0xD119)
-            const maxSpeed = await this.readRegisterWithTimeout(device.slaveId, 0xD119);
-            if (maxSpeed !== null) {
-                device.maxSpeed = maxSpeed;
-                const input = document.getElementById(`maxSpeed_${deviceId}`);
-                if (input) input.value = maxSpeed;
-                onSuccess('maxSpeed');
-            } else { onFail('maxSpeed'); }
-
-            // Ramp-up Curve (0xD11F)
-            const rampUp = await this.readRegisterWithTimeout(device.slaveId, 0xD11F);
-            if (rampUp !== null) {
-                device.rampUp = rampUp;
-                const input = document.getElementById(`rampUp_${deviceId}`);
-                if (input) input.value = rampUp;
-                onSuccess('rampUp');
-            } else { onFail('rampUp'); }
-
-            // Ramp-down Curve (0xD120)
-            const rampDown = await this.readRegisterWithTimeout(device.slaveId, 0xD120);
-            if (rampDown !== null) {
-                device.rampDown = rampDown;
-                const input = document.getElementById(`rampDown_${deviceId}`);
-                if (input) input.value = rampDown;
-                onSuccess('rampDown');
-            } else { onFail('rampDown'); }
-
-            // Max Current (0xD13B) — raw = A * 10
-            const rawCurrent = await this.readRegisterWithTimeout(device.slaveId, 0xD13B);
-            if (rawCurrent !== null) {
-                device.maxCurrent = rawCurrent / 10;
-                const input = document.getElementById(`maxCurrent_${deviceId}`);
-                if (input) input.value = device.maxCurrent;
-                onSuccess('maxCurrent');
-            } else { onFail('maxCurrent'); }
-
-            // Module Temp Derating End (0xD138)
-            const tempDerating = await this.readRegisterWithTimeout(device.slaveId, 0xD138);
-            if (tempDerating !== null) {
-                device.tempDerating = tempDerating;
-                const input = document.getElementById(`tempDerating_${deviceId}`);
-                if (input) input.value = tempDerating;
-                onSuccess('tempDerating');
-            } else { onFail('tempDerating'); }
-
-            // Baudrate (0xD149)
-            const baudrate = await this.readRegisterWithTimeout(device.slaveId, 0xD149);
-            if (baudrate !== null) {
-                device.baudrate = baudrate;
-                const sel = document.getElementById(`baudrate_${deviceId}`);
-                if (sel) sel.value = baudrate;
-                onSuccess('baudrate');
-            } else { onFail('baudrate'); }
-
-            // Parity (0xD14A)
-            const parity = await this.readRegisterWithTimeout(device.slaveId, 0xD14A);
-            if (parity !== null) {
-                device.parity = parity;
-                const sel = document.getElementById(`parity_${deviceId}`);
-                if (sel) sel.value = parity;
-                onSuccess('parity');
-            } else { onFail('parity'); }
-
-            this.saveDevices();
-
-            // ⭕ 는 2초 후 자동 소멸, ❌ 와 빨간 테두리는 다음 Refresh 때까지 유지
-            setTimeout(() => {
-                allKeys.forEach(key => {
-                    const el = document.getElementById(`${key}_${deviceId}_status`);
-                    if (el && el.textContent === '⭕') { el.textContent = ''; el.title = ''; }
-                });
-            }, 2000);
-
-        } catch (error) {
-            console.error('refreshDevice error:', error);
-            allKeys.forEach(key => {
-                const statusEl = document.getElementById(`${key}_${deviceId}_status`);
-                if (statusEl && statusEl.textContent === '↻') {
-                    statusEl.textContent = '❌';
-                    statusEl.title = 'Read failed';
-                }
-                const inputEl = document.getElementById(`${key}_${deviceId}`);
-                if (inputEl) {
-                    inputEl.style.borderColor = '#dc3545';
-                    if (inputEl.tagName === 'INPUT') inputEl.value = '';
-                }
-            });
-        }
+        const category = this.activeConfigCategory || 'motorInfo';
+        await this.readConfigCategory(category, deviceId);
     }
 
-    renderDeviceSetupConfig(device) {
+    renderDeviceSetupConfig(device, { autoRead = false } = {}) {
         const configContainer = document.getElementById('deviceSetupConfig');
         if (!configContainer) return;
 
@@ -11815,6 +12206,11 @@ class ModbusDashboard {
                 this.startEditDeviceName(device.id, deviceNameSpan);
             });
         }
+
+        // 디바이스 선택·탭 최초 진입 시에만 자동 읽기 (apply 후 재렌더링 시에는 스킵)
+        if (autoRead) {
+            setTimeout(() => this.readConfigCategory(activeCategory, device.id), 100);
+        }
     }
 
     /**
@@ -11858,17 +12254,13 @@ class ModbusDashboard {
             case 'motorInfo':
                 return `<div style="margin-top: 0;">
                     ${row('motorType', '모터 타입', '연결된 모터의 타입 ID (FC 0x2B, 0x2000)', `
-                        <div style="display: flex; gap: 6px; align-items: center;" onclick="event.stopPropagation()">
-                            <select id="motorType_${id}" style="${iStyle}"
-                                onchange="window.dashboard.debouncedApply('motorType', ${id})">
-                                <option value="" ${device.motorType == null ? 'selected' : ''} disabled>-- 선택 --</option>
-                                <option value="4096" ${device.motorType === 4096 ? 'selected' : ''}>Sirocco Motor (0x1000)</option>
-                                <option value="8192" ${device.motorType === 8192 ? 'selected' : ''}>Axial Motor (0x2000)</option>
-                            </select>
-                            <button class="btn btn-sm" title="디바이스에서 읽기"
-                                style="padding: 5px 9px; font-size: 13px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; line-height: 1;"
-                                onclick="window.dashboard.readMotorType(${id})">↻</button>
-                        </div>`)}
+                        <select id="motorType_${id}" style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('motorType', ${id})"
+                            onclick="event.stopPropagation()">
+                            <option value="" ${device.motorType == null ? 'selected' : ''} disabled>-- 선택 --</option>
+                            <option value="4096" ${device.motorType === 4096 ? 'selected' : ''}>Sirocco Motor (0x1000)</option>
+                            <option value="8192" ${device.motorType === 8192 ? 'selected' : ''}>Axial Motor (0x2000)</option>
+                        </select>`)}
                 </div>`;
 
             case 'motor':
@@ -12015,10 +12407,8 @@ class ModbusDashboard {
             contentArea.innerHTML = this.getConfigCategoryHTML(device, categoryName);
         }
 
-        // motorInfo 탭 진입 시 디바이스에서 값 자동 읽기
-        if (categoryName === 'motorInfo') {
-            setTimeout(() => this.readMotorType(device.id), 100);
-        }
+        // 탭 진입 시 해당 카테고리의 파라미터 자동 읽기
+        setTimeout(() => this.readConfigCategory(categoryName, device.id), 100);
     }
 
     /**
@@ -12702,29 +13092,6 @@ class ModbusDashboard {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
 
-        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
-    }
-
-    /**
-     * Read Motor Type from device (0x2000, FC 0x2B CANopen SDO) and update select
-     */
-    async readMotorType(deviceId) {
-        const device = this.devices.find(d => d.id === deviceId);
-        if (!device || !this.writer) return;
-
-        const sel    = document.getElementById(`motorType_${deviceId}`);
-        const status = document.getElementById(`motorType_${deviceId}_status`);
-        if (status) { status.textContent = '↻'; status.title = 'Reading...'; }
-
-        const result = await this.readCANopenObject(device.slaveId, 0x2000, 0x00);
-        if (result && !result.error && result.value != null) {
-            device.motorType = result.value;
-            this.saveDevices();
-            if (sel) sel.value = String(result.value);
-            if (status) { status.textContent = '⭕'; status.title = 'Read successfully'; }
-        } else {
-            if (status) { status.textContent = '❌'; status.title = 'Read failed'; }
-        }
         if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
     }
 

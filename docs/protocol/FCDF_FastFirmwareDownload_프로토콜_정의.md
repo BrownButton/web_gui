@@ -41,10 +41,13 @@
 
 ### 응답(RX) OpCode
 
-| OpCode | 이름 | 설명 |
-|--------|------|------|
-| `0x04` | ACK | 처리 성공 |
-| `0x05` | NACK | 처리 실패 (ErrorCode 포함) |
+모든 응답은 요청과 동일한 OpCode를 에코함.
+`0x03` Data Transfer 응답만 OpCode 다음 바이트(ACK/NACK)로 성공/실패를 구분함.
+
+| 값 | 이름 | 사용 위치 |
+|----|------|----------|
+| `0x04` | ACK  | `0x03` Data 응답 내 ACK/NACK 바이트 (성공) |
+| `0x05` | NACK | `0x03` Data 응답 내 ACK/NACK 바이트 (실패) |
 
 ### NACK ErrorCode
 
@@ -149,32 +152,34 @@
 
 **총 길이: 12 + DataLen bytes**
 
-**RX — ACK (OpCode `0x04`)**
+**RX — ACK**
 
 | 바이트 | 필드 | 크기 | 설명 |
 |--------|------|------|------|
 | 0 | NodeID | 1 B | |
 | 1 | FC | 1 B | `0xDF` |
-| 2 | OpCode | 1 B | `0x04` |
-| 3–4 | SeqNum | 2 B | ACK한 패킷의 SeqNum (에코) |
-| 5–8 | TotalReceived | 4 B | 현재까지 누적 수신 bytes |
-| 9–10 | CRC | 2 B | CRC-16 |
-
-**총 길이: 11 bytes**
-
-**RX — NACK (OpCode `0x05`)**
-
-| 바이트 | 필드 | 크기 | 설명 |
-|--------|------|------|------|
-| 0 | NodeID | 1 B | |
-| 1 | FC | 1 B | `0xDF` |
-| 2 | OpCode | 1 B | `0x05` |
-| 3–4 | SeqNum | 2 B | 실패한 패킷의 SeqNum |
-| 5 | ErrorCode | 1 B | 오류 코드 (위 표 참고) |
-| 6–9 | ExpectedOffset | 4 B | 장치가 기대하는 다음 FlashOffset |
+| 2 | OpCode | 1 B | `0x03` |
+| 3 | ACK/NACK | 1 B | `0x04` = ACK |
+| 4–5 | SeqNum | 2 B | ACK한 패킷의 SeqNum (에코) |
+| 6–9 | TotalReceived | 4 B | 현재까지 누적 수신 bytes |
 | 10–11 | CRC | 2 B | CRC-16 |
 
 **총 길이: 12 bytes**
+
+**RX — NACK**
+
+| 바이트 | 필드 | 크기 | 설명 |
+|--------|------|------|------|
+| 0 | NodeID | 1 B | |
+| 1 | FC | 1 B | `0xDF` |
+| 2 | OpCode | 1 B | `0x03` |
+| 3 | ACK/NACK | 1 B | `0x05` = NACK |
+| 4–5 | SeqNum | 2 B | 실패한 패킷의 SeqNum |
+| 6 | ErrorCode | 1 B | 오류 코드 (위 표 참고) |
+| 7–10 | ExpectedOffset | 4 B | 장치가 기대하는 다음 FlashOffset |
+| 11–12 | CRC | 2 B | CRC-16 |
+
+**총 길이: 13 bytes**
 
 > **패킷 크기:**
 > - 장치 UART 수신 버퍼 최대 256 bytes → 헤더(10 B) + CRC(2 B) 제외 시 **최대 DataLen = 244 bytes**
