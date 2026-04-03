@@ -59,85 +59,42 @@ window.OSTestModules.push({
             purpose:     '드라이브가 지원하는 모든 Baudrate × Parity 조합 환경에서 데이터 손실이나 타이밍 이슈 없이 통신이 정상 동작하는지 전수 검증한다.',
             model:       'EC-FAN',
             equipment:   'EC FAN 1EA, USB to RS485 Converter',
-            criteria:    '20개 모든 조합에서 10회 연속 Polling 응답률 100%, CRC 에러 0회 / 마지막 기본값 복원 완료',
             steps: _RS1_COMBOS.map((c, i) =>
                 c.isDefault
-                    ? `[Case ${i + 1}/20]  ${c.baud}bps × ${c.parity}  ← 기본값, 폴링만 수행`
-                    : `[Case ${i + 1}/20]  ${c.baud}bps × ${c.parity}  — 설정 → SW Reset → 자동 재접속 → 10회 폴링 → 복원 → SW Reset → 자동 재접속`
+                    ? `[Case ${i + 1}/20]  ${c.baud}bps × ${c.parity}  ← 기본값, 폴링만 수행\n판정 기준: 10회 폴링 응답률 100%, CRC 에러 0회`
+                    : `[Case ${i + 1}/20]  ${c.baud}bps × ${c.parity}  — 설정 → SW Reset → 자동 재접속 → 10회 폴링 → 복원 → SW Reset → 자동 재접속\n판정 기준: 설정 유지 확인 + SW Reset 후 자동 재접속 성공 + 10회 폴링 응답률 100%, CRC 에러 0회 + 복원 완료`
             ),
-        },
+            onExpand: function(testItem) {
+                const combos = _RS1_COMBOS;
+                const BAUDS    = [9600, 19200, 38400, 57600, 115200];
+                const PARITIES = ['8E1', '8O1', '8N2', '8N1'];
+                const PARITY_DETAIL = {
+                    '8E1': { label: '8E1', data: '8 bit', parity: 'Even', stop: '1 bit' },
+                    '8O1': { label: '8O1', data: '8 bit', parity: 'Odd',  stop: '1 bit' },
+                    '8N2': { label: '8N2', data: '8 bit', parity: 'None', stop: '2 bit' },
+                    '8N1': { label: '8N1', data: '8 bit', parity: 'None', stop: '1 bit' },
+                };
 
-        // ── RS485 No.2 : Node ID 경계값 및 예외값 통합 검증 (3 Cases) ──────────
-        'rs2': {
-            id:          'rs2',
-            category:    'RS485',
-            number:      '1-2',
-            title:       'Node ID 경계값 및 예외값 검증  (3 Cases)',
-            description: 'BVA 최솟값(1) / 최댓값(247) / 예외값(248·255·0xFFFF) 통합 검증',
-            purpose:     'Modbus 표준 Node ID 허용 범위(1~247)의 경계값 최솟값·최댓값에서 설정 유지 및 통신 무결성을 검증하고, 범위 외 값 Write 시 드라이브가 설정을 거부하고 기존 값을 유지하는지 검증한다.',
-            model:       'EC-FAN',
-            equipment:   'EC FAN 1EA, USB to RS485 Converter',
-            criteria:    'Sub 1: Node ID 1 유지·20회 폴링 100% / Sub 2: Node ID 247 유지·20회 폴링 100%·복원 / Sub 3: 248·255·0xFFFF Write 거부 및 기존값 유지',
-            steps: [
-                '[Sub 1] Node ID = 1  (BVA 최솟값) — Write → EEPROM → SW Reset → 재부팅 → 유지 확인 → 20회 폴링',
-                '[Sub 2] Node ID = 247  (BVA 최댓값) — Write → EEPROM → SW Reset → 재부팅 → 유지 확인 → 20회 폴링 → 복원',
-                '[Sub 3] Node ID 예외값 거부 — 248 / 255 / 0xFFFF Write 시도 시 Exception 반환 및 기존 Node ID 유지',
-            ],
-        },
-
-        // ── RS485 No.3 : Broadcast 통신 규격 준수 통합 검증 (3 Cases) ──────────
-        'rs3': {
-            id:          'rs3',
-            category:    'RS485',
-            number:      '1-3',
-            title:       'Broadcast 통신 규격 준수 및 복구 검증  (3 Cases)',
-            description: 'FC06 무응답 · FC03 Drop · Broadcast 후 Unicast 즉각 복구 통합 검증',
-            purpose:     'Broadcast(Node ID 0) FC06 Write 시 명령 실행 및 무응답 원칙 준수, FC03 Read 시 완전 폐기(Drop), Broadcast 연속 인가 직후 Unicast 즉각 복구 여부를 순차 검증한다.',
-            model:       'EC-FAN',
-            equipment:   'EC FAN 2EA 이상, USB to RS485 Converter',
-            criteria:    'Sub 1: Broadcast FC06 실행 확인 + 응답 0바이트 / Sub 2: Broadcast FC03 완전 Drop / Sub 3: Broadcast 10회 직후 Unicast 200ms 이내 응답',
-            steps: [
-                '[Sub 1] Broadcast FC06 Write — Node ID 0 RPM·Run 송신, 물리 구동 확인, 응답 0바이트 검증',
-                '[Sub 2] Broadcast FC03 Drop — Node ID 0 Read 송신, Exception 없는 완전 Drop 검증',
-                '[Sub 3] Broadcast 10회 연속 후 Unicast 즉각 복구 — 200ms 이내 응답 확인',
-            ],
-        },
-
-    },
-
-    // ─── 커스텀 Executor ──────────────────────────────────────────────────────
-
-    executors: {
-
-        'rs1': async function () {
-            const self  = this;
-            self.checkConnection();
-
-            const combos = _RS1_COMBOS;
-            const total  = combos.length;
-            const passed = [];
-            const failed = [];
-
-            // ── 바둑판 그리드 삽입 ────────────────────────────────────────────
-            const BAUDS    = [9600, 19200, 38400, 57600, 115200];
-            const PARITIES = ['8E1', '8O1', '8N2', '8N1'];
-
-            const testItem = document.querySelector('.os-test-item[data-test-id="rs1"]');
-            if (testItem) {
                 testItem.querySelector('.rs1-grid-section')?.remove();
                 const gridSection = document.createElement('div');
                 gridSection.className = 'rs1-grid-section';
                 gridSection.style.cssText = 'padding:0 20px 20px 20px;';
 
-                const colStyle = `display:grid;grid-template-columns:72px repeat(${PARITIES.length},1fr);gap:4px;`;
+                const colStyle = `display:grid;grid-template-columns:90px repeat(${PARITIES.length},1fr);gap:4px;`;
                 let headerRow = `<div style="font-size:11px;color:#6c757d;padding:4px 0;"></div>`;
                 PARITIES.forEach(p => {
-                    headerRow += `<div style="font-size:11px;font-weight:600;color:#495057;text-align:center;padding:4px 2px;">${p}</div>`;
+                    const d = PARITY_DETAIL[p];
+                    headerRow += `<div style="text-align:center;padding:6px 4px;line-height:1.6;">
+                        <div style="font-size:12px;font-weight:700;color:#343a40;">${d.label}</div>
+                        <div style="font-size:10px;color:#6c757d;">Data ${d.data}, Parity ${d.parity}, Stop ${d.stop}</div>
+                    </div>`;
                 });
 
                 let bodyRows = '';
                 BAUDS.forEach(baud => {
-                    bodyRows += `<div style="font-size:11px;font-weight:600;color:#495057;display:flex;align-items:center;padding:2px 0;">${baud}</div>`;
+                    bodyRows += `<div style="display:flex;align-items:center;padding:2px 0;">
+                        <span style="font-size:12px;font-weight:700;color:#343a40;">${baud.toLocaleString()} bps</span>
+                    </div>`;
                     PARITIES.forEach(parity => {
                         const idx = combos.findIndex(c => c.baud === baud && c.parity === parity);
                         const isDefault = combos[idx]?.isDefault;
@@ -170,14 +127,61 @@ window.OSTestModules.push({
                     .find(el => el.querySelector('.test-log-container'));
                 if (logDiv) logDiv.parentElement.insertBefore(gridSection, logDiv);
                 else testItem.querySelector('.os-test-content').appendChild(gridSection);
+            },
+        },
 
-                const contentEl = testItem.querySelector('.os-test-content');
-                if (contentEl && contentEl.style.display !== 'block') {
-                    contentEl.style.display = 'block';
-                    const expandIcon = testItem.querySelector('.test-expand-icon');
-                    if (expandIcon) expandIcon.style.transform = 'rotate(180deg)';
-                }
-            }
+        // ── RS485 No.2 : Node ID 경계값 및 예외값 통합 검증 (3 Cases) ──────────
+        'rs2': {
+            id:          'rs2',
+            category:    'RS485',
+            number:      '1-2',
+            title:       'Node ID 경계값 및 예외값 검증  (3 Cases)',
+            description: 'BVA 최솟값(1) / 최댓값(247) / 예외값(248·255·0xFFFF) 통합 검증',
+            purpose:     'Modbus 표준 Node ID 허용 범위(1~247)의 경계값 최솟값·최댓값에서 설정 유지 및 통신 무결성을 검증하고, 범위 외 값 Write 시 드라이브가 설정을 거부하고 기존 값을 유지하는지 검증한다.',
+            model:       'EC-FAN',
+            equipment:   'EC FAN 1EA, USB to RS485 Converter',
+            steps: [
+                '[Phase 2-1] Node ID = 1  (BVA 최솟값) — Write → SW Reset → 재부팅 → 유지 확인 → 20회 폴링\n판정 기준: SW Reset 후 Node ID = 1 유지 + 20회 폴링 응답률 100%',
+                '[Phase 2-2] Node ID = 247  (BVA 최댓값) — Write → SW Reset → 재부팅 → 유지 확인 → 20회 폴링 → 복원\n판정 기준: SW Reset 후 Node ID = 247 유지 + 20회 폴링 응답률 100% + Node ID 1 복원 완료',
+                '[Phase 3-1] Node ID 예외값 거부 — 0 / 248~255 Write 시도 시 Exception 반환 및 기존 Node ID 유지\n판정 기준: 0 / 248~255 Write 시도 후 Node ID 불변 (기존값 1 유지)',
+            ],
+        },
+
+        // ── RS485 No.3 : Broadcast 통신 규격 준수 통합 검증 (3 Cases) ──────────
+        'rs3': {
+            id:          'rs3',
+            category:    'RS485',
+            number:      '1-3',
+            title:       'Broadcast 통신 규격 준수 및 복구 검증  (3 Cases)',
+            description: 'FC06 무응답 · FC03 Drop · Broadcast 후 Unicast 즉각 복구 통합 검증',
+            purpose:     'Broadcast(Node ID 0) FC06 Write 시 명령 실행 및 무응답 원칙 준수, FC03 Read 시 완전 폐기(Drop), Broadcast 연속 인가 직후 Unicast 즉각 복구 여부를 순차 검증한다.',
+            model:       'EC-FAN',
+            equipment:   'EC FAN 2EA 이상, USB to RS485 Converter',
+            steps: [
+                '[Phase 2-1] Broadcast FC06 Write — Node ID 0 RPM·Run 송신, 물리 구동 확인, 응답 0바이트 검증\n판정 기준: Broadcast FC06 명령 실행 확인 + 응답 0바이트 (무응답 원칙 준수)',
+                '[Phase 2-2] Broadcast FC03 Drop — Node ID 0 Read 송신, Exception 없는 완전 Drop 검증\n판정 기준: Broadcast FC03 응답 없음 — Exception 포함 완전 Drop',
+                '[Phase 3-1] Broadcast 10회 연속 후 Unicast 즉각 복구 — 200ms 이내 응답 확인\n판정 기준: Broadcast 10회 직후 Unicast 200ms 이내 응답',
+            ],
+        },
+
+    },
+
+    // ─── 커스텀 Executor ──────────────────────────────────────────────────────
+
+    executors: {
+
+        'rs1': async function () {
+            const self  = this;
+            self.checkConnection();
+
+            const combos = _RS1_COMBOS;
+            const total  = combos.length;
+            const passed = [];
+            const failed = [];
+
+            // ── 바둑판 그리드 삽입 (onExpand 재호출로 초기화) ────────────────
+            const testItem = document.querySelector('.os-test-item[data-test-id="rs1"]');
+            if (testItem) this.getTest('rs1').onExpand(testItem);
 
             const setCellState = (idx, state) => {
                 const cell = document.getElementById(`rs1-cell-${idx}`);
@@ -295,8 +299,6 @@ window.OSTestModules.push({
                 try {
                     self.addLog('[0xD100] Node ID = 1 설정', 'step');
                     await window.dashboard.writeRegister(1, 0xD100, 1);
-                    self.addLog('EEPROM 저장  (0x2000 = 0x5555)', 'step');
-                    await window.dashboard.writeRegister(1, 0x2000, 0x5555);
                     self.addLog('Software Reset  (0xD000 = 0x0008)', 'step');
                     await window.dashboard.writeRegister(1, 0xD000, 0x0008);
                     self.addLog('재부팅 대기 (3초)...', 'info');
@@ -344,8 +346,6 @@ window.OSTestModules.push({
 
                     self.addLog('[0xD100] Node ID = 247 설정', 'step');
                     await window.dashboard.writeRegister(1, 0xD100, 247);
-                    self.addLog('EEPROM 저장  (0x2000 = 0x5555)', 'step');
-                    await window.dashboard.writeRegister(1, 0x2000, 0x5555);
                     self.addLog('Software Reset  (0xD000 = 0x0008)', 'step');
                     await window.dashboard.writeRegister(1, 0xD000, 0x0008);
                     self.addLog('재부팅 대기 (3초)...', 'info');
@@ -406,7 +406,7 @@ window.OSTestModules.push({
                     if (self.shouldStopTest) throw new Error('테스트 중단됨');
 
                     let exceptFail = 0;
-                    for (const invalid of [248, 255, 0xFFFF]) {
+                    for (const invalid of [0, 248, 249, 250, 251, 252, 253, 254, 255]) {
                         self.addLog(`[0xD100] 비정상값 ${invalid} Write 시도  (Exception 예상)`, 'step');
                         try {
                             await window.dashboard.writeRegister(1, 0xD100, invalid);
@@ -418,8 +418,28 @@ window.OSTestModules.push({
                         if (cur === 1) {
                             self.addLog(`✓ ${invalid} 시도 후 Node ID = ${cur} 유지 확인`, 'success');
                         } else {
-                            self.addLog(`✗ ${invalid} 시도 후 Node ID 변경됨 (got: ${cur})`, 'error');
+                            self.addLog(`✗ ${invalid} 시도 후 Node ID 변경됨 (got: ${cur ?? 'null'}) — 복원 시도`, 'error');
                             exceptFail++;
+
+                            // Node ID가 변경된 경우 원복 시도
+                            // 디바이스가 invalid 주소로 응답 중일 수 있으므로 invalid slaveId로 시도
+                            const recoverSlaveId = (cur !== null && cur !== undefined) ? cur : invalid;
+                            self.addLog(`[복원] Node ID = 1 Write  (slaveId=${recoverSlaveId})`, 'step');
+                            try {
+                                await window.dashboard.writeRegister(recoverSlaveId, 0xD100, 1);
+                                self.addLog('Software Reset  (0xD000 = 0x0008)', 'step');
+                                await window.dashboard.writeRegister(recoverSlaveId, 0xD000, 0x0008);
+                                self.addLog('재부팅 대기 (3초)...', 'info');
+                                await self.delay(3000);
+                                const restored = await window.dashboard.readRegisterWithTimeout(1, 0xD100);
+                                if (restored === 1) {
+                                    self.addLog('✓ Node ID 복원 완료 (= 1)', 'success');
+                                } else {
+                                    self.addLog(`✗ Node ID 복원 실패 (got: ${restored ?? 'null'})`, 'error');
+                                }
+                            } catch (re) {
+                                self.addLog(`✗ 복원 중 오류: ${re.message}`, 'error');
+                            }
                         }
                         await self.delay(200);
                     }

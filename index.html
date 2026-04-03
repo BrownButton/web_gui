@@ -2285,13 +2285,8 @@
                                     </select>
                                 </div>
                                 <div class="chart-setting-item">
-                                    <label for="chartBufferSize">Buffer</label>
-                                    <select id="chartBufferSize">
-                                        <option value="500">500 pts</option>
-                                        <option value="1000" selected>1000 pts</option>
-                                        <option value="2000">2000 pts</option>
-                                        <option value="5000">5000 pts</option>
-                                    </select>
+                                    <label>Points</label>
+                                    <span id="chartTotalPoints" class="chart-total-points">0</span>
                                 </div>
                                 <div class="chart-setting-item">
                                     <label for="chartSlaveId">Slave ID</label>
@@ -2346,6 +2341,9 @@
                             <button class="yaxis-mode-btn" id="yAxisModeB" title="Normalize 0–100% per channel">B</button>
                             <button class="yaxis-mode-btn" id="yAxisModeC" title="Scale × Offset per channel">C</button>
                             <span class="yaxis-mode-hint" id="yAxisModeHint">Independent</span>
+                            <span class="yaxis-mode-separator"></span>
+                            <span class="yaxis-mode-label">Layout:</span>
+                            <button class="yaxis-mode-btn" id="chartSplitViewBtn" title="채널별 분리 보기 (Split View)">⊞</button>
                         </div>
 
                         <!-- Channel Configuration -->

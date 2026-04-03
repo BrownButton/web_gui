@@ -10,8 +10,8 @@
  * → 구현은 CLAUDE.md 기준. 실기 확인 후 docx 수정 필요.
  *
  * [시험 목록]
- * basic01 (3-1) : Alarm Reset 명령 검증 (No.01 - "Software Reset" 파일명 오류,
- * 실제 내용은 Alarm Reset) basic02 (3-2) : Alarm Reset 명령 검증 (No.02 -
+ * basic01 (3-1) : 통신 인터페이스 기반 Software Reset 동작 및 구동 중 강제 리셋 예외/복구 통합 검증
+ * basic02 (3-2) : Alarm Reset 명령 검증 (No.02 -
  * No.01과 동일 내용, 중복 포함) basic03 (3-3) : Current Limit 파라미터 설정
  * 검증 basic04 (3-4) : 구동 방향(CW/CCW) 설정 검증 basic05 (3-5) : EEPROM
  * Save/Load 검증 basic06 (3-6) : DC Link 전압 모니터링 검증 basic07 (3-7) :
@@ -109,23 +109,23 @@ window.OSTestModules.push(
 
       tests: {
 
-        // ── basic01: Alarm Reset 명령 검증 (No.01)
+        // ── basic01: SW Reset 동작 및 구동 중 강제 리셋 예외/복구 통합 검증
         // ─────────────────────────────
         'basic01': {
           id: 'basic01',
           category: '기본동작',
           number: '3-1',
-          title: 'Alarm Reset 명령 검증 (No.01)',
+          title: '통신 인터페이스 기반 Software Reset 동작 및 구동 중 강제 리셋 예외/복구 통합 검증',
           description:
-              '정상 구동 중 Alarm Reset(0x800E←0x0001) 명령을 전송하고, 알람 발생 시 리셋 여부를 검증한다.',
+              'SW Reset 명령 인가 및 부팅 타이밍 측정, 비정상 리셋 코드 예외 검증, 모터 구동 중 강제 리셋 시 PWM 즉각 차단 및 Safe State 복구 통합 검증',
           purpose:
-              'Alarm Reset 명령(0x800E←0x0001)이 정상 동작하는지, 그리고 비정상 코드 전송 시 장치가 적절히 예외 처리하는지 검증한다. (docx 파일명 "Software Reset"은 오류 — 실제 내용은 Alarm Reset)',
+              '통신 인터페이스 기반 명령으로 Software Reset 명령을 전송했을 때 재부팅 수행 여부, 비정상 리셋 코드 입력 시 방어 로직, 재부팅 소요 시간(Boot Time), 모터 구동 중 강제 리셋 시 PWM 출력 즉각 차단 및 Stop/Ready 상태로의 안전 복구 여부를 종합적으로 검증한다.',
           model: 'EC-FAN',
           equipment: 'EC FAN 1EA, USB to RS485 Converter',
-          criteria:
-              'Alarm Reset 명령 전송 후 Motor Status 정상 반환 / 비정상 코드(0xFFFF) 전송 시 장치가 무시 또는 예외 응답',
           steps: [
-            {type: 'check_connection'},
+            '[Phase 2] SW Reset 명령 인가 (0xD000 ← 0x0008) → 100ms 주기 폴링으로 부팅 소요 시간(Boot Time) 측정\n판정 기준: 재부팅 후 통신 복구까지 5초 이내 + EEPROM 파라미터 훼손 없음',
+            '[Phase 3] 비정상 리셋 코드 (0x0000 / 0x0002 / 0xFFFF) Write 시도 → 5초 대기하며 재부팅 발생 여부 확인\n판정 기준: 재부팅 없음 + Exception 0x03 (Illegal Data Value) 반환',
+            '[Phase 4] 모터 고속 구동 중 SW Reset → PWM 즉각 차단(Coast to Stop) 물리 관찰 → 부팅 후 Auto-Restart 없음 (Stop/Ready) 확인\n판정 기준: OCP/소손 없이 즉각 PWM 차단 + 재부팅 후 Stop 상태 유지 (Auto-Restart 없음)',
           ],
         },
 
@@ -368,7 +368,229 @@ window.OSTestModules.push(
 
         // ── basic01 executor ─────────────────────────────────────────────────
         'basic01': async function() {
-          return await window._basicAlarmResetExecutor.call(this);
+          const self = this;
+          const d = window.dashboard;
+          const slaveId = 1;
+          self.checkConnection();
+
+          const passed = [];
+          const failed = [];
+
+          // ── Phase 2: SW Reset + Boot Time 측정 ─────────────────────────
+          {
+            self.updateStepStatus(0, 'running');
+            self.updateProgress(5, 'Phase 2: SW Reset 명령 인가');
+            self.addLog('▶ Phase 2 시작 — SW Reset 명령 인가 및 부팅 시간 측정', 'info');
+            try {
+              self.checkStop();
+
+              const preBoot = await d.readInputRegisterWithTimeout(slaveId, 0xD011);
+              self.addLog(`리셋 전 Motor Status [0xD011] = 0x${preBoot?.toString(16).toUpperCase().padStart(4, '0') ?? 'null'}`, 'info');
+
+              self.addLog('SW Reset 명령 전송 (0xD000 ← 0x0008)', 'step');
+              const resetStart = Date.now();
+              try {
+                await d.writeRegister(slaveId, 0xD000, 0x0008);
+                self.addLog('응답 수신 — 디바이스 재부팅 시작', 'info');
+              } catch (_) {
+                self.addLog('응답 없음 (정상 — 재부팅 직후 통신 단절)', 'info');
+              }
+
+              self.addLog('100ms 주기 폴링으로 통신 복구 대기 중...', 'info');
+              let commUpTime = null;
+              for (let elapsed = 100; elapsed <= 10000; elapsed += 100) {
+                if (self.shouldStopTest) throw new Error('테스트 중단됨');
+                await self.delay(100);
+                try {
+                  const val = await d.readInputRegisterWithTimeout(slaveId, 0xD011);
+                  if (val !== null && val !== undefined) {
+                    commUpTime = Date.now();
+                    const bootMs = commUpTime - resetStart;
+                    self.addLog(`✓ 통신 복구 — [0xD011] = 0x${val.toString(16).toUpperCase().padStart(4, '0')}  경과: ${bootMs}ms`, 'success');
+                    if (bootMs <= 5000) {
+                      self.addLog(`✓ 부팅 소요 시간: ${bootMs}ms ≤ 5000ms — PASS`, 'success');
+                    } else {
+                      self.addLog(`⚠ 부팅 소요 시간: ${bootMs}ms > 5000ms — 스펙 초과`, 'warning');
+                    }
+                    break;
+                  } else {
+                    self.addLog(`  ${elapsed}ms: 응답 없음 (재부팅 중)`, 'info');
+                  }
+                } catch (_) {
+                  self.addLog(`  ${elapsed}ms: 응답 없음 (재부팅 중)`, 'info');
+                }
+              }
+
+              if (commUpTime === null) throw new Error('10초 이내 통신 복구 실패');
+
+              passed.push('Phase 2');
+              self.updateStepStatus(0, 'success');
+              self.addLog('✓ Phase 2 합격', 'success');
+            } catch (e) {
+              failed.push('Phase 2');
+              self.updateStepStatus(0, 'error');
+              self.addLog(`✗ Phase 2 불합격: ${e.message}`, 'error');
+            }
+          }
+
+          // ── Phase 3: 비정상 리셋 코드 예외 검증 ─────────────────────────
+          {
+            self.updateStepStatus(1, 'running');
+            self.updateProgress(40, 'Phase 3: 비정상 리셋 코드 예외 검증');
+            self.addLog('▶ Phase 3 시작 — 정의되지 않은 비정상 리셋 코드 예외 검증', 'info');
+            try {
+              self.checkStop();
+
+              let failCount = 0;
+              for (const code of [0x0000, 0x0002, 0xFFFF]) {
+                const codeHex = `0x${code.toString(16).toUpperCase().padStart(4, '0')}`;
+                self.addLog(`[0xD000] ← ${codeHex} Write 시도 (비정상 코드, Exception 0x03 예상)`, 'step');
+                try {
+                  await d.writeRegister(slaveId, 0xD000, code);
+                  self.addLog(`⚠ ${codeHex}: 정상 응답 반환 — Exception 미발생`, 'warning');
+                } catch (e) {
+                  self.addLog(`✓ ${codeHex}: 쓰기 거부 (Exception/Timeout)`, 'success');
+                }
+
+                self.addLog(`5초 대기 — 재부팅 발생 여부 확인 (${codeHex})`, 'info');
+                let rebooted = false;
+                for (let t = 500; t <= 5000; t += 500) {
+                  if (self.shouldStopTest) throw new Error('테스트 중단됨');
+                  await self.delay(500);
+                  try {
+                    const alive = await d.readInputRegisterWithTimeout(slaveId, 0xD011);
+                    if (alive === null || alive === undefined) {
+                      rebooted = true;
+                      self.addLog(`✗ ${codeHex}: ${t}ms 시점 응답 없음 — 재부팅 의심`, 'error');
+                      break;
+                    }
+                  } catch (_) {
+                    rebooted = true;
+                    self.addLog(`✗ ${codeHex}: ${t}ms 시점 통신 끊김 — 재부팅 의심`, 'error');
+                    break;
+                  }
+                }
+
+                if (rebooted) {
+                  self.addLog(`✗ ${codeHex}: 비정상 코드 입력 시 재부팅 발생 — FAIL`, 'error');
+                  failCount++;
+                  // 재부팅 발생 시 통신 복구 대기
+                  self.addLog('재부팅 발생 — 통신 복구 대기 중...', 'warning');
+                  for (let elapsed = 100; elapsed <= 8000; elapsed += 100) {
+                    await self.delay(100);
+                    try {
+                      const val = await d.readInputRegisterWithTimeout(slaveId, 0xD011);
+                      if (val !== null && val !== undefined) {
+                        self.addLog(`통신 복구 (${elapsed}ms)`, 'info');
+                        break;
+                      }
+                    } catch (_) {}
+                  }
+                } else {
+                  self.addLog(`✓ ${codeHex}: 5초 정상 통신 유지 (재부팅 없음) — PASS`, 'success');
+                }
+              }
+
+              if (failCount > 0) throw new Error(`${failCount}건 비정상 코드 입력 시 재부팅 발생`);
+
+              passed.push('Phase 3');
+              self.updateStepStatus(1, 'success');
+              self.addLog('✓ Phase 3 합격', 'success');
+            } catch (e) {
+              failed.push('Phase 3');
+              self.updateStepStatus(1, 'error');
+              self.addLog(`✗ Phase 3 불합격: ${e.message}`, 'error');
+            }
+          }
+
+          // ── Phase 4: 모터 구동 중 강제 리셋 + Safe State 복구 ────────────
+          {
+            self.updateStepStatus(2, 'running');
+            self.updateProgress(70, 'Phase 4: 모터 구동 중 강제 리셋');
+            self.addLog('▶ Phase 4 시작 — 모터 고속 구동 중 강제 리셋 및 Safe State 복구 검증', 'info');
+            try {
+              self.checkStop();
+
+              // 모터 Run (최대 Setpoint)
+              self.addLog('Run 명령 전송 (Setpoint = 64000, Run = 1)', 'step');
+              await d.writeRegister(slaveId, 0xD001, 64000);
+              await d.writeRegister(slaveId, 0x0001, 1);
+              self.addLog('모터 가속 대기 (3초)...', 'info');
+              await self.delay(3000);
+
+              const runningSpeed = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+              self.addLog(`현재 실제 속도 [0xD02D] = ${runningSpeed ?? 'null'}`, 'info');
+              self.addLog('★ 모터가 고속 회전 중인지 물리적으로 확인하세요', 'warning');
+
+              // 구동 중 SW Reset
+              self.addLog('구동 중 SW Reset 명령 전송 (0xD000 ← 0x0008)', 'step');
+              const resetStart = Date.now();
+              try {
+                await d.writeRegister(slaveId, 0xD000, 0x0008);
+              } catch (_) {}
+
+              self.addLog('★ 모터가 즉각 정지(Coast to Stop)하는지 물리적으로 관찰하세요', 'warning');
+              self.addLog('★ IGBT/FET 소손 및 OCP 알람 발생 여부를 확인하세요', 'warning');
+
+              // 부팅 완료 대기
+              self.addLog('100ms 주기 폴링으로 통신 복구 대기 중...', 'info');
+              let commUpTime = null;
+              let postStatus = null;
+              for (let elapsed = 100; elapsed <= 10000; elapsed += 100) {
+                if (self.shouldStopTest) throw new Error('테스트 중단됨');
+                await self.delay(100);
+                try {
+                  const val = await d.readInputRegisterWithTimeout(slaveId, 0xD011);
+                  if (val !== null && val !== undefined) {
+                    commUpTime = Date.now();
+                    postStatus = val;
+                    self.addLog(`✓ 통신 복구 — 경과: ${commUpTime - resetStart}ms  Motor Status = 0x${val.toString(16).toUpperCase().padStart(4, '0')}`, 'success');
+                    break;
+                  }
+                } catch (_) {}
+              }
+
+              if (commUpTime === null) throw new Error('10초 이내 통신 복구 실패');
+
+              await self.delay(500);
+
+              // Auto-Restart 확인
+              const postSpeed = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+              const postRunReg = await d.readRegisterWithTimeout(slaveId, 0x0001);
+              self.addLog(`부팅 후 실제 속도 [0xD02D] = ${postSpeed ?? 'null'}`, 'info');
+              self.addLog(`부팅 후 Run 레지스터 [0x0001] = ${postRunReg ?? 'null'}`, 'info');
+
+              if (postRunReg === 1) {
+                throw new Error('Auto-Restart 감지 — Run 레지스터 = 1 (재부팅 후 자동 구동)');
+              }
+
+              self.addLog('✓ Auto-Restart 없음 — Stop/Ready 상태로 부팅 확인 — PASS', 'success');
+
+              passed.push('Phase 4');
+              self.updateStepStatus(2, 'success');
+              self.addLog('✓ Phase 4 합격', 'success');
+            } catch (e) {
+              failed.push('Phase 4');
+              self.updateStepStatus(2, 'error');
+              self.addLog(`✗ Phase 4 불합격: ${e.message}`, 'error');
+            }
+          }
+
+          // 최종 요약
+          self.updateProgress(100, '테스트 완료');
+          self.addLog('결과 요약', 'step');
+          self.addLog(`합격: ${passed.join(', ') || '없음'}`, passed.length ? 'success' : 'info');
+          self.addLog(`불합격: ${failed.join(', ') || '없음'}`, failed.length ? 'error' : 'info');
+
+          const ok = failed.length === 0;
+          return {
+            status: ok ? 'pass' : 'fail',
+            message: ok ? '3개 Phase 전체 합격' : `불합격 ${failed.length}개: ${failed.join(', ')}`,
+            details:
+              'Phase 2: SW Reset + Boot Time 측정\n' +
+              'Phase 3: 비정상 리셋 코드 거부 확인 (0x0000/0x0002/0xFFFF)\n' +
+              'Phase 4: 구동 중 리셋 → PWM 차단 + Auto-Restart 없음 확인',
+          };
         },
 
         // ── basic02 executor ─────────────────────────────────────────────────

@@ -7307,6 +7307,19 @@ select:focus {
     min-width: 80px;
 }
 
+.chart-total-points {
+    padding: 6px 10px;
+    background: #f8f9fa;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'Consolas', monospace;
+    font-weight: 600;
+    color: #2c3e50;
+    min-width: 80px;
+    text-align: center;
+}
+
 /* Trigger Panel */
 .chart-trigger-panel {
     padding: 15px 20px;
@@ -7420,6 +7433,13 @@ select:focus {
     font-size: 11px;
     color: #adb5bd;
     margin-left: 4px;
+}
+
+.yaxis-mode-separator {
+    width: 1px;
+    height: 20px;
+    background: #dee2e6;
+    margin: 0 6px;
 }
 
 /* Scale/Offset inputs (Mode C) */

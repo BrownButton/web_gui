@@ -18,14 +18,17 @@ class ChartManager {
 
         // Channel configuration
         this.channels = [
-            { enabled: true, color: '#3498db', data: [], name: 'CH1', address: 0xD011, scale: 1, offset: 0, chYMin: null, chYMax: null },
-            { enabled: true, color: '#e74c3c', data: [], name: 'CH2', address: 0xD001, scale: 1, offset: 0, chYMin: null, chYMax: null },
-            { enabled: false, color: '#2ecc71', data: [], name: 'CH3', address: 0x0000, scale: 1, offset: 0, chYMin: null, chYMax: null },
-            { enabled: false, color: '#f39c12', data: [], name: 'CH4', address: 0x0000, scale: 1, offset: 0, chYMin: null, chYMax: null }
+            { enabled: true,  color: '#3498db', data: [], name: 'CH1', address: 0xD011, scale: 1, offset: 0, chYMin: null, chYMax: null, runMin: null, runMax: null },
+            { enabled: true,  color: '#e74c3c', data: [], name: 'CH2', address: 0xD001, scale: 1, offset: 0, chYMin: null, chYMax: null, runMin: null, runMax: null },
+            { enabled: false, color: '#2ecc71', data: [], name: 'CH3', address: 0x0000, scale: 1, offset: 0, chYMin: null, chYMax: null, runMin: null, runMax: null },
+            { enabled: false, color: '#f39c12', data: [], name: 'CH4', address: 0x0000, scale: 1, offset: 0, chYMin: null, chYMax: null, runMin: null, runMax: null }
         ];
 
         // Y-axis display mode: 'independent' | 'normalize' | 'scaleoffset'
         this.yAxisMode = 'independent';
+
+        // Split view: each enabled channel rendered in its own horizontal panel
+        this.splitView = false;
 
         // Mode settings
         this.mode = 'continuous'; // 'continuous' | 'trigger'
@@ -50,7 +53,6 @@ class ChartManager {
         // Time settings
         this.timeScale = 5000; // 5 seconds visible
         this.sampleRate = 100; // 100ms between samples
-        this.bufferSize = 1000;
         this.startTime = null;
 
         // Cursor and markers
@@ -320,19 +322,13 @@ class ChartManager {
         const data = this.channels[channelIndex].data;
         if (data.length === 0) return null;
 
-        // Find closest point
-        let closest = null;
-        let minDist = Infinity;
-
-        for (const point of data) {
-            const dist = Math.abs(point.t - timeMs);
-            if (dist < minDist) {
-                minDist = dist;
-                closest = point;
-            }
-        }
-
-        return closest ? closest.v : null;
+        // Binary search — O(log n)
+        const idx = this._bisectLeft(data, timeMs);
+        if (idx === 0) return data[0].v;
+        if (idx >= data.length) return data[data.length - 1].v;
+        const before = data[idx - 1];
+        const after  = data[idx];
+        return Math.abs(before.t - timeMs) <= Math.abs(after.t - timeMs) ? before.v : after.v;
     }
 
     formatTime(ms) {
@@ -365,22 +361,23 @@ class ChartManager {
         const relTime = timestamp - this.startTime;
         const point = { t: relTime, v: value };
 
+        const ch = this.channels[channelIndex];
+
         if (this.mode === 'trigger') {
             this.handleTriggerMode(channelIndex, point);
         } else {
-            // Continuous mode
-            this.channels[channelIndex].data.push(point);
-
-            // Limit buffer size
-            while (this.channels[channelIndex].data.length > this.bufferSize) {
-                this.channels[channelIndex].data.shift();
-            }
+            // Continuous mode — unlimited dynamic buffer
+            ch.data.push(point);
         }
+
+        // Update running min/max — O(1)
+        if (ch.runMin === null || value < ch.runMin) ch.runMin = value;
+        if (ch.runMax === null || value > ch.runMax) ch.runMax = value;
 
         // Update current value display
         this.updateChannelValue(channelIndex, value);
 
-        // Update auto scale
+        // Update auto scale — now O(channels) not O(n_data)
         if (this.autoScale) {
             this.calculateAutoScale();
         }
@@ -445,46 +442,38 @@ class ChartManager {
         }
     }
 
+    // O(channels) — uses running min/max, never scans data[]
     calculateAutoScale() {
         if (this.yAxisMode === 'independent') {
             for (const ch of this.channels) {
-                if (!ch.enabled || ch.data.length === 0) {
+                if (!ch.enabled || ch.runMin === null) {
                     ch.chYMin = 0; ch.chYMax = 100; continue;
                 }
-                let min = Infinity, max = -Infinity;
-                for (const point of ch.data) {
-                    if (point.v < min) min = point.v;
-                    if (point.v > max) max = point.v;
-                }
-                const range = max - min || 1;
-                ch.chYMin = min - range * this.margin;
-                ch.chYMax = max + range * this.margin;
+                const range = (ch.runMax - ch.runMin) || 1;
+                ch.chYMin = ch.runMin - range * this.margin;
+                ch.chYMax = ch.runMax + range * this.margin;
             }
         } else if (this.yAxisMode === 'normalize') {
             for (const ch of this.channels) {
-                if (!ch.enabled || ch.data.length === 0) {
+                if (!ch.enabled || ch.runMin === null) {
                     ch.chYMin = 0; ch.chYMax = 1; continue;
                 }
-                let min = Infinity, max = -Infinity;
-                for (const point of ch.data) {
-                    if (point.v < min) min = point.v;
-                    if (point.v > max) max = point.v;
-                }
-                ch.chYMin = min;
-                ch.chYMax = max === min ? min + 1 : max;
+                ch.chYMin = ch.runMin;
+                ch.chYMax = ch.runMax === ch.runMin ? ch.runMin + 1 : ch.runMax;
             }
             this.yMin = 0;
             this.yMax = 100;
         } else {
-            // scaleoffset: apply per-channel scale+offset, then global range
+            // scaleoffset: apply per-channel scale+offset using running extremes
             let min = Infinity, max = -Infinity;
             for (const ch of this.channels) {
-                if (!ch.enabled) continue;
-                for (const point of ch.data) {
-                    const v = point.v * ch.scale + ch.offset;
-                    if (v < min) min = v;
-                    if (v > max) max = v;
-                }
+                if (!ch.enabled || ch.runMin === null) continue;
+                const v1 = ch.runMin * ch.scale + ch.offset;
+                const v2 = ch.runMax * ch.scale + ch.offset;
+                if (v1 < min) min = v1;
+                if (v2 < min) min = v2;
+                if (v1 > max) max = v1;
+                if (v2 > max) max = v2;
             }
             if (min === Infinity || max === -Infinity) {
                 this.yMin = 0; this.yMax = 100;
@@ -529,6 +518,8 @@ class ChartManager {
     clearData() {
         for (const ch of this.channels) {
             ch.data = [];
+            ch.runMin = null;
+            ch.runMax = null;
         }
         this.markers = [];
         this.preTriggerBuffer = [];
@@ -580,10 +571,14 @@ class ChartManager {
         }
 
         const sampleEl = document.getElementById('chartSampleCount');
-        const timeEl = document.getElementById('chartTimeRange');
+        const timeEl   = document.getElementById('chartTimeRange');
+        const ptsEl    = document.getElementById('chartTotalPoints');
 
         if (sampleEl) sampleEl.textContent = totalSamples;
-        if (timeEl) timeEl.textContent = this.formatTime(timeRange);
+        if (timeEl)   timeEl.textContent   = this.formatTime(timeRange);
+        if (ptsEl)    ptsEl.textContent    = totalSamples >= 1000
+            ? (totalSamples / 1000).toFixed(1) + 'k'
+            : String(totalSamples);
     }
 
     // Animation
@@ -592,6 +587,23 @@ class ChartManager {
             if (!this.isRunning) return;
 
             if (!this.isPaused) {
+                if (this.autoScroll && this.mode === 'continuous') {
+                    const latestTime    = this.getLatestTime();
+                    const targetViewMin = Math.max(0, latestTime - this.timeScale);
+                    const diff          = targetViewMin - this.viewMinTime;
+                    // One frame's worth of smooth motion (timeScale / 60fps).
+                    // If the jump is within this threshold it's normal streaming → snap directly (no lag).
+                    // If it's a large burst arrival → rate-limit to smooth the jump over a few frames.
+                    const threshold = this.timeScale / 60;
+                    if (diff <= threshold) {
+                        // Normal case: snap (covers data arriving faster OR slower than wall clock)
+                        this.viewMinTime = targetViewMin;
+                    } else {
+                        // Burst case: advance by at most one threshold per frame
+                        this.viewMinTime += threshold;
+                    }
+                    this.viewMinTime = Math.max(0, this.viewMinTime);
+                }
                 this.render();
             }
             this.updateStats();
@@ -610,6 +622,11 @@ class ChartManager {
 
     // Rendering
     render() {
+        if (this.splitView) {
+            this.renderSplit();
+            return;
+        }
+
         // Adjust left margin based on Y-axis mode
         if (this.yAxisMode === 'independent') {
             const numActive = this.channels.filter(ch => ch.enabled).length;
@@ -647,6 +664,135 @@ class ChartManager {
         if (this.showCursor && this.cursorPos) {
             this.drawCursor();
         }
+    }
+
+    renderSplit() {
+        const ctx = this.ctx;
+        const enabledChs = this.channels
+            .map((ch, i) => ({ ch, i }))
+            .filter(({ ch }) => ch.enabled);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        if (enabledChs.length === 0) return;
+
+        const n = enabledChs.length;
+        const xAxisH = 30;  // X label space shown on last panel only
+        const panelGap = 3;
+        const panelH = Math.floor((this.height - xAxisH - panelGap * (n - 1)) / n);
+
+        // viewMinTime is updated smoothly in the animation loop, not here
+
+        // Temporarily override shared state so existing draw methods work per-panel
+        const origMargins    = { ...this.chartMargins };
+        const origEnabled    = this.channels.map(ch => ch.enabled);
+        const origYAxisMode  = this.yAxisMode;
+        const origAutoScroll = this.autoScroll;
+
+        this.autoScroll = false; // prevent draw methods from touching viewMinTime
+        this.yAxisMode   = 'independent'; // each panel uses its own Y axis
+
+        enabledChs.forEach(({ ch, i: chIdx }, pIdx) => {
+            const isLast     = pIdx === n - 1;
+            const panelTop   = pIdx * (panelH + panelGap);
+            const panelBottom = panelTop + panelH;
+
+            // Panel separator
+            if (pIdx > 0) {
+                ctx.fillStyle = '#dee2e6';
+                ctx.fillRect(0, panelTop - panelGap, this.width, panelGap);
+            }
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(0, panelTop, this.width, panelH);
+
+            // Set margins so draw methods render into this panel's bounds.
+            // chart bottom = panelBottom; X labels (bottom+5) are clipped
+            // on non-last panels via the clip rect below.
+            this.chartMargins = {
+                top:    panelTop + 14,
+                bottom: this.height - panelBottom,
+                left:   60,
+                right:  20,
+            };
+
+            // Per-channel Y auto-scale — O(1) via running min/max
+            if (ch.runMin !== null) {
+                const range = (ch.runMax - ch.runMin) || 1;
+                ch.chYMin = ch.runMin - range * this.margin;
+                ch.chYMax = ch.runMax + range * this.margin;
+            } else {
+                ch.chYMin = 0; ch.chYMax = 100;
+            }
+
+            // Enable only this channel for this panel's draw pass
+            this.channels.forEach((c, ci) => { c.enabled = ci === chIdx; });
+
+            // Clip: last panel includes xAxisH so X labels are visible;
+            // other panels clip them off to prevent overlap with next panel.
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, panelTop, this.width, isLast ? panelH + xAxisH : panelH);
+            ctx.clip();
+
+            // Reuse existing draw methods — no duplicated rendering logic
+            this.drawGrid();
+            this.drawAxes();
+            this.drawData();
+
+            ctx.restore();
+        });
+
+        // Restore original state
+        this.chartMargins = origMargins;
+        this.channels.forEach((ch, i) => { ch.enabled = origEnabled[i]; });
+        this.yAxisMode   = origYAxisMode;
+        this.autoScroll  = origAutoScroll;
+
+        // Cursor vertical line spanning all panels
+        if (this.showCursor && this.cursorPos) {
+            const x = this.cursorPos.x;
+            const mLeft  = 60;
+            const mRight = this.width - 20;
+            if (x >= mLeft && x <= mRight) {
+                const totalH = n * (panelH + panelGap) - panelGap;
+                ctx.strokeStyle = 'rgba(0, 123, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, totalH);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+    }
+
+    setSplitView(enabled) {
+        this.splitView = enabled;
+        if (!this.isRunning) this.render();
+    }
+
+    // Returns index of first element with .t >= t
+    _bisectLeft(data, t) {
+        let lo = 0, hi = data.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (data[mid].t < t) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo;
+    }
+
+    // Returns index of last element with .t <= t
+    _bisectRight(data, t) {
+        let lo = 0, hi = data.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (data[mid].t <= t) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo - 1;
     }
 
     niceStep(range, targetTicks) {
@@ -828,22 +974,26 @@ class ChartManager {
         ctx.rect(left, top, chartWidth, chartHeight);
         ctx.clip();
 
-        // Auto-scroll: follow latest data unless user has manually panned
-        if (this.autoScroll && this.mode === 'continuous') {
-            const latestTime = this.getLatestTime();
-            this.viewMinTime = Math.max(0, latestTime - this.timeScale);
-        }
+        // viewMinTime is updated smoothly in the animation loop, not here
 
-        // Draw each channel
+        // Draw each channel — only iterate visible window (binary search)
+        const visMin = this.viewMinTime;
+        const visMax = visMin + this.timeScale;
+
         for (const ch of this.channels) {
             if (!ch.enabled || ch.data.length < 2) continue;
+
+            // Binary search: one point before and after visible range for smooth line entry/exit
+            const startIdx = Math.max(0, this._bisectLeft(ch.data, visMin) - 1);
+            const endIdx   = Math.min(ch.data.length - 1, this._bisectRight(ch.data, visMax) + 1);
 
             ctx.strokeStyle = ch.color;
             ctx.lineWidth = 2;
             ctx.beginPath();
 
             let started = false;
-            for (const point of ch.data) {
+            for (let k = startIdx; k <= endIdx; k++) {
+                const point = ch.data[k];
                 const x = this.chartToScreenX(point.t);
                 let y;
                 if (this.yAxisMode === 'independent') {
@@ -1096,10 +1246,6 @@ class ChartManager {
 
     setSampleRate(ms) {
         this.sampleRate = ms;
-    }
-
-    setBufferSize(size) {
-        this.bufferSize = size;
     }
 
     // Trigger settings
@@ -8556,6 +8702,12 @@ class ModbusDashboard {
                 triggerBtn.querySelector('.param-picker-trigger-label').textContent = `${name} (${hex})`;
                 triggerBtn.classList.add('has-selection');
                 popup.style.display = 'none';
+                // Persist selection
+                const saved = JSON.parse(localStorage.getItem('chartChSettings') || '{}');
+                if (!saved[i]) saved[i] = {};
+                saved[i].value = item.dataset.value;
+                saved[i].label = `${name} (${hex})`;
+                localStorage.setItem('chartChSettings', JSON.stringify(saved));
             });
 
             // Search
@@ -8610,6 +8762,24 @@ class ModbusDashboard {
                 triggerBtn.dataset.selectedValue = String(defNum);
                 triggerBtn.querySelector('.param-picker-trigger-label').textContent = `${defCh.name} (${hex})`;
                 triggerBtn.classList.add('has-selection');
+            }
+
+            // Restore persisted settings (overrides defaults)
+            const savedSettings = JSON.parse(localStorage.getItem('chartChSettings') || '{}');
+            const savedCh = savedSettings[i];
+            if (savedCh) {
+                if (savedCh.value != null && savedCh.label) {
+                    triggerBtn.dataset.selectedValue = savedCh.value;
+                    triggerBtn.querySelector('.param-picker-trigger-label').textContent = savedCh.label;
+                    triggerBtn.classList.add('has-selection');
+                }
+                if (typeof savedCh.enabled === 'boolean') {
+                    const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
+                    if (enableEl) {
+                        enableEl.checked = savedCh.enabled;
+                        this.chartManager.setChannelEnabled(i, savedCh.enabled);
+                    }
+                }
             }
         }
     }
@@ -10735,8 +10905,6 @@ class ModbusDashboard {
 
         // Settings dropdowns
         const timeScaleEl = document.getElementById('chartTimeScale');
-        const sampleRateEl = document.getElementById('chartSampleRate');
-        const bufferSizeEl = document.getElementById('chartBufferSize');
 
         if (timeScaleEl) {
             timeScaleEl.addEventListener('change', () => {
@@ -10746,12 +10914,6 @@ class ModbusDashboard {
 
         // sampleRateEl: FC 0x64 Period 드롭다운 — startChartCapture() 시점에 읽음, 리스너 불필요
 
-        if (bufferSizeEl) {
-            bufferSizeEl.addEventListener('change', () => {
-                this.chartManager.setBufferSize(parseInt(bufferSizeEl.value));
-            });
-        }
-
         // Channel configuration — enable/disable만 ChartManager에 전달
         // 채널 번호는 startChartCapture() 시점에 직접 읽음
         for (let i = 0; i < 4; i++) {
@@ -10759,6 +10921,11 @@ class ModbusDashboard {
             if (enableEl) {
                 enableEl.addEventListener('change', () => {
                     this.chartManager.setChannelEnabled(i, enableEl.checked);
+                    // Persist enable state
+                    const saved = JSON.parse(localStorage.getItem('chartChSettings') || '{}');
+                    if (!saved[i]) saved[i] = {};
+                    saved[i].enabled = enableEl.checked;
+                    localStorage.setItem('chartChSettings', JSON.stringify(saved));
                 });
             }
         }
@@ -10855,6 +11022,16 @@ class ModbusDashboard {
         if (yAxisModeA) yAxisModeA.addEventListener('click', () => setYAxisModeUI('independent'));
         if (yAxisModeB) yAxisModeB.addEventListener('click', () => setYAxisModeUI('normalize'));
         if (yAxisModeC) yAxisModeC.addEventListener('click', () => setYAxisModeUI('scaleoffset'));
+
+        // Split view toggle
+        const splitViewBtn = document.getElementById('chartSplitViewBtn');
+        if (splitViewBtn) {
+            splitViewBtn.addEventListener('click', () => {
+                const enabled = !this.chartManager.splitView;
+                this.chartManager.setSplitView(enabled);
+                splitViewBtn.classList.toggle('active', enabled);
+            });
+        }
 
         // Scale/Offset inputs
         for (let i = 0; i < 4; i++) {

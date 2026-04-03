@@ -204,6 +204,11 @@ class OSTestManager {
                 });
             }
 
+            // onExpand 훅 — 테스트 정의에 onExpand 함수가 있으면 항목 열릴 때 호출
+            if (typeof test.onExpand === 'function') {
+                test.onExpand.call(this, testItem);
+            }
+
             const startBtn    = testItem.querySelector('.test-start-btn');
             const stopBtn     = testItem.querySelector('.test-stop-btn');
             const savePngBtn  = testItem.querySelector('.test-save-png-btn');
