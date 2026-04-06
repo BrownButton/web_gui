@@ -577,8 +577,8 @@
                             <div class="device-setup-tab-content" id="deviceSetupManufactureTab" style="flex: 1; padding: 0; display: none; background: white; overflow: hidden; flex-direction: column;">
                                 <!-- Sub-tabs -->
                                 <div style="display: flex; gap: 4px; background: #f8f9fa; padding: 16px 24px 0 24px; border-bottom: 1px solid #e5e5e5; flex-shrink: 0;">
-                                    <button class="manufacture-subtab active" data-subtab="hardware-test" style="padding: 10px 16px; border: none; border-bottom: 2px solid #667eea; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #667eea; transition: all 0.2s;">
-                                        Hardware Test
+                                    <button class="manufacture-subtab active" data-subtab="hw-overview" style="padding: 10px 16px; border: none; border-bottom: 2px solid #667eea; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #667eea; transition: all 0.2s;">
+                                        HW Overview
                                     </button>
                                     <button class="manufacture-subtab" data-subtab="offset" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
                                         Offset Setting
@@ -591,9 +591,6 @@
                                     </button>
                                     <button class="manufacture-subtab" data-subtab="serial-number" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
                                         Serial Number
-                                    </button>
-                                    <button class="manufacture-subtab" data-subtab="hw-overview" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
-                                        HW Overview
                                     </button>
                                 </div>
 
@@ -616,7 +613,7 @@
                                     <button class="btn btn-warning btn-sm" id="osResetTestsBtn">↺ Reset All</button>
                                   </div>
                                 </div>
-                                <div style="flex:1;overflow-y:auto;padding:24px 32px;">
+                                <div id="osTestListContainer" style="flex:1;overflow-y:auto;padding:24px 32px;">
                                     <section style="margin-bottom:28px;">
                                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                                         <h3 style="margin:0;font-size:17px;font-weight:600;color:#1a1a1a;">1. RS485</h3>
@@ -1403,440 +1400,8 @@
                             </div>
                         </div>
 
-                            <!-- Hardware Test Sub-tab -->
-                            <div class="manufacture-subtab-content active" id="manufactureHardwareTest" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
-
-                                <!-- Progress Summary -->
-                                <div style="padding: 20px 32px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; flex-shrink: 0;">
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px; margin-bottom: 16px;">
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 28px; font-weight: 700; color: #1a1a1a;" id="hwTestTotal">14</div>
-                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Total Tests</div>
-                                        </div>
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 28px; font-weight: 700; color: #28a745;" id="hwTestPassed">0</div>
-                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Passed</div>
-                                        </div>
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 28px; font-weight: 700; color: #dc3545;" id="hwTestFailed">0</div>
-                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Failed</div>
-                                        </div>
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 28px; font-weight: 700; color: #6c757d;" id="hwTestPending">14</div>
-                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Pending</div>
-                                        </div>
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 28px; font-weight: 700; color: #667eea;" id="hwTestProgress">0%</div>
-                                            <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Progress</div>
-                                        </div>
-                                    </div>
-                                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                        <button class="btn btn-primary btn-sm" id="hwTestRunAll" onclick="app.runAllHardwareTests()">▶ Run All Tests</button>
-                                        <button class="btn btn-secondary btn-sm" id="hwTestResetAll" onclick="app.resetAllHardwareTests()">↺ Reset All</button>
-                                    </div>
-                                </div>
-
-                                <!-- Test List -->
-                                <div style="flex: 1; overflow-y: auto; padding: 24px 32px;">
-                                    <div style="display: grid; gap: 10px;">
-
-                                            <!-- MCU-01: 펌웨어 버전 읽기 (CANopen SDO 0x27F0~0x27F3) -->
-                                            <div class="hw-test-item" data-test-id="hw-canopen-27f0" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">MCU-01 &nbsp; 펌웨어 버전 읽기 (FC 0x2B / CANopen SDO)</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">main_boot / main_fw / inverter_boot / inverter_fw 버전 문자열 조회</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
-                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
-                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Main MCU Bootloader</span>
-                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x27F0</span>
-                                                            </div>
-                                                            <strong id="hwCanopen27F0Value" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
-                                                            <div id="hwCanopen27F0Raw" style="margin-top: 5px; font-family: monospace; font-size: 11px; color: #6c757d; word-break: break-all;">-</div>
-                                                        </div>
-                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
-                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
-                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Main MCU Firmware</span>
-                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x27F1</span>
-                                                            </div>
-                                                            <strong id="hwCanopen27F1Value" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
-                                                            <div id="hwCanopen27F1Raw" style="margin-top: 5px; font-family: monospace; font-size: 11px; color: #6c757d; word-break: break-all;">-</div>
-                                                        </div>
-                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
-                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
-                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Inverter Bootloader</span>
-                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x27F2</span>
-                                                            </div>
-                                                            <strong id="hwCanopen27F2Value" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
-                                                            <div id="hwCanopen27F2Raw" style="margin-top: 5px; font-family: monospace; font-size: 11px; color: #6c757d; word-break: break-all;">-</div>
-                                                        </div>
-                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px;">
-                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
-                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Inverter Firmware</span>
-                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x27F3</span>
-                                                            </div>
-                                                            <strong id="hwCanopen27F3Value" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
-                                                            <div id="hwCanopen27F3Raw" style="margin-top: 5px; font-family: monospace; font-size: 11px; color: #6c757d; word-break: break-all;">-</div>
-                                                        </div>
-                                                    </div>
-                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
-                                                        <strong>판정 기준:</strong> 4개 버전 문자열 모두 정상 수신되면 합격<br>
-                                                        <span style="color: #6c757d; font-size: 11px;">※ FC 0x2B / MEI 0x0D — ASCII 문자열 (최대 16바이트)</span>
-                                                    </div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-canopen-27f0')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- MCU-03: 모터 ID 읽기 (CANopen SDO 0x2000) -->
-                                            <div class="hw-test-item" data-test-id="hw-canopen-motor-id" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">MCU-03 &nbsp; 모터 ID 읽기 (FC 0x2B / CANopen SDO)</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">FC 0x2B MEI 0x0D — SDO Upload Request (Index 0x2000, Sub 0x00)</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px;">
-                                                        <div style="padding: 10px 12px; background: white; border: 1px solid #e9ecef; border-radius: 6px; display: inline-block; min-width: 200px;">
-                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 7px;">
-                                                                <span style="font-weight: 600; color: #1a1a1a; font-size: 14px;">Motor ID</span>
-                                                                <span style="font-size: 12px; font-family: monospace; background: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 3px;">0x2000</span>
-                                                            </div>
-                                                            <strong id="hwCanopenMotorIdValue" style="font-family: monospace; color: #1a1a1a; font-size: 15px;">-</strong>
-                                                            <div id="hwCanopenMotorIdName" style="margin-top: 5px; font-size: 13px; font-weight: 600; color: #0d6efd;">-</div>
-                                                            <div id="hwCanopenMotorIdRaw" style="margin-top: 3px; font-family: monospace; font-size: 11px; color: #6c757d;">-</div>
-                                                        </div>
-                                                    </div>
-                                                    <div style="padding: 12px 16px; background: #e7f3ff; border-top: 1px solid #e9ecef; font-size: 12px;">
-                                                        <strong>판정 기준:</strong> SDO 응답이 정상 수신되고 Abort 없이 값이 반환되면 합격<br>
-                                                        <span style="color: #6c757d; font-size: 11px;">※ 0x2000 = Motor ID 레지스터</span>
-                                                    </div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-canopen-motor-id')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Power Stack-03: Inverter 출력 및 전류 센싱 -->
-                                            <div class="hw-test-item" data-test-id="hw-write-cmd-test" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Power Stack-03 &nbsp; Inverter 출력 및 전류 센싱</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">0x4004=100, 0x4005=10, 0x2701=1, 0x2700=0x1000 순차 전송</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px;">
-                                                        <div style="font-weight: 500; margin-bottom: 12px; color: #1a1a1a;">파라미터 설정</div>
-                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
-                                                            <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px 12px;">
-                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px;">Aging Current &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4004</code></div>
-                                                                <div style="display: flex; align-items: center; gap: 6px;">
-                                                                    <input type="number" id="hwWriteCmdCurrent" min="0" max="100" placeholder="100" style="width: 100%; padding: 5px 8px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px; font-family: monospace;">
-                                                                    <span style="color: #6c757d; white-space: nowrap;">%</span>
-                                                                </div>
-                                                            </div>
-                                                            <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px 12px;">
-                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px;">Aging Speed &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4005</code></div>
-                                                                <div style="display: flex; align-items: center; gap: 6px;">
-                                                                    <input type="number" id="hwWriteCmdSpeed" min="0" placeholder="10" style="width: 100%; padding: 5px 8px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 13px; font-family: monospace;">
-                                                                    <span style="color: #6c757d; white-space: nowrap;">Hz</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div style="font-weight: 500; margin-bottom: 8px; color: #1a1a1a;">전송 명령 순서</div>
-                                                        <ol style="margin: 0; padding-left: 18px; line-height: 2; color: #404040; font-family: monospace;">
-                                                            <li>write <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4004</code> = Aging Current [%]</li>
-                                                            <li>write <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x4005</code> = Aging Speed [Hz]</li>
-                                                            <li>write <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2701</code> = 1</li>
-                                                            <li>write <code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x2700</code> = 0x1000</li>
-                                                        </ol>
-                                                    </div>
-                                                    <div style="padding: 12px 16px; background: #fff8e1; border-top: 1px solid #e9ecef; font-size: 12px;">
-                                                        <strong>판정 기준:</strong> 4개 Write 명령 모두 오류 없이 전송되면 합격<br>
-                                                        <span style="color: #6c757d; font-size: 11px;">※ 임시 항목 — 실제 동작 확인 후 수정 예정</span>
-                                                    </div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <div style="display: flex; gap: 8px;">
-                                                            <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-write-cmd-test')">▶ Start</button>
-                                                            <button class="btn btn-sm" style="background: #dc3545; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer;" onclick="app.stopPowerStack03()">■ Stop</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Power Stack-04: 파라미터 읽기 -->
-                                            <div class="hw-test-item" data-test-id="hw-ps-04" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Power Stack-04 &nbsp; 파라미터 읽기</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">FC 0x2B: 0x260B, 0x260C 읽기</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px;">
-                                                        <div style="font-weight: 500; margin-bottom: 10px; color: #1a1a1a;">읽기 대상 레지스터</div>
-                                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                                            <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px 12px;">
-                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px;">IPM Temperature &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x260B</code></div>
-                                                                <div id="hwPs04Val260B" style="font-size: 20px; color: #1a1a1a;">—</div>
-                                                            </div>
-                                                            <div style="background: white; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px 12px;">
-                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px;">Board Temperature &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px;">0x260C</code></div>
-                                                                <div id="hwPs04Val260C" style="font-size: 20px; color: #1a1a1a;">—</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('hw-ps-04')">▶ Read</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- MCU: OS 버전 확인 -->
-                                            <div class="hw-test-item" data-test-id="mcu-os-version" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">MCU &nbsp; OS 버전 확인</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">OS 버전 문자열 읽기 및 유효성 검증</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">OS 버전 문자열 읽기 및 유효성 검증</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('mcu-os-version')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- MCU: EEPROM Write/Read 확인 -->
-                                            <div class="hw-test-item" data-test-id="mcu-eeprom" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">MCU &nbsp; EEPROM Write / Read 확인</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">테스트 값 쓰기 → 읽기 → 일치 확인</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">테스트 값 쓰기 → 읽기 → 일치 확인</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('mcu-eeprom')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- MCU: 모터 ID 설정 확인 -->
-                                            <div class="hw-test-item" data-test-id="mcu-motor-id-set" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">MCU &nbsp; 모터 ID 설정 확인</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">Motor ID 레지스터 설정 후 재확인</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">Motor ID 레지스터 설정 후 재확인</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('mcu-motor-id-set')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- PS: DClink 센싱 회로 검증 -->
-                                            <div class="hw-test-item" data-test-id="ps-dclink" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Power Stack &nbsp; DClink 센싱 회로 검증</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">DC 링크 전압 센싱값 읽기 및 범위 검증</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">DC 링크 전압 센싱값 읽기 및 범위 검증</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('ps-dclink')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- PS: 입력 결상 감지 회로 검증 -->
-                                            <div class="hw-test-item" data-test-id="ps-phase-loss" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Power Stack &nbsp; 입력 결상 감지 회로 검증</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">3상 입력 결상 감지 신호 상태 확인</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">3상 입력 결상 감지 신호 상태 확인</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('ps-phase-loss')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- PS: Inverter 출력 및 전류 센싱 검증 -->
-                                            <div class="hw-test-item" data-test-id="ps-inverter-current" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Power Stack &nbsp; Inverter 출력 및 전류 센싱 검증</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">3상 출력 전류 IU·IV·IW 센싱 회로 동작 확인</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">3상 출력 전류 IU·IV·IW 센싱 회로 동작 확인</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('ps-inverter-current')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- PS: IGBT 모듈 온도 검증 -->
-                                            <div class="hw-test-item" data-test-id="ps-igbt-temp" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Power Stack &nbsp; IGBT 모듈 온도 검증</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">IGBT 온도 센서 읽기 및 허용 범위 확인</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">IGBT 온도 센서 읽기 및 허용 범위 확인</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('ps-igbt-temp')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- PS: Hall Sensor 검증 -->
-                                            <div class="hw-test-item" data-test-id="ps-hall-sensor" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Power Stack &nbsp; Hall Sensor 검증</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">Hall 센서 1·2·3 채널 읽기 및 기준값 범위 확인</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">Hall 센서 1·2·3 채널 읽기 및 기준값 범위 확인</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('ps-hall-sensor')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- IF: USB 통신회로 검증 -->
-                                            <div class="hw-test-item" data-test-id="if-usb" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Interface &nbsp; USB 통신회로 검증</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">USB 통신 연결 및 데이터 송수신 동작 확인</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">USB 통신 연결 및 데이터 송수신 동작 확인</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('if-usb')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!-- IF: 485 통신회로 검증 -->
-                                            <div class="hw-test-item" data-test-id="if-485" style="background: white; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                <div class="hw-test-header" style="padding: 14px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;" onclick="app.toggleHwTestItem(this)">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">Interface &nbsp; 485 통신회로 검증</div>
-                                                        <div style="font-size: 11px; color: #6c757d;">RS-485 통신 회로 동작 및 응답 확인</div>
-                                                    </div>
-                                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                                        <span class="hw-test-badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500;">Pending</span>
-                                                        <span style="font-size: 16px; color: #6c757d; transition: transform 0.3s;" class="hw-expand-icon">▼</span>
-                                                    </div>
-                                                </div>
-                                                <div class="hw-test-body" style="display: none; border-top: 1px solid #e9ecef;">
-                                                    <div style="padding: 16px; background: #f8f9fa; font-size: 12px; color: #6c757d;">RS-485 통신 회로 동작 및 응답 확인</div>
-                                                    <div style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid #e9ecef;">
-                                                        <div class="hw-test-result-text" style="font-size: 12px; color: #6c757d;">테스트를 실행하면 결과가 표시됩니다</div>
-                                                        <button class="btn btn-primary btn-sm" onclick="app.runHardwareTest('if-485')">▶ Start</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-
-                                    </div>
-
-                                </div>
-                            </div>
-
                                     <!-- HW Overview Dashboard Sub-tab -->
-                                    <div class="manufacture-subtab-content" id="manufactureHwOverview" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
+                                    <div class="manufacture-subtab-content active" id="manufactureHwOverview" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
 
                                         <!-- Summary Bar -->
                                         <div style="padding: 16px 28px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
@@ -1872,306 +1437,306 @@
 
                                         <!-- Test Cards Grid (외부: 스크롤 담당, 내부: flex 레이아웃 담당 — 분리하지 않으면 flex-shrink가 자식을 압축함) -->
                                         <div style="flex: 1; overflow-y: auto; background: #f8f9fa;">
-                                        <div style="padding: 20px 28px; display: flex; flex-direction: column; gap: 12px;">
+                                        <div style="padding: 24px 32px; display: flex; flex-direction: column; gap: 16px;">
 
                                             <!-- Row 1: Interface 2열 -->
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                                                 <!-- IF: 485 통신회로 검증 -->
-                                                <div id="ovCard-if-485" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                                    <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 10px; background: #d1fae5; color: #065f46; padding: 2px 7px; border-radius: 4px; font-weight: 700;">IF</span>
-                                                        <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">485 통신회로 검증</span>
+                                                <div id="ovCard-if-485" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                        <span style="font-size: 12px; background: #d1fae5; color: #065f46; padding: 3px 9px; border-radius: 4px; font-weight: 700;">IF</span>
+                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">485 통신회로 검증</span>
                                                     </div>
-                                                    <div style="padding: 12px 14px;">
-                                                        <div style="padding: 8px 12px; background: #f8f9fa; border-radius: 6px; font-size: 11px; color: #6c757d; text-align: center;">RS-485 통신 회로 동작 및 응답 확인</div>
+                                                    <div style="padding: 14px 20px;">
+                                                        <div style="padding: 10px 14px; background: #f8f9fa; border-radius: 6px; font-size: 13px; color: #6c757d; text-align: center;">RS-485 통신 회로 동작 및 응답 확인</div>
                                                     </div>
                                                 </div>
                                                 <!-- IF: USB 통신회로 검증 -->
-                                                <div id="ovCard-if-usb" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="app.runUsbHidTest()">
-                                                    <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 10px; background: #d1fae5; color: #065f46; padding: 2px 7px; border-radius: 4px; font-weight: 700;">IF</span>
-                                                        <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">USB 통신회로 검증</span>
-                                                        <span style="font-size: 10px; color: #adb5bd; margin-left: 4px;">클릭하여 테스트</span>
+                                                <div id="ovCard-if-usb" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.runUsbHidTest()">
+                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                        <span style="font-size: 12px; background: #d1fae5; color: #065f46; padding: 3px 9px; border-radius: 4px; font-weight: 700;">IF</span>
+                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">USB 통신회로 검증</span>
+                                                        <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">클릭하여 테스트</span>
                                                     </div>
-                                                    <div style="padding: 10px 14px;">
-                                                        <div style="padding: 8px 10px; background: #fafafa; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 11px; color: #6c757d; white-space: nowrap;">Motor ID &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 10px;">0x2000</span></span>
-                                                            <span id="ov-usb-motor-id" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #1a1a1a; text-align: right;">-</span>
+                                                    <div style="padding: 12px 20px;">
+                                                        <div style="padding: 10px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                            <span style="font-size: 13px; color: #6c757d; white-space: nowrap;">Motor ID &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x2000</span></span>
+                                                            <span id="ov-usb-motor-id" style="font-size: 18px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <!-- Row 2: MCU 2열 (동일 높이) -->
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch;">
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch;">
                                                 <!-- OS 버전 확인 (2x2 grid) -->
-                                                <div id="ovCard-mcu-os-version" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                                    <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 10px; background: #dbeafe; color: #1d4ed8; padding: 2px 7px; border-radius: 4px; font-weight: 700;">MCU</span>
-                                                        <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">OS 버전 확인</span>
+                                                <div id="ovCard-mcu-os-version" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                        <span style="font-size: 12px; background: #dbeafe; color: #1d4ed8; padding: 3px 9px; border-radius: 4px; font-weight: 700;">MCU</span>
+                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">OS 버전 확인</span>
                                                     </div>
-                                                    <div style="padding: 8px 14px 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
-                                                        <div style="padding: 6px 8px; background: #fafafa; border-radius: 4px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-                                                                <span style="font-size: 10px; color: #6c757d;">MCU Boot</span>
-                                                                <span style="font-size: 10px; font-family: monospace; color: #adb5bd;">0x27F0</span>
+                                                    <div style="padding: 12px 20px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                                        <div style="padding: 10px 12px; background: #fafafa; border-radius: 6px;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                                                <span style="font-size: 12px; color: #6c757d;">MCU Boot</span>
+                                                                <span style="font-size: 11px; font-family: monospace; color: #adb5bd;">0x27F0</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 4px; align-items: baseline;">
-                                                                <span id="ov-mcu-boot-ascii" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-mcu-boot" style="font-size: 10px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 1px 4px; border-radius: 3px; white-space: nowrap;">-</span>
-                                                            </div>
-                                                        </div>
-                                                        <div style="padding: 6px 8px; background: #fafafa; border-radius: 4px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-                                                                <span style="font-size: 10px; color: #6c757d;">MCU FW</span>
-                                                                <span style="font-size: 10px; font-family: monospace; color: #adb5bd;">0x27F1</span>
-                                                            </div>
-                                                            <div style="display: flex; gap: 4px; align-items: baseline;">
-                                                                <span id="ov-mcu-fw-ascii" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-mcu-fw" style="font-size: 10px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 1px 4px; border-radius: 3px; white-space: nowrap;">-</span>
+                                                            <div style="display: flex; gap: 6px; align-items: baseline;">
+                                                                <span id="ov-mcu-boot-ascii" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-mcu-boot" style="font-size: 11px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 2px 5px; border-radius: 3px; white-space: nowrap;">-</span>
                                                             </div>
                                                         </div>
-                                                        <div style="padding: 6px 8px; background: #fafafa; border-radius: 4px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-                                                                <span style="font-size: 10px; color: #6c757d;">Inv Boot</span>
-                                                                <span style="font-size: 10px; font-family: monospace; color: #adb5bd;">0x27F2</span>
+                                                        <div style="padding: 10px 12px; background: #fafafa; border-radius: 6px;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                                                <span style="font-size: 12px; color: #6c757d;">MCU FW</span>
+                                                                <span style="font-size: 11px; font-family: monospace; color: #adb5bd;">0x27F1</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 4px; align-items: baseline;">
-                                                                <span id="ov-inv-boot-ascii" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-inv-boot" style="font-size: 10px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 1px 4px; border-radius: 3px; white-space: nowrap;">-</span>
+                                                            <div style="display: flex; gap: 6px; align-items: baseline;">
+                                                                <span id="ov-mcu-fw-ascii" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-mcu-fw" style="font-size: 11px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 2px 5px; border-radius: 3px; white-space: nowrap;">-</span>
                                                             </div>
                                                         </div>
-                                                        <div style="padding: 6px 8px; background: #fafafa; border-radius: 4px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-                                                                <span style="font-size: 10px; color: #6c757d;">Inv FW</span>
-                                                                <span style="font-size: 10px; font-family: monospace; color: #adb5bd;">0x27F3</span>
+                                                        <div style="padding: 10px 12px; background: #fafafa; border-radius: 6px;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                                                <span style="font-size: 12px; color: #6c757d;">Inv Boot</span>
+                                                                <span style="font-size: 11px; font-family: monospace; color: #adb5bd;">0x27F2</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 4px; align-items: baseline;">
-                                                                <span id="ov-inv-fw-ascii" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-inv-fw" style="font-size: 10px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 1px 4px; border-radius: 3px; white-space: nowrap;">-</span>
+                                                            <div style="display: flex; gap: 6px; align-items: baseline;">
+                                                                <span id="ov-inv-boot-ascii" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-inv-boot" style="font-size: 11px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 2px 5px; border-radius: 3px; white-space: nowrap;">-</span>
+                                                            </div>
+                                                        </div>
+                                                        <div style="padding: 10px 12px; background: #fafafa; border-radius: 6px;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                                                <span style="font-size: 12px; color: #6c757d;">Inv FW</span>
+                                                                <span style="font-size: 11px; font-family: monospace; color: #adb5bd;">0x27F3</span>
+                                                            </div>
+                                                            <div style="display: flex; gap: 6px; align-items: baseline;">
+                                                                <span id="ov-inv-fw-ascii" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-inv-fw" style="font-size: 11px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 2px 5px; border-radius: 3px; white-space: nowrap;">-</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <!-- 모터 ID 설정 확인 -->
-                                                <div id="ovCard-mcu-motor-id-set" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                                    <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 10px; background: #dbeafe; color: #1d4ed8; padding: 2px 7px; border-radius: 4px; font-weight: 700;">MCU</span>
-                                                        <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">모터 ID 설정 확인</span>
+                                                <div id="ovCard-mcu-motor-id-set" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                        <span style="font-size: 12px; background: #dbeafe; color: #1d4ed8; padding: 3px 9px; border-radius: 4px; font-weight: 700;">MCU</span>
+                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">모터 ID 설정 확인</span>
                                                     </div>
-                                                    <div style="padding: 10px 14px;">
-                                                        <div style="padding: 8px 10px; background: #fafafa; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 11px; color: #6c757d;">Motor ID &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 10px;">0x2000</span></span>
-                                                            <span id="ov-motor-id" style="font-size: 18px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                    <div style="padding: 12px 20px;">
+                                                        <div style="padding: 12px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                            <span style="font-size: 13px; color: #6c757d;">Motor ID &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x2000</span></span>
+                                                            <span id="ov-motor-id" style="font-size: 26px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <!-- Row 3: PS 3열 (동일 높이) -->
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 12px; align-items: stretch;">
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 16px; align-items: stretch;">
                                                 <!-- DClink 센싱 회로 검증 -->
-                                                <div id="ovCard-ps-dclink" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                                    <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 10px; background: #fff3cd; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                        <span style="font-size: 12px; font-weight: 600; color: #1a1a1a;">DClink 센싱 회로 검증</span>
+                                                <div id="ovCard-ps-dclink" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                        <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #1a1a1a;">DClink 센싱 회로 검증</span>
                                                     </div>
-                                                    <div style="padding: 10px 14px;">
-                                                        <div style="padding: 8px 10px; background: #fafafa; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 11px; color: #6c757d;">DC link V &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 10px;">CH 7</span></span>
-                                                            <span id="ov-dclink-v" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                    <div style="padding: 12px 20px;">
+                                                        <div style="padding: 12px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                            <span style="font-size: 13px; color: #6c757d;">DC link V &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">CH 7</span></span>
+                                                            <span id="ov-dclink-v" style="font-size: 22px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <!-- IGBT 모듈 온도 검증 -->
-                                                <div id="ovCard-ps-igbt-temp" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                                    <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 10px; background: #fff3cd; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                        <span style="font-size: 12px; font-weight: 600; color: #1a1a1a;">IGBT 모듈 온도 검증</span>
+                                                <div id="ovCard-ps-igbt-temp" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                        <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #1a1a1a;">IGBT 모듈 온도 검증</span>
                                                     </div>
-                                                    <div style="padding: 10px 14px;">
-                                                        <div style="padding: 8px 10px; background: #fafafa; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 11px; color: #6c757d;">IGBT Temp &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 10px;">0x260B</span></span>
-                                                            <span id="ov-igbt-motor-id" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                    <div style="padding: 12px 20px;">
+                                                        <div style="padding: 12px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                            <span style="font-size: 13px; color: #6c757d;">IGBT Temp &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x260B</span></span>
+                                                            <span id="ov-igbt-motor-id" style="font-size: 22px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <!-- 입력 결상 감지 회로 검증 -->
-                                                <div id="ovCard-ps-phase-loss" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                                    <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 10px; background: #fff3cd; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                        <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">입력 결상 감지 회로 검증</span>
+                                                <div id="ovCard-ps-phase-loss" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                        <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
+                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">입력 결상 감지 회로 검증</span>
                                                     </div>
-                                                    <div style="padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;">
-                                                        <div style="padding: 8px 10px; background: #fafafa; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 11px; color: #6c757d; white-space: nowrap;">Alarm Code &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 10px;">0x603F</span></span>
-                                                            <span id="ov-alarm-code" style="font-size: 12px; font-weight: 700; font-family: monospace; color: #1a1a1a; text-align: right;">-</span>
+                                                    <div style="padding: 12px 20px; display: flex; flex-direction: column; gap: 8px;">
+                                                        <div style="padding: 10px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                            <span style="font-size: 13px; color: #6c757d; white-space: nowrap;">Alarm Code &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x603F</span></span>
+                                                            <span id="ov-alarm-code" style="font-size: 16px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
                                                         </div>
-                                                        <div style="padding: 8px 10px; background: #fafafa; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 11px; color: #6c757d; white-space: nowrap;">PHA bit &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 10px;">0xD011[0]</span></span>
-                                                            <span id="ov-pha-bit" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                        <div style="padding: 10px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                                            <span style="font-size: 13px; color: #6c757d; white-space: nowrap;">PHA bit &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0xD011[0]</span></span>
+                                                            <span id="ov-pha-bit" style="font-size: 18px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <!-- Row 4: Hall Sensor 검증 -->
-                                            <div id="ovCard-ps-hall-sensor" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="app.toggleMiniChart('hall')">
+                                            <div id="ovCard-ps-hall-sensor" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('hall')">
                                                 <!-- 헤더 -->
-                                                <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
-                                                    <span style="font-size: 10px; background: #fff3cd; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                    <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">Hall Sensor 검증</span>
-                                                    <span style="font-size: 10px; color: #adb5bd; margin-left: 4px;">클릭하여 차트 시작/정지</span>
+                                                <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                    <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
+                                                    <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Hall Sensor 검증</span>
+                                                    <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">클릭하여 차트 시작/정지</span>
                                                 </div>
                                                 <!-- 본문: 좌측 채널 패널 + 우측 캔버스 -->
-                                                <div style="display: flex; align-items: stretch; padding: 10px 14px 14px; gap: 14px;">
-                                                    <!-- 좌측: 채널별 현재값 / min / max (세로 배치) -->
-                                                    <div style="display: flex; flex-direction: column; justify-content: space-around; gap: 6px; min-width: 118px;">
+                                                <div style="display: flex; align-items: stretch; padding: 14px 20px 18px; gap: 18px;">
+                                                    <!-- 좌측: 채널별 현재값 / min / max -->
+                                                    <div style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 165px;">
                                                         <!-- Hall U -->
-                                                        <div style="background: #fafafa; border-radius: 6px; padding: 6px 8px;">
-                                                            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 4px;">
-                                                                <span style="color: #e74c3c; font-size: 12px; line-height: 1;">●</span>
-                                                                <span style="font-size: 11px; color: #6c757d; flex: 1;">Hall U</span>
-                                                                <span id="ov-hall-u" style="font-size: 12px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
+                                                                <span style="color: #e74c3c; font-size: 14px; line-height: 1;">●</span>
+                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall U</span>
+                                                                <span id="ov-hall-u" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 8px; padding-left: 17px;">
-                                                                <span style="font-size: 9px; color: #adb5bd;">min</span>
-                                                                <span id="ov-hall-u-min" style="font-size: 9px; font-family: monospace; color: #3498db; min-width: 34px;">-</span>
-                                                                <span style="font-size: 9px; color: #adb5bd;">max</span>
-                                                                <span id="ov-hall-u-max" style="font-size: 9px; font-family: monospace; color: #e74c3c; min-width: 34px;">-</span>
+                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
+                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                <span id="ov-hall-u-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                <span id="ov-hall-u-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
                                                             </div>
                                                         </div>
                                                         <!-- Hall V -->
-                                                        <div style="background: #fafafa; border-radius: 6px; padding: 6px 8px;">
-                                                            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 4px;">
-                                                                <span style="color: #3498db; font-size: 12px; line-height: 1;">●</span>
-                                                                <span style="font-size: 11px; color: #6c757d; flex: 1;">Hall V</span>
-                                                                <span id="ov-hall-v" style="font-size: 12px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
+                                                                <span style="color: #3498db; font-size: 14px; line-height: 1;">●</span>
+                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall V</span>
+                                                                <span id="ov-hall-v" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 8px; padding-left: 17px;">
-                                                                <span style="font-size: 9px; color: #adb5bd;">min</span>
-                                                                <span id="ov-hall-v-min" style="font-size: 9px; font-family: monospace; color: #3498db; min-width: 34px;">-</span>
-                                                                <span style="font-size: 9px; color: #adb5bd;">max</span>
-                                                                <span id="ov-hall-v-max" style="font-size: 9px; font-family: monospace; color: #e74c3c; min-width: 34px;">-</span>
+                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
+                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                <span id="ov-hall-v-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                <span id="ov-hall-v-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
                                                             </div>
                                                         </div>
                                                         <!-- Hall W -->
-                                                        <div style="background: #fafafa; border-radius: 6px; padding: 6px 8px;">
-                                                            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 4px;">
-                                                                <span style="color: #2ecc71; font-size: 12px; line-height: 1;">●</span>
-                                                                <span style="font-size: 11px; color: #6c757d; flex: 1;">Hall W</span>
-                                                                <span id="ov-hall-w" style="font-size: 12px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
+                                                                <span style="color: #2ecc71; font-size: 14px; line-height: 1;">●</span>
+                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall W</span>
+                                                                <span id="ov-hall-w" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 8px; padding-left: 17px;">
-                                                                <span style="font-size: 9px; color: #adb5bd;">min</span>
-                                                                <span id="ov-hall-w-min" style="font-size: 9px; font-family: monospace; color: #3498db; min-width: 34px;">-</span>
-                                                                <span style="font-size: 9px; color: #adb5bd;">max</span>
-                                                                <span id="ov-hall-w-max" style="font-size: 9px; font-family: monospace; color: #e74c3c; min-width: 34px;">-</span>
+                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
+                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                <span id="ov-hall-w-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                <span id="ov-hall-w-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <!-- 우측: 캔버스 -->
                                                     <div style="flex: 1; min-width: 0;">
-                                                        <canvas id="miniChartHall" style="width: 100%; height: 160px; border-radius: 6px; display: block; background: #fafafa;"></canvas>
+                                                        <canvas id="miniChartHall" style="width: 100%; height: 220px; border-radius: 8px; display: block; background: #fafafa;"></canvas>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <!-- Row 5: Inverter 출력 및 전류 센싱 검증 (전체 너비, 세로형) -->
-                                            <div id="ovCard-ps-inverter-current" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer;" onclick="app.toggleMiniChart('current')">
+                                            <!-- Row 5: Inverter 출력 및 전류 센싱 검증 -->
+                                            <div id="ovCard-ps-inverter-current" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('current')">
                                                 <!-- 헤더 -->
-                                                <div style="padding: 11px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f0f0f0;">
-                                                    <span style="font-size: 10px; background: #fff3cd; color: #b45309; padding: 2px 7px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                    <span style="font-size: 13px; font-weight: 600; color: #1a1a1a;">Inverter 출력 및 전류 센싱 검증</span>
-                                                    <span style="font-size: 10px; color: #adb5bd; margin-left: 4px;">클릭하여 차트 시작/정지</span>
+                                                <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                    <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
+                                                    <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Inverter 출력 및 전류 센싱 검증</span>
+                                                    <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">클릭하여 차트 시작/정지</span>
                                                 </div>
                                                 <!-- 컨트롤 행 (클릭 전파 차단) -->
-                                                <div onclick="event.stopPropagation()" style="padding: 8px 14px 6px; display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid #f8f8f8;">
+                                                <div onclick="event.stopPropagation()" style="padding: 12px 20px 10px; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid #f0f0f0;">
                                                     <!-- Aging Current -->
-                                                    <div style="display: flex; flex-direction: column; gap: 3px;">
-                                                        <label style="font-size: 10px; color: #6c757d;">Aging Current &nbsp;<code style="background: #e9ecef; padding: 1px 3px; border-radius: 3px; font-size: 10px;">0x4004</code></label>
-                                                        <div style="display: flex; align-items: center; gap: 4px;">
-                                                            <input type="number" id="ovInverterCurrent" min="0" max="100" value="10" style="width: 80px; padding: 4px 6px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; font-family: monospace;">
-                                                            <span style="font-size: 11px; color: #6c757d;">%</span>
+                                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                                        <label style="font-size: 12px; color: #6c757d;">Aging Current &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px; font-size: 11px;">0x4004</code></label>
+                                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                                            <input type="number" id="ovInverterCurrent" min="0" max="100" value="10" style="width: 90px; padding: 6px 8px; border: 1px solid #dee2e6; border-radius: 5px; font-size: 14px; font-family: monospace;">
+                                                            <span style="font-size: 13px; color: #6c757d;">%</span>
                                                         </div>
                                                     </div>
                                                     <!-- Aging Speed -->
-                                                    <div style="display: flex; flex-direction: column; gap: 3px;">
-                                                        <label style="font-size: 10px; color: #6c757d;">Aging Speed &nbsp;<code style="background: #e9ecef; padding: 1px 3px; border-radius: 3px; font-size: 10px;">0x4005</code></label>
-                                                        <div style="display: flex; align-items: center; gap: 4px;">
-                                                            <input type="number" id="ovInverterSpeed" min="0" value="10" style="width: 80px; padding: 4px 6px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px; font-family: monospace;">
-                                                            <span style="font-size: 11px; color: #6c757d;">Hz</span>
+                                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                                        <label style="font-size: 12px; color: #6c757d;">Aging Speed &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px; font-size: 11px;">0x4005</code></label>
+                                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                                            <input type="number" id="ovInverterSpeed" min="0" value="10" style="width: 90px; padding: 6px 8px; border: 1px solid #dee2e6; border-radius: 5px; font-size: 14px; font-family: monospace;">
+                                                            <span style="font-size: 13px; color: #6c757d;">Hz</span>
                                                         </div>
                                                     </div>
                                                     <!-- Start / Stop / Copy 버튼 -->
-                                                    <div style="display: flex; gap: 6px; align-self: flex-end;">
-                                                        <button id="ovInverterStartBtn" class="btn btn-primary btn-sm" style="font-size: 11px; padding: 4px 14px;" onclick="app.startOvInverter()">▶ Start</button>
-                                                        <button id="ovInverterStopBtn" class="btn btn-sm" style="font-size: 11px; padding: 4px 14px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="app.stopOvInverter()">■ Stop</button>
-                                                        <button class="btn btn-sm" style="font-size: 11px; padding: 4px 12px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="app.copyInverterResults()">Copy</button>
+                                                    <div style="display: flex; gap: 8px; align-self: flex-end;">
+                                                        <button id="ovInverterStartBtn" class="btn btn-primary btn-sm" style="font-size: 13px; padding: 6px 18px;" onclick="app.startOvInverter()">▶ Start</button>
+                                                        <button id="ovInverterStopBtn" class="btn btn-sm" style="font-size: 13px; padding: 6px 18px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;" onclick="app.stopOvInverter()">■ Stop</button>
+                                                        <button class="btn btn-sm" style="font-size: 13px; padding: 6px 16px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;" onclick="app.copyInverterResults()">Copy</button>
                                                     </div>
                                                 </div>
                                                 <!-- 본문: 좌측 채널 패널 + 우측 캔버스 -->
-                                                <div style="display: flex; align-items: stretch; padding: 10px 14px 14px; gap: 14px;">
-                                                    <!-- 좌측: 채널별 현재값 / min / max (세로 배치, 클릭 전파 차단) -->
-                                                    <div onclick="event.stopPropagation()" style="display: flex; flex-direction: column; justify-content: space-around; gap: 6px; min-width: 118px;">
+                                                <div style="display: flex; align-items: stretch; padding: 14px 20px 18px; gap: 18px;">
+                                                    <!-- 좌측: 채널별 현재값 / min / max (클릭 전파 차단) -->
+                                                    <div onclick="event.stopPropagation()" style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 165px;">
                                                         <!-- Iu -->
-                                                        <div style="background: #fafafa; border-radius: 6px; padding: 6px 8px;">
-                                                            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 4px;">
-                                                                <span style="color: #e74c3c; font-size: 12px; line-height: 1;">●</span>
-                                                                <span style="font-size: 11px; color: #6c757d; flex: 1;">Iu</span>
-                                                                <span id="ov-iu" style="font-size: 12px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
+                                                                <span style="color: #e74c3c; font-size: 14px; line-height: 1;">●</span>
+                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Iu</span>
+                                                                <span id="ov-iu" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 8px; padding-left: 17px;">
-                                                                <span style="font-size: 9px; color: #adb5bd;">min</span>
-                                                                <span id="ov-iu-min" style="font-size: 9px; font-family: monospace; color: #3498db; min-width: 34px;">-</span>
-                                                                <span style="font-size: 9px; color: #adb5bd;">max</span>
-                                                                <span id="ov-iu-max" style="font-size: 9px; font-family: monospace; color: #e74c3c; min-width: 34px;">-</span>
+                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
+                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                <span id="ov-iu-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                <span id="ov-iu-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 8px; padding-left: 17px; margin-top: 2px;">
-                                                                <span style="font-size: 9px; color: #adb5bd;">rms</span>
-                                                                <span id="ov-iu-rms" style="font-size: 9px; font-family: monospace; color: #8e44ad; min-width: 34px;">-</span>
+                                                            <div style="display: flex; gap: 10px; padding-left: 21px; margin-top: 3px;">
+                                                                <span style="font-size: 11px; color: #adb5bd;">rms</span>
+                                                                <span id="ov-iu-rms" style="font-size: 11px; font-family: monospace; color: #8e44ad; min-width: 40px;">-</span>
                                                             </div>
                                                         </div>
                                                         <!-- Iv -->
-                                                        <div style="background: #fafafa; border-radius: 6px; padding: 6px 8px;">
-                                                            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 4px;">
-                                                                <span style="color: #3498db; font-size: 12px; line-height: 1;">●</span>
-                                                                <span style="font-size: 11px; color: #6c757d; flex: 1;">Iv</span>
-                                                                <span id="ov-iv" style="font-size: 12px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
+                                                                <span style="color: #3498db; font-size: 14px; line-height: 1;">●</span>
+                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Iv</span>
+                                                                <span id="ov-iv" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 8px; padding-left: 17px;">
-                                                                <span style="font-size: 9px; color: #adb5bd;">min</span>
-                                                                <span id="ov-iv-min" style="font-size: 9px; font-family: monospace; color: #3498db; min-width: 34px;">-</span>
-                                                                <span style="font-size: 9px; color: #adb5bd;">max</span>
-                                                                <span id="ov-iv-max" style="font-size: 9px; font-family: monospace; color: #e74c3c; min-width: 34px;">-</span>
+                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
+                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                <span id="ov-iv-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                <span id="ov-iv-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 8px; padding-left: 17px; margin-top: 2px;">
-                                                                <span style="font-size: 9px; color: #adb5bd;">rms</span>
-                                                                <span id="ov-iv-rms" style="font-size: 9px; font-family: monospace; color: #8e44ad; min-width: 34px;">-</span>
+                                                            <div style="display: flex; gap: 10px; padding-left: 21px; margin-top: 3px;">
+                                                                <span style="font-size: 11px; color: #adb5bd;">rms</span>
+                                                                <span id="ov-iv-rms" style="font-size: 11px; font-family: monospace; color: #8e44ad; min-width: 40px;">-</span>
                                                             </div>
                                                         </div>
                                                         <!-- Iw -->
-                                                        <div style="background: #fafafa; border-radius: 6px; padding: 6px 8px;">
-                                                            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 4px;">
-                                                                <span style="color: #2ecc71; font-size: 12px; line-height: 1;">●</span>
-                                                                <span style="font-size: 11px; color: #6c757d; flex: 1;">Iw</span>
-                                                                <span id="ov-iw" style="font-size: 12px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                            <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
+                                                                <span style="color: #2ecc71; font-size: 14px; line-height: 1;">●</span>
+                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Iw</span>
+                                                                <span id="ov-iw" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 8px; padding-left: 17px;">
-                                                                <span style="font-size: 9px; color: #adb5bd;">min</span>
-                                                                <span id="ov-iw-min" style="font-size: 9px; font-family: monospace; color: #3498db; min-width: 34px;">-</span>
-                                                                <span style="font-size: 9px; color: #adb5bd;">max</span>
-                                                                <span id="ov-iw-max" style="font-size: 9px; font-family: monospace; color: #e74c3c; min-width: 34px;">-</span>
+                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
+                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                <span id="ov-iw-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                <span id="ov-iw-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 8px; padding-left: 17px; margin-top: 2px;">
-                                                                <span style="font-size: 9px; color: #adb5bd;">rms</span>
-                                                                <span id="ov-iw-rms" style="font-size: 9px; font-family: monospace; color: #8e44ad; min-width: 34px;">-</span>
+                                                            <div style="display: flex; gap: 10px; padding-left: 21px; margin-top: 3px;">
+                                                                <span style="font-size: 11px; color: #adb5bd;">rms</span>
+                                                                <span id="ov-iw-rms" style="font-size: 11px; font-family: monospace; color: #8e44ad; min-width: 40px;">-</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <!-- 우측: 캔버스 -->
                                                     <div style="flex: 1; min-width: 0;">
-                                                        <canvas id="miniChartCurrent" style="width: 100%; height: 160px; border-radius: 6px; display: block; background: #fafafa;"></canvas>
+                                                        <canvas id="miniChartCurrent" style="width: 100%; height: 220px; border-radius: 8px; display: block; background: #fafafa;"></canvas>
                                                     </div>
                                                 </div>
                                             </div>
@@ -2699,8 +2264,8 @@
                                     <select id="chartTimeScale">
                                         <option value="1000">1s</option>
                                         <option value="2000">2s</option>
-                                        <option value="5000" selected>5s</option>
-                                        <option value="10000">10s</option>
+                                        <option value="5000">5s</option>
+                                        <option value="10000" selected>10s</option>
                                         <option value="30000">30s</option>
                                         <option value="60000">1m</option>
                                     </select>
@@ -2708,21 +2273,20 @@
                                 <div class="chart-setting-item">
                                     <label for="chartSampleRate">Period</label>
                                     <select id="chartSampleRate">
-                                        <option value="160">20 ms</option>
+                                        <option value="8">1 ms</option>
+                                        <option value="16">2 ms</option>
+                                        <option value="40">5 ms</option>
+                                        <option value="80">10 ms</option>
+                                        <option value="160" selected>20 ms</option>
                                         <option value="800">100 ms</option>
-                                        <option value="1600" selected>200 ms</option>
+                                        <option value="1600">200 ms</option>
                                         <option value="4000">500 ms</option>
                                         <option value="8000">1 s</option>
                                     </select>
                                 </div>
                                 <div class="chart-setting-item">
-                                    <label for="chartBufferSize">Buffer</label>
-                                    <select id="chartBufferSize">
-                                        <option value="500">500 pts</option>
-                                        <option value="1000" selected>1000 pts</option>
-                                        <option value="2000">2000 pts</option>
-                                        <option value="5000">5000 pts</option>
-                                    </select>
+                                    <label>Points</label>
+                                    <span id="chartTotalPoints" class="chart-total-points">0</span>
                                 </div>
                                 <div class="chart-setting-item">
                                     <label for="chartSlaveId">Slave ID</label>
@@ -2770,6 +2334,18 @@
                             </div>
                         </div>
 
+                        <!-- Y-axis Mode Selector -->
+                        <div class="chart-yaxis-mode-panel">
+                            <span class="yaxis-mode-label">Y-Axis:</span>
+                            <button class="yaxis-mode-btn active" id="yAxisModeA" title="Independent Y-axes per channel">A</button>
+                            <button class="yaxis-mode-btn" id="yAxisModeB" title="Normalize 0–100% per channel">B</button>
+                            <button class="yaxis-mode-btn" id="yAxisModeC" title="Scale × Offset per channel">C</button>
+                            <span class="yaxis-mode-hint" id="yAxisModeHint">Independent</span>
+                            <span class="yaxis-mode-separator"></span>
+                            <span class="yaxis-mode-label">Layout:</span>
+                            <button class="yaxis-mode-btn" id="chartSplitViewBtn" title="채널별 분리 보기 (Split View)">⊞</button>
+                        </div>
+
                         <!-- Channel Configuration -->
                         <div class="chart-channel-panel">
                             <div class="channel-config" data-channel="0">
@@ -2779,12 +2355,20 @@
                                     <span class="channel-name">CH1</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh1Addr">Ch#:</label>
-                                    <input type="number" id="chartCh1Addr" value="1" min="0" max="254" placeholder="0-254">
+                                    <button class="param-picker-trigger" id="chartCh1Trigger" type="button">
+                                        <span class="param-picker-trigger-label">채널 선택...</span>
+                                        <span class="param-picker-trigger-arrow">▾</span>
+                                    </button>
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
                                     <span class="channel-current-value" id="chartCh1Value">--</span>
+                                </div>
+                                <div class="channel-scale-offset" style="display:none">
+                                    <span class="scale-offset-label">×</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh1Scale" value="1" step="0.1">
+                                    <span class="scale-offset-label">+</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh1Offset" value="0" step="1">
                                 </div>
                             </div>
                             <div class="channel-config" data-channel="1">
@@ -2794,12 +2378,20 @@
                                     <span class="channel-name">CH2</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh2Addr">Ch#:</label>
-                                    <input type="number" id="chartCh2Addr" value="2" min="0" max="254" placeholder="0-254">
+                                    <button class="param-picker-trigger" id="chartCh2Trigger" type="button">
+                                        <span class="param-picker-trigger-label">채널 선택...</span>
+                                        <span class="param-picker-trigger-arrow">▾</span>
+                                    </button>
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
                                     <span class="channel-current-value" id="chartCh2Value">--</span>
+                                </div>
+                                <div class="channel-scale-offset" style="display:none">
+                                    <span class="scale-offset-label">×</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh2Scale" value="1" step="0.1">
+                                    <span class="scale-offset-label">+</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh2Offset" value="0" step="1">
                                 </div>
                             </div>
                             <div class="channel-config" data-channel="2">
@@ -2809,12 +2401,20 @@
                                     <span class="channel-name">CH3</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh3Addr">Ch#:</label>
-                                    <input type="number" id="chartCh3Addr" value="3" min="0" max="254" placeholder="0-254">
+                                    <button class="param-picker-trigger" id="chartCh3Trigger" type="button">
+                                        <span class="param-picker-trigger-label">채널 선택...</span>
+                                        <span class="param-picker-trigger-arrow">▾</span>
+                                    </button>
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
                                     <span class="channel-current-value" id="chartCh3Value">--</span>
+                                </div>
+                                <div class="channel-scale-offset" style="display:none">
+                                    <span class="scale-offset-label">×</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh3Scale" value="1" step="0.1">
+                                    <span class="scale-offset-label">+</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh3Offset" value="0" step="1">
                                 </div>
                             </div>
                             <div class="channel-config" data-channel="3">
@@ -2824,12 +2424,20 @@
                                     <span class="channel-name">CH4</span>
                                 </label>
                                 <div class="channel-address">
-                                    <label for="chartCh4Addr">Ch#:</label>
-                                    <input type="number" id="chartCh4Addr" value="4" min="0" max="254" placeholder="0-254">
+                                    <button class="param-picker-trigger" id="chartCh4Trigger" type="button">
+                                        <span class="param-picker-trigger-label">채널 선택...</span>
+                                        <span class="param-picker-trigger-arrow">▾</span>
+                                    </button>
                                 </div>
                                 <div class="channel-value">
                                     <span class="channel-current-label">Value:</span>
                                     <span class="channel-current-value" id="chartCh4Value">--</span>
+                                </div>
+                                <div class="channel-scale-offset" style="display:none">
+                                    <span class="scale-offset-label">×</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh4Scale" value="1" step="0.1">
+                                    <span class="scale-offset-label">+</span>
+                                    <input type="number" class="scale-offset-input" id="chartCh4Offset" value="0" step="1">
                                 </div>
                             </div>
                         </div>
@@ -3122,6 +2730,10 @@
                         <span class="settings-menu-icon">🔧</span>
                         <span class="settings-menu-text">Simulator</span>
                     </div>
+                    <div class="settings-menu-item" data-setting="serial-port-scan">
+                        <span class="settings-menu-icon">📡</span>
+                        <span class="settings-menu-text">Port Scan</span>
+                    </div>
                     <div class="settings-menu-item" data-setting="polling">
                         <span class="settings-menu-icon">🔄</span>
                         <span class="settings-menu-text">Polling</span>
@@ -3233,6 +2845,69 @@
                         <div id="scanResults" style="display: none; margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 4px;">
                             <strong style="display: block; margin-bottom: 10px;">탐색 결과:</strong>
                             <div id="scanResultsList" style="font-size: 13px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Serial Port Scan Settings -->
+                    <div class="settings-panel" id="settings-serial-port-scan">
+                        <h4>Serial Port Scan</h4>
+                        <p style="color: #6c757d; margin-bottom: 20px; font-size: 13px;">
+                            Baud Rate · Parity · Stop Bit 조합을 순서대로 변경하며 장치를 탐색합니다.<br>
+                            스캔 완료 후 <strong>이 설정 적용</strong> 버튼으로 원하는 설정을 즉시 적용할 수 있습니다.<br>
+                            <strong>시리얼 포트에 연결된 상태에서만 사용 가능합니다.</strong>
+                        </p>
+
+                        <div class="form-group">
+                            <label>Baud Rate</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px;">
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-baudRate" value="9600"> 9600</label>
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-baudRate" value="19200" checked> 19200</label>
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-baudRate" value="38400"> 38400</label>
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-baudRate" value="57600"> 57600</label>
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-baudRate" value="115200"> 115200</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Parity</label>
+                            <div style="display: flex; gap: 16px; margin-top: 6px;">
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-parity" value="none"> None</label>
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-parity" value="even" checked> Even</label>
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-parity" value="odd"> Odd</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Stop Bits</label>
+                            <div style="display: flex; gap: 16px; margin-top: 6px;">
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-stopBits" value="1" checked> 1</label>
+                                <label style="display:flex;align-items:center;gap:5px;font-weight:normal;cursor:pointer;"><input type="checkbox" class="spScan-stopBits" value="2"> 2</label>
+                            </div>
+                        </div>
+
+                        <small style="color: #6c757d; display: block; margin-bottom: 16px;">
+                            스캔 범위 및 응답 대기 시간은 <strong>Auto Scan</strong> 설정의 탐색 범위 / 응답 대기 시간을 그대로 사용합니다.
+                        </small>
+
+                        <div style="display: flex; gap: 10px;">
+                            <button id="spScanStartBtn" class="btn btn-primary">
+                                <span>📡</span> 포트 스캔 시작
+                            </button>
+                            <button id="spScanStopBtn" class="btn btn-secondary" disabled>
+                                <span>■</span> 중지
+                            </button>
+                        </div>
+
+                        <div id="spScanProgress" style="display: none; margin-top: 20px;">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="spScanProgressBar" style="width: 0%"></div>
+                            </div>
+                            <p id="spScanProgressText" style="text-align: center; margin-top: 10px; color: #6c757d; font-size: 13px;"></p>
+                        </div>
+
+                        <div id="spScanResults" style="display: none; margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 4px;">
+                            <strong style="display: block; margin-bottom: 10px;">포트 스캔 결과:</strong>
+                            <div id="spScanResultsList" style="font-size: 13px;"></div>
                         </div>
                     </div>
 
@@ -3421,11 +3096,13 @@
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="modbus.js"></script>
     <script src="simulator.js"></script>
     <script src="os-test-manager.js"></script>
     <script src="os-test-rs485.js"></script>
     <script src="os-test-modbus.js"></script>
+    <script src="lsm-exporter.js"></script>
     <script src="os-test-basic.js"></script>
     <script src="os-test-drive.js"></script>
     <script src="os-test-protection.js"></script>

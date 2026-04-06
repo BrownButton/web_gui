@@ -18,11 +18,17 @@ class ChartManager {
 
         // Channel configuration
         this.channels = [
-            { enabled: true, color: '#3498db', data: [], name: 'CH1', address: 0xD011 },
-            { enabled: true, color: '#e74c3c', data: [], name: 'CH2', address: 0xD001 },
-            { enabled: false, color: '#2ecc71', data: [], name: 'CH3', address: 0x0000 },
-            { enabled: false, color: '#f39c12', data: [], name: 'CH4', address: 0x0000 }
+            { enabled: true,  color: '#3498db', data: [], name: 'CH1', address: 0xD011, scale: 1, offset: 0, chYMin: null, chYMax: null, runMin: null, runMax: null },
+            { enabled: true,  color: '#e74c3c', data: [], name: 'CH2', address: 0xD001, scale: 1, offset: 0, chYMin: null, chYMax: null, runMin: null, runMax: null },
+            { enabled: false, color: '#2ecc71', data: [], name: 'CH3', address: 0x0000, scale: 1, offset: 0, chYMin: null, chYMax: null, runMin: null, runMax: null },
+            { enabled: false, color: '#f39c12', data: [], name: 'CH4', address: 0x0000, scale: 1, offset: 0, chYMin: null, chYMax: null, runMin: null, runMax: null }
         ];
+
+        // Y-axis display mode: 'independent' | 'normalize' | 'scaleoffset'
+        this.yAxisMode = 'independent';
+
+        // Split view: each enabled channel rendered in its own horizontal panel
+        this.splitView = false;
 
         // Mode settings
         this.mode = 'continuous'; // 'continuous' | 'trigger'
@@ -45,9 +51,8 @@ class ChartManager {
         this.margin = 0.1; // 10% margin
 
         // Time settings
-        this.timeScale = 5000; // 5 seconds visible
+        this.timeScale = 10000; // 10 seconds visible
         this.sampleRate = 100; // 100ms between samples
-        this.bufferSize = 1000;
         this.startTime = null;
 
         // Cursor and markers
@@ -317,19 +322,13 @@ class ChartManager {
         const data = this.channels[channelIndex].data;
         if (data.length === 0) return null;
 
-        // Find closest point
-        let closest = null;
-        let minDist = Infinity;
-
-        for (const point of data) {
-            const dist = Math.abs(point.t - timeMs);
-            if (dist < minDist) {
-                minDist = dist;
-                closest = point;
-            }
-        }
-
-        return closest ? closest.v : null;
+        // Binary search — O(log n)
+        const idx = this._bisectLeft(data, timeMs);
+        if (idx === 0) return data[0].v;
+        if (idx >= data.length) return data[data.length - 1].v;
+        const before = data[idx - 1];
+        const after  = data[idx];
+        return Math.abs(before.t - timeMs) <= Math.abs(after.t - timeMs) ? before.v : after.v;
     }
 
     formatTime(ms) {
@@ -362,22 +361,23 @@ class ChartManager {
         const relTime = timestamp - this.startTime;
         const point = { t: relTime, v: value };
 
+        const ch = this.channels[channelIndex];
+
         if (this.mode === 'trigger') {
             this.handleTriggerMode(channelIndex, point);
         } else {
-            // Continuous mode
-            this.channels[channelIndex].data.push(point);
-
-            // Limit buffer size
-            while (this.channels[channelIndex].data.length > this.bufferSize) {
-                this.channels[channelIndex].data.shift();
-            }
+            // Continuous mode — unlimited dynamic buffer
+            ch.data.push(point);
         }
+
+        // Update running min/max — O(1)
+        if (ch.runMin === null || value < ch.runMin) ch.runMin = value;
+        if (ch.runMax === null || value > ch.runMax) ch.runMax = value;
 
         // Update current value display
         this.updateChannelValue(channelIndex, value);
 
-        // Update auto scale
+        // Update auto scale — now O(channels) not O(n_data)
         if (this.autoScale) {
             this.calculateAutoScale();
         }
@@ -442,25 +442,46 @@ class ChartManager {
         }
     }
 
+    // O(channels) — uses running min/max, never scans data[]
     calculateAutoScale() {
-        let min = Infinity;
-        let max = -Infinity;
-
-        for (const ch of this.channels) {
-            if (!ch.enabled) continue;
-            for (const point of ch.data) {
-                if (point.v < min) min = point.v;
-                if (point.v > max) max = point.v;
+        if (this.yAxisMode === 'independent') {
+            for (const ch of this.channels) {
+                if (!ch.enabled || ch.runMin === null) {
+                    ch.chYMin = 0; ch.chYMax = 100; continue;
+                }
+                const range = (ch.runMax - ch.runMin) || 1;
+                ch.chYMin = ch.runMin - range * this.margin;
+                ch.chYMax = ch.runMax + range * this.margin;
             }
-        }
-
-        if (min === Infinity || max === -Infinity) {
+        } else if (this.yAxisMode === 'normalize') {
+            for (const ch of this.channels) {
+                if (!ch.enabled || ch.runMin === null) {
+                    ch.chYMin = 0; ch.chYMax = 1; continue;
+                }
+                ch.chYMin = ch.runMin;
+                ch.chYMax = ch.runMax === ch.runMin ? ch.runMin + 1 : ch.runMax;
+            }
             this.yMin = 0;
             this.yMax = 100;
         } else {
-            const range = max - min || 1;
-            this.yMin = min - range * this.margin;
-            this.yMax = max + range * this.margin;
+            // scaleoffset: apply per-channel scale+offset using running extremes
+            let min = Infinity, max = -Infinity;
+            for (const ch of this.channels) {
+                if (!ch.enabled || ch.runMin === null) continue;
+                const v1 = ch.runMin * ch.scale + ch.offset;
+                const v2 = ch.runMax * ch.scale + ch.offset;
+                if (v1 < min) min = v1;
+                if (v2 < min) min = v2;
+                if (v1 > max) max = v1;
+                if (v2 > max) max = v2;
+            }
+            if (min === Infinity || max === -Infinity) {
+                this.yMin = 0; this.yMax = 100;
+            } else {
+                const range = max - min || 1;
+                this.yMin = min - range * this.margin;
+                this.yMax = max + range * this.margin;
+            }
         }
     }
 
@@ -497,6 +518,8 @@ class ChartManager {
     clearData() {
         for (const ch of this.channels) {
             ch.data = [];
+            ch.runMin = null;
+            ch.runMax = null;
         }
         this.markers = [];
         this.preTriggerBuffer = [];
@@ -548,10 +571,14 @@ class ChartManager {
         }
 
         const sampleEl = document.getElementById('chartSampleCount');
-        const timeEl = document.getElementById('chartTimeRange');
+        const timeEl   = document.getElementById('chartTimeRange');
+        const ptsEl    = document.getElementById('chartTotalPoints');
 
         if (sampleEl) sampleEl.textContent = totalSamples;
-        if (timeEl) timeEl.textContent = this.formatTime(timeRange);
+        if (timeEl)   timeEl.textContent   = this.formatTime(timeRange);
+        if (ptsEl)    ptsEl.textContent    = totalSamples >= 1000
+            ? (totalSamples / 1000).toFixed(1) + 'k'
+            : String(totalSamples);
     }
 
     // Animation
@@ -560,6 +587,23 @@ class ChartManager {
             if (!this.isRunning) return;
 
             if (!this.isPaused) {
+                if (this.autoScroll && this.mode === 'continuous') {
+                    const latestTime    = this.getLatestTime();
+                    const targetViewMin = Math.max(0, latestTime - this.timeScale);
+                    const diff          = targetViewMin - this.viewMinTime;
+                    // One frame's worth of smooth motion (timeScale / 60fps).
+                    // If the jump is within this threshold it's normal streaming → snap directly (no lag).
+                    // If it's a large burst arrival → rate-limit to smooth the jump over a few frames.
+                    const threshold = this.timeScale / 60;
+                    if (diff <= threshold) {
+                        // Normal case: snap (covers data arriving faster OR slower than wall clock)
+                        this.viewMinTime = targetViewMin;
+                    } else {
+                        // Burst case: advance by at most one threshold per frame
+                        this.viewMinTime += threshold;
+                    }
+                    this.viewMinTime = Math.max(0, this.viewMinTime);
+                }
                 this.render();
             }
             this.updateStats();
@@ -578,6 +622,19 @@ class ChartManager {
 
     // Rendering
     render() {
+        if (this.splitView) {
+            this.renderSplit();
+            return;
+        }
+
+        // Adjust left margin based on Y-axis mode
+        if (this.yAxisMode === 'independent') {
+            const numActive = this.channels.filter(ch => ch.enabled).length;
+            this.chartMargins.left = 60 + 50 * Math.max(0, numActive - 1);
+        } else {
+            this.chartMargins.left = 60;
+        }
+
         const ctx = this.ctx;
         const width = this.width;
         const height = this.height;
@@ -607,6 +664,135 @@ class ChartManager {
         if (this.showCursor && this.cursorPos) {
             this.drawCursor();
         }
+    }
+
+    renderSplit() {
+        const ctx = this.ctx;
+        const enabledChs = this.channels
+            .map((ch, i) => ({ ch, i }))
+            .filter(({ ch }) => ch.enabled);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        if (enabledChs.length === 0) return;
+
+        const n = enabledChs.length;
+        const xAxisH = 30;  // X label space shown on last panel only
+        const panelGap = 3;
+        const panelH = Math.floor((this.height - xAxisH - panelGap * (n - 1)) / n);
+
+        // viewMinTime is updated smoothly in the animation loop, not here
+
+        // Temporarily override shared state so existing draw methods work per-panel
+        const origMargins    = { ...this.chartMargins };
+        const origEnabled    = this.channels.map(ch => ch.enabled);
+        const origYAxisMode  = this.yAxisMode;
+        const origAutoScroll = this.autoScroll;
+
+        this.autoScroll = false; // prevent draw methods from touching viewMinTime
+        this.yAxisMode   = 'independent'; // each panel uses its own Y axis
+
+        enabledChs.forEach(({ ch, i: chIdx }, pIdx) => {
+            const isLast     = pIdx === n - 1;
+            const panelTop   = pIdx * (panelH + panelGap);
+            const panelBottom = panelTop + panelH;
+
+            // Panel separator
+            if (pIdx > 0) {
+                ctx.fillStyle = '#dee2e6';
+                ctx.fillRect(0, panelTop - panelGap, this.width, panelGap);
+            }
+            ctx.fillStyle = '#fafafa';
+            ctx.fillRect(0, panelTop, this.width, panelH);
+
+            // Set margins so draw methods render into this panel's bounds.
+            // chart bottom = panelBottom; X labels (bottom+5) are clipped
+            // on non-last panels via the clip rect below.
+            this.chartMargins = {
+                top:    panelTop + 14,
+                bottom: this.height - panelBottom,
+                left:   60,
+                right:  20,
+            };
+
+            // Per-channel Y auto-scale — O(1) via running min/max
+            if (ch.runMin !== null) {
+                const range = (ch.runMax - ch.runMin) || 1;
+                ch.chYMin = ch.runMin - range * this.margin;
+                ch.chYMax = ch.runMax + range * this.margin;
+            } else {
+                ch.chYMin = 0; ch.chYMax = 100;
+            }
+
+            // Enable only this channel for this panel's draw pass
+            this.channels.forEach((c, ci) => { c.enabled = ci === chIdx; });
+
+            // Clip: last panel includes xAxisH so X labels are visible;
+            // other panels clip them off to prevent overlap with next panel.
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, panelTop, this.width, isLast ? panelH + xAxisH : panelH);
+            ctx.clip();
+
+            // Reuse existing draw methods — no duplicated rendering logic
+            this.drawGrid();
+            this.drawAxes();
+            this.drawData();
+
+            ctx.restore();
+        });
+
+        // Restore original state
+        this.chartMargins = origMargins;
+        this.channels.forEach((ch, i) => { ch.enabled = origEnabled[i]; });
+        this.yAxisMode   = origYAxisMode;
+        this.autoScroll  = origAutoScroll;
+
+        // Cursor vertical line spanning all panels
+        if (this.showCursor && this.cursorPos) {
+            const x = this.cursorPos.x;
+            const mLeft  = 60;
+            const mRight = this.width - 20;
+            if (x >= mLeft && x <= mRight) {
+                const totalH = n * (panelH + panelGap) - panelGap;
+                ctx.strokeStyle = 'rgba(0, 123, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, totalH);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+    }
+
+    setSplitView(enabled) {
+        this.splitView = enabled;
+        if (!this.isRunning) this.render();
+    }
+
+    // Returns index of first element with .t >= t
+    _bisectLeft(data, t) {
+        let lo = 0, hi = data.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (data[mid].t < t) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo;
+    }
+
+    // Returns index of last element with .t <= t
+    _bisectRight(data, t) {
+        let lo = 0, hi = data.length;
+        while (lo < hi) {
+            const mid = (lo + hi) >> 1;
+            if (data[mid].t <= t) lo = mid + 1;
+            else hi = mid;
+        }
+        return lo - 1;
     }
 
     niceStep(range, targetTicks) {
@@ -645,17 +831,28 @@ class ChartManager {
             ctx.stroke();
         }
 
-        // Horizontal grid lines — data-aligned (value)
-        const visMinY = this.screenToChartY(bottom);
-        const visMaxY = this.screenToChartY(top);
-        const yStep = this.niceStep(visMaxY - visMinY, 8);
-        const yStart = Math.ceil(visMinY / yStep) * yStep;
-        for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
-            const sy = this.chartToScreenY(v);
-            ctx.beginPath();
-            ctx.moveTo(left, sy);
-            ctx.lineTo(right, sy);
-            ctx.stroke();
+        // Horizontal grid lines
+        if (this.yAxisMode === 'independent') {
+            // 8 evenly spaced lines (no value-based alignment)
+            for (let i = 0; i <= 8; i++) {
+                const sy = top + (i / 8) * (bottom - top);
+                ctx.beginPath();
+                ctx.moveTo(left, sy);
+                ctx.lineTo(right, sy);
+                ctx.stroke();
+            }
+        } else {
+            const visMinY = this.screenToChartY(bottom);
+            const visMaxY = this.screenToChartY(top);
+            const yStep = this.niceStep(visMaxY - visMinY, 8);
+            const yStart = Math.ceil(visMinY / yStep) * yStep;
+            for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
+                const sy = this.chartToScreenY(v);
+                ctx.beginPath();
+                ctx.moveTo(left, sy);
+                ctx.lineTo(right, sy);
+                ctx.stroke();
+            }
         }
     }
 
@@ -666,48 +863,97 @@ class ChartManager {
         const top = this.chartMargins.top;
         const bottom = this.height - this.chartMargins.bottom;
 
+        // X-axis border (always)
         ctx.strokeStyle = '#adb5bd';
         ctx.lineWidth = 1;
-
-        // Y-axis border
-        ctx.beginPath();
-        ctx.moveTo(left, top);
-        ctx.lineTo(left, bottom);
-        ctx.stroke();
-
-        // X-axis border
         ctx.beginPath();
         ctx.moveTo(left, bottom);
         ctx.lineTo(right, bottom);
         ctx.stroke();
 
-        ctx.fillStyle = '#6c757d';
-        ctx.font = '10px Consolas, monospace';
-
-        // Y-axis labels — same ticks as grid
-        const visMinY = this.screenToChartY(bottom);
-        const visMaxY = this.screenToChartY(top);
-        const yStep = this.niceStep(visMaxY - visMinY, 8);
-        const yStart = Math.ceil(visMinY / yStep) * yStep;
-        const yDecimals = yStep >= 1 ? 0 : yStep >= 0.1 ? 1 : yStep >= 0.01 ? 2 : 3;
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
-            const sy = this.chartToScreenY(v);
-            ctx.fillText(v.toFixed(yDecimals), left - 5, sy);
-        }
-
-        // X-axis labels — same ticks as grid
+        // X-axis labels
         const visMinX = this.screenToChartX(left);
         const visMaxX = this.screenToChartX(right);
         const xStep = this.niceStep(visMaxX - visMinX, 10);
         const xStart = Math.ceil(visMinX / xStep) * xStep;
+        ctx.fillStyle = '#6c757d';
+        ctx.font = '10px Consolas, monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         for (let t = xStart; t <= visMaxX + xStep * 0.01; t += xStep) {
             if (t < 0) continue;
             const sx = this.chartToScreenX(t);
             ctx.fillText(this.formatTime(t), sx, bottom + 5);
+        }
+
+        if (this.yAxisMode === 'independent') {
+            // Per-channel colored Y-axes
+            const activeChannels = this.channels
+                .map((ch, i) => ({ ch, i }))
+                .filter(({ ch }) => ch.enabled);
+
+            ctx.textBaseline = 'middle';
+            activeChannels.forEach(({ ch }, activeIdx) => {
+                const axisX = left - 50 * activeIdx;
+                const yMin = ch.chYMin ?? 0;
+                const yMax = ch.chYMax ?? 100;
+
+                // Axis line
+                ctx.strokeStyle = ch.color;
+                ctx.lineWidth = activeIdx === 0 ? 1.5 : 1;
+                ctx.beginPath();
+                ctx.moveTo(axisX, top);
+                ctx.lineTo(axisX, bottom);
+                ctx.stroke();
+
+                // Ticks and labels (5 divisions)
+                ctx.fillStyle = ch.color;
+                ctx.font = '9px Consolas, monospace';
+                ctx.textAlign = 'right';
+                const tickCount = 4;
+                const range = yMax - yMin || 1;
+                const decimals = Math.abs(range) >= 100 ? 0 : Math.abs(range) >= 10 ? 1 : 2;
+                for (let t = 0; t <= tickCount; t++) {
+                    const frac = t / tickCount;
+                    const val = yMin + frac * range;
+                    const sy = this.valueToScreenY(val, yMin, yMax);
+                    ctx.strokeStyle = ch.color;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(axisX, sy);
+                    ctx.lineTo(axisX - 4, sy);
+                    ctx.stroke();
+                    ctx.fillText(val.toFixed(decimals), axisX - 6, sy);
+                }
+
+                // Channel name at top
+                ctx.font = 'bold 9px Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(ch.name, axisX, top - 6);
+            });
+        } else {
+            // Single Y-axis
+            ctx.strokeStyle = '#adb5bd';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(left, top);
+            ctx.lineTo(left, bottom);
+            ctx.stroke();
+
+            const visMinY = this.screenToChartY(bottom);
+            const visMaxY = this.screenToChartY(top);
+            const yStep = this.niceStep(visMaxY - visMinY, 8);
+            const yStart = Math.ceil(visMinY / yStep) * yStep;
+            const yDecimals = yStep >= 1 ? 0 : yStep >= 0.1 ? 1 : yStep >= 0.01 ? 2 : 3;
+            ctx.fillStyle = '#6c757d';
+            ctx.font = '10px Consolas, monospace';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            const yUnitLabel = this.yAxisMode === 'normalize' ? '%' : '';
+            for (let v = yStart; v <= visMaxY + yStep * 0.01; v += yStep) {
+                const sy = this.chartToScreenY(v);
+                ctx.fillText(v.toFixed(yDecimals) + yUnitLabel, left - 5, sy);
+            }
         }
     }
 
@@ -728,24 +974,39 @@ class ChartManager {
         ctx.rect(left, top, chartWidth, chartHeight);
         ctx.clip();
 
-        // Auto-scroll: follow latest data unless user has manually panned
-        if (this.autoScroll && this.mode === 'continuous') {
-            const latestTime = this.getLatestTime();
-            this.viewMinTime = Math.max(0, latestTime - this.timeScale);
-        }
+        // viewMinTime is updated smoothly in the animation loop, not here
 
-        // Draw each channel
+        // Draw each channel — only iterate visible window (binary search)
+        const visMin = this.viewMinTime;
+        const visMax = visMin + this.timeScale;
+
         for (const ch of this.channels) {
             if (!ch.enabled || ch.data.length < 2) continue;
+
+            // Binary search: one point before and after visible range for smooth line entry/exit
+            const startIdx = Math.max(0, this._bisectLeft(ch.data, visMin) - 1);
+            const endIdx   = Math.min(ch.data.length - 1, this._bisectRight(ch.data, visMax) + 1);
 
             ctx.strokeStyle = ch.color;
             ctx.lineWidth = 2;
             ctx.beginPath();
 
             let started = false;
-            for (const point of ch.data) {
+            for (let k = startIdx; k <= endIdx; k++) {
+                const point = ch.data[k];
                 const x = this.chartToScreenX(point.t);
-                const y = this.chartToScreenY(point.v);
+                let y;
+                if (this.yAxisMode === 'independent') {
+                    y = this.valueToScreenY(point.v, ch.chYMin ?? 0, ch.chYMax ?? 100);
+                } else if (this.yAxisMode === 'normalize') {
+                    const range = (ch.chYMax ?? 1) - (ch.chYMin ?? 0);
+                    const normalized = range !== 0
+                        ? ((point.v - (ch.chYMin ?? 0)) / range) * 100
+                        : 50;
+                    y = this.chartToScreenY(normalized);
+                } else {
+                    y = this.chartToScreenY(point.v * ch.scale + ch.offset);
+                }
 
                 if (!started) {
                     ctx.moveTo(x, y);
@@ -764,9 +1025,16 @@ class ChartManager {
         const ctx = this.ctx;
         const left = this.chartMargins.left;
         const right = this.width - this.chartMargins.right;
-        const chartHeight = this.height - this.chartMargins.top - this.chartMargins.bottom;
 
-        const y = this.chartMargins.top + (1 - (this.trigger.level - this.yMin) / (this.yMax - this.yMin)) * chartHeight;
+        let y;
+        if (this.yAxisMode === 'independent') {
+            const ch = this.channels[this.trigger.channel];
+            const yMin = ch?.chYMin ?? this.yMin;
+            const yMax = ch?.chYMax ?? this.yMax;
+            y = this.valueToScreenY(this.trigger.level, yMin, yMax);
+        } else {
+            y = this.chartToScreenY(this.trigger.level);
+        }
 
         ctx.strokeStyle = '#ffc107';
         ctx.lineWidth = 1;
@@ -928,6 +1196,36 @@ class ChartManager {
         if (!this.isRunning) this.render();
     }
 
+    // Y-axis mode
+    valueToScreenY(value, yMin, yMax) {
+        const chartHeight = this.height - this.chartMargins.top - this.chartMargins.bottom;
+        const range = yMax - yMin || 1;
+        const relY = (value - yMin) / range;
+        return this.chartMargins.top + (1 - relY) * chartHeight;
+    }
+
+    setYAxisMode(mode) {
+        this.yAxisMode = mode;
+        this.calculateAutoScale();
+        if (!this.isRunning) this.render();
+    }
+
+    setChannelScale(index, scale) {
+        if (index >= 0 && index < this.channels.length) {
+            this.channels[index].scale = scale;
+            if (this.autoScale) this.calculateAutoScale();
+            if (!this.isRunning) this.render();
+        }
+    }
+
+    setChannelOffset(index, offset) {
+        if (index >= 0 && index < this.channels.length) {
+            this.channels[index].offset = offset;
+            if (this.autoScale) this.calculateAutoScale();
+            if (!this.isRunning) this.render();
+        }
+    }
+
     // Channel configuration
     setChannelEnabled(index, enabled) {
         if (index >= 0 && index < this.channels.length) {
@@ -948,10 +1246,6 @@ class ChartManager {
 
     setSampleRate(ms) {
         this.sampleRate = ms;
-    }
-
-    setBufferSize(size) {
-        this.bufferSize = size;
     }
 
     // Trigger settings
@@ -980,12 +1274,13 @@ class ChartManager {
 //  MiniChart  —  HW Overview 인라인 차트 (경량 Canvas 렌더러)
 // ─────────────────────────────────────────────────────────
 class MiniChart {
-    constructor(canvas, channels) {
+    constructor(canvas, channels, { maxPoints = 300, displayPoints } = {}) {
         // channels: [{ name, color, chNum }]
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.channels = channels.map(ch => ({ ...ch, data: [] }));
-        this.maxPoints = 300;
+        this.maxPoints = maxPoints;
+        this.displayPoints = displayPoints ?? maxPoints;
     }
 
     addDataPoint(chIdx, value) {
@@ -1012,12 +1307,17 @@ class MiniChart {
         ctx.fillStyle = '#fafafa';
         ctx.fillRect(0, 0, W, H);
 
-        // Y축 범위 자동 계산
+        // Y축 범위 자동 계산 (표시 구간 기준)
         let min = Infinity, max = -Infinity;
-        this.channels.forEach(ch => ch.data.forEach(v => {
-            if (v < min) min = v;
-            if (v > max) max = v;
-        }));
+        this.channels.forEach(ch => {
+            const view = ch.data.length > this.displayPoints
+                ? ch.data.slice(-this.displayPoints)
+                : ch.data;
+            view.forEach(v => {
+                if (v < min) min = v;
+                if (v > max) max = v;
+            });
+        });
         if (!isFinite(min)) { min = -1; max = 1; }
         if (min === max) { min -= 1; max += 1; }
         const pad = (max - min) * 0.1;
@@ -1037,8 +1337,11 @@ class MiniChart {
             ctx.strokeStyle = ch.color;
             ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ch.data.forEach((v, i) => {
-                const x = (i / (this.maxPoints - 1)) * W;
+            const view = ch.data.length > this.displayPoints
+                ? ch.data.slice(-this.displayPoints)
+                : ch.data;
+            view.forEach((v, i) => {
+                const x = (i / (this.displayPoints - 1)) * W;
                 const y = H - ((v - min) / (max - min)) * H;
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
@@ -1168,6 +1471,7 @@ class ModbusDashboard {
         this.scanAborted = false;
         this.scanResolve = null;  // Callback for scan response
         this.scanExpectedSlaveId = null;  // Expected slave ID for scan response
+        this.serialPortScanActive = false;  // Serial port scan in progress
 
         // Auto polling for device status
         this.autoPollingEnabled = true;
@@ -1572,6 +1876,7 @@ class ModbusDashboard {
 
         // Auto Scan controls
         this.initAutoScanUI();
+        this.initSerialPortScanUI();
 
         // Firmware upload controls
         this.initFirmwareUI();
@@ -2326,6 +2631,17 @@ class ModbusDashboard {
         document.getElementById('modal-simSlaveId').value = this.simulator.slaveId;
         document.getElementById('modal-simDelay').value = this.simulator.responseDelay;
 
+        // Sync auto scan toggle
+        const autoScanToggle = document.getElementById('autoScanEnabled');
+        const autoScanStatus = document.getElementById('autoScanStatus');
+        if (autoScanToggle) {
+            autoScanToggle.checked = this.autoScanEnabled;
+            if (autoScanStatus) {
+                autoScanStatus.textContent = this.autoScanEnabled ? '활성' : '비활성';
+                autoScanStatus.classList.toggle('active', this.autoScanEnabled);
+            }
+        }
+
         // Sync polling settings
         document.getElementById('pollingInterval').value = this.autoPollingInterval;
         document.getElementById('pollingTimeout').value = this.pollingTimeout;
@@ -2463,10 +2779,10 @@ class ModbusDashboard {
                 this.startOvPolling();
             }
 
-            // Configuration - 모터 탭이 열려있으면 motorType 자동 읽기
-            if (this.activeConfigCategory === 'motorInfo' && this.currentSetupDeviceId) {
-                const setupDevice = this.devices.find(d => d.id === this.currentSetupDeviceId);
-                if (setupDevice) setTimeout(() => this.readMotorType(setupDevice.id), 800);
+            // Configuration 탭이 열려있으면 현재 카테고리 파라미터 자동 읽기
+            if (this.currentSetupDeviceId) {
+                const cat = this.activeConfigCategory || 'motorInfo';
+                setTimeout(() => this.readConfigCategory(cat, this.currentSetupDeviceId), 800);
             }
 
             // Save settings to localStorage
@@ -2589,6 +2905,41 @@ class ModbusDashboard {
             this.ovPollingRunning = false;
             this.ovOnceExecuted   = false;
         }
+    }
+
+    /**
+     * 동일 포트를 새 통신 설정으로 재접속 (OS 검증용).
+     * requestPort() 없이 기존 포트 참조를 재사용하므로 사용자 제스처 불필요.
+     *
+     * @param {number} baudRate  - 새 Baudrate (예: 9600)
+     * @param {string} parity    - 'none' | 'even' | 'odd'
+     * @param {number} stopBits  - 1 | 2
+     */
+    async reconnectSerial(baudRate, parity, stopBits = 1, silent = false) {
+        const port = this.port;
+        if (!port) throw new Error('포트 참조 없음 — 먼저 Connect 하세요');
+
+        // 1. 현재 연결 종료 (this.port = null 로 설정됨)
+        await this.disconnect();
+
+        // 2. 사이드바 UI 동기화
+        const setEl = (id, val) => { const e = document.getElementById(id); if (e) e.value = String(val); };
+        setEl('sidebar-baudRate', baudRate);
+        setEl('sidebar-parity',   parity);
+        setEl('sidebar-stopBits', stopBits);
+
+        // 3. 저장해 둔 포트를 새 설정으로 재오픈
+        await port.open({ baudRate, parity, stopBits, dataBits: 8, flowControl: 'none' });
+
+        // 4. 대시보드 상태 복원
+        this.port    = port;
+        this.writer  = port.writable.getWriter();
+        this.startReading();
+        this.isConnected = true;
+        this.updateConnectionStatus(true);
+        this.saveSerialSettings({ baudRate, dataBits: 8, parity, stopBits });
+
+        if (!silent) this.showToast(`재접속 완료: ${baudRate}bps, ${parity}, Stop${stopBits}`, 'success');
     }
 
     /**
@@ -4265,6 +4616,18 @@ class ModbusDashboard {
             }
         }
 
+        // Always sync autoScanEnabled UI to match the current value
+        // (handles the case where no stored settings exist but this.autoScanEnabled defaults to true)
+        const autoScanToggle = document.getElementById('autoScanEnabled');
+        const autoScanStatus = document.getElementById('autoScanStatus');
+        if (autoScanToggle) {
+            autoScanToggle.checked = this.autoScanEnabled;
+            if (autoScanStatus) {
+                autoScanStatus.textContent = this.autoScanEnabled ? '활성' : '비활성';
+                autoScanStatus.classList.toggle('active', this.autoScanEnabled);
+            }
+        }
+
         // Restore monitor panel state
         const monitorPanelOpen = localStorage.getItem('monitorPanelOpen');
         if (monitorPanelOpen === 'true') {
@@ -4808,16 +5171,16 @@ class ModbusDashboard {
             {type:'holding',group:'Information',address:'0xD009',name:'Operating hours counter',implemented:'N',description:'65535시간까지 카운트 후 고정'},
             {type:'holding',group:'Information',address:'0xD00A',name:'Operating minutes counter',implemented:'N',description:'0분 to 59분 롤링'},
             {type:'holding',group:'Communication',address:'0xD100',name:'Fan address',implemented:'Y',description:'Node ID와 같은 역할'},
-            {type:'holding',group:'Communication',address:'0xD101',name:'Set value source',implemented:'N',description:'Setpoint를 어떤 수단으로 사용할 것인지 설정 (0:AIN1, 1:RS485, 2:AIN2, 3:PWM)'},
-            {type:'holding',group:'Communication',address:'0xD149',name:'Transmission speed',implemented:'N',description:'RS-485 통신 속도를 설정합니다. | 0:1200bps, 1:2400bps, 2:4800bps, 3:9600bps, 4:19200bps(default), 5:38400bps, 6:57600bps, 7:115200bps'},
-            {type:'holding',group:'Communication',address:'0xD14A',name:'Parity configuration',implemented:'N',description:'시리얼 통신의 데이터 비트, 패리티, 스톱 비트를 설정합니다. | 0:Data8/Even/Stop1(default), 1:Data8/Odd/Stop1, 2:Data8/None/Stop2, 3:Data8/None/Stop1'},
+            {type:'holding',group:'Communication',address:'0xD101',name:'Set value source',implemented:'Y',description:'Setpoint를 어떤 수단으로 사용할 것인지 설정 (0:AIN1, 1:RS485, 2:AIN2, 3:PWM)'},
+            {type:'holding',group:'Communication',address:'0xD149',name:'Transmission speed',implemented:'Y',description:'RS-485 통신 속도를 설정합니다. | 0:1200bps, 1:2400bps, 2:4800bps, 3:9600bps, 4:19200bps(default), 5:38400bps, 6:57600bps, 7:115200bps'},
+            {type:'holding',group:'Communication',address:'0xD14A',name:'Parity configuration',implemented:'Y',description:'시리얼 통신의 데이터 비트, 패리티, 스톱 비트를 설정합니다. | 0:Data8/Even/Stop1(default), 1:Data8/Odd/Stop1, 2:Data8/None/Stop2, 3:Data8/None/Stop1'},
             {type:'holding',group:'Motor Control',address:'0xD102',name:'Preferred running direction',implemented:'Y',description:'구동 방향 결정 (0:CCW, 1:CW)'},
             {type:'holding',group:'Motor Control',address:'0xD106',name:'Operating mode',implemented:'Y',description:'모터 제어 방식을 설정합니다. | 0:Speed Control, 2:Open-loop control'},
             {type:'holding',group:'Motor Control',address:'0xD112',name:'Motor stop enable',implemented:'N',description:'0: set value가 0이더라도 모터 항상 SVON, 1: set value가 0일 경우 모터 SVOFF'},
-            {type:'holding',group:'Motor Control',address:'0xD119',name:'Maximum speed',implemented:'N',description:'센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)'},
+            {type:'holding',group:'Motor Control',address:'0xD119',name:'Maximum speed',implemented:'Y',description:'센서 제어모드 및 Open-loop control 모드에서는 이 파라미터에 지정된 속도로 제한 (토크모드에서의 속도제한 값)'},
             {type:'holding',group:'Motor Control',address:'0xD11A',name:'Maximum permissible speed',implemented:'N',description:'최대 속도의 상한치를 설정 (모터 최대 속도)'},
-            {type:'holding',group:'Motor Control',address:'0xD11F',name:'Ramp-up curve',implemented:'N',description:'가/감속도 조정 파라미터, 알람 등 모터 정지조건이 감지되면 감속없이 정지함'},
-            {type:'holding',group:'Motor Control',address:'0xD120',name:'Ramp-down curve',implemented:'N',description:'감속 곡선 설정'},
+            {type:'holding',group:'Motor Control',address:'0xD11F',name:'Ramp-up curve',implemented:'Y',description:'가/감속도 조정 파라미터, 알람 등 모터 정지조건이 감지되면 감속없이 정지함'},
+            {type:'holding',group:'Motor Control',address:'0xD120',name:'Ramp-down curve',implemented:'Y',description:'감속 곡선 설정'},
             {type:'holding',group:'Signal Mapping',address:'0xD12A',name:'Point 1 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
             {type:'holding',group:'Signal Mapping',address:'0xD12B',name:'Point 1 Y-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
             {type:'holding',group:'Signal Mapping',address:'0xD12C',name:'Point 2 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
@@ -4825,10 +5188,11 @@ class ModbusDashboard {
             {type:'holding',group:'Limitation',address:'0xD12F',name:'Limitation Control',implemented:'N',description:'0번 비트 set: Power limit 활성화, 1번 비트 set: Current Limit 활성화'},
             {type:'holding',group:'Limitation',address:'0xD135',name:'Maximum permissible power',implemented:'N',description:'허용 가능한 최대 파워 설정'},
             {type:'holding',group:'Limitation',address:'0xD136',name:'Max. power at derating end',implemented:'N',description:'모듈과 모터의 온도를 토대로 출력을 디레이팅 하는 기능'},
-            {type:'holding',group:'Limitation',address:'0xD137',name:'Module temperature power derating start',implemented:'N',description:'모듈 온도 파워 디레이팅 시작점'},
-            {type:'holding',group:'Limitation',address:'0xD138',name:'Module temperature power derating end',implemented:'N',description:'모듈 온도 파워 디레이팅 종료점'},
+            {type:'holding',group:'Limitation',address:'0xD137',name:'Module temperature power derating start',implemented:'Y',description:'모듈 온도 파워 디레이팅 시작점'},
+            {type:'holding',group:'Limitation',address:'0xD138',name:'Module temperature power derating end',implemented:'Y',description:'모듈 온도 파워 디레이팅 종료점'},
             {type:'holding',group:'Limitation',address:'0xD13B',name:'Maximum coil current',implemented:'Y',description:'전류 제한이 활성화 되면 모터 코일전류(rms값)를 이 파라미터에 설정된 값으로 제한'},
             {type:'holding',group:'Limitation',address:'0xD145',name:'Speed limit for running monitoring',implemented:'N',description:'실행 모니터링 속도제한, 속도 피드백이 이 파라미터에 설정된 속도보다 낮을 경우 오류 해제 (n_Low)'},
+            {type:'holding',group:'Limitation',address:'0xD147',name:'Sensor actual value source',implemented:'Y',description:'지령으로 선택된 센서의 지령값'},
             {type:'holding',group:'Limitation',address:'0xD14D',name:'Motor temperature power derating start address',implemented:'N',description:'모터 온도 파워 디레이팅 시작 주소'},
             {type:'holding',group:'Limitation',address:'0xD14E',name:'Motor temperature power derating end address',implemented:'N',description:'모터 온도 파워 디레이팅 종료 주소'},
             {type:'holding',group:'Limitation',address:'0xD155',name:'Maximum power',implemented:'N',description:'최대 파워 설정'},
@@ -4903,12 +5267,17 @@ class ModbusDashboard {
             {type:'input',group:'Device Info',address:'0xD003',name:'Bus controller software version',implemented:'Y',description:'Main 펌웨어 버전'},
             {type:'input',group:'Device Info',address:'0xD004',name:'Commutation controller software name',implemented:'Y',description:'Inverter 부트 버전'},
             {type:'input',group:'Device Info',address:'0xD005',name:'Commutation controller software version',implemented:'Y',description:'Inverter 펌웨어 버전'},
-            {type:'input',group:'Status',address:'0xD010',name:'Actual speed (Relative)',implemented:'N',description:'상대 속도'},
+            {type:'input',group:'Status',address:'0xD010',name:'Actual speed (Relative)',implemented:'Y',description:'상대 속도'},
             {type:'input',group:'Status',address:'0xD011',name:'Motor status',implemented:'Y',description:'모터 상태'},
             {type:'input',group:'Status',address:'0xD012',name:'Warning',implemented:'Y',description:'경고'},
             {type:'input',group:'Status',address:'0xD018',name:'Current direction of rotation',implemented:'N',description:'현재 회전 방향'},
+            {type:'input',group:'Status',address:'0xD019',name:'Current modulation level',implemented:'Y',description:'전류 제한 레벨'},
             {type:'input',group:'Status',address:'0xD01A',name:'Current set value',implemented:'N',description:'현재 설정값'},
+            {type:'input',group:'Status',address:'0xD01B',name:'Sensor actual value address',implemented:'Y',description:'선택된 실제 센서 값'},
             {type:'input',group:'Status',address:'0xD01C',name:'Enable/Disable input state',implemented:'N',description:'Enable/Disable 입력 상태'},
+            {type:'input',group:'Status',address:'0xD023',name:'Sensor actual value 1',implemented:'Y',description:'AIN1의 현재 측정값'},
+            {type:'input',group:'Status',address:'0xD024',name:'Sensor actual value 2',implemented:'Y',description:'AIN2의 현재 측정값'},
+            {type:'input',group:'Status',address:'0xD028',name:'Current set value source',implemented:'Y',description:'현재 사용 중인 소스 (0=AIN1, 1=RS485, 2=AIN2, 3=PWMIn3, 255=Fail-safe)'},
             {type:'input',group:'Electrical',address:'0xD013',name:'DC-link voltage',implemented:'Y',description:'DC 링크 전압'},
             {type:'input',group:'Electrical',address:'0xD014',name:'DC-link current',implemented:'N',description:'DC 링크 전류'},
             {type:'input',group:'Electrical',address:'0xD015',name:'Module temperature',implemented:'Y',description:'IGBT Temperature Sensor 값'},
@@ -5639,7 +6008,7 @@ class ModbusDashboard {
         }
 
         // Render device configuration into the modal's #deviceSetupConfig
-        this.renderDeviceSetupConfig(device);
+        this.renderDeviceSetupConfig(device, { autoRead: true });
 
         // Close button handler - restore page container content and ID
         const handleClose = () => {
@@ -6931,8 +7300,8 @@ class ModbusDashboard {
         }
 
         try {
-            // Send software reset command (write 1 to SOFTWARE_RESET register)
-            await this.writeRegister(device.slaveId, this.REGISTERS.SOFTWARE_RESET, 1);
+            // Send software reset command: FC06, 0xD000, bit3(4번째 비트) set = 0x0008
+            await this.writeRegister(device.slaveId, 0xD000, 0x0008);
             this.showToast(`${device.name}: 소프트웨어 리셋이 완료되었습니다`, 'success');
 
             // Mark device as offline temporarily
@@ -7522,6 +7891,29 @@ class ModbusDashboard {
     }
 
     /**
+     * 임의 raw 프레임을 전송하고 응답을 기다린다 (CRC 재계산 없음).
+     * 테스트 목적으로 고의로 훼손된 프레임 전송 시 사용.
+     * 큐를 통해 안전하게 전송되므로 폴링 중에도 버스 충돌 없음.
+     * @param {Uint8Array} frame - 전송할 raw 바이트 (CRC 포함, 재계산 안 함)
+     * @param {number} slaveId  - 응답 대기 slave ID (무응답 확인이면 timeout으로 null 반환)
+     * @returns {Promise<number|null>} 응답값 또는 null (timeout/exception)
+     */
+    async sendRawFrameWithTimeout(frame, slaveId) {
+        if (this.simulatorEnabled) {
+            // 시뮬레이터는 CRC를 검증하지 않으므로 정상 응답이 올 수 있음 — null 강제 반환
+            return null;
+        }
+        if (!this.writer) return null;
+
+        if (this.autoPollingTimer || this._isFc64Active) {
+            return new Promise((resolve, reject) => {
+                this.commandQueue.push({ type: 'read', frame, slaveId, address: 0, resolve, reject });
+            });
+        }
+        return await this.sendAndWaitResponse(frame, slaveId);
+    }
+
+    /**
      * Send frame and wait for response with timeout
      */
     async sendAndWaitResponse(frame, expectedSlaveId) {
@@ -7961,7 +8353,7 @@ class ModbusDashboard {
      * @returns {Promise<{cs, index, subIndex, value, abortCode, error}|null>}
      */
     async writeCANopenObject(slaveId, index, subIndex, value, size = 4) {
-        const frame = this.modbus.buildCANopenDownload(slaveId, index, subIndex, value, size);
+        const frame = this.modbus.buildCANopenDownload(slaveId, index, subIndex, value, 0);
 
         if (this.writer) {
             if (this.autoPollingTimer || this._isFc64Active) {
@@ -8086,6 +8478,310 @@ class ModbusDashboard {
                 <div class="param-picker-cat-panel">${catHtml}</div>
                 <div class="param-picker-param-panel">${paramHtml}</div>
             </div>`;
+    }
+
+    /**
+     * Chart channel definitions (chNum = value sent in FC 0x64 configure)
+     */
+    getChartChannels() {
+        return [
+            // Velocity
+            { name: 'Velocity Feedback',               chNum: 0x00, group: 'Velocity' },
+            { name: 'Velocity Command',                chNum: 0x01, group: 'Velocity' },
+            { name: 'Velocity Error',                  chNum: 0x02, group: 'Velocity' },
+            { name: 'Position Command Velocity',       chNum: 0x15, group: 'Velocity' },
+            // Torque
+            { name: 'Torque Feedback',                 chNum: 0x03, group: 'Torque' },
+            { name: 'Torque Command',                  chNum: 0x04, group: 'Torque' },
+            // Position
+            { name: 'Position Actual',                 chNum: 0x13, group: 'Position' },
+            { name: 'Position Demand',                 chNum: 0x14, group: 'Position' },
+            { name: 'Following Error',                 chNum: 0x05, group: 'Position' },
+            { name: 'Following Error Actual',          chNum: 0x0B, group: 'Position' },
+            // Overload
+            { name: 'Accum. Operation Overload',       chNum: 0x06, group: 'Overload' },
+            { name: 'Accum. Regen. Overload',          chNum: 0x08, group: 'Overload' },
+            { name: 'Inertia Ratio',                   chNum: 0x0A, group: 'Overload' },
+            // Electrical
+            { name: 'DC Link Voltage',                 chNum: 0x07, group: 'Electrical' },
+            { name: 'U Phase Current',                 chNum: 0x10, group: 'Electrical' },
+            { name: 'V Phase Current',                 chNum: 0x11, group: 'Electrical' },
+            { name: 'W Phase Current',                 chNum: 0x12, group: 'Electrical' },
+            // Temperature
+            { name: 'Drive Temperature 1',             chNum: 0x0C, group: 'Temperature' },
+            { name: 'Drive Temperature 2',             chNum: 0x0D, group: 'Temperature' },
+            { name: 'Encoder Temperature',             chNum: 0x0E, group: 'Temperature' },
+            // Encoder/Hall
+            { name: 'Encoder SingleTurn',              chNum: 0x09, group: 'Encoder/Hall' },
+            { name: 'Hall Signal Value',               chNum: 0x0F, group: 'Encoder/Hall' },
+            { name: 'Hall U',                          chNum: 0x16, group: 'Encoder/Hall' },
+            { name: 'Hall V',                          chNum: 0x17, group: 'Encoder/Hall' },
+            { name: 'Hall W',                          chNum: 0x18, group: 'Encoder/Hall' },
+            { name: 'Commanded Motor Phase Angle',     chNum: 0x19, group: 'Encoder/Hall' },
+            { name: 'Hall Phase Angle',                chNum: 0x1A, group: 'Encoder/Hall' },
+            { name: 'Electric Angle',                  chNum: 0x1B, group: 'Encoder/Hall' },
+            // Sensor/LMS
+            { name: 'Left Sensor Position',            chNum: 0x20, group: 'Sensor/LMS' },
+            { name: 'Right Sensor Position',           chNum: 0x21, group: 'Sensor/LMS' },
+            { name: 'L/R Position Difference',         chNum: 0x22, group: 'Sensor/LMS' },
+            { name: 'Sensor Position Internal',        chNum: 0x23, group: 'Sensor/LMS' },
+            { name: 'Left Sensor Valid (C36)',          chNum: 0x24, group: 'Sensor/LMS' },
+            { name: 'Left Sensor Valid (C37)',          chNum: 0x25, group: 'Sensor/LMS' },
+            { name: 'Left Sensor Singleturn',          chNum: 0x26, group: 'Sensor/LMS' },
+            { name: 'Right Sensor Singleturn',         chNum: 0x27, group: 'Sensor/LMS' },
+            { name: 'LMS READY',                       chNum: 0x28, group: 'Sensor/LMS' },
+            { name: 'Reserved 1 (LMS StateMachine)',   chNum: 0x29, group: 'Sensor/LMS' },
+            { name: 'ROS',                             chNum: 0x2A, group: 'Sensor/LMS' },
+            { name: 'Reserved 3 (L.Sensor Valid Raw)', chNum: 0x2B, group: 'Sensor/LMS' },
+            { name: 'Reserved 4 (R.Sensor Valid Raw)', chNum: 0x2C, group: 'Sensor/LMS' },
+            // FFT
+            { name: 'FFT Input',                       chNum: 0x36, group: 'FFT' },
+            { name: 'FFT Output',                      chNum: 0x37, group: 'FFT' },
+            // Digital Input
+            { name: 'POT',    chNum: 0x64, group: 'Digital Input' },
+            { name: 'NOT',    chNum: 0x65, group: 'Digital Input' },
+            { name: 'HOME',   chNum: 0x66, group: 'Digital Input' },
+            { name: 'STOP',   chNum: 0x67, group: 'Digital Input' },
+            { name: 'PCON',   chNum: 0x68, group: 'Digital Input' },
+            { name: 'GAIN',   chNum: 0x69, group: 'Digital Input' },
+            { name: 'P_CL',   chNum: 0x6A, group: 'Digital Input' },
+            { name: 'N_CL',   chNum: 0x6B, group: 'Digital Input' },
+            { name: 'PROBE1', chNum: 0x6C, group: 'Digital Input' },
+            { name: 'PROBE2', chNum: 0x6D, group: 'Digital Input' },
+            { name: 'EMG',    chNum: 0x6E, group: 'Digital Input' },
+            { name: 'A_RST',  chNum: 0x6F, group: 'Digital Input' },
+            { name: 'SV_ON',  chNum: 0x70, group: 'Digital Input' },
+            { name: 'START',  chNum: 0x74, group: 'Digital Input' },
+            { name: 'PAUSE',  chNum: 0x75, group: 'Digital Input' },
+            { name: 'REGT',   chNum: 0x76, group: 'Digital Input' },
+            { name: 'HSTART', chNum: 0x77, group: 'Digital Input' },
+            { name: 'ISEL0',  chNum: 0x78, group: 'Digital Input' },
+            { name: 'ISEL1',  chNum: 0x79, group: 'Digital Input' },
+            { name: 'ISEL2',  chNum: 0x7A, group: 'Digital Input' },
+            { name: 'ISEL3',  chNum: 0x7B, group: 'Digital Input' },
+            { name: 'ISEL4',  chNum: 0x7C, group: 'Digital Input' },
+            { name: 'ISEL5',  chNum: 0x7D, group: 'Digital Input' },
+            { name: 'ABS_RQ', chNum: 0x7E, group: 'Digital Input' },
+            { name: 'JSTART', chNum: 0x7F, group: 'Digital Input' },
+            { name: 'JDIR',   chNum: 0x80, group: 'Digital Input' },
+            { name: 'PCLR',   chNum: 0x81, group: 'Digital Input' },
+            { name: 'AVOR',   chNum: 0x82, group: 'Digital Input' },
+            { name: 'INHIB',  chNum: 0x83, group: 'Digital Input' },
+            // Digital Output
+            { name: 'BRAKE',  chNum: 0x84, group: 'Digital Output' },
+            { name: 'ALARM',  chNum: 0x85, group: 'Digital Output' },
+            { name: 'READY',  chNum: 0x86, group: 'Digital Output' },
+            { name: 'ZSPD',   chNum: 0x87, group: 'Digital Output' },
+            { name: 'INPOS1', chNum: 0x88, group: 'Digital Output' },
+            { name: 'TLMT',   chNum: 0x89, group: 'Digital Output' },
+            { name: 'VLMT',   chNum: 0x8A, group: 'Digital Output' },
+            { name: 'INSPD',  chNum: 0x8B, group: 'Digital Output' },
+            { name: 'WARN',   chNum: 0x8C, group: 'Digital Output' },
+            { name: 'TGON',   chNum: 0x8D, group: 'Digital Output' },
+            { name: 'INPOS2', chNum: 0x8E, group: 'Digital Output' },
+            { name: 'ORG',    chNum: 0x94, group: 'Digital Output' },
+            { name: 'EOS',    chNum: 0x95, group: 'Digital Output' },
+            { name: 'IOUT0',  chNum: 0x96, group: 'Digital Output' },
+            { name: 'IOUT1',  chNum: 0x97, group: 'Digital Output' },
+            { name: 'IOUT2',  chNum: 0x98, group: 'Digital Output' },
+            { name: 'IOUT3',  chNum: 0x99, group: 'Digital Output' },
+            { name: 'IOUT4',  chNum: 0x9A, group: 'Digital Output' },
+            { name: 'IOUT5',  chNum: 0x9B, group: 'Digital Output' },
+            // ControlWord
+            { name: 'ControlWord.0',  chNum: 0xA4, group: 'ControlWord' },
+            { name: 'ControlWord.1',  chNum: 0xA5, group: 'ControlWord' },
+            { name: 'ControlWord.2',  chNum: 0xA6, group: 'ControlWord' },
+            { name: 'ControlWord.3',  chNum: 0xA7, group: 'ControlWord' },
+            { name: 'ControlWord.4',  chNum: 0xA8, group: 'ControlWord' },
+            { name: 'ControlWord.5',  chNum: 0xA9, group: 'ControlWord' },
+            { name: 'ControlWord.6',  chNum: 0xAA, group: 'ControlWord' },
+            { name: 'ControlWord.7',  chNum: 0xAB, group: 'ControlWord' },
+            { name: 'ControlWord.8',  chNum: 0xAC, group: 'ControlWord' },
+            { name: 'ControlWord.9',  chNum: 0xAD, group: 'ControlWord' },
+            { name: 'ControlWord.10', chNum: 0xAE, group: 'ControlWord' },
+            { name: 'ControlWord.11', chNum: 0xAF, group: 'ControlWord' },
+            { name: 'ControlWord.12', chNum: 0xB0, group: 'ControlWord' },
+            { name: 'ControlWord.13', chNum: 0xB1, group: 'ControlWord' },
+            { name: 'ControlWord.14', chNum: 0xB2, group: 'ControlWord' },
+            { name: 'ControlWord.15', chNum: 0xB3, group: 'ControlWord' },
+            // StatusWord
+            { name: 'StatusWord.0',  chNum: 0xB4, group: 'StatusWord' },
+            { name: 'StatusWord.1',  chNum: 0xB5, group: 'StatusWord' },
+            { name: 'StatusWord.2',  chNum: 0xB6, group: 'StatusWord' },
+            { name: 'StatusWord.3',  chNum: 0xB7, group: 'StatusWord' },
+            { name: 'StatusWord.4',  chNum: 0xB8, group: 'StatusWord' },
+            { name: 'StatusWord.5',  chNum: 0xB9, group: 'StatusWord' },
+            { name: 'StatusWord.6',  chNum: 0xBA, group: 'StatusWord' },
+            { name: 'StatusWord.7',  chNum: 0xBB, group: 'StatusWord' },
+            { name: 'StatusWord.8',  chNum: 0xBC, group: 'StatusWord' },
+            { name: 'StatusWord.9',  chNum: 0xBD, group: 'StatusWord' },
+            { name: 'StatusWord.10', chNum: 0xBE, group: 'StatusWord' },
+            { name: 'StatusWord.11', chNum: 0xBF, group: 'StatusWord' },
+            { name: 'StatusWord.12', chNum: 0xC0, group: 'StatusWord' },
+            { name: 'StatusWord.13', chNum: 0xC1, group: 'StatusWord' },
+            { name: 'StatusWord.14', chNum: 0xC2, group: 'StatusWord' },
+            { name: 'StatusWord.15', chNum: 0xC3, group: 'StatusWord' },
+            // Other
+            { name: 'INDEX (Z-PHASE)',  chNum: 0xD0, group: 'Other' },
+            { name: 'Object Monitor 1', chNum: 0xFA, group: 'Other' },
+            { name: 'Object Monitor 2', chNum: 0xFB, group: 'Other' },
+            { name: 'Object Monitor 3', chNum: 0xFC, group: 'Other' },
+            { name: 'Object Monitor 4', chNum: 0xFD, group: 'Other' },
+        ];
+    }
+
+    /**
+     * Generate channel picker panels HTML (reuses param-picker CSS)
+     */
+    generateChannelPickerHTML() {
+        const channels = this.getChartChannels();
+        const grouped = {};
+        channels.forEach(ch => {
+            if (!grouped[ch.group]) grouped[ch.group] = [];
+            grouped[ch.group].push(ch);
+        });
+        const keys = Object.keys(grouped);
+        let catHtml = '';
+        let itemHtml = '';
+        keys.forEach((group, i) => {
+            catHtml += `<div class="param-picker-cat-item${i === 0 ? ' active' : ''}" data-group="${group}">${group}</div>`;
+            grouped[group].forEach(ch => {
+                const hex = `0x${ch.chNum.toString(16).toUpperCase().padStart(2, '0')}`;
+                itemHtml += `<div class="param-picker-item${i === 0 ? '' : ' hidden-group'}" data-value="${ch.chNum}" data-group="${group}">${ch.name}<span class="param-picker-addr">${hex}</span></div>`;
+            });
+        });
+        return `
+            <div class="param-picker-panels">
+                <div class="param-picker-cat-panel">${catHtml}</div>
+                <div class="param-picker-param-panel">${itemHtml}</div>
+            </div>`;
+    }
+
+    /**
+     * Initialize chart channel picker dropdowns (CH1~CH4)
+     * Pre-selects default channels C1~C4 (0x01~0x04).
+     */
+    initChartChannelPickers() {
+        const defaults = [0x01, 0x02, 0x03, 0x04];
+        const channels = this.getChartChannels();
+
+        for (let i = 0; i < 4; i++) {
+            const triggerBtn = document.getElementById(`chartCh${i + 1}Trigger`);
+            if (!triggerBtn) continue;
+
+            const popup = document.createElement('div');
+            popup.className = 'param-picker-popup';
+            popup.dataset.chartChIdx = String(i);
+            popup.style.display = 'none';
+            popup.innerHTML = `
+                <input type="text" class="param-picker-search" placeholder="채널 검색...">
+                ${this.generateChannelPickerHTML()}
+            `;
+            document.body.appendChild(popup);
+
+            // Category click
+            popup.querySelector('.param-picker-cat-panel').addEventListener('click', (e) => {
+                const cat = e.target.closest('.param-picker-cat-item');
+                if (!cat) return;
+                popup.querySelectorAll('.param-picker-cat-item').forEach(el => el.classList.remove('active'));
+                cat.classList.add('active');
+                const group = cat.dataset.group;
+                popup.querySelectorAll('.param-picker-item').forEach(item => {
+                    item.classList.toggle('hidden-group', item.dataset.group !== group);
+                });
+            });
+
+            // Item click
+            popup.querySelector('.param-picker-param-panel').addEventListener('click', (e) => {
+                const item = e.target.closest('.param-picker-item');
+                if (!item) return;
+                const addrEl = item.querySelector('.param-picker-addr');
+                const name = item.childNodes[0].textContent.trim();
+                const hex = addrEl ? addrEl.textContent.trim() : '';
+                triggerBtn.dataset.selectedValue = item.dataset.value;
+                triggerBtn.querySelector('.param-picker-trigger-label').textContent = `${name} (${hex})`;
+                triggerBtn.classList.add('has-selection');
+                popup.style.display = 'none';
+                // Persist selection
+                const saved = JSON.parse(localStorage.getItem('chartChSettings') || '{}');
+                if (!saved[i]) saved[i] = {};
+                saved[i].value = item.dataset.value;
+                saved[i].label = `${name} (${hex})`;
+                localStorage.setItem('chartChSettings', JSON.stringify(saved));
+            });
+
+            // Search
+            const searchInput = popup.querySelector('.param-picker-search');
+            searchInput.addEventListener('input', () => {
+                const q = searchInput.value.toLowerCase().trim();
+                const catPanelEl = popup.querySelector('.param-picker-cat-panel');
+                if (q) {
+                    catPanelEl.style.display = 'none';
+                    popup.querySelectorAll('.param-picker-item').forEach(item => {
+                        item.classList.toggle('hidden-group', !item.textContent.toLowerCase().includes(q));
+                    });
+                } else {
+                    catPanelEl.style.display = '';
+                    const activeCat = catPanelEl.querySelector('.param-picker-cat-item.active');
+                    const group = activeCat ? activeCat.dataset.group : null;
+                    popup.querySelectorAll('.param-picker-item').forEach(item => {
+                        item.classList.toggle('hidden-group', group && item.dataset.group !== group);
+                    });
+                }
+            });
+
+            // Trigger click → position and show popup
+            triggerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = popup.style.display !== 'none';
+                document.querySelectorAll('.param-picker-popup').forEach(p => { p.style.display = 'none'; });
+                if (isOpen) return;
+                popup.style.display = 'block';
+                const rect = triggerBtn.getBoundingClientRect();
+                const popupW = 400;
+                const popupH = 280;
+                let left = rect.left;
+                let top = rect.bottom + 4;
+                if (left + popupW > window.innerWidth - 8) left = window.innerWidth - popupW - 8;
+                if (top + popupH > window.innerHeight - 8) top = rect.top - popupH - 4;
+                popup.style.left = left + 'px';
+                popup.style.top = top + 'px';
+                popup.style.width = popupW + 'px';
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+                setTimeout(() => searchInput.focus(), 50);
+            });
+
+            popup.addEventListener('click', (e) => e.stopPropagation());
+
+            // Pre-select default channel
+            const defNum = defaults[i];
+            const defCh = channels.find(c => c.chNum === defNum);
+            if (defCh) {
+                const hex = `0x${defNum.toString(16).toUpperCase().padStart(2, '0')}`;
+                triggerBtn.dataset.selectedValue = String(defNum);
+                triggerBtn.querySelector('.param-picker-trigger-label').textContent = `${defCh.name} (${hex})`;
+                triggerBtn.classList.add('has-selection');
+            }
+
+            // Restore persisted settings (overrides defaults)
+            const savedSettings = JSON.parse(localStorage.getItem('chartChSettings') || '{}');
+            const savedCh = savedSettings[i];
+            if (savedCh) {
+                if (savedCh.value != null && savedCh.label) {
+                    triggerBtn.dataset.selectedValue = savedCh.value;
+                    triggerBtn.querySelector('.param-picker-trigger-label').textContent = savedCh.label;
+                    triggerBtn.classList.add('has-selection');
+                }
+                if (typeof savedCh.enabled === 'boolean') {
+                    const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
+                    if (enableEl) {
+                        enableEl.checked = savedCh.enabled;
+                        this.chartManager.setChannelEnabled(i, savedCh.enabled);
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -8626,6 +9322,183 @@ class ModbusDashboard {
                 this.saveSettings();
             });
         }
+    }
+
+    /**
+     * Initialize Serial Port Scan UI event listeners
+     */
+    initSerialPortScanUI() {
+        const startBtn = document.getElementById('spScanStartBtn');
+        const stopBtn = document.getElementById('spScanStopBtn');
+        if (startBtn) startBtn.addEventListener('click', () => this.startSerialPortScan());
+        if (stopBtn)  stopBtn.addEventListener('click',  () => this.stopSerialPortScan());
+    }
+
+    /**
+     * Scan through serial port setting combinations (baudRate × parity × stopBits)
+     * and run device scan on each combination.
+     */
+    async startSerialPortScan() {
+        if (!this.isConnected || !this.port) {
+            this.showToast('시리얼 포트에 먼저 연결하세요', 'warning');
+            return;
+        }
+        if (this.isScanning || this.serialPortScanActive) {
+            this.showToast('이미 스캔 중입니다', 'warning');
+            return;
+        }
+
+        // Collect selected options
+        const baudRates  = [...document.querySelectorAll('.spScan-baudRate:checked')].map(e => parseInt(e.value));
+        const parities   = [...document.querySelectorAll('.spScan-parity:checked')].map(e => e.value);
+        const stopBitOpts = [...document.querySelectorAll('.spScan-stopBits:checked')].map(e => parseInt(e.value));
+
+        if (!baudRates.length || !parities.length || !stopBitOpts.length) {
+            this.showToast('스캔할 설정을 최소 하나씩 선택하세요', 'warning');
+            return;
+        }
+
+        // Build all combinations
+        const combos = [];
+        for (const baud of baudRates)
+            for (const parity of parities)
+                for (const stop of stopBitOpts)
+                    combos.push({ baudRate: baud, parity, stopBits: stop });
+
+        // Save original settings to restore after scan
+        const origBaud   = parseInt(document.getElementById('sidebar-baudRate')?.value) || 19200;
+        const origParity = document.getElementById('sidebar-parity')?.value || 'even';
+        const origStop   = parseInt(document.getElementById('sidebar-stopBits')?.value) || 1;
+
+        this.serialPortScanActive = true;
+        this.scanAborted = false;
+
+        const startBtn       = document.getElementById('spScanStartBtn');
+        const stopBtn        = document.getElementById('spScanStopBtn');
+        const progressWrap   = document.getElementById('spScanProgress');
+        const progressBar    = document.getElementById('spScanProgressBar');
+        const progressText   = document.getElementById('spScanProgressText');
+        const resultsDiv     = document.getElementById('spScanResults');
+        const resultsList    = document.getElementById('spScanResultsList');
+
+        if (startBtn)     startBtn.disabled = true;
+        if (stopBtn)      stopBtn.disabled  = false;
+        if (progressWrap) progressWrap.style.display = 'block';
+        if (resultsDiv)   resultsDiv.style.display   = 'none';
+        if (progressBar)  progressBar.style.width    = '0%';
+
+        const allResults = []; // { baudRate, parity, stopBits, foundIds, error? }
+
+        for (let i = 0; i < combos.length; i++) {
+            if (this.scanAborted) break;
+
+            const { baudRate, parity, stopBits } = combos[i];
+            const pct = Math.round((i / combos.length) * 100);
+            if (progressBar)  progressBar.style.width = `${pct}%`;
+            if (progressText) progressText.textContent =
+                `(${i + 1}/${combos.length}) ${baudRate} bps · ${parity} · Stop ${stopBits} — 스캔 중...`;
+
+            try {
+                await this.reconnectSerial(baudRate, parity, stopBits, true /* silent */);
+                await new Promise(r => setTimeout(r, 300)); // 포트 안정화 대기
+                const foundIds = await this._scanAllSlaveIds();
+                allResults.push({ baudRate, parity, stopBits, foundIds });
+            } catch (e) {
+                allResults.push({ baudRate, parity, stopBits, foundIds: [], error: e.message });
+            }
+        }
+
+        // 원래 설정으로 복원
+        try {
+            if (progressText) progressText.textContent = '원래 설정으로 복원 중...';
+            await this.reconnectSerial(origBaud, origParity, origStop, true);
+        } catch (e) {
+            this.showToast(`원래 설정 복원 실패: ${e.message}`, 'error');
+        }
+
+        this.serialPortScanActive = false;
+        if (startBtn)    startBtn.disabled = false;
+        if (stopBtn)     stopBtn.disabled  = true;
+        if (progressBar) progressBar.style.width = '100%';
+
+        const successResults = allResults.filter(r => r.foundIds.length > 0);
+        if (progressText) progressText.textContent = this.scanAborted
+            ? `스캔 중단 — 장치 발견된 설정: ${successResults.length}개`
+            : `스캔 완료 — 장치 발견된 설정: ${successResults.length}개`;
+
+        // 결과 표시
+        if (resultsDiv && resultsList) {
+            resultsDiv.style.display = 'block';
+            if (allResults.length === 0 || successResults.length === 0) {
+                resultsList.innerHTML = '<p style="color:#6c757d;">어떤 설정에서도 장치를 찾지 못했습니다.</p>';
+            } else {
+                resultsList.innerHTML = allResults.map(r => {
+                    const label = `${r.baudRate} bps · ${r.parity} · Stop ${r.stopBits}`;
+                    if (r.error) {
+                        return `<div style="padding:8px;margin-bottom:5px;border-radius:4px;background:white;border:1px solid #f5c6cb;color:#721c24;">
+                            <strong>${label}</strong> — 오류: ${r.error}
+                        </div>`;
+                    }
+                    if (r.foundIds.length === 0) return '';
+                    const idList = r.foundIds.map(id => `ID ${id}`).join(', ');
+                    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;margin-bottom:5px;border-radius:4px;background:white;border:1px solid #c3e6cb;">
+                        <div>
+                            <strong style="color:#155724;">${label}</strong><br>
+                            <span style="font-size:12px;color:#6c757d;">발견된 장치: ${idList}</span>
+                        </div>
+                        <button class="btn btn-sm btn-primary spScan-applyBtn"
+                            data-baud="${r.baudRate}" data-parity="${r.parity}" data-stop="${r.stopBits}">
+                            이 설정 적용
+                        </button>
+                    </div>`;
+                }).filter(Boolean).join('') || '<p style="color:#6c757d;">장치를 발견한 설정이 없습니다.</p>';
+
+                // "이 설정 적용" 버튼 리스너
+                resultsList.querySelectorAll('.spScan-applyBtn').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const baud  = parseInt(btn.dataset.baud);
+                        const parity = btn.dataset.parity;
+                        const stop  = parseInt(btn.dataset.stop);
+                        await this.reconnectSerial(baud, parity, stop);
+                        if (this.autoScanEnabled) {
+                            setTimeout(() => this.startDeviceScan(true), 500);
+                        }
+                    });
+                });
+            }
+        }
+
+        this.showToast(
+            successResults.length > 0
+                ? `포트 스캔 완료: ${successResults.length}개 설정에서 장치 발견`
+                : '포트 스캔 완료: 장치를 찾지 못했습니다',
+            successResults.length > 0 ? 'success' : 'info'
+        );
+    }
+
+    /**
+     * Abort an in-progress serial port scan
+     */
+    stopSerialPortScan() {
+        if (!this.serialPortScanActive) return;
+        this.scanAborted = true;
+        this.showToast('포트 스캔을 중단합니다...', 'info');
+    }
+
+    /**
+     * Internal: scan all slave IDs in the configured range, return array of found IDs.
+     * Does NOT update the device list or show scan UI.
+     */
+    async _scanAllSlaveIds() {
+        this.isScanning = true;
+        const found = [];
+        for (let slaveId = this.scanRangeStart; slaveId <= this.scanRangeEnd; slaveId++) {
+            if (this.scanAborted) break;
+            const response = await this.scanSlaveId(slaveId);
+            if (response !== null) found.push(slaveId);
+        }
+        this.isScanning = false;
+        return found;
     }
 
     /**
@@ -9825,7 +10698,7 @@ class ModbusDashboard {
                     const response = new Uint8Array(this.responseBuffer);
                     // Skip CRC check if requested, or verify CRC
                     if (skipCRC || this.modbus.verifyCRC(response)) {
-                        this.addMonitorEntry('rx', response);
+                        // 'received' 엔트리는 tryParseFrame()이 이미 기록하므로 중복 기록 생략
                         resolve(response);
                         return;
                     }
@@ -10032,8 +10905,6 @@ class ModbusDashboard {
 
         // Settings dropdowns
         const timeScaleEl = document.getElementById('chartTimeScale');
-        const sampleRateEl = document.getElementById('chartSampleRate');
-        const bufferSizeEl = document.getElementById('chartBufferSize');
 
         if (timeScaleEl) {
             timeScaleEl.addEventListener('change', () => {
@@ -10043,12 +10914,6 @@ class ModbusDashboard {
 
         // sampleRateEl: FC 0x64 Period 드롭다운 — startChartCapture() 시점에 읽음, 리스너 불필요
 
-        if (bufferSizeEl) {
-            bufferSizeEl.addEventListener('change', () => {
-                this.chartManager.setBufferSize(parseInt(bufferSizeEl.value));
-            });
-        }
-
         // Channel configuration — enable/disable만 ChartManager에 전달
         // 채널 번호는 startChartCapture() 시점에 직접 읽음
         for (let i = 0; i < 4; i++) {
@@ -10056,6 +10921,11 @@ class ModbusDashboard {
             if (enableEl) {
                 enableEl.addEventListener('change', () => {
                     this.chartManager.setChannelEnabled(i, enableEl.checked);
+                    // Persist enable state
+                    const saved = JSON.parse(localStorage.getItem('chartChSettings') || '{}');
+                    if (!saved[i]) saved[i] = {};
+                    saved[i].enabled = enableEl.checked;
+                    localStorage.setItem('chartChSettings', JSON.stringify(saved));
                 });
             }
         }
@@ -10130,6 +11000,56 @@ class ModbusDashboard {
         if (exportPngBtn) {
             exportPngBtn.addEventListener('click', () => this.chartManager.exportToPNG());
         }
+
+        // Y-axis mode buttons
+        const yAxisModeA = document.getElementById('yAxisModeA');
+        const yAxisModeB = document.getElementById('yAxisModeB');
+        const yAxisModeC = document.getElementById('yAxisModeC');
+        const scaleOffsetDivs = document.querySelectorAll('.channel-scale-offset');
+
+        const modeHints = { independent: 'Independent', normalize: 'Normalize 0–100%', scaleoffset: 'Scale + Offset' };
+        const hintEl = document.getElementById('yAxisModeHint');
+        const setYAxisModeUI = (mode) => {
+            [yAxisModeA, yAxisModeB, yAxisModeC].forEach(btn => btn?.classList.remove('active'));
+            if (mode === 'independent') yAxisModeA?.classList.add('active');
+            else if (mode === 'normalize') yAxisModeB?.classList.add('active');
+            else yAxisModeC?.classList.add('active');
+            scaleOffsetDivs.forEach(d => { d.style.display = mode === 'scaleoffset' ? 'flex' : 'none'; });
+            if (hintEl) hintEl.textContent = modeHints[mode] ?? '';
+            this.chartManager.setYAxisMode(mode);
+        };
+
+        if (yAxisModeA) yAxisModeA.addEventListener('click', () => setYAxisModeUI('independent'));
+        if (yAxisModeB) yAxisModeB.addEventListener('click', () => setYAxisModeUI('normalize'));
+        if (yAxisModeC) yAxisModeC.addEventListener('click', () => setYAxisModeUI('scaleoffset'));
+
+        // Split view toggle
+        const splitViewBtn = document.getElementById('chartSplitViewBtn');
+        if (splitViewBtn) {
+            splitViewBtn.addEventListener('click', () => {
+                const enabled = !this.chartManager.splitView;
+                this.chartManager.setSplitView(enabled);
+                splitViewBtn.classList.toggle('active', enabled);
+            });
+        }
+
+        // Scale/Offset inputs
+        for (let i = 0; i < 4; i++) {
+            const scaleEl = document.getElementById(`chartCh${i + 1}Scale`);
+            const offsetEl = document.getElementById(`chartCh${i + 1}Offset`);
+            if (scaleEl) {
+                scaleEl.addEventListener('change', () => {
+                    this.chartManager.setChannelScale(i, parseFloat(scaleEl.value) || 1);
+                });
+            }
+            if (offsetEl) {
+                offsetEl.addEventListener('change', () => {
+                    this.chartManager.setChannelOffset(i, parseFloat(offsetEl.value) || 0);
+                });
+            }
+        }
+
+        this.initChartChannelPickers();
     }
 
     /**
@@ -10152,14 +11072,14 @@ class ModbusDashboard {
         // 진행 중인 폴링 사이클이 있으면 완료 대기
         while (this.isPolling) await this.delay(5);
 
-        // 활성화된 채널 수집: { chIdx: 0~3, chNum: 1~254 }
+        // 활성화된 채널 수집: { chIdx: 0~3, chNum: 0~254 }
         const configuredChannels = [];
         for (let i = 0; i < 4; i++) {
-            const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
-            const addrEl   = document.getElementById(`chartCh${i + 1}Addr`);
+            const enableEl  = document.getElementById(`chartCh${i + 1}Enable`);
+            const triggerEl = document.getElementById(`chartCh${i + 1}Trigger`);
             if (enableEl?.checked) {
-                const chNum = parseInt(addrEl?.value);
-                if (chNum >= 0 && chNum <= 254) {
+                const chNum = parseInt(triggerEl?.dataset.selectedValue);
+                if (!isNaN(chNum) && chNum >= 0 && chNum <= 254) {
                     configuredChannels.push({ chIdx: i, chNum });
                 }
             }
@@ -10574,14 +11494,14 @@ class ModbusDashboard {
         if (!card) return;
         if (ModbusDashboard._OV_NO_BORDER_IDS.has(id)) return; // 테두리 효과 없음
         const borderMap = {
-            pass:    '#6fcf97',  // 초록
+            pass:    '#e9ecef',  // 기본 (테두리 효과 없음)
             fail:    '#eb8a90',  // 빨강
-            running: '#fdba74',  // 연한 주황
-            live:    '#6fcf97',  // 초록 (+ 애니메이션)
+            running: '#e9ecef',  // 기본 (테두리 효과 없음)
+            live:    '#e9ecef',  // 기본 (테두리 효과 없음)
             pending: '#e9ecef',  // 기본 회색
         };
         card.style.borderColor = borderMap[status] || borderMap.pending;
-        card.style.borderWidth = status === 'pending' ? '1px' : '2px';
+        card.style.borderWidth = '1px';
         card.classList.toggle('ov-card-live', status === 'live');
     }
 
@@ -11189,7 +12109,141 @@ class ModbusDashboard {
     }
 
     /**
-     * Read a single configuration parameter from the device
+     * Configuration 파라미터 정의 — category·address·reader·apply를 하나의 맵으로 관리.
+     * 새 파라미터 추가 시 이 맵에만 항목을 추가하면 읽기·Refresh 모두 자동으로 포함됨.
+     */
+    getConfigParamMap(deviceId) {
+        const device = this.devices.find(d => d.id === parseInt(deviceId));
+        if (!device) return {};
+        return {
+            motorType:        { category: 'motorInfo',     reader: async () => {
+                const result = await this.readCANopenObject(device.slaveId, 0x2000, 0x00);
+                return (result && !result.error && result.value != null) ? result.value : null;
+            }, apply: (raw) => {
+                device.motorType = raw;
+                const el = document.getElementById(`motorType_${deviceId}`);
+                if (el) el.value = String(raw);
+                this.saveDevices();
+            }},
+            operatingMode:    { category: 'motor',         address: 0xD106, apply: (raw) => {
+                device.operationMode = raw;
+                const el = document.getElementById(`operatingMode_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            setValueSource:   { category: 'motor',         address: 0xD101, apply: (raw) => {
+                device.setValueSource = raw;
+                const el = document.getElementById(`setValueSource_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            runningDirection: { category: 'motor',         address: 0xD102, apply: (raw) => {
+                device.runningDirection = raw;
+                const el = document.getElementById(`runningDirection_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            maxSpeed:         { category: 'motor',         address: 0xD119, apply: (raw) => {
+                device.maxSpeed = raw;
+                const el = document.getElementById(`maxSpeed_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            rampUp:           { category: 'motor',         address: 0xD11F, apply: (raw) => {
+                device.rampUp = raw;
+                const el = document.getElementById(`rampUp_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            rampDown:         { category: 'motor',         address: 0xD120, apply: (raw) => {
+                device.rampDown = raw;
+                const el = document.getElementById(`rampDown_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            maxCurrent:       { category: 'protection',    address: 0xD13B, apply: (raw) => {
+                device.maxCurrent = raw / 10;
+                const el = document.getElementById(`maxCurrent_${deviceId}`);
+                if (el) el.value = device.maxCurrent;
+                this.saveDevices();
+            }},
+            tempDerating:     { category: 'protection',    address: 0xD138, apply: (raw) => {
+                device.tempDerating = raw;
+                const el = document.getElementById(`tempDerating_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            fanAddress:       { category: 'communication', address: 0xD100, apply: (raw) => {
+                const el = document.getElementById(`fanAddress_${deviceId}`);
+                if (el) el.value = raw;
+            }},
+            baudrate:         { category: 'communication', address: 0xD149, apply: (raw) => {
+                device.baudrate = raw;
+                const el = document.getElementById(`baudrate_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            parity:           { category: 'communication', address: 0xD14A, apply: (raw) => {
+                device.parity = raw;
+                const el = document.getElementById(`parity_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+        };
+    }
+
+    /**
+     * 특정 카테고리 탭의 모든 파라미터를 디바이스에서 읽어 UI에 반영.
+     * 탭 진입·Refresh 버튼에서 공통으로 호출됨.
+     */
+    async readConfigCategory(category, deviceId) {
+        const device = this.devices.find(d => d.id === parseInt(deviceId));
+        if (!device || device.slaveId === 0) return;
+        if (!this.writer && !this.simulatorEnabled) return;
+
+        const paramMap = this.getConfigParamMap(deviceId);
+        const keys = Object.keys(paramMap).filter(k => paramMap[k].category === category);
+        if (keys.length === 0) return;
+
+        // 모든 항목을 동시에 ↻ 표시
+        keys.forEach(key => {
+            const el = document.getElementById(`${key}_${deviceId}_status`);
+            if (el) { el.textContent = '↻'; el.title = 'Reading...'; }
+        });
+
+        for (const key of keys) {
+            const entry = paramMap[key];
+            const statusEl = document.getElementById(`${key}_${deviceId}_status`);
+            const inputEl  = document.getElementById(`${key}_${deviceId}`);
+
+            const raw = entry.reader
+                ? await entry.reader()
+                : await this.readRegisterWithTimeout(device.slaveId, entry.address);
+
+            if (raw !== null) {
+                entry.apply(raw);
+                if (statusEl) { statusEl.textContent = '⭕'; statusEl.title = ''; }
+                if (inputEl)  { inputEl.style.borderColor = ''; }
+            } else {
+                if (statusEl) { statusEl.textContent = '❌'; statusEl.title = 'Read failed'; }
+                if (inputEl)  {
+                    inputEl.style.borderColor = '#dc3545';
+                    if (inputEl.tagName === 'INPUT') inputEl.value = '';
+                }
+            }
+        }
+
+        // ⭕ 2초 후 자동 소멸
+        setTimeout(() => {
+            keys.forEach(key => {
+                const el = document.getElementById(`${key}_${deviceId}_status`);
+                if (el && el.textContent === '⭕') { el.textContent = ''; el.title = ''; }
+            });
+        }, 2000);
+    }
+
+    /**
+     * Read a single configuration parameter from the device (context menu 읽기)
      */
     async readConfigParam(configType, deviceId) {
         this.hideConfigMenu();
@@ -11202,74 +12256,7 @@ class ModbusDashboard {
             return;
         }
 
-        // configType → { Modbus 주소, 읽은 값으로 device 속성·UI 업데이트하는 함수 }
-        const paramMap = {
-            fanAddress:       { address: 0xD100, apply: (raw) => {
-                const el = document.getElementById(`fanAddress_${deviceId}`);
-                if (el) el.value = raw;
-            }},
-            operatingMode:    { address: 0xD106, apply: (raw) => {
-                device.operationMode = raw;
-                const el = document.getElementById(`operatingMode_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            setValueSource:   { address: 0xD101, apply: (raw) => {
-                device.setValueSource = raw;
-                const el = document.getElementById(`setValueSource_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            runningDirection: { address: 0xD102, apply: (raw) => {
-                device.runningDirection = raw;
-                const el = document.getElementById(`runningDirection_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            maxSpeed:         { address: 0xD119, apply: (raw) => {
-                device.maxSpeed = raw;
-                const el = document.getElementById(`maxSpeed_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            rampUp:           { address: 0xD11F, apply: (raw) => {
-                device.rampUp = raw;
-                const el = document.getElementById(`rampUp_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            rampDown:         { address: 0xD120, apply: (raw) => {
-                device.rampDown = raw;
-                const el = document.getElementById(`rampDown_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            maxCurrent:       { address: 0xD13B, apply: (raw) => {
-                device.maxCurrent = raw / 10;
-                const el = document.getElementById(`maxCurrent_${deviceId}`);
-                if (el) el.value = device.maxCurrent;
-                this.saveDevices();
-            }},
-            tempDerating:     { address: 0xD138, apply: (raw) => {
-                device.tempDerating = raw;
-                const el = document.getElementById(`tempDerating_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            baudrate:         { address: 0xD149, apply: (raw) => {
-                device.baudrate = raw;
-                const el = document.getElementById(`baudrate_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            parity:           { address: 0xD14A, apply: (raw) => {
-                device.parity = raw;
-                const el = document.getElementById(`parity_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-        };
-
+        const paramMap = this.getConfigParamMap(deviceId);
         const entry = paramMap[configType];
         if (!entry) return;
 
@@ -11278,7 +12265,9 @@ class ModbusDashboard {
 
         if (statusEl) { statusEl.textContent = '↻'; statusEl.title = 'Reading...'; }
 
-        const raw = await this.readRegisterWithTimeout(device.slaveId, entry.address);
+        const raw = entry.reader
+            ? await entry.reader()
+            : await this.readRegisterWithTimeout(device.slaveId, entry.address);
 
         if (raw !== null) {
             entry.apply(raw);
@@ -11317,166 +12306,11 @@ class ModbusDashboard {
             return;
         }
 
-        const allKeys = [
-            'fanAddress', 'operatingMode', 'setValueSource', 'runningDirection', 'maxSpeed',
-            'rampUp', 'rampDown', 'maxCurrent', 'tempDerating', 'baudrate', 'parity'
-        ];
-
-        // Show loading on status spans that currently exist in the DOM
-        allKeys.forEach(key => {
-            const el = document.getElementById(`${key}_${deviceId}_status`);
-            if (el) { el.textContent = '↻'; el.title = 'Reading...'; }
-        });
-
-        const setStatus = (key, text, title = '') => {
-            const el = document.getElementById(`${key}_${deviceId}_status`);
-            if (el) { el.textContent = text; el.title = title; }
-        };
-
-        // 읽기 성공: ⭕ 표시 + 빨간 테두리 제거
-        const onSuccess = (key) => {
-            setStatus(key, '⭕');
-            const el = document.getElementById(`${key}_${deviceId}`);
-            if (el) el.style.borderColor = '';
-        };
-
-        // 읽기 실패: ❌ 표시 + 빨간 테두리 + 입력값 비우기 (stale 값 혼동 방지)
-        const onFail = (key) => {
-            setStatus(key, '❌', 'Read failed');
-            const el = document.getElementById(`${key}_${deviceId}`);
-            if (el) {
-                el.style.borderColor = '#dc3545';
-                if (el.tagName === 'INPUT') el.value = '';
-            }
-        };
-
-        try {
-            // Fan Address (0xD100)
-            const fanAddr = await this.readRegisterWithTimeout(device.slaveId, 0xD100);
-            if (fanAddr !== null) {
-                const input = document.getElementById(`fanAddress_${deviceId}`);
-                if (input) input.value = fanAddr;
-                onSuccess('fanAddress');
-            } else { onFail('fanAddress'); }
-
-            // Operating Mode (0xD106)
-            const mode = await this.readRegisterWithTimeout(device.slaveId, 0xD106);
-            if (mode !== null) {
-                device.operationMode = mode;
-                const sel = document.getElementById(`operatingMode_${deviceId}`);
-                if (sel) sel.value = mode;
-                onSuccess('operatingMode');
-            } else { onFail('operatingMode'); }
-
-            // Set Value Source (0xD101)
-            const setValueSource = await this.readRegisterWithTimeout(device.slaveId, 0xD101);
-            if (setValueSource !== null) {
-                device.setValueSource = setValueSource;
-                const sel = document.getElementById(`setValueSource_${deviceId}`);
-                if (sel) sel.value = setValueSource;
-                onSuccess('setValueSource');
-            } else { onFail('setValueSource'); }
-
-            // Running Direction (0xD102)
-            const dir = await this.readRegisterWithTimeout(device.slaveId, 0xD102);
-            if (dir !== null) {
-                device.runningDirection = dir;
-                const sel = document.getElementById(`runningDirection_${deviceId}`);
-                if (sel) sel.value = dir;
-                onSuccess('runningDirection');
-            } else { onFail('runningDirection'); }
-
-            // Maximum Speed (0xD119)
-            const maxSpeed = await this.readRegisterWithTimeout(device.slaveId, 0xD119);
-            if (maxSpeed !== null) {
-                device.maxSpeed = maxSpeed;
-                const input = document.getElementById(`maxSpeed_${deviceId}`);
-                if (input) input.value = maxSpeed;
-                onSuccess('maxSpeed');
-            } else { onFail('maxSpeed'); }
-
-            // Ramp-up Curve (0xD11F)
-            const rampUp = await this.readRegisterWithTimeout(device.slaveId, 0xD11F);
-            if (rampUp !== null) {
-                device.rampUp = rampUp;
-                const input = document.getElementById(`rampUp_${deviceId}`);
-                if (input) input.value = rampUp;
-                onSuccess('rampUp');
-            } else { onFail('rampUp'); }
-
-            // Ramp-down Curve (0xD120)
-            const rampDown = await this.readRegisterWithTimeout(device.slaveId, 0xD120);
-            if (rampDown !== null) {
-                device.rampDown = rampDown;
-                const input = document.getElementById(`rampDown_${deviceId}`);
-                if (input) input.value = rampDown;
-                onSuccess('rampDown');
-            } else { onFail('rampDown'); }
-
-            // Max Current (0xD13B) — raw = A * 10
-            const rawCurrent = await this.readRegisterWithTimeout(device.slaveId, 0xD13B);
-            if (rawCurrent !== null) {
-                device.maxCurrent = rawCurrent / 10;
-                const input = document.getElementById(`maxCurrent_${deviceId}`);
-                if (input) input.value = device.maxCurrent;
-                onSuccess('maxCurrent');
-            } else { onFail('maxCurrent'); }
-
-            // Module Temp Derating End (0xD138)
-            const tempDerating = await this.readRegisterWithTimeout(device.slaveId, 0xD138);
-            if (tempDerating !== null) {
-                device.tempDerating = tempDerating;
-                const input = document.getElementById(`tempDerating_${deviceId}`);
-                if (input) input.value = tempDerating;
-                onSuccess('tempDerating');
-            } else { onFail('tempDerating'); }
-
-            // Baudrate (0xD149)
-            const baudrate = await this.readRegisterWithTimeout(device.slaveId, 0xD149);
-            if (baudrate !== null) {
-                device.baudrate = baudrate;
-                const sel = document.getElementById(`baudrate_${deviceId}`);
-                if (sel) sel.value = baudrate;
-                onSuccess('baudrate');
-            } else { onFail('baudrate'); }
-
-            // Parity (0xD14A)
-            const parity = await this.readRegisterWithTimeout(device.slaveId, 0xD14A);
-            if (parity !== null) {
-                device.parity = parity;
-                const sel = document.getElementById(`parity_${deviceId}`);
-                if (sel) sel.value = parity;
-                onSuccess('parity');
-            } else { onFail('parity'); }
-
-            this.saveDevices();
-
-            // ⭕ 는 2초 후 자동 소멸, ❌ 와 빨간 테두리는 다음 Refresh 때까지 유지
-            setTimeout(() => {
-                allKeys.forEach(key => {
-                    const el = document.getElementById(`${key}_${deviceId}_status`);
-                    if (el && el.textContent === '⭕') { el.textContent = ''; el.title = ''; }
-                });
-            }, 2000);
-
-        } catch (error) {
-            console.error('refreshDevice error:', error);
-            allKeys.forEach(key => {
-                const statusEl = document.getElementById(`${key}_${deviceId}_status`);
-                if (statusEl && statusEl.textContent === '↻') {
-                    statusEl.textContent = '❌';
-                    statusEl.title = 'Read failed';
-                }
-                const inputEl = document.getElementById(`${key}_${deviceId}`);
-                if (inputEl) {
-                    inputEl.style.borderColor = '#dc3545';
-                    if (inputEl.tagName === 'INPUT') inputEl.value = '';
-                }
-            });
-        }
+        const category = this.activeConfigCategory || 'motorInfo';
+        await this.readConfigCategory(category, deviceId);
     }
 
-    renderDeviceSetupConfig(device) {
+    renderDeviceSetupConfig(device, { autoRead = false } = {}) {
         const configContainer = document.getElementById('deviceSetupConfig');
         if (!configContainer) return;
 
@@ -11549,6 +12383,11 @@ class ModbusDashboard {
                 this.startEditDeviceName(device.id, deviceNameSpan);
             });
         }
+
+        // 디바이스 선택·탭 최초 진입 시에만 자동 읽기 (apply 후 재렌더링 시에는 스킵)
+        if (autoRead) {
+            setTimeout(() => this.readConfigCategory(activeCategory, device.id), 100);
+        }
     }
 
     /**
@@ -11592,17 +12431,13 @@ class ModbusDashboard {
             case 'motorInfo':
                 return `<div style="margin-top: 0;">
                     ${row('motorType', '모터 타입', '연결된 모터의 타입 ID (FC 0x2B, 0x2000)', `
-                        <div style="display: flex; gap: 6px; align-items: center;" onclick="event.stopPropagation()">
-                            <select id="motorType_${id}" style="${iStyle}"
-                                onchange="window.dashboard.debouncedApply('motorType', ${id})">
-                                <option value="" ${device.motorType == null ? 'selected' : ''} disabled>-- 선택 --</option>
-                                <option value="4096" ${device.motorType === 4096 ? 'selected' : ''}>Sirocco Motor (0x1000)</option>
-                                <option value="8192" ${device.motorType === 8192 ? 'selected' : ''}>Axial Motor (0x2000)</option>
-                            </select>
-                            <button class="btn btn-sm" title="디바이스에서 읽기"
-                                style="padding: 5px 9px; font-size: 13px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; line-height: 1;"
-                                onclick="window.dashboard.readMotorType(${id})">↻</button>
-                        </div>`)}
+                        <select id="motorType_${id}" style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('motorType', ${id})"
+                            onclick="event.stopPropagation()">
+                            <option value="" ${device.motorType == null ? 'selected' : ''} disabled>-- 선택 --</option>
+                            <option value="4096" ${device.motorType === 4096 ? 'selected' : ''}>Sirocco Motor (0x1000)</option>
+                            <option value="8192" ${device.motorType === 8192 ? 'selected' : ''}>Axial Motor (0x2000)</option>
+                        </select>`)}
                 </div>`;
 
             case 'motor':
@@ -11749,10 +12584,8 @@ class ModbusDashboard {
             contentArea.innerHTML = this.getConfigCategoryHTML(device, categoryName);
         }
 
-        // motorInfo 탭 진입 시 디바이스에서 값 자동 읽기
-        if (categoryName === 'motorInfo') {
-            setTimeout(() => this.readMotorType(device.id), 100);
-        }
+        // 탭 진입 시 해당 카테고리의 파라미터 자동 읽기
+        setTimeout(() => this.readConfigCategory(categoryName, device.id), 100);
     }
 
     /**
@@ -12436,29 +13269,6 @@ class ModbusDashboard {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
 
-        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
-    }
-
-    /**
-     * Read Motor Type from device (0x2000, FC 0x2B CANopen SDO) and update select
-     */
-    async readMotorType(deviceId) {
-        const device = this.devices.find(d => d.id === deviceId);
-        if (!device || !this.writer) return;
-
-        const sel    = document.getElementById(`motorType_${deviceId}`);
-        const status = document.getElementById(`motorType_${deviceId}_status`);
-        if (status) { status.textContent = '↻'; status.title = 'Reading...'; }
-
-        const result = await this.readCANopenObject(device.slaveId, 0x2000, 0x00);
-        if (result && !result.error && result.value != null) {
-            device.motorType = result.value;
-            this.saveDevices();
-            if (sel) sel.value = String(result.value);
-            if (status) { status.textContent = '⭕'; status.title = 'Read successfully'; }
-        } else {
-            if (status) { status.textContent = '❌'; status.title = 'Read failed'; }
-        }
         if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
     }
 
@@ -13353,6 +14163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new ModbusDashboard();
     window.app = window.dashboard;
     window.osTestManager = new OSTestManager();
+    window.osTestManager.renderTestList();
 
     // Device Setup Tab Switching
     const deviceSetupTabs = document.querySelectorAll('.device-setup-tab');
@@ -13464,8 +14275,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show selected subtab content
             if (targetSubtab === 'os-verification') {
                 document.getElementById('manufactureOsVerification').style.display = 'block';
-            } else if (targetSubtab === 'hardware-test') {
-                document.getElementById('manufactureHardwareTest').style.display = 'flex';
             } else if (targetSubtab === 'tuning') {
                 document.getElementById('manufactureTuning').style.display = 'block';
             } else if (targetSubtab === 'offset') {
@@ -13492,13 +14301,13 @@ document.addEventListener('DOMContentLoaded', () => {
         window.osTestManager.resetAllTests();
     });
 
-    // Test item header click to expand/collapse
-    document.querySelectorAll('.os-test-header').forEach(header => {
-        header.addEventListener('click', () => {
-            const testItem = header.closest('.os-test-item');
-            const testId = testItem.dataset.testId;
-            window.osTestManager.expandTestItem(testId);
-        });
+    // Test item header click to expand/collapse (delegated — works for dynamically rendered items)
+    document.getElementById('osTestListContainer')?.addEventListener('click', (e) => {
+        const header = e.target.closest('.os-test-header');
+        if (!header) return;
+        const testItem = header.closest('.os-test-item');
+        if (!testItem) return;
+        window.osTestManager.expandTestItem(testItem.dataset.testId);
     });
 
     // Start/Stop Test buttons (delegated event handling)
