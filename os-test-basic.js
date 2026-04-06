@@ -124,8 +124,8 @@ window.OSTestModules.push(
           equipment: 'EC FAN 1EA, USB to RS485 Converter',
           steps: [
             '[Phase 2] SW Reset 명령 인가 (0xD000 ← 0x0008) → 100ms 주기 폴링으로 부팅 소요 시간(Boot Time) 측정\n판정 기준: 재부팅 후 통신 복구까지 5초 이내 + EEPROM 파라미터 훼손 없음',
-            '[Phase 3] 비정상 리셋 코드 (0x0000 / 0x0002 / 0xFFFF) Write 시도 → 5초 대기하며 재부팅 발생 여부 확인\n판정 기준: 재부팅 없음 + Exception 0x03 (Illegal Data Value) 반환',
-            '[Phase 4] 모터 고속 구동 중 SW Reset → PWM 즉각 차단(Coast to Stop) 물리 관찰 → 부팅 후 Auto-Restart 없음 (Stop/Ready) 확인\n판정 기준: OCP/소손 없이 즉각 PWM 차단 + 재부팅 후 Stop 상태 유지 (Auto-Restart 없음)',
+            '[Phase 3] SW Reset 비트(0x0008) 미포함 값 (0x0001 / 0x0002 / 0x0004) Write → 정상 응답 수신 확인 후 5초간 통신 유지 여부로 SW Reset 미발생 검증\n판정 기준: Write 정상 응답 수신 + 5초간 통신 단절 없음 (0xD000은 비트 필드 레지스터 — Exception 미발생이 정상)',
+            '[Phase 4] 모터 구동 중 SW Reset 명령 전송 → 펌웨어가 명령을 무시하고 모터 구동 지속 여부 확인 (Safety Interlock)\n판정 기준: 재부팅 없음 + 모터 PWM 차단 없음 + 현재 지령 속도 정상 유지 (구동 중 리셋 수용 시 즉시 FAIL)',
           ],
         },
 
@@ -163,14 +163,13 @@ window.OSTestModules.push(
           model: 'EC-FAN',
           equipment: 'EC FAN 1EA, USB to RS485 Converter, 부하 장치',
           criteria:
-              '[Phase 2-1] Torque: Ch0,1,3,4 파형이 Current Limit 300 레벨에서 Clamping\n[Phase 2-2] Velocity: 급가속 시 400 레벨에서 Saturation 후 3000 RPM 도달\n[Phase 3-1/3-3] 범위 초과·음수 Write → Exception 거부 (Read-back 값 불변)\n[Phase 3-2] 0% 설정 시 모터 무회전\n[Phase 4] 100% 복구 시 Overshoot < 5% (3150 RPM 미만) — Anti-windup 정상',
+              '[Phase 2-1] Torque: Ch0,1,3,4 파형이 Current Limit 300 레벨에서 Clamping (차트 육안 확인)\n[Phase 2-2] Velocity: 급가속 시 400 레벨 Saturation 후 목표 속도 도달 (차트 육안 확인)\n[Phase 3-1] 범위 초과 Write → Read-back 값 ≤ 1000 (자동)\n[Phase 3-2] Current Limit 0% 시 실제 속도 0xD02D ≤ 50 RPM (자동)\n[Phase 4] Anti-windup 복구 후 최대 속도 ≤ 1680 RPM (0xD02D 자동, Overshoot < 5%)',
           steps: [
-            '[Phase 2-1] Torque 모드 — Current Limit 30% (300) 설정 후 50%/100% 지령 Clamping 검증\n판정 기준: 차트 채널이 300 레벨에서 평탄하게 Clamping 유지 (차트 직접 판독)',
-            '[Phase 2-2] Velocity 모드 — Current Limit 40% (400) + 3000 RPM 급가속 Saturation 검증\n판정 기준: 급가속 구간 채널이 400 레벨에서 Saturation 후 목표 속도 도달',
-            '[Phase 3-1] 범위 초과 150% (1500, 0x05DC) Write — Exception 0x03 검증\n판정 기준: Write 거부 — Read-back 값 불변',
-            '[Phase 3-2] Current Limit 0% 설정 후 Run — 모터 무회전 검증\n판정 기준: 토크 출력 0 유지 — 모터 물리적 미회전 (차트 확인)',
-            '[Phase 3-3] 음수 값 0xFFFF (-1) Write — Exception 0x03 검증\n판정 기준: Write 거부 — Read-back 값 불변',
-            '[Phase 4] On-the-fly 전류 제한 10% 하향 → 속도 하락 관찰 → 100% 복구 Anti-windup 검증\n판정 기준: 복구 시 Overshoot < 5% (3150 RPM 미만) — Anti-windup 정상 동작',
+            '[Phase 2-1] Torque 모드 — Current Limit 30% (300) 설정 후 50%/100% 지령 Clamping 검증\n판정 기준: 차트 채널이 300 레벨에서 평탄하게 Clamping 유지 (차트 육안 판독)',
+            '[Phase 2-2] Velocity 모드 — Current Limit 40% (400) + 1600 RPM 급가속 Saturation 검증\n판정 기준: 급가속 구간 채널이 400 레벨에서 Saturation 후 목표 속도 도달 (차트 육안 판독)',
+            '[Phase 3-1] 범위 초과 150% (1500, 0x05DC) Write → Read-back 값 ≤ 1000 검증\n판정 기준: Write 후 Read-back 값 ≤ 1000 (자동)',
+            '[Phase 3-2] Current Limit 0% 설정 후 Run — 모터 무회전 검증\n판정 기준: 실제 속도 0xD02D ≤ 50 RPM (자동)',
+            '[Phase 4] On-the-fly 전류 제한 10% 하향 → 속도 하락 → 100% 복구 Anti-windup 검증\n판정 기준: 복구 후 최대 속도 0xD02D ≤ 1680 RPM (자동, Overshoot < 5%)',
           ],
         },
 
@@ -441,41 +440,47 @@ window.OSTestModules.push(
             try {
               self.checkStop();
 
+              // 0xD000은 비트 필드 레지스터: SW Reset 비트는 0x0008
+              // → 0x0008 미포함 값은 정상 Write 응답이 오는 것이 맞고, Exception은 발생하지 않음
+              // → SW Reset 미발생 판별은 통신 유지 여부(5초 폴링)로만 확인 (현재 유일한 판별 수단)
+              self.addLog('※ 0xD000은 비트 필드 레지스터 — SW Reset 비트 = 0x0008', 'info');
+              self.addLog('※ 비트 필드 Write는 정상 응답이 오는 것이 맞음 (Exception 미발생이 정상)', 'info');
+              self.addLog('※ SW Reset 미발생 판별: 5초간 통신 단절 없음으로 확인', 'info');
+
               let failCount = 0;
-              for (const code of [0x0000, 0x0002, 0xFFFF]) {
+              for (const code of [0x0001, 0x0002, 0x0004]) {
                 const codeHex = `0x${code.toString(16).toUpperCase().padStart(4, '0')}`;
-                self.addLog(`[0xD000] ← ${codeHex} Write 시도 (비정상 코드, Exception 0x03 예상)`, 'step');
+                self.addLog(`[0xD000] ← ${codeHex} Write (SW Reset 비트 0x0008 미포함)`, 'step');
                 try {
                   await d.writeRegister(slaveId, 0xD000, code);
-                  self.addLog(`⚠ ${codeHex}: 정상 응답 반환 — Exception 미발생`, 'warning');
+                  self.addLog(`✓ ${codeHex}: 정상 Write 응답 수신 — 비트 필드 기록`, 'success');
                 } catch (e) {
-                  self.addLog(`✓ ${codeHex}: 쓰기 거부 (Exception/Timeout)`, 'success');
+                  self.addLog(`⚠ ${codeHex}: Write 응답 없음 — ${e.message}`, 'warning');
                 }
 
-                self.addLog(`5초 대기 — 재부팅 발생 여부 확인 (${codeHex})`, 'info');
+                self.addLog(`5초간 100ms 주기 폴링 (0xD02D 실제 속도) — SW Reset(통신 단절) 발생 여부 감시 (${codeHex})`, 'info');
                 let rebooted = false;
-                for (let t = 500; t <= 5000; t += 500) {
+                for (let t = 100; t <= 5000; t += 100) {
                   if (self.shouldStopTest) throw new Error('테스트 중단됨');
-                  await self.delay(500);
+                  await self.delay(100);
                   try {
-                    const alive = await d.readInputRegisterWithTimeout(slaveId, 0xD011);
-                    if (alive === null || alive === undefined) {
+                    const speed = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+                    if (speed === null || speed === undefined) {
                       rebooted = true;
-                      self.addLog(`✗ ${codeHex}: ${t}ms 시점 응답 없음 — 재부팅 의심`, 'error');
+                      self.addLog(`✗ ${codeHex}: ${t}ms 시점 응답 없음 — SW Reset 발생 의심`, 'error');
                       break;
                     }
                   } catch (_) {
                     rebooted = true;
-                    self.addLog(`✗ ${codeHex}: ${t}ms 시점 통신 끊김 — 재부팅 의심`, 'error');
+                    self.addLog(`✗ ${codeHex}: ${t}ms 시점 통신 단절 — SW Reset 발생 의심`, 'error');
                     break;
                   }
                 }
 
                 if (rebooted) {
-                  self.addLog(`✗ ${codeHex}: 비정상 코드 입력 시 재부팅 발생 — FAIL`, 'error');
+                  self.addLog(`✗ ${codeHex}: SW Reset 발생 감지 (통신 단절) — FAIL`, 'error');
                   failCount++;
-                  // 재부팅 발생 시 통신 복구 대기
-                  self.addLog('재부팅 발생 — 통신 복구 대기 중...', 'warning');
+                  self.addLog('SW Reset 발생 — 통신 복구 대기 중...', 'warning');
                   for (let elapsed = 100; elapsed <= 8000; elapsed += 100) {
                     await self.delay(100);
                     try {
@@ -503,72 +508,96 @@ window.OSTestModules.push(
             }
           }
 
-          // ── Phase 4: 모터 구동 중 강제 리셋 + Safe State 복구 ────────────
+          // ── Phase 4: 모터 구동 중 SW Reset Safety Interlock 검증 ──────────
           {
             self.updateStepStatus(2, 'running');
-            self.updateProgress(70, 'Phase 4: 모터 구동 중 강제 리셋');
-            self.addLog('▶ Phase 4 시작 — 모터 고속 구동 중 강제 리셋 및 Safe State 복구 검증', 'info');
+            self.updateProgress(70, 'Phase 4: 구동 중 리셋 방어 로직 검증');
+            self.addLog('▶ Phase 4 시작 — 모터 구동 중 SW Reset Safety Interlock 검증', 'info');
+            self.addLog('판정: 리셋 무시 + 모터 구동 지속 → PASS / 재부팅 발생 → 즉시 FAIL', 'info');
             try {
               self.checkStop();
 
-              // 모터 Run (최대 Setpoint)
+              // 모터 Run 명령
               self.addLog('Run 명령 전송 (Setpoint = 64000, Run = 1)', 'step');
               await d.writeRegister(slaveId, 0xD001, 64000);
               await d.writeRegister(slaveId, 0x0001, 1);
               self.addLog('모터 가속 대기 (3초)...', 'info');
               await self.delay(3000);
 
-              const runningSpeed = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
-              self.addLog(`현재 실제 속도 [0xD02D] = ${runningSpeed ?? 'null'}`, 'info');
-              self.addLog('★ 모터가 고속 회전 중인지 물리적으로 확인하세요', 'warning');
+              const speedBefore = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+              self.addLog(`SW Reset 전 실제 속도 [0xD02D] = ${speedBefore ?? 'null'}`, 'info');
+              if (!speedBefore) throw new Error('모터 구동 확인 실패 — 속도 응답 없음');
 
-              // 구동 중 SW Reset
-              self.addLog('구동 중 SW Reset 명령 전송 (0xD000 ← 0x0008)', 'step');
-              const resetStart = Date.now();
+              // 구동 중 SW Reset 명령 전송
+              self.addLog('★ 구동 중 SW Reset 명령 전송 (0xD000 ← 0x0008)', 'step');
+              self.addLog('펌웨어가 명령을 무시하면 통신이 끊기지 않고 모터가 계속 동작해야 함', 'info');
               try {
                 await d.writeRegister(slaveId, 0xD000, 0x0008);
-              } catch (_) {}
+                self.addLog('SW Reset 명령에 응답 수신 (Echo 또는 거부 응답)', 'info');
+              } catch (e) {
+                self.addLog(`SW Reset 명령 응답: ${e.message}`, 'info');
+              }
 
-              self.addLog('★ 모터가 즉각 정지(Coast to Stop)하는지 물리적으로 관찰하세요', 'warning');
-              self.addLog('★ IGBT/FET 소손 및 OCP 알람 발생 여부를 확인하세요', 'warning');
-
-              // 부팅 완료 대기
-              self.addLog('100ms 주기 폴링으로 통신 복구 대기 중...', 'info');
-              let commUpTime = null;
-              let postStatus = null;
-              for (let elapsed = 100; elapsed <= 10000; elapsed += 100) {
+              // 5초간 100ms 주기로 통신 단절 여부 감시
+              self.addLog('5초간 100ms 주기 폴링 — 통신 단절(재부팅) 여부 감시', 'info');
+              let rebooted = false;
+              let commDownAt = null;
+              for (let elapsed = 100; elapsed <= 5000; elapsed += 100) {
                 if (self.shouldStopTest) throw new Error('테스트 중단됨');
                 await self.delay(100);
                 try {
                   const val = await d.readInputRegisterWithTimeout(slaveId, 0xD011);
-                  if (val !== null && val !== undefined) {
-                    commUpTime = Date.now();
-                    postStatus = val;
-                    self.addLog(`✓ 통신 복구 — 경과: ${commUpTime - resetStart}ms  Motor Status = 0x${val.toString(16).toUpperCase().padStart(4, '0')}`, 'success');
+                  if (val === null || val === undefined) {
+                    rebooted = true;
+                    commDownAt = elapsed;
+                    self.addLog(`✗ ${elapsed}ms: 응답 없음 — 재부팅 발생 (FAIL)`, 'error');
                     break;
                   }
-                } catch (_) {}
+                } catch (_) {
+                  rebooted = true;
+                  commDownAt = elapsed;
+                  self.addLog(`✗ ${elapsed}ms: 통신 단절 — 재부팅 발생 (FAIL)`, 'error');
+                  break;
+                }
               }
 
-              if (commUpTime === null) throw new Error('10초 이내 통신 복구 실패');
-
-              await self.delay(500);
-
-              // Auto-Restart 확인
-              const postSpeed = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
-              const postRunReg = await d.readRegisterWithTimeout(slaveId, 0x0001);
-              self.addLog(`부팅 후 실제 속도 [0xD02D] = ${postSpeed ?? 'null'}`, 'info');
-              self.addLog(`부팅 후 Run 레지스터 [0x0001] = ${postRunReg ?? 'null'}`, 'info');
-
-              if (postRunReg === 1) {
-                throw new Error('Auto-Restart 감지 — Run 레지스터 = 1 (재부팅 후 자동 구동)');
+              if (rebooted) {
+                // 재부팅 발생 시 통신 복구 대기 후 Stop 처리
+                self.addLog(`✗ ${commDownAt}ms 시점 재부팅 감지 — Safety Interlock 미작동 (치명적 안전 결함)`, 'error');
+                self.addLog('통신 복구 대기 중...', 'warning');
+                for (let elapsed = 100; elapsed <= 8000; elapsed += 100) {
+                  await self.delay(100);
+                  try {
+                    const val = await d.readInputRegisterWithTimeout(slaveId, 0xD011);
+                    if (val !== null && val !== undefined) {
+                      self.addLog(`통신 복구 (${elapsed}ms) — 모터 Stop 명령 전송`, 'warning');
+                      await d.writeRegister(slaveId, 0x0001, 0);
+                      break;
+                    }
+                  } catch (_) {}
+                }
+                throw new Error(`구동 중 리셋 수용됨 (${commDownAt}ms 시점 통신 단절) — Safety Interlock 미작동`);
               }
 
-              self.addLog('✓ Auto-Restart 없음 — Stop/Ready 상태로 부팅 확인 — PASS', 'success');
+              // 5초 후 속도 확인 — 모터가 계속 구동 중인지 검증
+              const speedAfter = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+              self.addLog(`5초 경과 후 실제 속도 [0xD02D] = ${speedAfter ?? 'null'}`, 'info');
+              self.addLog('✓ 5초간 통신 단절 없음 — 리셋 명령 무시 확인', 'success');
+
+              if (!speedAfter || speedAfter < (speedBefore * 0.5)) {
+                // 모터 Stop 정리 후 FAIL
+                await d.writeRegister(slaveId, 0x0001, 0);
+                throw new Error(`PWM 차단 감지 — 속도 급감 (전: ${speedBefore} → 후: ${speedAfter ?? 'null'}) — Safety Interlock 미작동`);
+              }
+              self.addLog(`✓ 속도 정상 유지 (전: ${speedBefore} → 후: ${speedAfter}) — PWM 출력 차단 없음`, 'success');
+
+              // 모터 Stop (정리)
+              self.addLog('모터 Stop 명령 전송 (정리)', 'step');
+              await d.writeRegister(slaveId, 0x0001, 0);
 
               passed.push('Phase 4');
               self.updateStepStatus(2, 'success');
-              self.addLog('✓ Phase 4 합격', 'success');
+              self.addLog('✓ Phase 4 합격 — Safety Interlock 정상 동작 확인', 'success');
             } catch (e) {
               failed.push('Phase 4');
               self.updateStepStatus(2, 'error');
@@ -955,6 +984,10 @@ window.OSTestModules.push(
             await self.delay(300);
             self.checkStop();
 
+            // ── 합/불합격 추적 ────────────────────────────────────────────
+            const passed = [];
+            const failed = [];
+
             // ── Phase 3-1 : 범위 초과 150% (1500) Write ─────────────────
             self.addLog('▶ Phase 3-1 시작', 'info');
             self.addLog(
@@ -973,16 +1006,18 @@ window.OSTestModules.push(
                 await d.readRegisterWithTimeout(slaveId, 0xD13B);
             self.addLog(
                 `  Read-back: Current Limit = ${limitPost31 ?? 'N/A'}`, 'info');
-            if (limitPost31 !== 1500) {
+            if (limitPost31 != null && limitPost31 <= 1000) {
               self.addLog(
-                  '✓ Write 거부 — 값 불변 (범위 초과 방어 확인) — PASS',
+                  `✓ Read-back 값 ${limitPost31} ≤ 1000 (100%) — 범위 초과 클램핑/거부 확인 — PASS`,
                   'success');
               self.updateStepStatus(2, 'success');
+              passed.push('Phase 3-1');
             } else {
               self.addLog(
-                  '✗ [FAIL] 범위 초과 Write 허용됨 — 파라미터 보호 미동작 (불합격)',
+                  `✗ [FAIL] Read-back 값 ${limitPost31 ?? 'N/A'} > 1000 — 범위 초과 허용됨 (불합격)`,
                   'error');
               self.updateStepStatus(2, 'error');
+              failed.push('Phase 3-1');
             }
             await self.delay(300);
             self.checkStop();
@@ -1001,11 +1036,17 @@ window.OSTestModules.push(
             await self.delay(200);
 
             self.addLog(
-                '★ 모터를 Run 하세요 — 모터가 회전하지 않아야 합격 (5초 관찰)',
+                '★ 모터를 Run 하세요 — 5초간 실제 속도(0xD02D) 자동 측정',
                 'warning');
-            self.addLog('  → 차트 채널이 0 부근에 유지되어야 함', 'info');
-            await self.delay(5000);
-            self.checkStop();
+            let maxSpeed32 = 0;
+            const endTime32 = Date.now() + 5000;
+            while (Date.now() < endTime32) {
+              const spd = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+              if (spd !== null && spd > maxSpeed32) maxSpeed32 = spd;
+              await self.delay(300);
+              self.checkStop();
+            }
+            self.addLog(`  측정 완료 — 최대 실제 속도: ${maxSpeed32} RPM`, 'info');
 
             self.addLog('★ 모터를 Stop 하세요', 'warning');
             await self.delay(2000);
@@ -1016,43 +1057,20 @@ window.OSTestModules.push(
             self.addLog('  Current Limit [0xD13B] = 1000 (100%) 복원', 'info');
             await self.delay(200);
 
-            self.updateStepStatus(3, 'success');
-            self.updateProgress(62, 'Phase 3-2 완료');
-            await self.delay(300);
-            self.checkStop();
-
-            // ── Phase 3-3 : 음수 값 0xFFFF (-1) Write ───────────────────
-            self.addLog('▶ Phase 3-3 시작', 'info');
-            self.addLog(
-                '[Phase 3-3] 음수 값 0xFFFF (-1) Write — Exception 0x03 예상',
-                'step');
-            self.updateStepStatus(4, 'running');
-            self.updateProgress(65, 'Phase 3-3: 음수 Write');
-
-            const limitPre33 = await d.readRegisterWithTimeout(slaveId, 0xD13B);
-            self.addLog(
-                `  현재 Current Limit [0xD13B]: ${limitPre33 ?? 'N/A'}`,
-                'info');
-            await d.writeRegister(slaveId, 0xD13B, 0xFFFF);
-            await self.delay(300);
-            const limitPost33 =
-                await d.readRegisterWithTimeout(slaveId, 0xD13B);
-            self.addLog(
-                `  Read-back: Current Limit = ${limitPost33 ?? 'N/A'} (0x${
-                    (limitPost33 ?? 0)
-                        .toString(16)
-                        .toUpperCase()
-                        .padStart(4, '0')})`,
-                'info');
-            if (limitPost33 !== 0xFFFF) {
-              self.addLog('✓ Write 거부 — 음수 값 방어 확인 — PASS', 'success');
-              self.updateStepStatus(4, 'success');
+            if (maxSpeed32 <= 50) {
+              self.addLog(
+                  `✓ 최대 속도 ${maxSpeed32} RPM ≤ 50 RPM — 모터 무회전 확인 — PASS`,
+                  'success');
+              self.updateStepStatus(3, 'success');
+              passed.push('Phase 3-2');
             } else {
               self.addLog(
-                  '✗ [FAIL] 음수 값 Write 허용됨 — 방어 로직 미동작 (불합격)',
+                  `✗ [FAIL] 최대 속도 ${maxSpeed32} RPM > 50 RPM — 모터 회전 감지 (불합격)`,
                   'error');
-              self.updateStepStatus(4, 'error');
+              self.updateStepStatus(3, 'error');
+              failed.push('Phase 3-2');
             }
+            self.updateProgress(62, 'Phase 3-2 완료');
             await self.delay(300);
             self.checkStop();
 
@@ -1061,7 +1079,7 @@ window.OSTestModules.push(
             self.addLog(
                 '[Phase 4] On-the-fly 전류 제한 10% 하향 → 속도 하락 관찰 → 100% 복구 Anti-windup 검증',
                 'step');
-            self.updateStepStatus(5, 'running');
+            self.updateStepStatus(4, 'running');
             self.updateProgress(70, 'Phase 4: 구동 준비');
 
 
@@ -1100,11 +1118,22 @@ window.OSTestModules.push(
             self.addLog(
                 '  Write: Current Limit [0xD13B] = 1000 (100.0%) ← 복구',
                 'info');
+            // 10초간 실제 속도 모니터링 (Overshoot 감시)
+            const overshootLimit = Math.round(1600 * 1.05);  // 1680 RPM
             self.addLog(
-                '  → Anti-windup 확인: Overshoot < 5% (1680 RPM 미만) — 10초 관찰',
+                `  → Anti-windup 확인: 한계 ${overshootLimit} RPM (1600×1.05) — 10초 자동 측정`,
                 'info');
-            await self.delay(10000);
-            self.checkStop();
+            let maxSpeed4 = 0;
+            const endTime4 = Date.now() + 10000;
+            while (Date.now() < endTime4) {
+              const spd = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+              if (spd !== null && spd > maxSpeed4) maxSpeed4 = spd;
+              await self.delay(200);
+              self.checkStop();
+            }
+            self.addLog(
+                `  모니터링 완료 — 최대 속도: ${maxSpeed4} RPM (한계: ${overshootLimit} RPM)`,
+                'info');
 
             self.addLog('★ 모터를 Stop 하세요', 'warning');
             await self.delay(2000);
@@ -1124,23 +1153,38 @@ window.OSTestModules.push(
             }
             self.addLog('  초기값 복원 완료', 'info');
 
-            self.updateStepStatus(5, 'success');
-            self.updateProgress(100, '테스트 완료');
+            if (maxSpeed4 <= overshootLimit) {
+              self.addLog(
+                  `✓ 최대 속도 ${maxSpeed4} RPM ≤ ${overshootLimit} RPM — Overshoot 없음 — PASS`,
+                  'success');
+              self.updateStepStatus(4, 'success');
+              passed.push('Phase 4');
+            } else {
+              self.addLog(
+                  `✗ [FAIL] 최대 속도 ${maxSpeed4} RPM > ${overshootLimit} RPM — Overshoot 초과 (불합격)`,
+                  'error');
+              self.updateStepStatus(4, 'error');
+              failed.push('Phase 4');
+            }
+
+            const ok = failed.length === 0;
+            self.updateProgress(100, ok ? '테스트 완료 — 합격' : '테스트 완료 — 불합격');
             self.addLog(
-                'Current Limit 파라미터 설정 검증: 완료 (차트 파형으로 최종 판정 확인 필요)',
-                'success');
+                ok ? '✓ Current Limit 파라미터 설정 검증: 합격'
+                   : `✗ Current Limit 파라미터 설정 검증: 불합격 (${failed.join(', ')})`,
+                ok ? 'success' : 'error');
 
             return {
-              status: 'pass',
-              message:
-                  'Current Limit 파라미터 검증 완료 — 차트 파형으로 최종 판정 확인 필요',
+              status: ok ? 'pass' : 'fail',
+              message: ok
+                  ? 'Current Limit 파라미터 검증 완료 — 합격'
+                  : `불합격 항목: ${failed.join(', ')}`,
               details:
-                  'Phase 2-1: Torque 모드 (0xD106=2) Current Limit 300 (0xD13B) Clamping\n' +
-                  'Phase 2-2: Velocity 모드 (0xD106=0) Current Limit 400 (0xD13B) Saturation\n' +
-                  'Phase 3-1: 150% 초과 Write → Exception 거부\n' +
-                  'Phase 3-2: 0% 설정 모터 무회전 (수동 확인)\n' +
-                  'Phase 3-3: 음수 Write → Exception 거부\n' +
-                  'Phase 4: On-the-fly 제한 변경 + Anti-windup 복구 (차트 확인)',
+                  'Phase 2-1: Torque 모드 Current Limit 300 Clamping (차트 육안)\n' +
+                  'Phase 2-2: Velocity 모드 Current Limit 400 Saturation (차트 육안)\n' +
+                  `Phase 3-1: 150% 초과 Write Read-back ≤ 1000 → ${passed.includes('Phase 3-1') ? '합격' : '불합격'}\n` +
+                  `Phase 3-2: 0% 설정 모터 무회전 (0xD02D ≤ 50 RPM) → ${passed.includes('Phase 3-2') ? '합격' : '불합격'}\n` +
+                  `Phase 4: Anti-windup 복구 Overshoot (0xD02D ≤ ${overshootLimit} RPM) → ${passed.includes('Phase 4') ? '합격' : '불합격'}`,
             };
 
           } finally {

@@ -51,7 +51,7 @@ class ChartManager {
         this.margin = 0.1; // 10% margin
 
         // Time settings
-        this.timeScale = 5000; // 5 seconds visible
+        this.timeScale = 10000; // 10 seconds visible
         this.sampleRate = 100; // 100ms between samples
         this.startTime = null;
 
