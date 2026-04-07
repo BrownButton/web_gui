@@ -5181,10 +5181,10 @@ class ModbusDashboard {
             {type:'holding',group:'Motor Control',address:'0xD11A',name:'Maximum permissible speed',implemented:'N',description:'최대 속도의 상한치를 설정 (모터 최대 속도)'},
             {type:'holding',group:'Motor Control',address:'0xD11F',name:'Ramp-up curve',implemented:'Y',description:'가/감속도 조정 파라미터, 알람 등 모터 정지조건이 감지되면 감속없이 정지함'},
             {type:'holding',group:'Motor Control',address:'0xD120',name:'Ramp-down curve',implemented:'Y',description:'감속 곡선 설정'},
-            {type:'holding',group:'Signal Mapping',address:'0xD12A',name:'Point 1 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
-            {type:'holding',group:'Signal Mapping',address:'0xD12B',name:'Point 1 Y-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
-            {type:'holding',group:'Signal Mapping',address:'0xD12C',name:'Point 2 X-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
-            {type:'holding',group:'Signal Mapping',address:'0xD12D',name:'Point 2 Y-coordinate',implemented:'N',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',group:'Signal Mapping',address:'0xD12A',name:'Point 1 X-coordinate',implemented:'Y',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',group:'Signal Mapping',address:'0xD12B',name:'Point 1 Y-coordinate',implemented:'Y',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',group:'Signal Mapping',address:'0xD12C',name:'Point 2 X-coordinate',implemented:'Y',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
+            {type:'holding',group:'Signal Mapping',address:'0xD12D',name:'Point 2 Y-coordinate',implemented:'Y',description:'아날로그 입력 또는 PWM 입력 신호에 설정값을 할당하는데 사용'},
             {type:'holding',group:'Limitation',address:'0xD12F',name:'Limitation Control',implemented:'N',description:'0번 비트 set: Power limit 활성화, 1번 비트 set: Current Limit 활성화'},
             {type:'holding',group:'Limitation',address:'0xD135',name:'Maximum permissible power',implemented:'N',description:'허용 가능한 최대 파워 설정'},
             {type:'holding',group:'Limitation',address:'0xD136',name:'Max. power at derating end',implemented:'N',description:'모듈과 모터의 온도를 토대로 출력을 디레이팅 하는 기능'},
@@ -5199,6 +5199,8 @@ class ModbusDashboard {
             {type:'holding',group:'I/O',address:'0xD158',name:'Configuration of I/O 1',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
             {type:'holding',group:'I/O',address:'0xD159',name:'Configuration of I/O 2',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
             {type:'holding',group:'I/O',address:'0xD15A',name:'Configuration of I/O 3',implemented:'N',description:'I/O 활성/비활성화 설정 파라미터'},
+            {type:'holding',group:'Sensor',address:'0xD160',name:'Min. sensor value',implemented:'Y',description:'입력 센서의 최소값'},
+            {type:'holding',group:'Sensor',address:'0xD162',name:'Max. sensor value',implemented:'Y',description:'입력 센서의 최대값'},
             {type:'holding',group:'Shedding',address:'0xF150',name:'Shedding function',implemented:'N',description:'외부 환경에 의해 팬이 얼어 기동이 어려울 경우 이 기능 활성화를 통해 구속 상태를 제거'},
             {type:'holding',group:'Shedding',address:'0xF151',name:'Max. starting modulation level',implemented:'N',description:'최대 시작 모듈레이션 레벨'},
             {type:'holding',group:'Shedding',address:'0xF152',name:'Number of start attempts',implemented:'N',description:'시작 시도 횟수'},
@@ -5260,6 +5262,7 @@ class ModbusDashboard {
             {type:'holding',group:'Device Info',address:'0xD1A8',name:'FAN type 4',implemented:'N',description:'ASCII 코드 형태로 표현'},
             {type:'holding',group:'Device Info',address:'0xD1A9',name:'FAN type 5',implemented:'N',description:'ASCII 코드 형태로 표현'},
             {type:'holding',group:'Device Info',address:'0xD1AA',name:'FAN type 6',implemented:'N',description:'ASCII 코드 형태로 표현'},
+            {type:'holding',group:'Communication',address:'0xD1FF',name:'Enable Termination resistor',implemented:'Y',description:'RS485 통신 종단 저항 설정'},
             // Input Registers
             {type:'input',group:'Device Info',address:'0xD000',name:'Identification',implemented:'Y',description:'장치 식별'},
             {type:'input',group:'Device Info',address:'0xD001',name:'Max. number of bytes',implemented:'Y',description:'최대 바이트 수'},
@@ -8934,8 +8937,11 @@ class ModbusDashboard {
                     <span class="param-name">${param.name}</span>
                     <span class="param-address">${param.type === 'holding' ? 'H' : 'I'}:0x${param.address.toString(16).toUpperCase()}</span>
                 </div>
-                <div class="param-value ${param.value === null ? 'stale' : ''}" id="param-value-${param.id}">
-                    ${param.value !== null ? param.value : '--'}
+                <div class="param-value-wrapper">
+                    <div class="param-value ${param.value === null ? 'stale' : ''}" id="param-value-${param.id}">
+                        ${param.value !== null ? param.value : '--'}
+                    </div>
+                    ${this.getParamConvertedHTML(param)}
                 </div>
                 <button class="param-remove-btn" data-device-id="${deviceId}" data-param-id="${param.id}" title="Remove">×</button>
             </div>
@@ -8969,8 +8975,11 @@ class ModbusDashboard {
                     <span class="param-name">${param.name}</span>
                     <span class="param-address">${param.type === 'holding' ? 'H' : 'I'}:0x${param.address.toString(16).toUpperCase()}</span>
                 </div>
-                <div class="param-value ${param.value === null ? 'stale' : ''}" id="param-value-${param.id}">
-                    ${param.value !== null ? param.value : '--'}
+                <div class="param-value-wrapper">
+                    <div class="param-value ${param.value === null ? 'stale' : ''}" id="param-value-${param.id}">
+                        ${param.value !== null ? param.value : '--'}
+                    </div>
+                    ${this.getParamConvertedHTML(param)}
                 </div>
                 <button class="param-remove-btn" title="Remove">×</button>
             </div>
@@ -9217,6 +9226,26 @@ class ModbusDashboard {
     }
 
     /**
+     * Returns converted sub-value HTML for special registers (D023 → mV, D024 → mA)
+     */
+    getParamConvertedHTML(param) {
+        if (param.type !== 'input') return '';
+        if (param.address === 0xD023) {
+            const converted = param.value !== null
+                ? ((param.value / 65536) * 10000).toFixed(1) + ' mV'
+                : '--';
+            return `<div class="param-converted" id="param-converted-${param.id}">${converted}</div>`;
+        }
+        if (param.address === 0xD024) {
+            const converted = param.value !== null
+                ? ((param.value / 65536) * 20).toFixed(3) + ' mA'
+                : '--';
+            return `<div class="param-converted" id="param-converted-${param.id}">${converted}</div>`;
+        }
+        return '';
+    }
+
+    /**
      * Update monitoring parameter value in UI
      */
     updateMonitoringParamValue(deviceId, paramId, value) {
@@ -9224,6 +9253,19 @@ class ModbusDashboard {
         if (valueEl) {
             valueEl.textContent = value;
             valueEl.classList.remove('stale');
+        }
+
+        const convertedEl = document.getElementById(`param-converted-${paramId}`);
+        if (convertedEl) {
+            const device = this.devices.find(d => d.id === deviceId);
+            const param = device?.monitoringParams?.find(p => p.id === paramId);
+            if (param) {
+                if (param.address === 0xD023) {
+                    convertedEl.textContent = ((value / 65536) * 10000).toFixed(1) + ' mV';
+                } else if (param.address === 0xD024) {
+                    convertedEl.textContent = ((value / 65536) * 20).toFixed(3) + ' mA';
+                }
+            }
         }
     }
 
