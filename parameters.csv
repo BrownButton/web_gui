@@ -120,6 +120,8 @@ input,0xD01C,Enable/Disable input state,N,Enable/Disable 입력 상태
 input,0xD021,Current power (Relative),N,상대 전력
 input,0xD023,Sensor actual value 1,Y,AIN1의 현재 측정값
 input,0xD024,Sensor actual value 2,Y,AIN2의 현재 측정값
+input,0xD025,Sensor actual value 3,Y,PWMIN3의 현재 측정 Duty값
+input,0xD026,Sensor actual value 4,Y,PWMIN3의 현재 측정 주파수값
 input,0xD028,Current set value source,Y,현재 사용 중인 소스 (0=AIN1 1=RS485 2=AIN2 3=PWMIn3 255=Fail-safe)
 input,0xD02D,Actual speed [RPM] (Absolute),Y,절대 속도 [RPM]
 input,0xD03D,Line Voltage,N,라인 전압

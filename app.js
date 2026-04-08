@@ -3051,22 +3051,34 @@ class ModbusDashboard {
         // FC 0x64: Chart Continuous 응답 — responseBuffer에서 별도 처리, 여기서는 무시
         if (this.receiveBuffer[1] === 0x64) return;
 
-        // 0xFF 바이어스 노이즈 즉시 폐기:
-        // RS-485 DE→RE 전환 시 버스 floating → UART idle(mark) = 0xFF 연속 수신됨
-        // Modbus 유효 슬레이브 주소는 1~247이므로 0xFF로 시작하는 바이트는 무효
-        if (this.receiveBuffer[0] === 0xFF) {
-            // 0xFF가 아닌 첫 번째 바이트까지 버퍼 앞으로 당김 (노이즈 바이트들 제거)
-            let skipCount = 0;
-            while (skipCount < this.receiveIndex && this.receiveBuffer[skipCount] === 0xFF) {
-                skipCount++;
-            }
-            if (skipCount > 0) {
-                for (let i = 0; i < this.receiveIndex - skipCount; i++) {
-                    this.receiveBuffer[i] = this.receiveBuffer[skipCount + i];
+        // 버스 floating 노이즈 바이트 즉시 폐기:
+        // RS-485 DE→RE 전환 시 버스가 floating → 0xFF, 0xBF 등 무작위 바이트 수신됨
+        // Modbus 유효 슬레이브 주소는 1~247 (0x01~0xF7)이므로 범위 밖 바이트는 무효.
+        // pendingResponse가 있으면 기대 slaveId와 다른 선두 바이트도 노이즈로 처리.
+        {
+            const expectedId = this.pendingResponse ? this.pendingResponse.slaveId : null;
+            const firstByte = this.receiveBuffer[0];
+            const isValidSlaveId = firstByte >= 0x01 && firstByte <= 0xF7;
+            const isExpectedSlave = expectedId === null || firstByte === expectedId;
+
+            if (!isValidSlaveId || !isExpectedSlave) {
+                // 유효한 슬레이브 ID (또는 기대 ID)가 나올 때까지 앞 바이트들 제거
+                let skipCount = 0;
+                while (skipCount < this.receiveIndex) {
+                    const b = this.receiveBuffer[skipCount];
+                    const valid = b >= 0x01 && b <= 0xF7;
+                    const matches = expectedId === null || b === expectedId;
+                    if (valid && matches) break;
+                    skipCount++;
                 }
-                this.receiveIndex -= skipCount;
+                if (skipCount > 0) {
+                    for (let i = 0; i < this.receiveIndex - skipCount; i++) {
+                        this.receiveBuffer[i] = this.receiveBuffer[skipCount + i];
+                    }
+                    this.receiveIndex -= skipCount;
+                }
+                if (this.receiveIndex < 2) return; // 유효 바이트 없음, 대기
             }
-            if (this.receiveIndex < 2) return; // 유효 바이트 없음, 대기
         }
 
         const expectedLength = this.getExpectedFrameLength();
@@ -5280,7 +5292,9 @@ class ModbusDashboard {
             {type:'input',group:'Status',address:'0xD01C',name:'Enable/Disable input state',implemented:'N',description:'Enable/Disable 입력 상태'},
             {type:'input',group:'Status',address:'0xD023',name:'Sensor actual value 1',implemented:'Y',description:'AIN1의 현재 측정값'},
             {type:'input',group:'Status',address:'0xD024',name:'Sensor actual value 2',implemented:'Y',description:'AIN2의 현재 측정값'},
-            {type:'input',group:'Status',address:'0xD028',name:'Current set value source',implemented:'Y',description:'현재 사용 중인 소스 (0=AIN1, 1=RS485, 2=AIN2, 3=PWMIn3, 255=Fail-safe)'},
+            {type:'input',group:'Status',address:'0xD025',name:'Sensor actual value 3',implemented:'Y',description:'PWMIN3의 현재 측정 Duty값'},
+            {type:'input',group:'Status',address:'0xD026',name:'Sensor actual value 4',implemented:'Y',description:'PWMIN3의 현재 측정 주파수값'},
+            {type:'input',group:'Status',address:'0xD028',name:'Current set value source',implemented:'Y',description:'현재 사용 중인 소스 (0=AIN1 1=RS485 2=AIN2 3=PWMIn3 255=Fail-safe)'},
             {type:'input',group:'Electrical',address:'0xD013',name:'DC-link voltage',implemented:'Y',description:'DC 링크 전압'},
             {type:'input',group:'Electrical',address:'0xD014',name:'DC-link current',implemented:'N',description:'DC 링크 전류'},
             {type:'input',group:'Electrical',address:'0xD015',name:'Module temperature',implemented:'Y',description:'IGBT Temperature Sensor 값'},
@@ -7819,6 +7833,9 @@ class ModbusDashboard {
 
                 this.updateDeviceCardStatus(device);
 
+                // Inter-frame gap before monitoring params (FC03→FC04 전환 시 Modbus RTU 3.5 char 간격 보장)
+                if (this.paramPollingDelay > 0) await this.delay(this.paramPollingDelay);
+
                 // Poll monitoring parameters if any
                 if (device.monitoringParams && device.monitoringParams.length > 0) {
                     await this.pollMonitoringParams(device);
@@ -9226,23 +9243,28 @@ class ModbusDashboard {
     }
 
     /**
+     * Converts raw register value to human-readable string for special registers.
+     * D023: AIN1 voltage  → (raw / 65536) × 10000 mV
+     * D024: AIN2 current  → (raw / 65536) × 20.625 mA  (Vref 3.3V / Rvios 160Ω)
+     * Returns null if address is not a special register.
+     */
+    convertParamRawToString(address, raw) {
+        if (address === 0xD023) return ((raw / 65536) * 10100).toFixed(1) + ' mV';
+        if (address === 0xD024) return ((raw / 65536) * 20.625).toFixed(3) + ' mA';
+        if (address === 0xD025) return ((raw / 65536) * 100).toFixed(2) + ' %';
+        return null;
+    }
+
+    /**
      * Returns converted sub-value HTML for special registers (D023 → mV, D024 → mA)
      */
     getParamConvertedHTML(param) {
         if (param.type !== 'input') return '';
-        if (param.address === 0xD023) {
-            const converted = param.value !== null
-                ? ((param.value / 65536) * 10000).toFixed(1) + ' mV'
-                : '--';
-            return `<div class="param-converted" id="param-converted-${param.id}">${converted}</div>`;
-        }
-        if (param.address === 0xD024) {
-            const converted = param.value !== null
-                ? ((param.value / 65536) * 20).toFixed(3) + ' mA'
-                : '--';
-            return `<div class="param-converted" id="param-converted-${param.id}">${converted}</div>`;
-        }
-        return '';
+        const converted = param.value !== null
+            ? this.convertParamRawToString(param.address, param.value)
+            : null;
+        if (converted === null) return '';
+        return `<div class="param-converted" id="param-converted-${param.id}">${param.value !== null ? converted : '--'}</div>`;
     }
 
     /**
@@ -9260,11 +9282,8 @@ class ModbusDashboard {
             const device = this.devices.find(d => d.id === deviceId);
             const param = device?.monitoringParams?.find(p => p.id === paramId);
             if (param) {
-                if (param.address === 0xD023) {
-                    convertedEl.textContent = ((value / 65536) * 10000).toFixed(1) + ' mV';
-                } else if (param.address === 0xD024) {
-                    convertedEl.textContent = ((value / 65536) * 20).toFixed(3) + ' mA';
-                }
+                const converted = this.convertParamRawToString(param.address, value);
+                if (converted !== null) convertedEl.textContent = converted;
             }
         }
     }
