@@ -708,9 +708,8 @@ class ModbusRTU {
                 }
                 break;
 
-            case 0x05: // Error response
-                result.success = false;
-                result.error = 'Slave reported error';
+            case 0x05: // Done (0x99) ACK (성공)
+                result.success = true;
                 break;
 
             default:

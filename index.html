@@ -330,10 +330,11 @@
                                             <button class="filter-btn active" data-filter="all">All</button>
                                             <button class="filter-btn" data-filter="holding">Holding</button>
                                             <button class="filter-btn" data-filter="input">Input</button>
+                                            <button class="filter-btn" data-filter="lsm">LSM</button>
                                         </div>
                                         <div style="display: flex; gap: 5px;">
-                                            <button class="filter-btn" data-implemented="all">All Status</button>
-                                            <button class="filter-btn active" data-implemented="Y">Implemented</button>
+                                            <button class="filter-btn active" data-implemented="all">All Status</button>
+                                            <button class="filter-btn" data-implemented="Y">Implemented</button>
                                             <button class="filter-btn" data-implemented="N">Not Implemented</button>
                                         </div>
                                         <input type="text" id="paramSearchInput" placeholder="Search by name or address..." style="flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;">
@@ -582,9 +583,6 @@
                                     </button>
                                     <button class="manufacture-subtab" data-subtab="offset" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
                                         Offset Setting
-                                    </button>
-                                    <button class="manufacture-subtab" data-subtab="tuning" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
-                                        Tuning
                                     </button>
                                     <button class="manufacture-subtab" data-subtab="os-verification" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
                                         OS Verification
@@ -1745,15 +1743,6 @@
                                         </div><!-- /outer scroll container -->
                                     </div><!-- /manufactureHwOverview -->
 
-                                    <!-- Tuning Sub-tab -->
-                                    <div class="manufacture-subtab-content" id="manufactureTuning" style="display: none; padding: 32px;">
-                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
-                                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">⚙️</div>
-                                            <p style="font-size: 15px; font-weight: 500; color: #404040;">Tuning</p>
-                                            <p style="font-size: 13px; margin-top: 6px; color: #999;">모터 튜닝 기능 (준비 중)</p>
-                                        </div>
-                                    </div>
-
                                     <!-- Offset Setting Sub-tab -->
                                     <div class="manufacture-subtab-content" id="manufactureOffset" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
 
@@ -2234,10 +2223,11 @@
                                 <button class="filter-btn active" data-filter="all">All</button>
                                 <button class="filter-btn" data-filter="holding">Holding</button>
                                 <button class="filter-btn" data-filter="input">Input</button>
+                                <button class="filter-btn" data-filter="lsm">LSM</button>
                             </div>
                             <div style="display: flex; gap: 5px;">
-                                <button class="filter-btn" data-implemented="all">All Status</button>
-                                <button class="filter-btn active" data-implemented="Y">Implemented</button>
+                                <button class="filter-btn active" data-implemented="all">All Status</button>
+                                <button class="filter-btn" data-implemented="Y">Implemented</button>
                                 <button class="filter-btn" data-implemented="N">Not Implemented</button>
                             </div>
                             <input type="text" id="paramSearchInput" placeholder="Search by name or address..." style="flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;">
@@ -2352,66 +2342,33 @@
                 <!-- Chart Page -->
                 <div id="page-chart" class="page-content">
                     <div class="chart-page-container">
-                        <!-- Chart Header -->
-                        <div class="chart-header">
-                            <div class="chart-title-section">
-                                <h1>Real-time Chart</h1>
-                                <p class="chart-subtitle">4채널 실시간 데이터 모니터링</p>
-                            </div>
-                            <div class="chart-header-actions">
-                                <button id="chartExportCsvBtn" class="btn btn-secondary btn-sm" title="Export to CSV">
-                                    <span>📥</span> CSV
-                                </button>
-                                <button id="chartExportPngBtn" class="btn btn-secondary btn-sm" title="Export to PNG">
-                                    <span>🖼</span> PNG
-                                </button>
-                            </div>
-                        </div>
 
-                        <!-- Mode & Control Panel -->
-                        <div class="chart-control-panel">
-                            <div class="chart-mode-section">
-                                <label class="chart-section-label">Mode</label>
+                        <!-- ── Row 1: Toolbar ─────────────────────────────────────── -->
+                        <div class="chart-toolbar">
+                            <!-- Left: title + mode -->
+                            <div class="chart-toolbar-left">
+                                <span class="chart-title-badge">Chart</span>
                                 <div class="chart-mode-toggle">
-                                    <button class="chart-mode-btn active" data-mode="continuous" id="chartModeContinuous">
-                                        <span class="mode-icon">▶</span>
-                                        <span>Continuous</span>
+                                    <button class="chart-mode-btn active" id="chartModeContinuous" title="Continuous streaming">
+                                        ▶ Continuous
                                     </button>
-                                    <button class="chart-mode-btn" data-mode="trigger" id="chartModeTrigger">
-                                        <span class="mode-icon">⚡</span>
-                                        <span>Trigger</span>
+                                    <button class="chart-mode-btn" id="chartModeTrigger" title="Hardware trigger (FC 0x65)">
+                                        ⚡ Trigger
                                     </button>
                                 </div>
                             </div>
 
-                            <div class="chart-action-section">
-                                <button id="chartStartBtn" class="btn btn-success">
-                                    <span>▶</span> Start
-                                </button>
-                                <button id="chartStopBtn" class="btn btn-danger" disabled>
-                                    <span>■</span> Stop
-                                </button>
-                                <button id="chartClearBtn" class="btn btn-warning">
-                                    <span>↺</span> Clear
-                                </button>
-                                <button id="chartPauseBtn" class="btn btn-secondary" disabled>
-                                    <span>⏸</span> Pause
-                                </button>
+                            <!-- Center: action buttons -->
+                            <div class="chart-toolbar-actions">
+                                <button id="chartStartBtn" class="chart-action-btn chart-btn-start">▶ Start</button>
+                                <button id="chartStopBtn" class="chart-action-btn chart-btn-stop" disabled>■ Stop</button>
+                                <button id="chartPauseBtn" class="chart-action-btn chart-btn-pause" disabled>⏸ Pause</button>
+                                <button id="chartClearBtn" class="chart-action-btn chart-btn-clear">↺ Clear</button>
                             </div>
 
-                            <div class="chart-settings-section">
-                                <div class="chart-setting-item">
-                                    <label for="chartTimeScale">Time Scale</label>
-                                    <select id="chartTimeScale">
-                                        <option value="1000">1s</option>
-                                        <option value="2000">2s</option>
-                                        <option value="5000">5s</option>
-                                        <option value="10000" selected>10s</option>
-                                        <option value="30000">30s</option>
-                                        <option value="60000">1m</option>
-                                    </select>
-                                </div>
-                                <div class="chart-setting-item">
+                            <!-- Right: settings + export -->
+                            <div class="chart-toolbar-right">
+                                <div class="chart-ctrl-group">
                                     <label for="chartSampleRate">Period</label>
                                     <select id="chartSampleRate">
                                         <option value="8">1 ms</option>
@@ -2425,85 +2382,89 @@
                                         <option value="8000">1 s</option>
                                     </select>
                                 </div>
-                                <div class="chart-setting-item">
-                                    <label>Points</label>
-                                    <span id="chartTotalPoints" class="chart-total-points">0</span>
+                                <div class="chart-ctrl-group">
+                                    <label for="chartTimeScale">Scale</label>
+                                    <select id="chartTimeScale">
+                                        <option value="1000">1s</option>
+                                        <option value="2000">2s</option>
+                                        <option value="5000">5s</option>
+                                        <option value="10000" selected>10s</option>
+                                        <option value="30000">30s</option>
+                                        <option value="60000">1m</option>
+                                    </select>
                                 </div>
-                                <div class="chart-setting-item">
-                                    <label for="chartSlaveId">Slave ID</label>
+                                <div class="chart-ctrl-group">
+                                    <label for="chartSlaveId">ID</label>
                                     <input type="number" id="chartSlaveId" value="1" min="1" max="247">
                                 </div>
+                                <div class="chart-ctrl-group">
+                                    <label>Pts</label>
+                                    <span id="chartTotalPoints" class="chart-total-points">0</span>
+                                </div>
+                                <div class="chart-toolbar-sep"></div>
+                                <button id="chartExportCsvBtn" class="chart-icon-btn" title="Export CSV">CSV</button>
+                                <button id="chartExportPngBtn" class="chart-icon-btn" title="Export PNG">PNG</button>
                             </div>
                         </div>
 
-                        <!-- Trigger Settings (shown only in trigger mode) — FC 0x65 Hardware Trigger -->
+                        <!-- ── Row 2: Trigger Panel (Trigger 모드에서만 표시) ───────── -->
                         <div class="chart-trigger-panel" id="chartTriggerPanel" style="display: none;">
-                            <div class="trigger-settings-row">
-                                <div class="trigger-setting-item">
-                                    <label>Source CH</label>
-                                    <div class="channel-address">
-                                        <button class="param-picker-trigger" id="triggerSourcePicker" type="button">
-                                            <span class="param-picker-trigger-label">채널 선택...</span>
-                                            <span class="param-picker-trigger-arrow">▾</span>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="trigger-setting-item">
-                                    <label for="triggerEdge">Edge</label>
-                                    <select id="triggerEdge">
-                                        <option value="rising">Rising ↑</option>
-                                        <option value="falling">Falling ↓</option>
-                                    </select>
-                                </div>
-                                <div class="trigger-setting-item">
-                                    <label for="triggerLevel">Level</label>
-                                    <input type="number" id="triggerLevel" value="0" step="0.001">
-                                </div>
-                                <div class="trigger-setting-item">
-                                    <label for="triggerPosition">Position (%)</label>
-                                    <input type="number" id="triggerPosition" value="25" min="0" max="99" title="트리거 시점 위치 (0=왼쪽, 99=오른쪽)">
-                                </div>
-                                <div class="trigger-setting-item">
-                                    <label for="triggerNumData">Samples</label>
-                                    <input type="number" id="triggerNumData" value="512" min="256" max="1024" step="256" title="총 샘플 수 (256~1024)">
-                                </div>
+                            <span class="trigger-badge">⚡ Trigger</span>
+                            <div class="trigger-field">
+                                <label>Source</label>
+                                <button class="param-picker-trigger trigger-picker-btn" id="triggerSourcePicker" type="button">
+                                    <span class="param-picker-trigger-label">채널 선택...</span>
+                                    <span class="param-picker-trigger-arrow">▾</span>
+                                </button>
                             </div>
-                            <div class="trigger-status">
-                                <span class="trigger-status-label">Status:</span>
+                            <div class="trigger-field">
+                                <label for="triggerEdge">Edge</label>
+                                <select id="triggerEdge">
+                                    <option value="rising">↑ Rising</option>
+                                    <option value="falling">↓ Falling</option>
+                                </select>
+                            </div>
+                            <div class="trigger-field">
+                                <label for="triggerLevel">Level</label>
+                                <input type="number" id="triggerLevel" value="0" step="0.001">
+                            </div>
+                            <div class="trigger-field">
+                                <label for="triggerPosition">Pos %</label>
+                                <input type="number" id="triggerPosition" value="25" min="0" max="99" title="트리거 시점 위치 (0=왼쪽, 99=오른쪽)">
+                            </div>
+                            <div class="trigger-field">
+                                <label for="triggerNumData">Samples</label>
+                                <input type="number" id="triggerNumData" value="512" min="256" max="1024" step="256">
+                            </div>
+                            <div class="trigger-status-pill">
                                 <span class="trigger-status-value" id="triggerStatus">Waiting</span>
                             </div>
                         </div>
 
-                        <!-- Y-axis Mode Selector -->
-                        <div class="chart-yaxis-mode-panel">
-                            <span class="yaxis-mode-label">Y-Axis:</span>
-                            <button class="yaxis-mode-btn active" id="yAxisModeA" title="Independent Y-axes per channel">A</button>
-                            <button class="yaxis-mode-btn" id="yAxisModeB" title="Normalize 0–100% per channel">B</button>
-                            <button class="yaxis-mode-btn" id="yAxisModeC" title="Scale × Offset per channel">C</button>
-                            <span class="yaxis-mode-hint" id="yAxisModeHint">Independent</span>
-                            <span class="yaxis-mode-separator"></span>
-                            <span class="yaxis-mode-label">Layout:</span>
-                            <button class="yaxis-mode-btn" id="chartSplitViewBtn" title="채널별 분리 보기 (Split View)">⊞</button>
-                        </div>
-
-                        <!-- Channel Configuration -->
-                        <div class="chart-channel-panel">
+                        <!-- ── Row 3: Channel Bar (Y-axis + 4 channels) ───────────── -->
+                        <div class="chart-channel-bar">
+                            <!-- Y-axis controls -->
+                            <div class="chart-yaxis-controls">
+                                <span class="yaxis-label">Y</span>
+                                <button class="yaxis-mode-btn active" id="yAxisModeA" title="Independent">A</button>
+                                <button class="yaxis-mode-btn" id="yAxisModeB" title="Normalize 0–100%">B</button>
+                                <button class="yaxis-mode-btn" id="yAxisModeC" title="Scale+Offset">C</button>
+                                <span class="yaxis-mode-hint" id="yAxisModeHint">Ind</span>
+                                <button class="yaxis-mode-btn" id="chartSplitViewBtn" title="Split View">⊞</button>
+                            </div>
+                            <div class="chart-bar-sep"></div>
+                            <!-- CH1 -->
                             <div class="channel-config" data-channel="0">
                                 <label class="channel-toggle">
                                     <input type="checkbox" id="chartCh1Enable" checked>
-                                    <span class="channel-indicator" style="background: #3498db;"></span>
+                                    <span class="channel-indicator" style="background:#3498db"></span>
                                     <span class="channel-name">CH1</span>
                                 </label>
-                                <div class="channel-address">
-                                    <button class="param-picker-trigger" id="chartCh1Trigger" type="button">
-                                        <span class="param-picker-trigger-label">채널 선택...</span>
-                                        <span class="param-picker-trigger-arrow">▾</span>
-                                    </button>
-                                </div>
-                                <div class="channel-value">
-                                    <span class="channel-current-label">Value:</span>
-                                    <span class="channel-current-value" id="chartCh1Value">--</span>
-                                </div>
+                                <button class="param-picker-trigger" id="chartCh1Trigger" type="button">
+                                    <span class="param-picker-trigger-label">채널 선택...</span>
+                                    <span class="param-picker-trigger-arrow">▾</span>
+                                </button>
+                                <span class="channel-current-value" id="chartCh1Value">--</span>
                                 <div class="channel-scale-offset" style="display:none">
                                     <span class="scale-offset-label">×</span>
                                     <input type="number" class="scale-offset-input" id="chartCh1Scale" value="1" step="0.1">
@@ -2511,22 +2472,19 @@
                                     <input type="number" class="scale-offset-input" id="chartCh1Offset" value="0" step="1">
                                 </div>
                             </div>
+                            <div class="chart-bar-sep"></div>
+                            <!-- CH2 -->
                             <div class="channel-config" data-channel="1">
                                 <label class="channel-toggle">
                                     <input type="checkbox" id="chartCh2Enable" checked>
-                                    <span class="channel-indicator" style="background: #e74c3c;"></span>
+                                    <span class="channel-indicator" style="background:#e74c3c"></span>
                                     <span class="channel-name">CH2</span>
                                 </label>
-                                <div class="channel-address">
-                                    <button class="param-picker-trigger" id="chartCh2Trigger" type="button">
-                                        <span class="param-picker-trigger-label">채널 선택...</span>
-                                        <span class="param-picker-trigger-arrow">▾</span>
-                                    </button>
-                                </div>
-                                <div class="channel-value">
-                                    <span class="channel-current-label">Value:</span>
-                                    <span class="channel-current-value" id="chartCh2Value">--</span>
-                                </div>
+                                <button class="param-picker-trigger" id="chartCh2Trigger" type="button">
+                                    <span class="param-picker-trigger-label">채널 선택...</span>
+                                    <span class="param-picker-trigger-arrow">▾</span>
+                                </button>
+                                <span class="channel-current-value" id="chartCh2Value">--</span>
                                 <div class="channel-scale-offset" style="display:none">
                                     <span class="scale-offset-label">×</span>
                                     <input type="number" class="scale-offset-input" id="chartCh2Scale" value="1" step="0.1">
@@ -2534,22 +2492,19 @@
                                     <input type="number" class="scale-offset-input" id="chartCh2Offset" value="0" step="1">
                                 </div>
                             </div>
+                            <div class="chart-bar-sep"></div>
+                            <!-- CH3 -->
                             <div class="channel-config" data-channel="2">
                                 <label class="channel-toggle">
                                     <input type="checkbox" id="chartCh3Enable">
-                                    <span class="channel-indicator" style="background: #2ecc71;"></span>
+                                    <span class="channel-indicator" style="background:#2ecc71"></span>
                                     <span class="channel-name">CH3</span>
                                 </label>
-                                <div class="channel-address">
-                                    <button class="param-picker-trigger" id="chartCh3Trigger" type="button">
-                                        <span class="param-picker-trigger-label">채널 선택...</span>
-                                        <span class="param-picker-trigger-arrow">▾</span>
-                                    </button>
-                                </div>
-                                <div class="channel-value">
-                                    <span class="channel-current-label">Value:</span>
-                                    <span class="channel-current-value" id="chartCh3Value">--</span>
-                                </div>
+                                <button class="param-picker-trigger" id="chartCh3Trigger" type="button">
+                                    <span class="param-picker-trigger-label">채널 선택...</span>
+                                    <span class="param-picker-trigger-arrow">▾</span>
+                                </button>
+                                <span class="channel-current-value" id="chartCh3Value">--</span>
                                 <div class="channel-scale-offset" style="display:none">
                                     <span class="scale-offset-label">×</span>
                                     <input type="number" class="scale-offset-input" id="chartCh3Scale" value="1" step="0.1">
@@ -2557,22 +2512,19 @@
                                     <input type="number" class="scale-offset-input" id="chartCh3Offset" value="0" step="1">
                                 </div>
                             </div>
+                            <div class="chart-bar-sep"></div>
+                            <!-- CH4 -->
                             <div class="channel-config" data-channel="3">
                                 <label class="channel-toggle">
                                     <input type="checkbox" id="chartCh4Enable">
-                                    <span class="channel-indicator" style="background: #f39c12;"></span>
+                                    <span class="channel-indicator" style="background:#f39c12"></span>
                                     <span class="channel-name">CH4</span>
                                 </label>
-                                <div class="channel-address">
-                                    <button class="param-picker-trigger" id="chartCh4Trigger" type="button">
-                                        <span class="param-picker-trigger-label">채널 선택...</span>
-                                        <span class="param-picker-trigger-arrow">▾</span>
-                                    </button>
-                                </div>
-                                <div class="channel-value">
-                                    <span class="channel-current-label">Value:</span>
-                                    <span class="channel-current-value" id="chartCh4Value">--</span>
-                                </div>
+                                <button class="param-picker-trigger" id="chartCh4Trigger" type="button">
+                                    <span class="param-picker-trigger-label">채널 선택...</span>
+                                    <span class="param-picker-trigger-arrow">▾</span>
+                                </button>
+                                <span class="channel-current-value" id="chartCh4Value">--</span>
                                 <div class="channel-scale-offset" style="display:none">
                                     <span class="scale-offset-label">×</span>
                                     <input type="number" class="scale-offset-input" id="chartCh4Scale" value="1" step="0.1">
@@ -2582,10 +2534,10 @@
                             </div>
                         </div>
 
-                        <!-- Chart Canvas Container -->
+                        <!-- ── Row 4: Canvas (flex:1, fills remaining space) ──────── -->
                         <div class="chart-canvas-container" id="chartCanvasContainer">
                             <canvas id="mainChart"></canvas>
-                            <!-- Cursor Info Overlay -->
+                            <!-- Cursor Info -->
                             <div class="chart-cursor-info" id="chartCursorInfo" style="display: none;">
                                 <div class="cursor-time" id="cursorTime">--</div>
                                 <div class="cursor-values" id="cursorValues"></div>
@@ -2597,35 +2549,26 @@
                                 <button class="zoom-btn" id="chartZoomReset" title="Reset Zoom">↺</button>
                                 <button class="zoom-btn" id="chartAutoScale" title="Auto Scale Y">⬌</button>
                             </div>
-                            <!-- Chart Instructions -->
+                            <!-- Instructions -->
                             <div class="chart-instructions" id="chartInstructions">
                                 <span>Wheel: Zoom Y</span>
                                 <span>Drag: Pan</span>
-                                <span>Double-click: Reset</span>
+                                <span>Right-click: Marker</span>
                             </div>
                         </div>
 
-                        <!-- Chart Info Panel -->
-                        <div class="chart-info-panel">
-                            <div class="chart-stats">
-                                <div class="chart-stat-item">
-                                    <span class="stat-label">Samples:</span>
-                                    <span class="stat-value" id="chartSampleCount">0</span>
-                                </div>
-                                <div class="chart-stat-item">
-                                    <span class="stat-label">Time Range:</span>
-                                    <span class="stat-value" id="chartTimeRange">0s</span>
-                                </div>
-                                <div class="chart-stat-item">
-                                    <span class="stat-label">Status:</span>
-                                    <span class="stat-value" id="chartStatus">Stopped</span>
-                                </div>
-                            </div>
-                            <div class="chart-markers" id="chartMarkers">
-                                <span class="markers-label">Markers:</span>
-                                <span class="markers-info" id="markersInfo">No markers set (Click to add)</span>
-                            </div>
+                        <!-- ── Row 5: Status bar ───────────────────────────────────── -->
+                        <div class="chart-statusbar">
+                            <span class="statusbar-chip">Samples: <b id="chartSampleCount">0</b></span>
+                            <span class="statusbar-chip">Range: <b id="chartTimeRange">0s</b></span>
+                            <span class="statusbar-chip status-chip">
+                                <span class="status-dot" id="chartStatusDot"></span>
+                                <b id="chartStatus">Stopped</b>
+                            </span>
+                            <div class="statusbar-sep"></div>
+                            <span class="statusbar-markers" id="markersInfo">No markers set (Right-click to add)</span>
                         </div>
+
                     </div>
                 </div>
 

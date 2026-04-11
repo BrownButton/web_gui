@@ -135,62 +135,62 @@ input,0xD051,Command torque,Y,지령 토크
 # RW = 읽기/쓰기, RO = 읽기 전용
 # ============================================================
 # [Device Setup] 디바이스 식별 및 통신 설정
-lsm,0x2000,Motor ID,N,드라이브에 연결된 모터 종류를 식별하는 ID. 모터 교체 시 변경 필요
-lsm,0x2003,Node ID,N,RS-485 버스 상의 슬레이브 주소 (Modbus Node ID와 동일 역할)
+lsm,0x2000,Motor ID,Y,드라이브에 연결된 모터 종류를 식별하는 ID. 모터 교체 시 변경 필요
+lsm,0x2003,Node ID,Y,RS-485 버스 상의 슬레이브 주소 (Modbus Node ID와 동일 역할)
 # [Servo Tuning] 서보 제어 루프 게인 및 필터 튜닝
-lsm,0x2100,Inertia Ratio,N,부하 관성 대 모터 관성 비율. 서보 제어 응답성 튜닝에 사용
-lsm,0x2101,Position P Gain 1,N,위치 제어 루프 비례 게인 1
-lsm,0x2102,Velocity P Gain 1,N,속도 제어 루프 비례 게인 1
-lsm,0x2103,Velocity Time Constant 1,N,속도 루프 적분 시간 상수 1
-lsm,0x2104,Torque Command Filter TC 1,N,토크 지령 저역 통과 필터의 시간 상수 1
+lsm,0x2100,Inertia Ratio,Y,부하 관성 대 모터 관성 비율. 서보 제어 응답성 튜닝에 사용
+lsm,0x2101,Position P Gain 1,Y,위치 제어 루프 비례 게인 1
+lsm,0x2102,Velocity P Gain 1,Y,속도 제어 루프 비례 게인 1
+lsm,0x2103,Velocity Time Constant 1,Y,속도 루프 적분 시간 상수 1
+lsm,0x2104,Torque Command Filter TC 1,Y,토크 지령 저역 통과 필터의 시간 상수 1
 # [Limitation] 토크 제한 및 드라이브 제어 입력
-lsm,0x2111,Positive Torque Limit,N,외부 입력 기반 양방향(CW) 토크 상한값
-lsm,0x2112,Negative Torque Limit,N,외부 입력 기반 음방향(CCW) 토크 상한값
-lsm,0x211F,Drive Control Input 1,N,드라이브 제어 입력 포트 1의 기능 할당 설정
-lsm,0x2120,Drive Control Input 2,N,드라이브 제어 입력 포트 2의 기능 할당 설정
+lsm,0x2111,Positive Torque Limit,Y,외부 입력 기반 양방향(CW) 토크 상한값
+lsm,0x2112,Negative Torque Limit,Y,외부 입력 기반 음방향(CCW) 토크 상한값
+lsm,0x211F,Drive Control Input 1,Y,드라이브 제어 입력 포트 1의 기능 할당 설정
+lsm,0x2120,Drive Control Input 2,Y,드라이브 제어 입력 포트 2의 기능 할당 설정
 # [Motion] 속도 지령 / 가감속 / 조그 운전
-lsm,0x2300,Jog Speed,N,조그 운전 시 속도 지령값. 부호 있음(int16) - 양수: CW / 음수: CCW
-lsm,0x2301,Speed Accel Time,N,속도 지령 변화 시 가속 구간 시간
-lsm,0x2302,Speed Decel Time,N,속도 지령 변화 시 감속 구간 시간
-lsm,0x2303,S-Curve Time,N,"가감속에 S커브 적용 시간. 0이면 선형 가감속, 값이 클수록 부드러운 가감속"
-lsm,0x2304,Preset Jog Speed 0,N,프리셋 조그 속도 0. 부호 있음(int16) - 방향 포함
-lsm,0x2305,Preset Jog Speed 1,N,프리셋 조그 속도 1. 부호 있음(int16) - 방향 포함
-lsm,0x2306,Preset Jog Speed 2,N,프리셋 조그 속도 2. 부호 있음(int16) - 방향 포함
-lsm,0x2307,Preset Jog Speed 3,N,프리셋 조그 속도 3. 부호 있음(int16) - 방향 포함
-lsm,0x2308,Preset Jog Time 0,N,Preset Jog Speed 0 운전 지속 시간
-lsm,0x2309,Preset Jog Time 1,N,Preset Jog Speed 1 운전 지속 시간
-lsm,0x230A,Preset Jog Time 2,N,Preset Jog Speed 2 운전 지속 시간
-lsm,0x230B,Preset Jog Time 3,N,Preset Jog Speed 3 운전 지속 시간
+lsm,0x2300,Jog Speed,Y,조그 운전 시 속도 지령값. 부호 있음(int16) - 양수: CW / 음수: CCW
+lsm,0x2301,Speed Accel Time,Y,속도 지령 변화 시 가속 구간 시간
+lsm,0x2302,Speed Decel Time,Y,속도 지령 변화 시 감속 구간 시간
+lsm,0x2303,S-Curve Time,Y,"가감속에 S커브 적용 시간. 0이면 선형 가감속, 값이 클수록 부드러운 가감속"
+lsm,0x2304,Preset Jog Speed 0,Y,프리셋 조그 속도 0. 부호 있음(int16) - 방향 포함
+lsm,0x2305,Preset Jog Speed 1,Y,프리셋 조그 속도 1. 부호 있음(int16) - 방향 포함
+lsm,0x2306,Preset Jog Speed 2,Y,프리셋 조그 속도 2. 부호 있음(int16) - 방향 포함
+lsm,0x2307,Preset Jog Speed 3,Y,프리셋 조그 속도 3. 부호 있음(int16) - 방향 포함
+lsm,0x2308,Preset Jog Time 0,Y,Preset Jog Speed 0 운전 지속 시간
+lsm,0x2309,Preset Jog Time 1,Y,Preset Jog Speed 1 운전 지속 시간
+lsm,0x230A,Preset Jog Time 2,Y,Preset Jog Speed 2 운전 지속 시간
+lsm,0x230B,Preset Jog Time 3,Y,Preset Jog Speed 3 운전 지속 시간
 # [Device Info] 장치 정보 (읽기 전용)
-lsm,0x2424,Drive Serial Number,N,드라이브 시리얼 번호 (ASCII 16자)
-lsm,0x27F0,Main Boot Version,N,메인 MCU 부트로더 펌웨어 버전 (ASCII 7자)
-lsm,0x27F1,Main Firmware Version,N,메인 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)
-lsm,0x27F2,Inverter Boot Version,N,인버터 MCU 부트로더 펌웨어 버전 (ASCII 7자)
-lsm,0x27F3,Inverter Firmware Version,N,인버터 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)
+lsm,0x2424,Drive Serial Number,Y,드라이브 시리얼 번호 (ASCII 16자)
+lsm,0x27F0,Main Boot Version,Y,메인 MCU 부트로더 펌웨어 버전 (ASCII 7자)
+lsm,0x27F1,Main Firmware Version,Y,메인 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)
+lsm,0x27F2,Inverter Boot Version,Y,인버터 MCU 부트로더 펌웨어 버전 (ASCII 7자)
+lsm,0x27F3,Inverter Firmware Version,Y,인버터 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)
 # [Status] 상태 모니터링 (읽기 전용)
-lsm,0x2600,Feedback Speed,N,엔코더 기반 현재 모터 실제 속도 피드백 (부호 있음 int16)
-lsm,0x260B,Room Temperature 1,N,실내 온도 센서 1 측정값 (부호 있음 int16)
-lsm,0x260C,Room Temperature 2,N,실내 온도 센서 2 측정값 (부호 있음 int16)
-lsm,0x2617,7-Segment Display Data,N,드라이브 전면 7세그먼트에 표시 중인 내용 (ASCII 7자)
-lsm,0x261A,Commanded Phase Angle,N,현재 지령 중인 모터 전기각 위상 (부호 있음 int16)
+lsm,0x2600,Feedback Speed,Y,엔코더 기반 현재 모터 실제 속도 피드백 (부호 있음 int16)
+lsm,0x260B,Room Temperature 1,Y,실내 온도 센서 1 측정값 (부호 있음 int16)
+lsm,0x260C,Room Temperature 2,Y,실내 온도 센서 2 측정값 (부호 있음 int16)
+lsm,0x2617,7-Segment Display Data,Y,드라이브 전면 7세그먼트에 표시 중인 내용 (ASCII 7자)
+lsm,0x261A,Commanded Phase Angle,Y,현재 지령 중인 모터 전기각 위상 (부호 있음 int16)
 # [Control] 프로시저 실행
-lsm,0x2700,Procedure Code,N,"특수 동작 명령 코드 (예: 원점 복귀, 초기화 등). Procedure Argument(0x2701)와 함께 사용"
-lsm,0x2701,Procedure Argument,N,Procedure Code(0x2700) 실행 시 전달하는 인수값
+lsm,0x2700,Procedure Code,Y,"특수 동작 명령 코드 (예: 원점 복귀, 초기화 등). Procedure Argument(0x2701)와 함께 사용"
+lsm,0x2701,Procedure Argument,Y,Procedure Code(0x2700) 실행 시 전달하는 인수값
 # ============================================================
 # LSM 고급 파라미터 (0x4000~) - 에이징 / 공장 설정 / 보안
 # 이 영역도 동일하게 FC 0x2B 로 접근
 # ============================================================
 # [Aging] 에이징 운전 설정
-lsm,0x4004,Aging Overload Threshold,N,에이징 운전 중 과부하 판정 기준값
-lsm,0x4005,Aging Speed,N,에이징 운전 속도 설정
-lsm,0x4006,Aging Time,N,에이징 운전 총 지속 시간
+lsm,0x4004,Aging Overload Threshold,Y,에이징 운전 중 과부하 판정 기준값
+lsm,0x4005,Aging Speed,Y,에이징 운전 속도 설정
+lsm,0x4006,Aging Time,Y,에이징 운전 총 지속 시간
 # [Security] 접근 보안
-lsm,0x4009,Access Password,N,파라미터 잠금 해제 비밀번호
+lsm,0x4009,Access Password,Y,파라미터 잠금 해제 비밀번호
 # [Factory] 공장 예약 파라미터 (용도 미공개)
-lsm,0x4017,Factory Reserved 4,N,공장 예약 파라미터 4 (용도 미공개)
-lsm,0x4018,Factory Reserved 5,N,공장 예약 파라미터 5 (용도 미공개)
-lsm,0x4019,Factory Reserved 6,N,공장 예약 파라미터 6 (용도 미공개)
-lsm,0x401A,Factory Reserved 7,N,공장 예약 파라미터 7 (용도 미공개)
-lsm,0x401B,Factory Reserved 8,N,공장 예약 파라미터 8 (용도 미공개)
-lsm,0x401C,Factory Reserved 9,N,공장 예약 파라미터 9 (용도 미공개)
-lsm,0x401D,Factory Reserved 10,N,공장 예약 파라미터 10 (용도 미공개)
+lsm,0x4017,Factory Reserved 4,Y,공장 예약 파라미터 4 (용도 미공개)
+lsm,0x4018,Factory Reserved 5,Y,공장 예약 파라미터 5 (용도 미공개)
+lsm,0x4019,Factory Reserved 6,Y,공장 예약 파라미터 6 (용도 미공개)
+lsm,0x401A,Factory Reserved 7,Y,공장 예약 파라미터 7 (용도 미공개)
+lsm,0x401B,Factory Reserved 8,Y,공장 예약 파라미터 8 (용도 미공개)
+lsm,0x401C,Factory Reserved 9,Y,공장 예약 파라미터 9 (용도 미공개)
+lsm,0x401D,Factory Reserved 10,Y,공장 예약 파라미터 10 (용도 미공개)

@@ -1782,7 +1782,7 @@ class ModbusDashboard {
 
         // Parameter filters
         this.paramTypeFilter = 'all';
-        this.paramImplementedFilter = 'Y';
+        this.paramImplementedFilter = 'all';
         this.paramSearchText = '';
 
         document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
@@ -5093,10 +5093,10 @@ class ModbusDashboard {
             paramList.querySelectorAll('.param-name-col[data-check-overflow="true"]').forEach(nameCol => {
                 const desc = nameCol.querySelector('.param-description');
                 const name = nameCol.querySelector('.param-name');
-                // 설명 텍스트가 잘리거나 이름이 잘리는 경우 expandable
-                const isOverflowing = (desc && desc.scrollWidth > desc.clientWidth) ||
-                                      (name && name.scrollWidth > name.clientWidth);
-                if (isOverflowing) {
+                // clientWidth === 0 이면 탭이 숨겨진 상태 — 측정 불가이므로 expandable 부여하지 않음
+                const descOverflow = desc && desc.clientWidth > 0 && desc.scrollWidth > desc.clientWidth;
+                const nameOverflow = name && name.clientWidth > 0 && name.scrollWidth > name.clientWidth;
+                if (descOverflow || nameOverflow) {
                     nameCol.classList.add('expandable');
                     nameCol.onclick = (e) => {
                         e.stopPropagation();
@@ -5383,65 +5383,65 @@ class ModbusDashboard {
             // 주소 공간: 0x2000~0x27FF (일반 파라미터), 0x4000~0x4FFF (공장/고급 파라미터)
             // ============================================================
             // [Device Setup] 디바이스 식별 및 통신 설정
-            {type:'lsm',group:'Device Setup',address:'0x2000',name:'Motor ID',implemented:'N',description:'드라이브에 연결된 모터 종류를 식별하는 ID. 모터 교체 시 변경 필요'},
-            {type:'lsm',group:'Device Setup',address:'0x2003',name:'Node ID',implemented:'N',description:'RS-485 버스 상의 슬레이브 주소 (Modbus Node ID와 동일 역할)'},
+            {type:'lsm',group:'Device Setup',address:'0x2000',name:'Motor ID',implemented:'Y',description:'드라이브에 연결된 모터 종류를 식별하는 ID. 모터 교체 시 변경 필요'},
+            {type:'lsm',group:'Device Setup',address:'0x2003',name:'Node ID',implemented:'Y',description:'RS-485 버스 상의 슬레이브 주소 (Modbus Node ID와 동일 역할)'},
             // [Servo Tuning] 서보 제어 루프 게인 및 필터 튜닝
-            {type:'lsm',group:'Servo Tuning',address:'0x2100',name:'Inertia Ratio',implemented:'N',description:'부하 관성 대 모터 관성 비율. 서보 제어 응답성 튜닝에 사용'},
-            {type:'lsm',group:'Servo Tuning',address:'0x2101',name:'Position P Gain 1',implemented:'N',description:'위치 제어 루프 비례 게인 1'},
-            {type:'lsm',group:'Servo Tuning',address:'0x2102',name:'Velocity P Gain 1',implemented:'N',description:'속도 제어 루프 비례 게인 1'},
-            {type:'lsm',group:'Servo Tuning',address:'0x2103',name:'Velocity Time Constant 1',implemented:'N',description:'속도 루프 적분 시간 상수 1'},
-            {type:'lsm',group:'Servo Tuning',address:'0x2104',name:'Torque Command Filter TC 1',implemented:'N',description:'토크 지령 저역 통과 필터의 시간 상수 1'},
+            {type:'lsm',group:'Servo Tuning',address:'0x2100',name:'Inertia Ratio',implemented:'Y',description:'부하 관성 대 모터 관성 비율. 서보 제어 응답성 튜닝에 사용'},
+            {type:'lsm',group:'Servo Tuning',address:'0x2101',name:'Position P Gain 1',implemented:'Y',description:'위치 제어 루프 비례 게인 1'},
+            {type:'lsm',group:'Servo Tuning',address:'0x2102',name:'Velocity P Gain 1',implemented:'Y',description:'속도 제어 루프 비례 게인 1'},
+            {type:'lsm',group:'Servo Tuning',address:'0x2103',name:'Velocity Time Constant 1',implemented:'Y',description:'속도 루프 적분 시간 상수 1'},
+            {type:'lsm',group:'Servo Tuning',address:'0x2104',name:'Torque Command Filter TC 1',implemented:'Y',description:'토크 지령 저역 통과 필터의 시간 상수 1'},
             // [Limitation] 토크 제한 및 드라이브 제어 입력
-            {type:'lsm',group:'Limitation',address:'0x2111',name:'Positive Torque Limit',implemented:'N',description:'외부 입력 기반 양방향(CW) 토크 상한값'},
-            {type:'lsm',group:'Limitation',address:'0x2112',name:'Negative Torque Limit',implemented:'N',description:'외부 입력 기반 음방향(CCW) 토크 상한값'},
-            {type:'lsm',group:'Limitation',address:'0x211F',name:'Drive Control Input 1',implemented:'N',description:'드라이브 제어 입력 포트 1의 기능 할당 설정'},
-            {type:'lsm',group:'Limitation',address:'0x2120',name:'Drive Control Input 2',implemented:'N',description:'드라이브 제어 입력 포트 2의 기능 할당 설정'},
+            {type:'lsm',group:'Limitation',address:'0x2111',name:'Positive Torque Limit',implemented:'Y',description:'외부 입력 기반 양방향(CW) 토크 상한값'},
+            {type:'lsm',group:'Limitation',address:'0x2112',name:'Negative Torque Limit',implemented:'Y',description:'외부 입력 기반 음방향(CCW) 토크 상한값'},
+            {type:'lsm',group:'Limitation',address:'0x211F',name:'Drive Control Input 1',implemented:'Y',description:'드라이브 제어 입력 포트 1의 기능 할당 설정'},
+            {type:'lsm',group:'Limitation',address:'0x2120',name:'Drive Control Input 2',implemented:'Y',description:'드라이브 제어 입력 포트 2의 기능 할당 설정'},
             // [Motion] 속도 지령 / 가감속 / 조그 운전
-            {type:'lsm',group:'Motion',address:'0x2300',name:'Jog Speed',implemented:'N',description:'조그 운전 시 속도 지령값. 부호 있음(int16) - 양수: CW / 음수: CCW'},
-            {type:'lsm',group:'Motion',address:'0x2301',name:'Speed Accel Time',implemented:'N',description:'속도 지령 변화 시 가속 구간 시간'},
-            {type:'lsm',group:'Motion',address:'0x2302',name:'Speed Decel Time',implemented:'N',description:'속도 지령 변화 시 감속 구간 시간'},
-            {type:'lsm',group:'Motion',address:'0x2303',name:'S-Curve Time',implemented:'N',description:'가감속에 S커브 적용 시간. 0이면 선형 가감속, 값이 클수록 부드러운 가감속'},
-            {type:'lsm',group:'Motion',address:'0x2304',name:'Preset Jog Speed 0',implemented:'N',description:'프리셋 조그 속도 0. 부호 있음(int16) - 방향 포함'},
-            {type:'lsm',group:'Motion',address:'0x2305',name:'Preset Jog Speed 1',implemented:'N',description:'프리셋 조그 속도 1. 부호 있음(int16) - 방향 포함'},
-            {type:'lsm',group:'Motion',address:'0x2306',name:'Preset Jog Speed 2',implemented:'N',description:'프리셋 조그 속도 2. 부호 있음(int16) - 방향 포함'},
-            {type:'lsm',group:'Motion',address:'0x2307',name:'Preset Jog Speed 3',implemented:'N',description:'프리셋 조그 속도 3. 부호 있음(int16) - 방향 포함'},
-            {type:'lsm',group:'Motion',address:'0x2308',name:'Preset Jog Time 0',implemented:'N',description:'Preset Jog Speed 0 운전 지속 시간'},
-            {type:'lsm',group:'Motion',address:'0x2309',name:'Preset Jog Time 1',implemented:'N',description:'Preset Jog Speed 1 운전 지속 시간'},
-            {type:'lsm',group:'Motion',address:'0x230A',name:'Preset Jog Time 2',implemented:'N',description:'Preset Jog Speed 2 운전 지속 시간'},
-            {type:'lsm',group:'Motion',address:'0x230B',name:'Preset Jog Time 3',implemented:'N',description:'Preset Jog Speed 3 운전 지속 시간'},
+            {type:'lsm',group:'Motion',address:'0x2300',name:'Jog Speed',implemented:'Y',description:'조그 운전 시 속도 지령값. 부호 있음(int16) - 양수: CW / 음수: CCW'},
+            {type:'lsm',group:'Motion',address:'0x2301',name:'Speed Accel Time',implemented:'Y',description:'속도 지령 변화 시 가속 구간 시간'},
+            {type:'lsm',group:'Motion',address:'0x2302',name:'Speed Decel Time',implemented:'Y',description:'속도 지령 변화 시 감속 구간 시간'},
+            {type:'lsm',group:'Motion',address:'0x2303',name:'S-Curve Time',implemented:'Y',description:'가감속에 S커브 적용 시간. 0이면 선형 가감속, 값이 클수록 부드러운 가감속'},
+            {type:'lsm',group:'Motion',address:'0x2304',name:'Preset Jog Speed 0',implemented:'Y',description:'프리셋 조그 속도 0. 부호 있음(int16) - 방향 포함'},
+            {type:'lsm',group:'Motion',address:'0x2305',name:'Preset Jog Speed 1',implemented:'Y',description:'프리셋 조그 속도 1. 부호 있음(int16) - 방향 포함'},
+            {type:'lsm',group:'Motion',address:'0x2306',name:'Preset Jog Speed 2',implemented:'Y',description:'프리셋 조그 속도 2. 부호 있음(int16) - 방향 포함'},
+            {type:'lsm',group:'Motion',address:'0x2307',name:'Preset Jog Speed 3',implemented:'Y',description:'프리셋 조그 속도 3. 부호 있음(int16) - 방향 포함'},
+            {type:'lsm',group:'Motion',address:'0x2308',name:'Preset Jog Time 0',implemented:'Y',description:'Preset Jog Speed 0 운전 지속 시간'},
+            {type:'lsm',group:'Motion',address:'0x2309',name:'Preset Jog Time 1',implemented:'Y',description:'Preset Jog Speed 1 운전 지속 시간'},
+            {type:'lsm',group:'Motion',address:'0x230A',name:'Preset Jog Time 2',implemented:'Y',description:'Preset Jog Speed 2 운전 지속 시간'},
+            {type:'lsm',group:'Motion',address:'0x230B',name:'Preset Jog Time 3',implemented:'Y',description:'Preset Jog Speed 3 운전 지속 시간'},
             // [Device Info] 장치 정보 (읽기 전용)
-            {type:'lsm',group:'Device Info',address:'0x2424',name:'Drive Serial Number',implemented:'N',description:'드라이브 시리얼 번호 (ASCII 16자)'},
-            {type:'lsm',group:'Device Info',address:'0x27F0',name:'Main Boot Version',implemented:'N',description:'메인 MCU 부트로더 펌웨어 버전 (ASCII 7자)'},
-            {type:'lsm',group:'Device Info',address:'0x27F1',name:'Main Firmware Version',implemented:'N',description:'메인 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)'},
-            {type:'lsm',group:'Device Info',address:'0x27F2',name:'Inverter Boot Version',implemented:'N',description:'인버터 MCU 부트로더 펌웨어 버전 (ASCII 7자)'},
-            {type:'lsm',group:'Device Info',address:'0x27F3',name:'Inverter Firmware Version',implemented:'N',description:'인버터 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)'},
+            {type:'lsm',group:'Device Info',address:'0x2424',name:'Drive Serial Number',implemented:'Y',description:'드라이브 시리얼 번호 (ASCII 16자)'},
+            {type:'lsm',group:'Device Info',address:'0x27F0',name:'Main Boot Version',implemented:'Y',description:'메인 MCU 부트로더 펌웨어 버전 (ASCII 7자)'},
+            {type:'lsm',group:'Device Info',address:'0x27F1',name:'Main Firmware Version',implemented:'Y',description:'메인 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)'},
+            {type:'lsm',group:'Device Info',address:'0x27F2',name:'Inverter Boot Version',implemented:'Y',description:'인버터 MCU 부트로더 펌웨어 버전 (ASCII 7자)'},
+            {type:'lsm',group:'Device Info',address:'0x27F3',name:'Inverter Firmware Version',implemented:'Y',description:'인버터 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)'},
             // [Status] 상태 모니터링 (읽기 전용)
-            {type:'lsm',group:'Status',address:'0x2600',name:'Feedback Speed',implemented:'N',description:'엔코더 기반 현재 모터 실제 속도 피드백 (부호 있음 int16)'},
-            {type:'lsm',group:'Status',address:'0x260B',name:'Room Temperature 1',implemented:'N',description:'실내 온도 센서 1 측정값 (부호 있음 int16)'},
-            {type:'lsm',group:'Status',address:'0x260C',name:'Room Temperature 2',implemented:'N',description:'실내 온도 센서 2 측정값 (부호 있음 int16)'},
-            {type:'lsm',group:'Status',address:'0x2617',name:'7-Segment Display Data',implemented:'N',description:'드라이브 전면 7세그먼트에 표시 중인 내용 (ASCII 7자)'},
-            {type:'lsm',group:'Status',address:'0x261A',name:'Commanded Phase Angle',implemented:'N',description:'현재 지령 중인 모터 전기각 위상 (부호 있음 int16)'},
+            {type:'lsm',group:'Status',address:'0x2600',name:'Feedback Speed',implemented:'Y',description:'엔코더 기반 현재 모터 실제 속도 피드백 (부호 있음 int16)'},
+            {type:'lsm',group:'Status',address:'0x260B',name:'Room Temperature 1',implemented:'Y',description:'실내 온도 센서 1 측정값 (부호 있음 int16)'},
+            {type:'lsm',group:'Status',address:'0x260C',name:'Room Temperature 2',implemented:'Y',description:'실내 온도 센서 2 측정값 (부호 있음 int16)'},
+            {type:'lsm',group:'Status',address:'0x2617',name:'7-Segment Display Data',implemented:'Y',description:'드라이브 전면 7세그먼트에 표시 중인 내용 (ASCII 7자)'},
+            {type:'lsm',group:'Status',address:'0x261A',name:'Commanded Phase Angle',implemented:'Y',description:'현재 지령 중인 모터 전기각 위상 (부호 있음 int16)'},
             // [Control] 프로시저 실행
-            {type:'lsm',group:'Control',address:'0x2700',name:'Procedure Code',implemented:'N',description:'특수 동작 명령 코드 (예: 원점 복귀, 초기화 등). Procedure Argument(0x2701)와 함께 사용'},
-            {type:'lsm',group:'Control',address:'0x2701',name:'Procedure Argument',implemented:'N',description:'Procedure Code(0x2700) 실행 시 전달하는 인수값'},
+            {type:'lsm',group:'Control',address:'0x2700',name:'Procedure Code',implemented:'Y',description:'특수 동작 명령 코드 (예: 원점 복귀, 초기화 등). Procedure Argument(0x2701)와 함께 사용'},
+            {type:'lsm',group:'Control',address:'0x2701',name:'Procedure Argument',implemented:'Y',description:'Procedure Code(0x2700) 실행 시 전달하는 인수값'},
             // ============================================================
             // LSM 고급 파라미터 (0x4000~) - 에이징 / 공장 설정 / 보안
             // 이 영역도 동일하게 FC 0x2B 로 접근
             // ============================================================
             // [Aging] 에이징 운전 설정
-            {type:'lsm',group:'Aging',address:'0x4004',name:'Aging Overload Threshold',implemented:'N',description:'에이징 운전 중 과부하 판정 기준값'},
-            {type:'lsm',group:'Aging',address:'0x4005',name:'Aging Speed',implemented:'N',description:'에이징 운전 속도 설정'},
-            {type:'lsm',group:'Aging',address:'0x4006',name:'Aging Time',implemented:'N',description:'에이징 운전 총 지속 시간'},
+            {type:'lsm',group:'Aging',address:'0x4004',name:'Aging Overload Threshold',implemented:'Y',description:'에이징 운전 중 과부하 판정 기준값'},
+            {type:'lsm',group:'Aging',address:'0x4005',name:'Aging Speed',implemented:'Y',description:'에이징 운전 속도 설정'},
+            {type:'lsm',group:'Aging',address:'0x4006',name:'Aging Time',implemented:'Y',description:'에이징 운전 총 지속 시간'},
             // [Security] 접근 보안
-            {type:'lsm',group:'Security',address:'0x4009',name:'Access Password',implemented:'N',description:'파라미터 잠금 해제 비밀번호'},
+            {type:'lsm',group:'Security',address:'0x4009',name:'Access Password',implemented:'Y',description:'파라미터 잠금 해제 비밀번호'},
             // [Factory] 공장 예약 파라미터 (용도 미공개)
-            {type:'lsm',group:'Factory',address:'0x4017',name:'Factory Reserved 4',implemented:'N',description:'공장 예약 파라미터 4 (용도 미공개)'},
-            {type:'lsm',group:'Factory',address:'0x4018',name:'Factory Reserved 5',implemented:'N',description:'공장 예약 파라미터 5 (용도 미공개)'},
-            {type:'lsm',group:'Factory',address:'0x4019',name:'Factory Reserved 6',implemented:'N',description:'공장 예약 파라미터 6 (용도 미공개)'},
-            {type:'lsm',group:'Factory',address:'0x401A',name:'Factory Reserved 7',implemented:'N',description:'공장 예약 파라미터 7 (용도 미공개)'},
-            {type:'lsm',group:'Factory',address:'0x401B',name:'Factory Reserved 8',implemented:'N',description:'공장 예약 파라미터 8 (용도 미공개)'},
-            {type:'lsm',group:'Factory',address:'0x401C',name:'Factory Reserved 9',implemented:'N',description:'공장 예약 파라미터 9 (용도 미공개)'},
-            {type:'lsm',group:'Factory',address:'0x401D',name:'Factory Reserved 10',implemented:'N',description:'공장 예약 파라미터 10 (용도 미공개)'}
+            {type:'lsm',group:'Factory',address:'0x4017',name:'Factory Reserved 4',implemented:'Y',description:'공장 예약 파라미터 4 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x4018',name:'Factory Reserved 5',implemented:'Y',description:'공장 예약 파라미터 5 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x4019',name:'Factory Reserved 6',implemented:'Y',description:'공장 예약 파라미터 6 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x401A',name:'Factory Reserved 7',implemented:'Y',description:'공장 예약 파라미터 7 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x401B',name:'Factory Reserved 8',implemented:'Y',description:'공장 예약 파라미터 8 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x401C',name:'Factory Reserved 9',implemented:'Y',description:'공장 예약 파라미터 9 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x401D',name:'Factory Reserved 10',implemented:'Y',description:'공장 예약 파라미터 10 (용도 미공개)'}
         ];
     }
 
@@ -7561,6 +7561,13 @@ class ModbusDashboard {
             // Read operation mode (0xD106)
             // 0: Speed Control (RPM), 2: Open-loop Control (%)
             const mode = await this.readRegister(device.slaveId, this.REGISTERS.OPERATION_MODE);
+
+            // null = 타임아웃 (디바이스 미응답) → 연결 안 된 디바이스
+            if (mode === null) {
+                console.log(`initializeDeviceMode: Slave ${device.slaveId} no response`);
+                return;
+            }
+
             device.operationMode = mode;
 
             // If Speed Control mode (RPM), read maximum speed
@@ -8064,13 +8071,13 @@ class ModbusDashboard {
                 return null;
             }
         } else if (this.writer) {
-            if (this.autoPollingTimer || this._isFc64Active) {
-                // Polling 중이거나 FC64 차트가 버스를 점유 중이면 큐에 등록
+            if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
+                // polling 루프 / FC64 차트 / OV 폴링 중 하나라도 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
                     this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
                 });
             }
-            // Polling is inactive — safe to send directly.
+            // 버스 유휴 — 직접 전송
             return await this.sendAndWaitResponse(frame, slaveId);
         }
 
@@ -8519,7 +8526,8 @@ class ModbusDashboard {
         const frame = this.modbus.buildCANopenUpload(slaveId, index, subIndex, 0, numData);
 
         if (this.writer) {
-            if (this.autoPollingTimer || this._isFc64Active) {
+            if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
+                // polling 루프 / FC64 차트 / OV 폴링 중 하나라도 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
                     this.commandQueue.push({ type: 'canopen_read', frame, slaveId, resolve, reject });
                 });
@@ -8641,8 +8649,8 @@ class ModbusDashboard {
         // Group by "type:group" — fallback group for params without group field
         const grouped = {};
         this.parameters.forEach(p => {
-            const typeLabel = p.type === 'input' ? 'Input' : 'Holding';
-            const groupKey = `${typeLabel} — ${p.group || (p.type === 'input' ? 'Input Registers' : 'Holding Registers')}`;
+            const typeLabel = p.type === 'input' ? 'Input' : p.type === 'lsm' ? 'LSM' : 'Holding';
+            const groupKey = `${typeLabel} — ${p.group || (p.type === 'input' ? 'Input Registers' : p.type === 'lsm' ? 'LSM' : 'Holding Registers')}`;
             if (!grouped[groupKey]) grouped[groupKey] = [];
             grouped[groupKey].push(p);
         });
@@ -9470,11 +9478,18 @@ class ModbusDashboard {
             try {
                 let value = null;
 
-                // Direct sendAndWaitResponse — bypasses queue since we are inside the polling loop.
-                const paramFrame = param.type === 'input'
-                    ? this.modbus.buildReadInputRegisters(device.slaveId, param.address, 1)
-                    : this.modbus.buildReadHoldingRegisters(device.slaveId, param.address, 1);
-                value = await this.sendAndWaitResponse(paramFrame, device.slaveId);
+                if (param.type === 'lsm') {
+                    // CANopen MEI (FC 0x2B) — 폴링 루프 내부이므로 직접 전송 가능
+                    const paramFrame = this.modbus.buildCANopenUpload(device.slaveId, param.address, 0);
+                    const result = await this.sendCANopenAndWaitResponse(paramFrame, device.slaveId);
+                    value = result?.value ?? null;
+                } else {
+                    // Direct sendAndWaitResponse — bypasses queue since we are inside the polling loop.
+                    const paramFrame = param.type === 'input'
+                        ? this.modbus.buildReadInputRegisters(device.slaveId, param.address, 1)
+                        : this.modbus.buildReadHoldingRegisters(device.slaveId, param.address, 1);
+                    value = await this.sendAndWaitResponse(paramFrame, device.slaveId);
+                }
 
                 if (value !== null) {
                     param.value = value;
@@ -10863,7 +10878,7 @@ class ModbusDashboard {
             }
             this.addFirmwareLog(`RX: ${this.modbus.bufferToHex(doneResponse)}`, 'rx');
 
-            // 응답 OpCode가 0x04면 성공, 0x05면 에러
+            // 응답 OpCode가 0x05면 성공 (Done ACK)
             const doneResult = this.modbus.parseFirmwareResponse(doneResponse);
             if (!doneResult.success) {
                 throw new Error('펌웨어 완료 처리 실패');
@@ -11044,7 +11059,10 @@ class ModbusDashboard {
                     const response = new Uint8Array(this.responseBuffer);
                     // Skip CRC check if requested, or verify CRC
                     if (skipCRC || this.modbus.verifyCRC(response)) {
-                        // 'received' 엔트리는 tryParseFrame()이 이미 기록하므로 중복 기록 생략
+                        // FC 0x66 등 tryParseFrame()이 무시하는 FC는 여기서 직접 기록
+                        if (response.length >= 2 && response[1] === 0x66) {
+                            this.addMonitorEntry('rx', response);
+                        }
                         resolve(response);
                         return;
                     }
@@ -12426,6 +12444,34 @@ class ModbusDashboard {
             if (!this.ovPollingRunning) return;
         }
 
+        // ── OV 루프 전용 버스 읽기 헬퍼 ────────────────────────────
+        // readCANopenObject / readInputRegisterWithTimeout 는 ovPollingRunning=true 이면
+        // 큐에 등록하므로 OV 루프 자신은 직접 전송 경로를 사용해야 한다.
+        // dashboard 폴링(autoPollingTimer) 또는 FC64(_isFc64Active) 가 버스를 점유 중이면
+        // 해당 루프의 큐를 통해 전송하고, 그렇지 않으면 직접 전송 후 쌓인 큐를 소진한다.
+        const ovCanopen = async (sid, idx, sub) => {
+            if (this.autoPollingTimer || this._isFc64Active) {
+                // 다른 루프가 버스를 점유 중 — 큐 경유 (pollNextDeviceSequential/_drainCommandQueue 가 처리)
+                return this.readCANopenObject(sid, idx, sub);
+            }
+            // OV 루프가 버스 소유자 — 직접 전송
+            const frame = this.modbus.buildCANopenUpload(sid, idx, sub, 0, 2);
+            const result = await this.sendCANopenAndWaitResponse(frame, sid);
+            // 외부 코드(예: readAllParameters)가 큐에 넣은 항목을 읽기 사이에 소진
+            if (this.commandQueue.length > 0) await this._drainCommandQueue();
+            return result;
+        };
+
+        const ovInput = async (sid, addr) => {
+            if (this.autoPollingTimer || this._isFc64Active) {
+                return this.readInputRegisterWithTimeout(sid, addr);
+            }
+            const frame = this.modbus.buildReadInputRegisters(sid, addr, 1);
+            const result = await this.sendAndWaitResponse(frame, sid);
+            if (this.commandQueue.length > 0) await this._drainCommandQueue();
+            return result;
+        };
+
         // ── 반복 폴링 (DClink / IGBT / 결상) ─────────────────────
         while (this.ovPollingRunning) {
             if (!this.writer) { await this.delay(500); continue; }
@@ -12434,7 +12480,7 @@ class ModbusDashboard {
             const slaveId = device.slaveId;
 
             // 1) Motor ID — FC 0x2B CANopen SDO 0x2000:00
-            const motorR  = await this.readCANopenObject(slaveId, 0x2000, 0x00);
+            const motorR  = await ovCanopen(slaveId, 0x2000, 0x00);
             const motorEl = document.getElementById('ov-motor-id');
             if (motorR && !motorR.error && motorR.value != null && motorEl) {
                 const MOTOR_ID_MAP = { 0x1000: 'Sirocco Motor', 0x2000: 'Axial Motor' };
@@ -12446,14 +12492,14 @@ class ModbusDashboard {
             if (!this.ovPollingRunning) break;
 
             // 2) DClink 전압 — FC04 Input Register 0xD013
-            const dcRaw = await this.readInputRegisterWithTimeout(slaveId, 0xD013);
+            const dcRaw = await ovInput(slaveId, 0xD013);
             const dcEl  = document.getElementById('ov-dclink-v');
             if (dcRaw !== null && dcRaw !== undefined && dcEl) dcEl.textContent = dcRaw;
 
             if (!this.ovPollingRunning) break;
 
             // 3) IGBT 온도 — CANopen 0x260B:00
-            const igbtR  = await this.readCANopenObject(slaveId, 0x260B, 0x00);
+            const igbtR  = await ovCanopen(slaveId, 0x260B, 0x00);
             const igbtEl = document.getElementById('ov-igbt-motor-id');
             if (igbtR && !igbtR.error && igbtR.value != null && igbtEl)
                 igbtEl.textContent = toInt16(igbtR.value) + ' ℃';
@@ -12461,7 +12507,7 @@ class ModbusDashboard {
             if (!this.ovPollingRunning) break;
 
             // 4) 결상(Alarm Code) — FC 0x2B CANopen SDO 0x603F:00
-            const alarmR  = await this.readCANopenObject(slaveId, 0x603F, 0x00);
+            const alarmR  = await ovCanopen(slaveId, 0x603F, 0x00);
             const alarmEl = document.getElementById('ov-alarm-code');
             if (alarmR && !alarmR.error && alarmR.value != null && alarmEl)
                 alarmEl.textContent = this.getAlarmCodeName(alarmR.value);
@@ -12469,7 +12515,7 @@ class ModbusDashboard {
             if (!this.ovPollingRunning) break;
 
             // 5) 모터 결상(PHA bit) — FC04 Input Register 0xD011 bit[0]
-            const d011Raw = await this.readInputRegisterWithTimeout(slaveId, 0xD011);
+            const d011Raw = await ovInput(slaveId, 0xD011);
             const phaEl   = document.getElementById('ov-pha-bit');
             if (d011Raw !== null && d011Raw !== undefined && phaEl) {
                 const pha = (d011Raw & 0x0001) !== 0;
@@ -12806,6 +12852,262 @@ class ModbusDashboard {
                 if (el) el.value = raw;
                 this.saveDevices();
             }},
+            terminationResistor: { category: 'communication', address: 0xD1FF, apply: (raw) => {
+                device.terminationResistor = raw;
+                const el = document.getElementById(`terminationResistor_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            // ── 보호 설정 ──────────────────────────────────────────────
+            tempDeratingStart: { category: 'protection',    address: 0xD137, apply: (raw) => {
+                device.tempDeratingStart = raw;
+                const el = document.getElementById(`tempDeratingStart_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            // ── 센서 입력 ──────────────────────────────────────────────
+            sensorActualSource: { category: 'sensor',       address: 0xD147, apply: (raw) => {
+                device.sensorActualSource = raw;
+                const el = document.getElementById(`sensorActualSource_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            minSensorValue:   { category: 'sensor',         address: 0xD160, apply: (raw) => {
+                device.minSensorValue = raw;
+                const el = document.getElementById(`minSensorValue_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            maxSensorValue:   { category: 'sensor',         address: 0xD162, apply: (raw) => {
+                device.maxSensorValue = raw;
+                const el = document.getElementById(`maxSensorValue_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            curvePoint1X:     { category: 'sensor',         address: 0xD12A, apply: (raw) => {
+                device.curvePoint1X = raw;
+                const el = document.getElementById(`curvePoint1X_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            curvePoint1Y:     { category: 'sensor',         address: 0xD12B, apply: (raw) => {
+                device.curvePoint1Y = raw;
+                const el = document.getElementById(`curvePoint1Y_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            curvePoint2X:     { category: 'sensor',         address: 0xD12C, apply: (raw) => {
+                device.curvePoint2X = raw;
+                const el = document.getElementById(`curvePoint2X_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            curvePoint2Y:     { category: 'sensor',         address: 0xD12D, apply: (raw) => {
+                device.curvePoint2Y = raw;
+                const el = document.getElementById(`curvePoint2Y_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            // ── 서보 튜닝 (LSM FC 0x2B) ───────────────────────────────
+            lsmNodeId:        { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2003, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.lsmNodeId = raw;
+                const el = document.getElementById(`lsmNodeId_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            inertiaRatio:     { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2100, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.inertiaRatio = raw;
+                const el = document.getElementById(`inertiaRatio_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            posPGain:         { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2101, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.posPGain = raw;
+                const el = document.getElementById(`posPGain_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            velPGain:         { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2102, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.velPGain = raw;
+                const el = document.getElementById(`velPGain_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            velTimeConst:     { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2103, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.velTimeConst = raw;
+                const el = document.getElementById(`velTimeConst_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            torqueCmdFilter:  { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2104, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.torqueCmdFilter = raw;
+                const el = document.getElementById(`torqueCmdFilter_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            posTorqueLimit:   { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2111, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.posTorqueLimit = raw;
+                const el = document.getElementById(`posTorqueLimit_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            negTorqueLimit:   { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2112, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.negTorqueLimit = raw;
+                const el = document.getElementById(`negTorqueLimit_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            driveCtrlInput1:  { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x211F, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.driveCtrlInput1 = raw;
+                const el = document.getElementById(`driveCtrlInput1_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            driveCtrlInput2:  { category: 'servoTuning',    reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2120, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.driveCtrlInput2 = raw;
+                const el = document.getElementById(`driveCtrlInput2_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            // ── 조그 설정 (LSM FC 0x2B) ───────────────────────────────
+            jogSpeed:         { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2300, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.jogSpeed = raw > 32767 ? raw - 65536 : raw;
+                const el = document.getElementById(`jogSpeed_${deviceId}`);
+                if (el) el.value = device.jogSpeed;
+                this.saveDevices();
+            }},
+            speedAccelTime:   { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2301, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.speedAccelTime = raw;
+                const el = document.getElementById(`speedAccelTime_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            speedDecelTime:   { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2302, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.speedDecelTime = raw;
+                const el = document.getElementById(`speedDecelTime_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            sCurveTime:       { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2303, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.sCurveTime = raw;
+                const el = document.getElementById(`sCurveTime_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            presetJogSpeed0:  { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2304, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.presetJogSpeed0 = raw > 32767 ? raw - 65536 : raw;
+                const el = document.getElementById(`presetJogSpeed0_${deviceId}`);
+                if (el) el.value = device.presetJogSpeed0;
+                this.saveDevices();
+            }},
+            presetJogSpeed1:  { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2305, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.presetJogSpeed1 = raw > 32767 ? raw - 65536 : raw;
+                const el = document.getElementById(`presetJogSpeed1_${deviceId}`);
+                if (el) el.value = device.presetJogSpeed1;
+                this.saveDevices();
+            }},
+            presetJogSpeed2:  { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2306, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.presetJogSpeed2 = raw > 32767 ? raw - 65536 : raw;
+                const el = document.getElementById(`presetJogSpeed2_${deviceId}`);
+                if (el) el.value = device.presetJogSpeed2;
+                this.saveDevices();
+            }},
+            presetJogSpeed3:  { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2307, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.presetJogSpeed3 = raw > 32767 ? raw - 65536 : raw;
+                const el = document.getElementById(`presetJogSpeed3_${deviceId}`);
+                if (el) el.value = device.presetJogSpeed3;
+                this.saveDevices();
+            }},
+            presetJogTime0:   { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2308, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.presetJogTime0 = raw;
+                const el = document.getElementById(`presetJogTime0_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            presetJogTime1:   { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x2309, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.presetJogTime1 = raw;
+                const el = document.getElementById(`presetJogTime1_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            presetJogTime2:   { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x230A, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.presetJogTime2 = raw;
+                const el = document.getElementById(`presetJogTime2_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
+            presetJogTime3:   { category: 'jog',            reader: async () => {
+                const r = await this.readCANopenObject(device.slaveId, 0x230B, 0x00);
+                return (r && !r.error && r.value != null) ? r.value : null;
+            }, apply: (raw) => {
+                device.presetJogTime3 = raw;
+                const el = document.getElementById(`presetJogTime3_${deviceId}`);
+                if (el) el.value = raw;
+                this.saveDevices();
+            }},
         };
     }
 
@@ -12940,8 +13242,11 @@ class ModbusDashboard {
         const categories = [
             { id: 'motorInfo',     label: '모터' },
             { id: 'motor',         label: '모터 제어' },
+            { id: 'sensor',        label: '센서 입력' },
             { id: 'protection',    label: '보호 설정' },
             { id: 'communication', label: '통신 설정' },
+            { id: 'servoTuning',   label: '서보 튜닝' },
+            { id: 'jog',           label: '조그 설정' },
             { id: 'system',        label: '시스템' },
         ];
 
@@ -13116,6 +13421,14 @@ class ModbusDashboard {
                             style="${iStyle}"
                             onchange="window.dashboard.debouncedApply('maxCurrent', ${id})"
                             onclick="event.stopPropagation()">`)}
+                    ${row('tempDeratingStart', '온도 디레이팅 시작점 (°C)', '모듈 온도 파워 디레이팅이 시작되는 온도 (0xD137)', `
+                        <input type="number" id="tempDeratingStart_${id}"
+                            value="${device.tempDeratingStart ?? ''}"
+                            min="0" max="200"
+                            placeholder="0–200"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('tempDeratingStart', ${id})"
+                            onclick="event.stopPropagation()">`)}
                     ${row('tempDerating', '온도 디레이팅 종료점 (°C)', '모듈 온도 파워 디레이팅이 완료되는 온도 (0xD138)', `
                         <input type="number" id="tempDerating_${id}"
                             value="${device.tempDerating ?? ''}"
@@ -13157,13 +13470,264 @@ class ModbusDashboard {
                             <option value="2" ${(device.parity ?? 0) === 2 ? 'selected' : ''}>Data8 / None / Stop2</option>
                             <option value="3" ${(device.parity ?? 0) === 3 ? 'selected' : ''}>Data8 / None / Stop1</option>
                         </select>`)}
+                    ${row('terminationResistor', '종단 저항', 'RS-485 통신 종단 저항 활성화 설정 (0xD1FF)', `
+                        <select id="terminationResistor_${id}" style="${iStyle}"
+                            onchange="window.dashboard.applyTerminationResistor(${id})"
+                            onclick="event.stopPropagation()">
+                            <option value="0" ${(device.terminationResistor ?? 0) === 0 ? 'selected' : ''}>비활성화 (기본값)</option>
+                            <option value="1" ${(device.terminationResistor ?? 0) === 1 ? 'selected' : ''}>활성화</option>
+                        </select>`)}
+                </div>`;
+
+            case 'sensor':
+                return `<div style="margin-top: 0;">
+                    ${row('sensorActualSource', '센서 지령 소스', '지령으로 선택된 센서의 입력 채널 (0xD147)', `
+                        <input type="number" id="sensorActualSource_${id}"
+                            value="${device.sensorActualSource ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('sensorActualSource', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('minSensorValue', '센서 최솟값', '입력 센서의 최솟값 (0xD160)', `
+                        <input type="number" id="minSensorValue_${id}"
+                            value="${device.minSensorValue ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('minSensorValue', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('maxSensorValue', '센서 최댓값', '입력 센서의 최댓값 (0xD162)', `
+                        <input type="number" id="maxSensorValue_${id}"
+                            value="${device.maxSensorValue ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('maxSensorValue', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('curvePoint1X', '커브 포인트 1 X', '아날로그/PWM 입력 신호 할당 — Point 1 X (0xD12A)', `
+                        <input type="number" id="curvePoint1X_${id}"
+                            value="${device.curvePoint1X ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('curvePoint1X', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('curvePoint1Y', '커브 포인트 1 Y', '아날로그/PWM 입력 신호 할당 — Point 1 Y (0xD12B)', `
+                        <input type="number" id="curvePoint1Y_${id}"
+                            value="${device.curvePoint1Y ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('curvePoint1Y', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('curvePoint2X', '커브 포인트 2 X', '아날로그/PWM 입력 신호 할당 — Point 2 X (0xD12C)', `
+                        <input type="number" id="curvePoint2X_${id}"
+                            value="${device.curvePoint2X ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('curvePoint2X', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('curvePoint2Y', '커브 포인트 2 Y', '아날로그/PWM 입력 신호 할당 — Point 2 Y (0xD12D)', `
+                        <input type="number" id="curvePoint2Y_${id}"
+                            value="${device.curvePoint2Y ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('curvePoint2Y', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                </div>`;
+
+            case 'servoTuning':
+                return `<div style="margin-top: 0;">
+                    ${row('lsmNodeId', 'Node ID (LSM)', 'RS-485 버스 슬레이브 주소 — LSM 드라이브 전용 (FC 0x2B, 0x2003)', `
+                        <input type="number" id="lsmNodeId_${id}"
+                            value="${device.lsmNodeId ?? ''}"
+                            min="1" max="247"
+                            placeholder="1–247"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('lsmNodeId', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('inertiaRatio', '관성비 (Inertia Ratio)', '부하 관성 / 모터 관성 비율 — 서보 응답성 튜닝 (FC 0x2B, 0x2100)', `
+                        <input type="number" id="inertiaRatio_${id}"
+                            value="${device.inertiaRatio ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('inertiaRatio', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('posPGain', '위치 P 게인 1', '위치 제어 루프 비례 게인 (FC 0x2B, 0x2101)', `
+                        <input type="number" id="posPGain_${id}"
+                            value="${device.posPGain ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('posPGain', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('velPGain', '속도 P 게인 1', '속도 제어 루프 비례 게인 (FC 0x2B, 0x2102)', `
+                        <input type="number" id="velPGain_${id}"
+                            value="${device.velPGain ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('velPGain', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('velTimeConst', '속도 루프 적분 시상수 1', '속도 루프 적분 시간 상수 (FC 0x2B, 0x2103)', `
+                        <input type="number" id="velTimeConst_${id}"
+                            value="${device.velTimeConst ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('velTimeConst', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('torqueCmdFilter', '토크 지령 필터 시상수 1', '토크 지령 저역 통과 필터 시간 상수 (FC 0x2B, 0x2104)', `
+                        <input type="number" id="torqueCmdFilter_${id}"
+                            value="${device.torqueCmdFilter ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('torqueCmdFilter', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('posTorqueLimit', '양방향 토크 제한 (CW)', '외부 입력 기반 CW 방향 토크 상한값 (FC 0x2B, 0x2111)', `
+                        <input type="number" id="posTorqueLimit_${id}"
+                            value="${device.posTorqueLimit ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('posTorqueLimit', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('negTorqueLimit', '음방향 토크 제한 (CCW)', '외부 입력 기반 CCW 방향 토크 상한값 (FC 0x2B, 0x2112)', `
+                        <input type="number" id="negTorqueLimit_${id}"
+                            value="${device.negTorqueLimit ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('negTorqueLimit', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('driveCtrlInput1', '드라이브 제어 입력 1', '드라이브 제어 입력 포트 1 기능 할당 (FC 0x2B, 0x211F)', `
+                        <input type="number" id="driveCtrlInput1_${id}"
+                            value="${device.driveCtrlInput1 ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('driveCtrlInput1', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('driveCtrlInput2', '드라이브 제어 입력 2', '드라이브 제어 입력 포트 2 기능 할당 (FC 0x2B, 0x2120)', `
+                        <input type="number" id="driveCtrlInput2_${id}"
+                            value="${device.driveCtrlInput2 ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('driveCtrlInput2', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                </div>`;
+
+            case 'jog':
+                return `<div style="margin-top: 0;">
+                    ${row('jogSpeed', '조그 속도', '조그 운전 속도 지령값 — 양수:CW / 음수:CCW (FC 0x2B, 0x2300)', `
+                        <input type="number" id="jogSpeed_${id}"
+                            value="${device.jogSpeed ?? ''}"
+                            min="-32768" max="32767"
+                            placeholder="-32768–32767"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('jogSpeed', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('speedAccelTime', '가속 시간', '속도 지령 변화 시 가속 구간 시간 (FC 0x2B, 0x2301)', `
+                        <input type="number" id="speedAccelTime_${id}"
+                            value="${device.speedAccelTime ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('speedAccelTime', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('speedDecelTime', '감속 시간', '속도 지령 변화 시 감속 구간 시간 (FC 0x2B, 0x2302)', `
+                        <input type="number" id="speedDecelTime_${id}"
+                            value="${device.speedDecelTime ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('speedDecelTime', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('sCurveTime', 'S-Curve 시간', '가감속 S커브 적용 시간 — 0이면 선형 (FC 0x2B, 0x2303)', `
+                        <input type="number" id="sCurveTime_${id}"
+                            value="${device.sCurveTime ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('sCurveTime', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('presetJogSpeed0', '프리셋 조그 속도 0', '프리셋 조그 속도 0 — 부호 있음 (FC 0x2B, 0x2304)', `
+                        <input type="number" id="presetJogSpeed0_${id}"
+                            value="${device.presetJogSpeed0 ?? ''}"
+                            min="-32768" max="32767"
+                            placeholder="-32768–32767"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('presetJogSpeed0', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('presetJogSpeed1', '프리셋 조그 속도 1', '프리셋 조그 속도 1 — 부호 있음 (FC 0x2B, 0x2305)', `
+                        <input type="number" id="presetJogSpeed1_${id}"
+                            value="${device.presetJogSpeed1 ?? ''}"
+                            min="-32768" max="32767"
+                            placeholder="-32768–32767"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('presetJogSpeed1', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('presetJogSpeed2', '프리셋 조그 속도 2', '프리셋 조그 속도 2 — 부호 있음 (FC 0x2B, 0x2306)', `
+                        <input type="number" id="presetJogSpeed2_${id}"
+                            value="${device.presetJogSpeed2 ?? ''}"
+                            min="-32768" max="32767"
+                            placeholder="-32768–32767"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('presetJogSpeed2', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('presetJogSpeed3', '프리셋 조그 속도 3', '프리셋 조그 속도 3 — 부호 있음 (FC 0x2B, 0x2307)', `
+                        <input type="number" id="presetJogSpeed3_${id}"
+                            value="${device.presetJogSpeed3 ?? ''}"
+                            min="-32768" max="32767"
+                            placeholder="-32768–32767"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('presetJogSpeed3', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('presetJogTime0', '프리셋 조그 시간 0', '프리셋 조그 속도 0 운전 지속 시간 (FC 0x2B, 0x2308)', `
+                        <input type="number" id="presetJogTime0_${id}"
+                            value="${device.presetJogTime0 ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('presetJogTime0', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('presetJogTime1', '프리셋 조그 시간 1', '프리셋 조그 속도 1 운전 지속 시간 (FC 0x2B, 0x2309)', `
+                        <input type="number" id="presetJogTime1_${id}"
+                            value="${device.presetJogTime1 ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('presetJogTime1', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('presetJogTime2', '프리셋 조그 시간 2', '프리셋 조그 속도 2 운전 지속 시간 (FC 0x2B, 0x230A)', `
+                        <input type="number" id="presetJogTime2_${id}"
+                            value="${device.presetJogTime2 ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('presetJogTime2', ${id})"
+                            onclick="event.stopPropagation()">`)}
+                    ${row('presetJogTime3', '프리셋 조그 시간 3', '프리셋 조그 속도 3 운전 지속 시간 (FC 0x2B, 0x230B)', `
+                        <input type="number" id="presetJogTime3_${id}"
+                            value="${device.presetJogTime3 ?? ''}"
+                            min="0" max="65535"
+                            placeholder="0–65535"
+                            style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('presetJogTime3', ${id})"
+                            onclick="event.stopPropagation()">`)}
                 </div>`;
 
             case 'system':
                 return `<div style="margin-top: 0;">
                     ${actionRow('softwareReset', '소프트웨어 리셋', '디바이스 소프트웨어를 재시작합니다 (0xD000)', `
                         <button class="btn btn-warning btn-sm"
-                            onclick="event.stopPropagation(); window.dashboard.resetDevice(${id}, 'software')">Reset</button>`)}
+                            onclick="event.stopPropagation(); window.dashboard.performSoftwareReset(${id})">Reset</button>`)}
                     ${actionRow('errorReset', '오류 리셋', '모든 오류 상태와 플래그를 초기화합니다 (0xD000)', `
                         <button class="btn btn-warning btn-sm"
                             onclick="event.stopPropagation(); window.dashboard.resetDevice(${id}, 'error')">Reset</button>`)}
@@ -13435,6 +13999,130 @@ class ModbusDashboard {
                         break;
                     case 'motorType':
                         await this.applyMotorType(deviceId);
+                        success = true;
+                        break;
+                    // ── 보호 설정 ────────────────────────────────────────
+                    case 'tempDeratingStart':
+                        await this.applyGenericHolding(deviceId, 'tempDeratingStart', 0xD137, 'tempDeratingStart', { max: 200 });
+                        success = true;
+                        break;
+                    // ── 센서 입력 ────────────────────────────────────────
+                    case 'sensorActualSource':
+                        await this.applyGenericHolding(deviceId, 'sensorActualSource', 0xD147, 'sensorActualSource');
+                        success = true;
+                        break;
+                    case 'minSensorValue':
+                        await this.applyGenericHolding(deviceId, 'minSensorValue', 0xD160, 'minSensorValue');
+                        success = true;
+                        break;
+                    case 'maxSensorValue':
+                        await this.applyGenericHolding(deviceId, 'maxSensorValue', 0xD162, 'maxSensorValue');
+                        success = true;
+                        break;
+                    case 'curvePoint1X':
+                        await this.applyGenericHolding(deviceId, 'curvePoint1X', 0xD12A, 'curvePoint1X');
+                        success = true;
+                        break;
+                    case 'curvePoint1Y':
+                        await this.applyGenericHolding(deviceId, 'curvePoint1Y', 0xD12B, 'curvePoint1Y');
+                        success = true;
+                        break;
+                    case 'curvePoint2X':
+                        await this.applyGenericHolding(deviceId, 'curvePoint2X', 0xD12C, 'curvePoint2X');
+                        success = true;
+                        break;
+                    case 'curvePoint2Y':
+                        await this.applyGenericHolding(deviceId, 'curvePoint2Y', 0xD12D, 'curvePoint2Y');
+                        success = true;
+                        break;
+                    // ── 서보 튜닝 (LSM) ──────────────────────────────────
+                    case 'lsmNodeId':
+                        await this.applyGenericLSM(deviceId, 'lsmNodeId', 0x2003, 'lsmNodeId');
+                        success = true;
+                        break;
+                    case 'inertiaRatio':
+                        await this.applyGenericLSM(deviceId, 'inertiaRatio', 0x2100, 'inertiaRatio');
+                        success = true;
+                        break;
+                    case 'posPGain':
+                        await this.applyGenericLSM(deviceId, 'posPGain', 0x2101, 'posPGain');
+                        success = true;
+                        break;
+                    case 'velPGain':
+                        await this.applyGenericLSM(deviceId, 'velPGain', 0x2102, 'velPGain');
+                        success = true;
+                        break;
+                    case 'velTimeConst':
+                        await this.applyGenericLSM(deviceId, 'velTimeConst', 0x2103, 'velTimeConst');
+                        success = true;
+                        break;
+                    case 'torqueCmdFilter':
+                        await this.applyGenericLSM(deviceId, 'torqueCmdFilter', 0x2104, 'torqueCmdFilter');
+                        success = true;
+                        break;
+                    case 'posTorqueLimit':
+                        await this.applyGenericLSM(deviceId, 'posTorqueLimit', 0x2111, 'posTorqueLimit');
+                        success = true;
+                        break;
+                    case 'negTorqueLimit':
+                        await this.applyGenericLSM(deviceId, 'negTorqueLimit', 0x2112, 'negTorqueLimit');
+                        success = true;
+                        break;
+                    case 'driveCtrlInput1':
+                        await this.applyGenericLSM(deviceId, 'driveCtrlInput1', 0x211F, 'driveCtrlInput1');
+                        success = true;
+                        break;
+                    case 'driveCtrlInput2':
+                        await this.applyGenericLSM(deviceId, 'driveCtrlInput2', 0x2120, 'driveCtrlInput2');
+                        success = true;
+                        break;
+                    // ── 조그 설정 (LSM) ──────────────────────────────────
+                    case 'jogSpeed':
+                        await this.applyGenericLSM(deviceId, 'jogSpeed', 0x2300, 'jogSpeed');
+                        success = true;
+                        break;
+                    case 'speedAccelTime':
+                        await this.applyGenericLSM(deviceId, 'speedAccelTime', 0x2301, 'speedAccelTime');
+                        success = true;
+                        break;
+                    case 'speedDecelTime':
+                        await this.applyGenericLSM(deviceId, 'speedDecelTime', 0x2302, 'speedDecelTime');
+                        success = true;
+                        break;
+                    case 'sCurveTime':
+                        await this.applyGenericLSM(deviceId, 'sCurveTime', 0x2303, 'sCurveTime');
+                        success = true;
+                        break;
+                    case 'presetJogSpeed0':
+                        await this.applyGenericLSM(deviceId, 'presetJogSpeed0', 0x2304, 'presetJogSpeed0');
+                        success = true;
+                        break;
+                    case 'presetJogSpeed1':
+                        await this.applyGenericLSM(deviceId, 'presetJogSpeed1', 0x2305, 'presetJogSpeed1');
+                        success = true;
+                        break;
+                    case 'presetJogSpeed2':
+                        await this.applyGenericLSM(deviceId, 'presetJogSpeed2', 0x2306, 'presetJogSpeed2');
+                        success = true;
+                        break;
+                    case 'presetJogSpeed3':
+                        await this.applyGenericLSM(deviceId, 'presetJogSpeed3', 0x2307, 'presetJogSpeed3');
+                        success = true;
+                        break;
+                    case 'presetJogTime0':
+                        await this.applyGenericLSM(deviceId, 'presetJogTime0', 0x2308, 'presetJogTime0');
+                        success = true;
+                        break;
+                    case 'presetJogTime1':
+                        await this.applyGenericLSM(deviceId, 'presetJogTime1', 0x2309, 'presetJogTime1');
+                        success = true;
+                        break;
+                    case 'presetJogTime2':
+                        await this.applyGenericLSM(deviceId, 'presetJogTime2', 0x230A, 'presetJogTime2');
+                        success = true;
+                        break;
+                    case 'presetJogTime3':
+                        await this.applyGenericLSM(deviceId, 'presetJogTime3', 0x230B, 'presetJogTime3');
                         success = true;
                         break;
                 }
@@ -13938,6 +14626,89 @@ class ModbusDashboard {
             if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
         }
 
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Generic holding register apply helper (FC06 write)
+     * @param {string} paramKey  - element ID prefix and debouncedApply key
+     * @param {number} address   - register address
+     * @param {string} deviceProp - device property name to cache the value
+     * @param {object} opts      - { min, max, scale } (scale multiplies the value before writing)
+     */
+    async applyGenericHolding(deviceId, paramKey, address, deviceProp, opts = {}) {
+        const { min = 0, max = 65535, scale = 1 } = opts;
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+        const input  = document.getElementById(`${paramKey}_${deviceId}`);
+        const status = document.getElementById(`${paramKey}_${deviceId}_status`);
+        if (!input) return;
+        const val = parseFloat(input.value);
+        if (isNaN(val)) {
+            if (status) { status.textContent = '❌'; status.title = 'Invalid value'; }
+            return;
+        }
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+        const regVal = Math.round(val * scale);
+        const success = await this.writeHoldingRegister(device.slaveId, address, regVal);
+        if (success) {
+            if (deviceProp) device[deviceProp] = val;
+            this.saveDevices();
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Generic LSM (FC 0x2B CANopen) apply helper
+     * @param {string} paramKey  - element ID prefix
+     * @param {number} lsmIndex  - CANopen object index
+     * @param {string} deviceProp - device property name to cache the value
+     */
+    async applyGenericLSM(deviceId, paramKey, lsmIndex, deviceProp) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+        const input  = document.getElementById(`${paramKey}_${deviceId}`);
+        const status = document.getElementById(`${paramKey}_${deviceId}_status`);
+        if (!input) return;
+        const val = parseInt(input.value);
+        if (isNaN(val)) {
+            if (status) { status.textContent = '❌'; status.title = 'Invalid value'; }
+            return;
+        }
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+        const result = await this.writeCANopenObject(device.slaveId, lsmIndex, 0x00, val);
+        if (result && !result.error) {
+            if (deviceProp) device[deviceProp] = val;
+            this.saveDevices();
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
+        if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
+    }
+
+    /**
+     * Apply Termination Resistor select (0xD1FF)
+     */
+    async applyTerminationResistor(deviceId) {
+        const device = this.devices.find(d => d.id === deviceId);
+        if (!device) return;
+        const sel    = document.getElementById(`terminationResistor_${deviceId}`);
+        const status = document.getElementById(`terminationResistor_${deviceId}_status`);
+        if (!sel) return;
+        const value = parseInt(sel.value);
+        if (status) { status.textContent = '↻'; status.title = 'Applying...'; }
+        const success = await this.writeHoldingRegister(device.slaveId, 0xD1FF, value);
+        if (success) {
+            device.terminationResistor = value;
+            this.saveDevices();
+            if (status) { status.textContent = '⭕'; status.title = 'Applied successfully'; }
+        } else {
+            if (status) { status.textContent = '❌'; status.title = 'Failed to apply'; }
+        }
         if (status) { setTimeout(() => { status.textContent = ''; status.title = ''; }, 2000); }
     }
 
@@ -15072,6 +15843,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Save current device setup tab to sessionStorage
             sessionStorage.setItem('deviceSetupTab', targetTab);
 
+            // HW Overview 폴링은 manufacture > hw-overview 서브탭에서만 유효
+            // manufacture 탭 이외 탭으로 전환 시 항상 중지
+            if (targetTab !== 'manufacture') {
+                window.dashboard.stopOvPolling();
+            }
+
             // Remove active class from all tabs (Notion style)
             deviceSetupTabs.forEach(t => {
                 t.classList.remove('active');
@@ -15108,6 +15885,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('deviceSetupUpdateTab').style.display = 'block';
             } else if (targetTab === 'manufacture') {
                 document.getElementById('deviceSetupManufactureTab').style.display = 'flex';
+                // hw-overview 가 기본 서브탭 — 현재 활성 서브탭이 hw-overview면 폴링 시작
+                const activeSubtab = sessionStorage.getItem('manufactureSubtab') || 'hw-overview';
+                if (activeSubtab === 'hw-overview' && (db.writer || db.simulatorEnabled)) {
+                    db.initMiniCharts();
+                    db.startOvPolling();
+                }
             }
         });
     });
@@ -15160,8 +15943,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show selected subtab content
             if (targetSubtab === 'os-verification') {
                 document.getElementById('manufactureOsVerification').style.display = 'block';
-            } else if (targetSubtab === 'tuning') {
-                document.getElementById('manufactureTuning').style.display = 'block';
             } else if (targetSubtab === 'offset') {
                 document.getElementById('manufactureOffset').style.display = 'flex';
             } else if (targetSubtab === 'serial-number') {
