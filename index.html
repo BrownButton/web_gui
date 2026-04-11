@@ -1876,12 +1876,153 @@
                                     </div><!-- /manufactureOffset -->
 
                                     <!-- Serial Number Sub-tab -->
-                                    <div class="manufacture-subtab-content" id="manufactureSerialNumber" style="display: none; padding: 32px;">
-                                        <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
-                                            <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">🏷️</div>
-                                            <p style="font-size: 15px; font-weight: 500; color: #404040;">Serial Number</p>
-                                            <p style="font-size: 13px; margin-top: 6px; color: #999;">시리얼 넘버 부여 (준비 중)</p>
+                                    <div class="manufacture-subtab-content" id="manufactureSerialNumber" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
+
+                                        <!-- Header Bar -->
+                                        <div style="padding: 18px 28px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; flex-shrink: 0;">
+                                            <div style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Serial Number Assignment</div>
+                                            <div style="font-size: 12px; color: #6c757d; margin-top: 3px;">디바이스에 시리얼 넘버를 부여합니다 — 패스워드 확인 후 쓰기가 활성화됩니다</div>
                                         </div>
+
+                                        <!-- Body: Left (Write) + Right (Read) -->
+                                        <div style="flex: 1; display: flex; overflow: hidden; min-height: 0;">
+
+                                            <!-- Left Panel: Generate & Write -->
+                                            <div style="flex: 0 0 50%; padding: 24px 28px; border-right: 1px solid #e9ecef; overflow-y: auto; background: #fafafa;">
+
+                                                <!-- Password -->
+                                                <div style="margin-bottom: 20px;">
+                                                    <div style="font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">패스워드</div>
+                                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                                        <input type="number" id="snPassword" placeholder="패스워드 입력"
+                                                            style="flex: 1; padding: 9px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; background: white;"
+                                                            onkeydown="if(event.key==='Enter') window.dashboard.snConfirmPassword()">
+                                                        <button onclick="window.dashboard.snConfirmPassword()" id="snPasswordBtn"
+                                                            style="padding: 9px 14px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                                                            확인
+                                                        </button>
+                                                    </div>
+                                                    <div id="snPasswordStatus" style="font-size: 12px; color: #adb5bd; margin-top: 5px; min-height: 16px;">미확인 — 패스워드를 입력 후 확인 버튼을 누르세요</div>
+                                                </div>
+
+                                                <div style="border-top: 1px solid #e9ecef; margin-bottom: 20px;"></div>
+
+                                                <!-- Serial Number Generator -->
+                                                <div style="margin-bottom: 16px;">
+                                                    <div style="font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 12px;">시리얼 넘버 생성</div>
+
+                                                    <!-- 제품 구분 -->
+                                                    <div style="display: flex; align-items: center; margin-bottom: 10px; gap: 12px;">
+                                                        <label style="font-size: 13px; color: #6c757d; width: 90px; flex-shrink: 0;">제품 구분</label>
+                                                        <select id="snProduct" style="flex: 1; padding: 7px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; background: white;">
+                                                            <option value="S">인코더 (S)</option>
+                                                            <option value="M">모터 (M)</option>
+                                                            <option value="D" selected>드라이브 (D)</option>
+                                                            <option value="R">로봇 (R)</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <!-- 제작 연도 -->
+                                                    <div style="display: flex; align-items: center; margin-bottom: 10px; gap: 12px;">
+                                                        <label style="font-size: 13px; color: #6c757d; width: 90px; flex-shrink: 0;">제작 연도</label>
+                                                        <input type="number" id="snYear" min="2000" style="flex: 1; padding: 7px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; background: white;">
+                                                    </div>
+
+                                                    <!-- 제작 월 -->
+                                                    <div style="display: flex; align-items: center; margin-bottom: 10px; gap: 12px;">
+                                                        <label style="font-size: 13px; color: #6c757d; width: 90px; flex-shrink: 0;">제작 월</label>
+                                                        <select id="snMonth" style="flex: 1; padding: 7px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; background: white;">
+                                                            <option value="1">1월 (A)</option>
+                                                            <option value="2">2월 (B)</option>
+                                                            <option value="3">3월 (C)</option>
+                                                            <option value="4">4월 (D)</option>
+                                                            <option value="5">5월 (E)</option>
+                                                            <option value="6">6월 (F)</option>
+                                                            <option value="7">7월 (G)</option>
+                                                            <option value="8">8월 (H)</option>
+                                                            <option value="9">9월 (I)</option>
+                                                            <option value="10">10월 (J)</option>
+                                                            <option value="11">11월 (K)</option>
+                                                            <option value="12">12월 (L)</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <!-- 일련번호 -->
+                                                    <div style="display: flex; align-items: center; margin-bottom: 16px; gap: 12px;">
+                                                        <label style="font-size: 13px; color: #6c757d; width: 90px; flex-shrink: 0;">일련번호</label>
+                                                        <input type="number" id="snSequence" min="1" max="99999" placeholder="예: 1"
+                                                            style="flex: 1; padding: 7px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; background: white;">
+                                                    </div>
+
+                                                    <button onclick="window.dashboard.snGenerate()"
+                                                        style="width: 100%; padding: 10px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">
+                                                        생성하기
+                                                    </button>
+                                                </div>
+
+                                                <!-- Generated Result (auto-fill → input) -->
+                                                <div style="background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; margin-bottom: 16px; text-align: center;">
+                                                    <div style="font-size: 11px; color: #adb5bd; margin-bottom: 6px;">생성된 시리얼 넘버</div>
+                                                    <div id="snGeneratedOutput" style="font-size: 24px; font-weight: 700; letter-spacing: 3px; color: #667eea; font-family: monospace;">—————————</div>
+                                                    <div id="snGeneratedDecoded" style="font-size: 11px; color: #6c757d; margin-top: 4px; min-height: 14px;"></div>
+                                                </div>
+
+                                                <div style="border-top: 1px solid #e9ecef; margin-bottom: 16px;"></div>
+
+                                                <!-- Direct Input -->
+                                                <div style="margin-bottom: 6px;">
+                                                    <div style="font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">직접 입력 <span style="font-size: 11px; font-weight: 400; color: #adb5bd;">— 생성기 결과가 자동으로 채워지며, 직접 수정할 수도 있습니다</span></div>
+                                                    <input type="text" id="snSerialInput" maxlength="9" placeholder="예: SA6D00001"
+                                                        style="width: 100%; padding: 10px 12px; border: 2px solid #dee2e6; border-radius: 6px; font-size: 20px; font-weight: 700; letter-spacing: 3px; font-family: monospace; text-transform: uppercase; box-sizing: border-box; text-align: center; transition: border-color 0.2s;"
+                                                        oninput="window.dashboard.snOnSerialInput(this)">
+                                                    <div id="snValidationMsg" style="font-size: 12px; margin-top: 5px; min-height: 16px; text-align: center; color: #adb5bd;">
+                                                        형식: 제품(S/M/D/R) + 연도코드(2자) + 월코드(A-L) + 일련번호(5자리) = 9자
+                                                    </div>
+                                                </div>
+
+                                                <!-- Write Button -->
+                                                <button id="snWriteBtn" onclick="window.dashboard.snWriteToDevice()" disabled
+                                                    style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: not-allowed; opacity: 0.5; transition: all 0.2s; margin-top: 12px;">
+                                                    디바이스에 쓰기
+                                                </button>
+                                                <div id="snWriteStatus" style="font-size: 12px; color: #6c757d; text-align: center; margin-top: 8px; min-height: 16px;"></div>
+
+                                            </div><!-- /Left Panel -->
+
+                                            <!-- Right Panel: Read from Device -->
+                                            <div style="flex: 1; padding: 24px 28px; overflow-y: auto; background: white;">
+
+                                                <div style="font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 16px;">디바이스 시리얼 넘버 읽기</div>
+
+                                                <!-- Device info + Read button -->
+                                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 12px 14px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px;">
+                                                    <div>
+                                                        <div id="snReadDeviceLabel" style="font-size: 13px; font-weight: 500; color: #1a1a1a;">—</div>
+                                                        <div style="font-size: 11px; color: #adb5bd; margin-top: 2px;">현재 선택된 디바이스</div>
+                                                    </div>
+                                                    <button onclick="window.dashboard.snReadFromDevice()"
+                                                        style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                                                        읽기
+                                                    </button>
+                                                </div>
+
+                                                <!-- Read Result -->
+                                                <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 20px;">
+                                                    <div style="font-size: 11px; color: #adb5bd; margin-bottom: 8px;">읽어온 시리얼 넘버</div>
+                                                    <div id="snReadOutput" style="font-size: 28px; font-weight: 700; letter-spacing: 3px; color: #28a745; font-family: monospace;">—————————</div>
+                                                    <div id="snReadStatus" style="font-size: 12px; color: #adb5bd; margin-top: 6px; min-height: 14px;"></div>
+                                                </div>
+
+                                                <!-- Decoded Info -->
+                                                <div id="snReadDecodeBox" style="display: none; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
+                                                    <div style="padding: 10px 14px; background: #f0fdf4; border-bottom: 1px solid #e9ecef; font-size: 12px; font-weight: 600; color: #28a745;">해독 결과</div>
+                                                    <ul id="snReadDecodeList" style="list-style: none; margin: 0; padding: 0;"></ul>
+                                                </div>
+
+                                            </div><!-- /Right Panel -->
+
+                                        </div><!-- /Body -->
+
                                     </div>
                                 </div>
                             </div>
@@ -2295,37 +2436,36 @@
                             </div>
                         </div>
 
-                        <!-- Trigger Settings (shown only in trigger mode) -->
+                        <!-- Trigger Settings (shown only in trigger mode) — FC 0x65 Hardware Trigger -->
                         <div class="chart-trigger-panel" id="chartTriggerPanel" style="display: none;">
                             <div class="trigger-settings-row">
                                 <div class="trigger-setting-item">
-                                    <label for="triggerChannel">Trigger Channel</label>
-                                    <select id="triggerChannel">
-                                        <option value="0">CH1</option>
-                                        <option value="1">CH2</option>
-                                        <option value="2">CH3</option>
-                                        <option value="3">CH4</option>
-                                    </select>
+                                    <label>Source CH</label>
+                                    <div class="channel-address">
+                                        <button class="param-picker-trigger" id="triggerSourcePicker" type="button">
+                                            <span class="param-picker-trigger-label">채널 선택...</span>
+                                            <span class="param-picker-trigger-arrow">▾</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="trigger-setting-item">
                                     <label for="triggerEdge">Edge</label>
                                     <select id="triggerEdge">
                                         <option value="rising">Rising ↑</option>
                                         <option value="falling">Falling ↓</option>
-                                        <option value="both">Both ↕</option>
                                     </select>
                                 </div>
                                 <div class="trigger-setting-item">
                                     <label for="triggerLevel">Level</label>
-                                    <input type="number" id="triggerLevel" value="500" min="0" max="65535">
+                                    <input type="number" id="triggerLevel" value="0" step="0.001">
                                 </div>
                                 <div class="trigger-setting-item">
-                                    <label for="triggerPreSamples">Pre-trigger</label>
-                                    <input type="number" id="triggerPreSamples" value="100" min="0" max="500">
+                                    <label for="triggerPosition">Position (%)</label>
+                                    <input type="number" id="triggerPosition" value="25" min="0" max="99" title="트리거 시점 위치 (0=왼쪽, 99=오른쪽)">
                                 </div>
                                 <div class="trigger-setting-item">
-                                    <label for="triggerPostSamples">Post-trigger</label>
-                                    <input type="number" id="triggerPostSamples" value="400" min="100" max="2000">
+                                    <label for="triggerNumData">Samples</label>
+                                    <input type="number" id="triggerNumData" value="512" min="256" max="1024" step="256" title="총 샘플 수 (256~1024)">
                                 </div>
                             </div>
                             <div class="trigger-status">

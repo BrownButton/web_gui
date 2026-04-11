@@ -581,6 +581,77 @@ class ModbusRTU {
         return { status, len, data };
     }
 
+    // ===== FC 0x65 Trigger Data Streaming =====
+    //
+    // TX Stop      (0x00): [NodeID][0x65][0x00][CRC_L][CRC_H]                            5 bytes
+    // TX Configure (0x02): [NodeID][0x65][0x02][Per_H][Per_L][CH0][CH1][CH2][CH3]
+    //                      [SrcSel][Edge][Pos][Lv_b0][Lv_b1][Lv_b2][Lv_b3][Num_H][Num_L][CRC_L][CRC_H]  20 bytes
+    // TX StartPoll (0x01): [NodeID][0x65][0x01][CRC_L][CRC_H]                            5 bytes
+    // TX DataReq   (0x03): [NodeID][0x65][0x03][CH_Sel][Addr_H][Addr_L][CRC_L][CRC_H]    8 bytes
+    //
+    // RX Stop      (0x00): [NodeID][0x65][0x00][CRC_L][CRC_H]                            5 bytes  (FrameLength=2)
+    // RX Configure (0x02): echo of TX                                                    20 bytes (FrameLength=17)
+    // RX StartPoll (0x01): [NodeID][0x65][0x01][Status][...20 bytes...][CRC_L][CRC_H]    24 bytes (FrameLength=21)
+    //                       Status: 0=not triggered, 1=triggered
+    // RX DataReq   (0x03): [NodeID][0x65][0x03][Status][CH_Sel][Addr_H][Addr_L][Len]
+    //                      [Data[Len]*float32][...padding...][CRC_L][CRC_H]              68 bytes (FrameLength=65)
+    //   ※ FrameLength = bytes from FC onwards, excluding NodeID and CRC (USB-HID legacy 수치)
+    //   ※ 0x03 응답은 항상 68 bytes 고정 (firmware FrameLength=65); Len 필드로 유효 데이터 수 판단
+
+    buildTriggerStop(nodeId) {
+        return this.buildFrame(nodeId, 0x65, new Uint8Array([0x00]));
+    }
+
+    buildTriggerConfigure(nodeId, period, chSel4, sourceSelect, edge, position, level, numOfData) {
+        // payload (control 포함): ctrl(1)+period(2)+ch(4)+src(1)+edge(1)+pos(1)+level(4)+num(2) = 16 bytes
+        const data = new Uint8Array(16);
+        data[0] = 0x02; // control
+        data[1] = (period >> 8) & 0xFF;
+        data[2] = period & 0xFF;
+        for (let i = 0; i < 4; i++) data[3 + i] = (chSel4[i] ?? 0xFF) & 0xFF;
+        data[7] = sourceSelect & 0xFF;
+        data[8] = edge & 0xFF;       // 0=Rising, 1=Falling
+        data[9] = position & 0xFF;   // 0~99
+        // level: float32 little-endian (ARM native, firmware uses no byte-swap)
+        new DataView(data.buffer).setFloat32(10, level, true);
+        data[14] = (numOfData >> 8) & 0xFF;
+        data[15] = numOfData & 0xFF;
+        return this.buildFrame(nodeId, 0x65, data);
+    }
+
+    buildTriggerStartPoll(nodeId) {
+        return this.buildFrame(nodeId, 0x65, new Uint8Array([0x01]));
+    }
+
+    buildTriggerDataRequest(nodeId, chSel, startAddress) {
+        // T_TMON_RX3: [FC][Ctrl][CH_Sel][Addr_H][Addr_L] — FC/NodeID handled by buildFrame
+        const data = new Uint8Array([0x03, chSel & 0xFF, (startAddress >> 8) & 0xFF, startAddress & 0xFF]);
+        return this.buildFrame(nodeId, 0x65, data);
+    }
+
+    parseTriggerStatusResponse(bytes) {
+        // [NodeID][0x65][0x01][Status][...][CRC_L][CRC_H]  (24 bytes total)
+        if (bytes.length < 5) return null;
+        return { status: bytes[3] }; // 0=not triggered, 1=triggered
+    }
+
+    parseTriggerDataResponse(bytes) {
+        // [NodeID][0x65][0x03][Status][CH_Sel][Addr_H][Addr_L][Len][Data...][CRC_L][CRC_H]  (68 bytes)
+        if (bytes.length < 10) return null;
+        const status     = bytes[3];
+        const chSel      = bytes[4];
+        const startAddr  = (bytes[5] << 8) | bytes[6];
+        const length     = bytes[7];
+        const data = [];
+        const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+        for (let i = 0; i < length && i < 14; i++) {
+            const offset = 8 + i * 4;
+            if (offset + 4 > bytes.length - 2) break; // CRC boundary
+            data.push(view.getFloat32(offset, true)); // little-endian (ARM)
+        }
+        return { status, chSel, startAddr, length, data };
+    }
+
     /**
      * Parse Firmware Update response
      * 펌웨어 응답에는 CRC가 없음

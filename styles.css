@@ -1712,6 +1712,11 @@ select:focus {
     color: #856404;
 }
 
+.param-type-badge.lsm {
+    background: #d4edda;
+    color: #155724;
+}
+
 #page-parameters {
     width: 60%;
     max-width: none;

@@ -533,6 +533,49 @@ class ChartManager {
         this.render();
     }
 
+    /**
+     * FC65 Trigger 수집 완료 후 데이터를 일괄 로드하고 차트를 렌더링.
+     * @param {Object} channelData      - { chIdx: float[] } 채널별 샘플 배열
+     * @param {number} periodMs         - 샘플 간격 (ms)
+     * @param {number} preTriggerSamples- 트리거 이전 샘플 수 (t=0 기준점)
+     * @param {number} numOfData        - 총 샘플 수
+     */
+    loadTriggerData(channelData, periodMs, preTriggerSamples, numOfData) {
+        this.clearData();
+        this.isRunning = false;
+        this.startTime = 0; // 렌더링 기준점 (t는 절대값으로 관리)
+
+        for (const [chIdxStr, samples] of Object.entries(channelData)) {
+            const chIdx = parseInt(chIdxStr);
+            if (chIdx < 0 || chIdx >= this.channels.length) continue;
+            const ch = this.channels[chIdx];
+            if (!ch.enabled) continue;
+
+            for (let i = 0; i < samples.length; i++) {
+                const t = (i - preTriggerSamples) * periodMs; // 트리거 시점 = t=0
+                const v = samples[i];
+                ch.data.push({ t, v });
+                if (ch.runMin === null || v < ch.runMin) ch.runMin = v;
+                if (ch.runMax === null || v > ch.runMax) ch.runMax = v;
+            }
+        }
+
+        // 전체 데이터 범위에 맞게 뷰 조정
+        const totalMs = numOfData * periodMs;
+        const preMs   = preTriggerSamples * periodMs;
+        this.viewMinTime = -preMs;
+        this.timeScale   = totalMs;
+        this.autoScroll  = false;
+
+        // 트리거 라인 위치 기록 (t=0)
+        this.triggerTimeMs = 0;
+
+        if (this.autoScale) this.calculateAutoScale();
+        this.updateStats();
+        this.updateMarkersInfo();
+        this.render();
+    }
+
     setMode(mode) {
         this.mode = mode;
         this.clearData();
@@ -1023,35 +1066,59 @@ class ChartManager {
 
     drawTriggerLevel() {
         const ctx = this.ctx;
-        const left = this.chartMargins.left;
+        const left  = this.chartMargins.left;
         const right = this.width - this.chartMargins.right;
+        const top   = this.chartMargins.top;
+        const bottom = this.height - this.chartMargins.bottom;
 
-        let y;
-        if (this.yAxisMode === 'independent') {
-            const ch = this.channels[this.trigger.channel];
-            const yMin = ch?.chYMin ?? this.yMin;
-            const yMax = ch?.chYMax ?? this.yMax;
-            y = this.valueToScreenY(this.trigger.level, yMin, yMax);
-        } else {
-            y = this.chartToScreenY(this.trigger.level);
+        // 트리거 레벨 수평선 (hardware trigger에서는 level이 설정된 경우에만 표시)
+        const levelVal = parseFloat(document.getElementById('triggerLevel')?.value);
+        const pickerVal = parseInt(document.getElementById('triggerSourcePicker')?.dataset.selectedValue ?? 255);
+        if (!isNaN(levelVal) && pickerVal !== 255) { // Immediate(0xFF=255)가 아닌 경우에만 레벨선 표시
+            let y;
+            if (this.yAxisMode === 'independent') {
+                const ch = this.channels[this.trigger.channel];
+                const yMin = ch?.chYMin ?? this.yMin;
+                const yMax = ch?.chYMax ?? this.yMax;
+                y = this.valueToScreenY(levelVal, yMin, yMax);
+            } else {
+                y = this.chartToScreenY(levelVal);
+            }
+
+            ctx.strokeStyle = '#ffc107';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(left, y);
+            ctx.lineTo(right, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = '#ffc107';
+            ctx.font = '10px Consolas, monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(`T:${levelVal}`, right - 2, y - 3);
         }
 
-        ctx.strokeStyle = '#ffc107';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 5]);
+        // 트리거 시점 수직선 (loadTriggerData 완료 후 t=0 위치)
+        if (this.triggerTimeMs !== undefined) {
+            const x = this.chartToScreenX(this.triggerTimeMs);
+            if (x >= left && x <= right) {
+                ctx.strokeStyle = 'rgba(255, 193, 7, 0.8)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(x, top);
+                ctx.lineTo(x, bottom);
+                ctx.stroke();
+                ctx.setLineDash([]);
 
-        ctx.beginPath();
-        ctx.moveTo(left, y);
-        ctx.lineTo(right, y);
-        ctx.stroke();
-
-        ctx.setLineDash([]);
-
-        // Label
-        ctx.fillStyle = '#ffc107';
-        ctx.font = '10px Consolas, monospace';
-        ctx.textAlign = 'left';
-        ctx.fillText(`Trigger: ${this.trigger.level}`, right - 80, y - 5);
+                ctx.fillStyle = '#ffc107';
+                ctx.font = '10px Consolas, monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText('T', x + 3, top + 12);
+            }
+        }
     }
 
     drawMarkers() {
@@ -1526,6 +1593,7 @@ class ModbusDashboard {
         this.miniChartCurrent = null;
         this.miniChartRunning = { hall: false, current: false };
         this._fc64Busy = false; // FC64 전환(stop/start) 구간에서 버스 점유 표시
+        this.triggerRunning = false; // FC65 Trigger 캡처 진행 중 여부
         this.hidDevice = null;  // WebHID 연결 장치
         this._currentRmsData = [{sumSq:0,count:0},{sumSq:0,count:0},{sumSq:0,count:0}];
 
@@ -3050,6 +3118,9 @@ class ModbusDashboard {
 
         // FC 0x64: Chart Continuous 응답 — responseBuffer에서 별도 처리, 여기서는 무시
         if (this.receiveBuffer[1] === 0x64) return;
+
+        // FC 0x65: Trigger Streaming 응답 — responseBuffer에서 별도 처리, 여기서는 무시
+        if (this.receiveBuffer[1] === 0x65) return;
 
         // 버스 floating 노이즈 바이트 즉시 폐기:
         // RS-485 DE→RE 전환 시 버스가 floating → 0xFF, 0xBF 등 무작위 바이트 수신됨
@@ -4876,7 +4947,7 @@ class ModbusDashboard {
             const typeCol = document.createElement('div');
             const typeBadge = document.createElement('span');
             typeBadge.className = `param-type-badge ${param.type || 'holding'}`;
-            typeBadge.textContent = param.type === 'input' ? 'Input' : 'Holding';
+            typeBadge.textContent = param.type === 'input' ? 'Input' : param.type === 'lsm' ? 'LSM' : 'Holding';
             typeCol.appendChild(typeBadge);
 
             // Address
@@ -5069,7 +5140,7 @@ class ModbusDashboard {
                         description: values[headers.indexOf('description')] || '',
                         unit: values[headers.indexOf('unit')] || '',
                         value: null,
-                        functionCode: values[headers.indexOf('type')] === 'input' ? 4 : 3
+                        functionCode: values[headers.indexOf('type')] === 'input' ? 4 : values[headers.indexOf('type')] === 'lsm' ? 0x2B : 3
                     };
 
                     if (param.address && param.name) {
@@ -5160,7 +5231,7 @@ class ModbusDashboard {
             implemented: p.implemented,
             description: p.description,
             value: null,
-            functionCode: p.type === 'input' ? 4 : 3
+            functionCode: p.type === 'input' ? 4 : p.type === 'lsm' ? 0x2B : 3
         }));
 
         this.parameters = newParams;
@@ -5303,7 +5374,74 @@ class ModbusDashboard {
             {type:'input',group:'Electrical',address:'0xD03D',name:'Line Voltage',implemented:'N',description:'라인 전압'},
             {type:'input',group:'Speed',address:'0xD02D',name:'Actual speed [RPM] (Absolute)',implemented:'Y',description:'절대 속도 [RPM]'},
             {type:'input',group:'Speed',address:'0xD050',name:'Command speed',implemented:'Y',description:'지령 속도'},
-            {type:'input',group:'Speed',address:'0xD051',name:'Command torque',implemented:'Y',description:'지령 토크'}
+            {type:'input',group:'Speed',address:'0xD051',name:'Command torque',implemented:'Y',description:'지령 토크'},
+            // ============================================================
+            // LSM 타입 파라미터 (Function Code 0x2B - LSM 제조사 전용 프로토콜)
+            // FC 0x2B = 43 (decimal). 일반 Modbus FC03(holding) / FC04(input)과 다른 접근 방식.
+            // 이 파라미터들을 읽고 쓸 때는 반드시 FC 0x2B 전용 프레임을 사용해야 함.
+            // param.type === 'lsm' 조건으로 분기하여 readParameterByAddress() 등에서 처리 필요.
+            // 주소 공간: 0x2000~0x27FF (일반 파라미터), 0x4000~0x4FFF (공장/고급 파라미터)
+            // ============================================================
+            // [Device Setup] 디바이스 식별 및 통신 설정
+            {type:'lsm',group:'Device Setup',address:'0x2000',name:'Motor ID',implemented:'N',description:'드라이브에 연결된 모터 종류를 식별하는 ID. 모터 교체 시 변경 필요'},
+            {type:'lsm',group:'Device Setup',address:'0x2003',name:'Node ID',implemented:'N',description:'RS-485 버스 상의 슬레이브 주소 (Modbus Node ID와 동일 역할)'},
+            // [Servo Tuning] 서보 제어 루프 게인 및 필터 튜닝
+            {type:'lsm',group:'Servo Tuning',address:'0x2100',name:'Inertia Ratio',implemented:'N',description:'부하 관성 대 모터 관성 비율. 서보 제어 응답성 튜닝에 사용'},
+            {type:'lsm',group:'Servo Tuning',address:'0x2101',name:'Position P Gain 1',implemented:'N',description:'위치 제어 루프 비례 게인 1'},
+            {type:'lsm',group:'Servo Tuning',address:'0x2102',name:'Velocity P Gain 1',implemented:'N',description:'속도 제어 루프 비례 게인 1'},
+            {type:'lsm',group:'Servo Tuning',address:'0x2103',name:'Velocity Time Constant 1',implemented:'N',description:'속도 루프 적분 시간 상수 1'},
+            {type:'lsm',group:'Servo Tuning',address:'0x2104',name:'Torque Command Filter TC 1',implemented:'N',description:'토크 지령 저역 통과 필터의 시간 상수 1'},
+            // [Limitation] 토크 제한 및 드라이브 제어 입력
+            {type:'lsm',group:'Limitation',address:'0x2111',name:'Positive Torque Limit',implemented:'N',description:'외부 입력 기반 양방향(CW) 토크 상한값'},
+            {type:'lsm',group:'Limitation',address:'0x2112',name:'Negative Torque Limit',implemented:'N',description:'외부 입력 기반 음방향(CCW) 토크 상한값'},
+            {type:'lsm',group:'Limitation',address:'0x211F',name:'Drive Control Input 1',implemented:'N',description:'드라이브 제어 입력 포트 1의 기능 할당 설정'},
+            {type:'lsm',group:'Limitation',address:'0x2120',name:'Drive Control Input 2',implemented:'N',description:'드라이브 제어 입력 포트 2의 기능 할당 설정'},
+            // [Motion] 속도 지령 / 가감속 / 조그 운전
+            {type:'lsm',group:'Motion',address:'0x2300',name:'Jog Speed',implemented:'N',description:'조그 운전 시 속도 지령값. 부호 있음(int16) - 양수: CW / 음수: CCW'},
+            {type:'lsm',group:'Motion',address:'0x2301',name:'Speed Accel Time',implemented:'N',description:'속도 지령 변화 시 가속 구간 시간'},
+            {type:'lsm',group:'Motion',address:'0x2302',name:'Speed Decel Time',implemented:'N',description:'속도 지령 변화 시 감속 구간 시간'},
+            {type:'lsm',group:'Motion',address:'0x2303',name:'S-Curve Time',implemented:'N',description:'가감속에 S커브 적용 시간. 0이면 선형 가감속, 값이 클수록 부드러운 가감속'},
+            {type:'lsm',group:'Motion',address:'0x2304',name:'Preset Jog Speed 0',implemented:'N',description:'프리셋 조그 속도 0. 부호 있음(int16) - 방향 포함'},
+            {type:'lsm',group:'Motion',address:'0x2305',name:'Preset Jog Speed 1',implemented:'N',description:'프리셋 조그 속도 1. 부호 있음(int16) - 방향 포함'},
+            {type:'lsm',group:'Motion',address:'0x2306',name:'Preset Jog Speed 2',implemented:'N',description:'프리셋 조그 속도 2. 부호 있음(int16) - 방향 포함'},
+            {type:'lsm',group:'Motion',address:'0x2307',name:'Preset Jog Speed 3',implemented:'N',description:'프리셋 조그 속도 3. 부호 있음(int16) - 방향 포함'},
+            {type:'lsm',group:'Motion',address:'0x2308',name:'Preset Jog Time 0',implemented:'N',description:'Preset Jog Speed 0 운전 지속 시간'},
+            {type:'lsm',group:'Motion',address:'0x2309',name:'Preset Jog Time 1',implemented:'N',description:'Preset Jog Speed 1 운전 지속 시간'},
+            {type:'lsm',group:'Motion',address:'0x230A',name:'Preset Jog Time 2',implemented:'N',description:'Preset Jog Speed 2 운전 지속 시간'},
+            {type:'lsm',group:'Motion',address:'0x230B',name:'Preset Jog Time 3',implemented:'N',description:'Preset Jog Speed 3 운전 지속 시간'},
+            // [Device Info] 장치 정보 (읽기 전용)
+            {type:'lsm',group:'Device Info',address:'0x2424',name:'Drive Serial Number',implemented:'N',description:'드라이브 시리얼 번호 (ASCII 16자)'},
+            {type:'lsm',group:'Device Info',address:'0x27F0',name:'Main Boot Version',implemented:'N',description:'메인 MCU 부트로더 펌웨어 버전 (ASCII 7자)'},
+            {type:'lsm',group:'Device Info',address:'0x27F1',name:'Main Firmware Version',implemented:'N',description:'메인 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)'},
+            {type:'lsm',group:'Device Info',address:'0x27F2',name:'Inverter Boot Version',implemented:'N',description:'인버터 MCU 부트로더 펌웨어 버전 (ASCII 7자)'},
+            {type:'lsm',group:'Device Info',address:'0x27F3',name:'Inverter Firmware Version',implemented:'N',description:'인버터 MCU 애플리케이션 펌웨어 버전 (ASCII 7자)'},
+            // [Status] 상태 모니터링 (읽기 전용)
+            {type:'lsm',group:'Status',address:'0x2600',name:'Feedback Speed',implemented:'N',description:'엔코더 기반 현재 모터 실제 속도 피드백 (부호 있음 int16)'},
+            {type:'lsm',group:'Status',address:'0x260B',name:'Room Temperature 1',implemented:'N',description:'실내 온도 센서 1 측정값 (부호 있음 int16)'},
+            {type:'lsm',group:'Status',address:'0x260C',name:'Room Temperature 2',implemented:'N',description:'실내 온도 센서 2 측정값 (부호 있음 int16)'},
+            {type:'lsm',group:'Status',address:'0x2617',name:'7-Segment Display Data',implemented:'N',description:'드라이브 전면 7세그먼트에 표시 중인 내용 (ASCII 7자)'},
+            {type:'lsm',group:'Status',address:'0x261A',name:'Commanded Phase Angle',implemented:'N',description:'현재 지령 중인 모터 전기각 위상 (부호 있음 int16)'},
+            // [Control] 프로시저 실행
+            {type:'lsm',group:'Control',address:'0x2700',name:'Procedure Code',implemented:'N',description:'특수 동작 명령 코드 (예: 원점 복귀, 초기화 등). Procedure Argument(0x2701)와 함께 사용'},
+            {type:'lsm',group:'Control',address:'0x2701',name:'Procedure Argument',implemented:'N',description:'Procedure Code(0x2700) 실행 시 전달하는 인수값'},
+            // ============================================================
+            // LSM 고급 파라미터 (0x4000~) - 에이징 / 공장 설정 / 보안
+            // 이 영역도 동일하게 FC 0x2B 로 접근
+            // ============================================================
+            // [Aging] 에이징 운전 설정
+            {type:'lsm',group:'Aging',address:'0x4004',name:'Aging Overload Threshold',implemented:'N',description:'에이징 운전 중 과부하 판정 기준값'},
+            {type:'lsm',group:'Aging',address:'0x4005',name:'Aging Speed',implemented:'N',description:'에이징 운전 속도 설정'},
+            {type:'lsm',group:'Aging',address:'0x4006',name:'Aging Time',implemented:'N',description:'에이징 운전 총 지속 시간'},
+            // [Security] 접근 보안
+            {type:'lsm',group:'Security',address:'0x4009',name:'Access Password',implemented:'N',description:'파라미터 잠금 해제 비밀번호'},
+            // [Factory] 공장 예약 파라미터 (용도 미공개)
+            {type:'lsm',group:'Factory',address:'0x4017',name:'Factory Reserved 4',implemented:'N',description:'공장 예약 파라미터 4 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x4018',name:'Factory Reserved 5',implemented:'N',description:'공장 예약 파라미터 5 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x4019',name:'Factory Reserved 6',implemented:'N',description:'공장 예약 파라미터 6 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x401A',name:'Factory Reserved 7',implemented:'N',description:'공장 예약 파라미터 7 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x401B',name:'Factory Reserved 8',implemented:'N',description:'공장 예약 파라미터 8 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x401C',name:'Factory Reserved 9',implemented:'N',description:'공장 예약 파라미터 9 (용도 미공개)'},
+            {type:'lsm',group:'Factory',address:'0x401D',name:'Factory Reserved 10',implemented:'N',description:'공장 예약 파라미터 10 (용도 미공개)'}
         ];
     }
 
@@ -5334,19 +5472,33 @@ class ModbusDashboard {
 
         // Use selected device ID from Parameters page
         const slaveId = this.selectedParamDeviceId;
-        const functionCode = param.type === 'input' ? 4 : 3;
+        const isLsm = param.type === 'lsm';
 
+        // Build appropriate frame based on parameter type
+        // LSM: FC 0x2B (CANopen MEI Transport), address = object index, subIndex = 0
+        // input: FC 0x04 (Read Input Registers)
+        // holding: FC 0x03 (Read Holding Registers)
         let frame;
-        if (functionCode === 4) {
+        if (isLsm) {
+            frame = this.modbus.buildCANopenUpload(slaveId, address, 0);
+        } else if (param.type === 'input') {
             frame = this.modbus.buildReadInputRegisters(slaveId, address, 1);
         } else {
             frame = this.modbus.buildReadHoldingRegisters(slaveId, address, 1);
         }
 
         if (this.simulatorEnabled) {
+            const functionCode = isLsm ? 0x2B : (param.type === 'input' ? 4 : 3);
             this.addMonitorEntry('sent', frame, { functionCode, startAddress: address, quantity: 1 });
             this.stats.requests++;
             this.updateStatsDisplay();
+
+            if (isLsm) {
+                // Simulator does not support FC 0x2B — skip silently
+                this.updateStats(false);
+                if (!silent) this.showToast(`${param.name}: 시뮬레이터는 LSM(FC 0x2B)을 지원하지 않습니다`, 'warning');
+                return false;
+            }
 
             const response = await this.simulator.processRequest(frame);
             if (response && response.length >= 5) {
@@ -5365,13 +5517,28 @@ class ModbusDashboard {
             }
         } else if (this.writer) {
             let value;
-            if (this.autoPollingTimer) {
-                // Polling is active: enqueue the read to avoid 485 bus collision.
-                // The queue is drained between polling cycles in pollNextDeviceSequential.
+            // busyBus: polling 루프 또는 FC64 차트가 버스를 점유 중 → 큐에 등록해야 충돌 방지
+            const busyBus = this.autoPollingTimer || this._isFc64Active;
+            if (isLsm) {
+                // FC 0x2B (CANopen MEI Transport): 큐 또는 직접 전송
+                let parsed;
+                if (busyBus) {
+                    // 버스 점유 중 — 큐에 canopen_read 등록, pollNextDeviceSequential/_drainCommandQueue에서 처리
+                    parsed = await new Promise((resolve, reject) => {
+                        this.commandQueue.push({ type: 'canopen_read', frame, slaveId, address, resolve, reject });
+                    });
+                } else {
+                    // 버스 유휴 — 직접 전송
+                    parsed = await this.sendCANopenAndWaitResponse(frame, slaveId);
+                }
+                value = parsed ? parsed.value : null;
+            } else if (busyBus) {
+                // FC 0x03/04: 버스 점유 중 — 큐에 등록
                 value = await new Promise((resolve, reject) => {
                     this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
                 });
             } else {
+                // FC 0x03/04: 버스 유휴 — 직접 전송
                 value = await this.sendAndWaitResponse(frame, slaveId);
             }
             if (value !== null) {
@@ -7698,7 +7865,7 @@ class ModbusDashboard {
      */
     /** FC 0x64 스트림(메인 차트 또는 미니 차트)이 버스를 점유 중인지 여부 */
     get _isFc64Active() {
-        return this.chartRunning || Object.values(this.miniChartRunning).some(v => v) || this._fc64Busy;
+        return this.chartRunning || Object.values(this.miniChartRunning).some(v => v) || this._fc64Busy || this.triggerRunning;
     }
 
     /**
@@ -8802,6 +8969,124 @@ class ModbusDashboard {
                 }
             }
         }
+    }
+
+    /**
+     * Trigger Source CH 피커 초기화.
+     * 채널 목록 상단에 "Immediate" 항목 포함. 기본 선택: Immediate.
+     */
+    initTriggerSourcePicker() {
+        const triggerBtn = document.getElementById('triggerSourcePicker');
+        if (!triggerBtn) return;
+
+        // 팝업 생성 — 기존 채널 피커와 동일한 구조
+        const popup = document.createElement('div');
+        popup.className = 'param-picker-popup';
+        popup.id = 'triggerSourcePickerPopup';
+        popup.style.display = 'none';
+
+        // Immediate를 별도 카테고리로 맨 앞에 추가
+        const channelPickerInner = this.generateChannelPickerHTML();
+        // catPanel / paramPanel에 Immediate 항목 삽입
+        const tmpDiv = document.createElement('div');
+        tmpDiv.innerHTML = channelPickerInner;
+        const catPanel   = tmpDiv.querySelector('.param-picker-cat-panel');
+        const paramPanel = tmpDiv.querySelector('.param-picker-param-panel');
+
+        const immCat = document.createElement('div');
+        immCat.className = 'param-picker-cat-item active';
+        immCat.dataset.group = 'Immediate';
+        immCat.textContent = 'Immediate';
+        catPanel.insertBefore(immCat, catPanel.firstChild);
+        // 기존 첫 번째 카테고리의 active 제거
+        catPanel.querySelectorAll('.param-picker-cat-item:not(:first-child)').forEach(el => el.classList.remove('active'));
+
+        const immItem = document.createElement('div');
+        immItem.className = 'param-picker-item';
+        immItem.dataset.value = '255'; // 0xFF
+        immItem.dataset.group = 'Immediate';
+        immItem.innerHTML = 'Immediate Trigger<span class="param-picker-addr">0xFF</span>';
+        paramPanel.insertBefore(immItem, paramPanel.firstChild);
+        // 기존 아이템들은 Immediate 카테고리가 아니므로 hidden
+        paramPanel.querySelectorAll('.param-picker-item:not(:first-child)').forEach(el => el.classList.add('hidden-group'));
+
+        popup.innerHTML = `<input type="text" class="param-picker-search" placeholder="채널 검색...">`;
+        popup.appendChild(tmpDiv.querySelector('.param-picker-panels'));
+        document.body.appendChild(popup);
+
+        // 카테고리 클릭
+        popup.querySelector('.param-picker-cat-panel').addEventListener('click', (e) => {
+            const cat = e.target.closest('.param-picker-cat-item');
+            if (!cat) return;
+            popup.querySelectorAll('.param-picker-cat-item').forEach(el => el.classList.remove('active'));
+            cat.classList.add('active');
+            const group = cat.dataset.group;
+            popup.querySelectorAll('.param-picker-item').forEach(item => {
+                item.classList.toggle('hidden-group', item.dataset.group !== group);
+            });
+        });
+
+        // 아이템 클릭
+        popup.querySelector('.param-picker-param-panel').addEventListener('click', (e) => {
+            const item = e.target.closest('.param-picker-item');
+            if (!item) return;
+            const addrEl = item.querySelector('.param-picker-addr');
+            const name   = item.childNodes[0].textContent.trim();
+            const hex    = addrEl ? addrEl.textContent.trim() : '';
+            triggerBtn.dataset.selectedValue = item.dataset.value;
+            triggerBtn.querySelector('.param-picker-trigger-label').textContent = `${name} (${hex})`;
+            triggerBtn.classList.add('has-selection');
+            popup.style.display = 'none';
+        });
+
+        // 검색
+        const searchInput = popup.querySelector('.param-picker-search');
+        searchInput.addEventListener('input', () => {
+            const q = searchInput.value.toLowerCase().trim();
+            const catPanelEl = popup.querySelector('.param-picker-cat-panel');
+            if (q) {
+                catPanelEl.style.display = 'none';
+                popup.querySelectorAll('.param-picker-item').forEach(item => {
+                    item.classList.toggle('hidden-group', !item.textContent.toLowerCase().includes(q));
+                });
+            } else {
+                catPanelEl.style.display = '';
+                const activeCat = catPanelEl.querySelector('.param-picker-cat-item.active');
+                const group = activeCat ? activeCat.dataset.group : null;
+                popup.querySelectorAll('.param-picker-item').forEach(item => {
+                    item.classList.toggle('hidden-group', group && item.dataset.group !== group);
+                });
+            }
+        });
+
+        // 버튼 클릭 → 팝업 표시
+        triggerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = popup.style.display !== 'none';
+            document.querySelectorAll('.param-picker-popup').forEach(p => { p.style.display = 'none'; });
+            if (isOpen) return;
+            popup.style.display = 'block';
+            const rect   = triggerBtn.getBoundingClientRect();
+            const popupW = 400;
+            const popupH = 280;
+            let left = rect.left;
+            let top  = rect.bottom + 4;
+            if (left + popupW > window.innerWidth - 8) left = window.innerWidth - popupW - 8;
+            if (top  + popupH > window.innerHeight - 8) top  = rect.top - popupH - 4;
+            popup.style.left  = left + 'px';
+            popup.style.top   = top  + 'px';
+            popup.style.width = popupW + 'px';
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+            setTimeout(() => searchInput.focus(), 50);
+        });
+
+        popup.addEventListener('click', (e) => e.stopPropagation());
+
+        // 기본 선택: Immediate Trigger
+        triggerBtn.dataset.selectedValue = '255';
+        triggerBtn.querySelector('.param-picker-trigger-label').textContent = 'Immediate Trigger (0xFF)';
+        triggerBtn.classList.add('has-selection');
     }
 
     /**
@@ -10869,6 +11154,103 @@ class ModbusDashboard {
     }
 
     /**
+     * FC 0x65 Trigger Streaming 전송 및 응답 수신.
+     * sendAndReceiveFC64와 동일한 구조이지만 FC65 응답 길이 적용.
+     *
+     * RX 응답 총 바이트 (NodeID + FrameLength + CRC):
+     *   0x00 stop      : 5  bytes (FrameLength=2)
+     *   0x02 configure : TX frame length (echo, FrameLength=17 → total 20)
+     *   0x01 startPoll : 24 bytes (FrameLength=21, byte[3]=Status)
+     *   0x03 dataReq   : 68 bytes (FrameLength=65, byte[7]=Len, byte[8+]=floats)
+     *
+     * @param {Uint8Array} frame   - TX 프레임
+     * @param {number}     control - 0x00|0x01|0x02|0x03
+     * @param {number}     timeout - ms
+     */
+    async sendAndReceiveFC65(frame, control, timeout = 500) {
+        if (!this.writer) return null;
+
+        this._serialDataCb = null;
+        this.responseBuffer = null;
+        this.receiveIndex = 0;
+        await Promise.resolve();
+        await Promise.resolve();
+
+        await this.writer.write(frame);
+        this.addMonitorEntry('sent', frame);
+
+        const myBuffer = [];
+        this.responseBuffer = myBuffer;
+
+        this.stats.requests++;
+
+        return new Promise((resolve) => {
+            const startTime = performance.now();
+            let hardTimeoutId = null;
+
+            const done = (response) => {
+                this.updateStats(response !== null);
+                resolve(response);
+            };
+
+            const cleanup = () => {
+                if (this._serialDataCb === check) this._serialDataCb = null;
+                if (hardTimeoutId) { clearTimeout(hardTimeoutId); hardTimeoutId = null; }
+                if (this.responseBuffer === myBuffer) this.responseBuffer = null;
+            };
+
+            const check = () => {
+                const buf = this.responseBuffer;
+                if (!buf || buf !== myBuffer) { cleanup(); done(null); return; }
+
+                let expectedLen = null;
+                if (control === 0x00) {
+                    // Stop: [NodeID][0x65][0x00][CRC_L][CRC_H] = 5 bytes
+                    if (buf.length >= 5) expectedLen = 5;
+                } else if (control === 0x02) {
+                    // Configure: echo of TX frame
+                    if (buf.length >= frame.length) expectedLen = frame.length;
+                } else if (control === 0x01) {
+                    // StartPoll: 24 bytes total (FrameLength=21)
+                    if (buf.length >= 24) expectedLen = 24;
+                } else if (control === 0x03) {
+                    // DataReq: 68 bytes total (FrameLength=65, USB-HID legacy 고정 크기)
+                    if (buf.length >= 68) expectedLen = 68;
+                }
+
+                if (expectedLen !== null && buf.length >= expectedLen) {
+                    const response = new Uint8Array(buf.slice(0, expectedLen));
+                    cleanup();
+                    if (this.modbus.verifyCRC(response)) {
+                        this.addMonitorEntry('received', response);
+                        done(response);
+                    } else {
+                        done(null);
+                    }
+                    return;
+                }
+
+                if (performance.now() - startTime > timeout) {
+                    cleanup();
+                    done(null);
+                    return;
+                }
+
+                this._serialDataCb = check;
+            };
+
+            hardTimeoutId = setTimeout(() => {
+                if (this._serialDataCb === check || this.responseBuffer === myBuffer) {
+                    cleanup();
+                    done(null);
+                }
+            }, timeout + 100);
+
+            check();
+        });
+    }
+
+    /**
      * Send raw data to serial port
      */
     async sendRawData(data) {
@@ -10991,40 +11373,13 @@ class ModbusDashboard {
             }
         }
 
-        // Trigger settings
-        const triggerChannelEl = document.getElementById('triggerChannel');
-        const triggerEdgeEl = document.getElementById('triggerEdge');
+        // Trigger settings — FC 0x65 Hardware Trigger
+        // Source CH 피커는 initTriggerSourcePicker()에서 초기화됨.
+        // 실제 값은 startTriggerCapture() 시점에 직접 읽음.
         const triggerLevelEl = document.getElementById('triggerLevel');
-        const triggerPreSamplesEl = document.getElementById('triggerPreSamples');
-        const triggerPostSamplesEl = document.getElementById('triggerPostSamples');
-
-        if (triggerChannelEl) {
-            triggerChannelEl.addEventListener('change', () => {
-                this.chartManager.setTriggerChannel(parseInt(triggerChannelEl.value));
-            });
-        }
-
-        if (triggerEdgeEl) {
-            triggerEdgeEl.addEventListener('change', () => {
-                this.chartManager.setTriggerEdge(triggerEdgeEl.value);
-            });
-        }
-
         if (triggerLevelEl) {
             triggerLevelEl.addEventListener('change', () => {
-                this.chartManager.setTriggerLevel(parseInt(triggerLevelEl.value));
-            });
-        }
-
-        if (triggerPreSamplesEl) {
-            triggerPreSamplesEl.addEventListener('change', () => {
-                this.chartManager.setPreSamples(parseInt(triggerPreSamplesEl.value));
-            });
-        }
-
-        if (triggerPostSamplesEl) {
-            triggerPostSamplesEl.addEventListener('change', () => {
-                this.chartManager.setPostSamples(parseInt(triggerPostSamplesEl.value));
+                this.chartManager.setTriggerLevel(parseFloat(triggerLevelEl.value));
             });
         }
 
@@ -11111,13 +11466,18 @@ class ModbusDashboard {
         }
 
         this.initChartChannelPickers();
+        this.initTriggerSourcePicker();
     }
 
     /**
-     * Start chart data capture (FC 0x64 Continuous)
+     * Start chart data capture — Continuous(FC 0x64) 또는 Trigger(FC 0x65) 모드 분기
      */
     async startChartCapture() {
         if (!this.chartManager) return;
+        if (this.chartManager.mode === 'trigger') {
+            await this.startTriggerCapture();
+            return;
+        }
         if (!this.writer) {
             this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
             // Restore buttons
@@ -11266,10 +11626,15 @@ class ModbusDashboard {
     }
 
     /**
-     * Stop chart data capture (FC 0x64 Stop)
+     * Stop chart data capture — Continuous(FC 0x64) 또는 Trigger(FC 0x65) 모드 분기
      */
     async stopChartCapture() {
         if (!this.chartManager) return;
+
+        if (this.chartManager.mode === 'trigger') {
+            await this.stopTriggerCapture();
+            return;
+        }
 
         this.chartRunning = false;
         await this.delay(50); // 루프 종료 대기
@@ -11289,6 +11654,197 @@ class ModbusDashboard {
 
         const statusEl = document.getElementById('chartStatus');
         if (statusEl) statusEl.textContent = 'Stopped';
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  FC 0x65 Trigger Capture
+
+    /**
+     * FC 0x65 Trigger 캡처 시작.
+     * 1) Stop → Configure → Start/Poll → 데이터 수집 → 차트 렌더링 순서로 진행.
+     */
+    async startTriggerCapture() {
+        if (!this.writer) {
+            this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
+            this._restoreChartButtons();
+            return;
+        }
+
+        // 진행 중인 폴링 사이클 완료 대기
+        while (this.isPolling) await this.delay(5);
+
+        // 활성화된 채널 수집
+        const configuredChannels = [];
+        for (let i = 0; i < 4; i++) {
+            const enableEl  = document.getElementById(`chartCh${i + 1}Enable`);
+            const triggerEl = document.getElementById(`chartCh${i + 1}Trigger`);
+            if (enableEl?.checked) {
+                const chNum = parseInt(triggerEl?.dataset.selectedValue);
+                if (!isNaN(chNum) && chNum >= 0 && chNum <= 254) {
+                    configuredChannels.push({ chIdx: i, chNum });
+                }
+            }
+        }
+
+        if (configuredChannels.length === 0) {
+            this.showToast('활성화된 채널이 없습니다 (Ch# 1~254 범위 확인)', 'error');
+            this._restoreChartButtons();
+            return;
+        }
+
+        const slaveId    = parseInt(document.getElementById('chartSlaveId')?.value) || 1;
+        const period     = parseInt(document.getElementById('chartSampleRate')?.value) || 1600;
+        const position   = parseInt(document.getElementById('triggerPosition')?.value ?? 25);
+        const numOfData  = Math.min(1024, Math.max(256, parseInt(document.getElementById('triggerNumData')?.value ?? 512)));
+        const level      = parseFloat(document.getElementById('triggerLevel')?.value ?? 0);
+        const edgeStr = document.getElementById('triggerEdge')?.value ?? 'rising';
+        const edge    = edgeStr === 'falling' ? 1 : 0; // 0=Rising, 1=Falling
+
+        // 트리거 소스 채널: 피커에서 읽은 chNum (0xFF=Immediate, 그 외=Chart Channel)
+        const pickerBtn    = document.getElementById('triggerSourcePicker');
+        const pickerVal    = parseInt(pickerBtn?.dataset.selectedValue ?? 255);
+        const sourceSelect = (!isNaN(pickerVal) && pickerVal >= 0 && pickerVal <= 255) ? pickerVal : 0xFF;
+
+        // ch_sel[4]: 슬롯별 채널 번호 (미사용=0xFF)
+        const chSel4 = [0xFF, 0xFF, 0xFF, 0xFF];
+        configuredChannels.forEach(c => { chSel4[c.chIdx] = c.chNum; });
+
+        this.triggerRunning  = true;
+        this.chartSlaveId    = slaveId;
+        this.chartManager.clearData();
+
+        const statusEl = document.getElementById('chartStatus');
+        if (statusEl) statusEl.textContent = 'Configuring...';
+        this.chartManager.updateTriggerStatus('Waiting');
+
+        // ── 1. Stop (이전 세션 초기화) ──────────────────────────
+        const stopFrame = this.modbus.buildTriggerStop(slaveId);
+        await this.sendAndReceiveFC65(stopFrame, 0x00, 300);
+
+        // ── 2. Configure ────────────────────────────────────────
+        const configFrame = this.modbus.buildTriggerConfigure(
+            slaveId, period, chSel4, sourceSelect, edge, position, level, numOfData
+        );
+        const configResp = await this.sendAndReceiveFC65(configFrame, 0x02, 1000);
+        if (!configResp) {
+            this.showToast('Trigger Configure 실패: 디바이스 응답 없음', 'error');
+            this.triggerRunning = false;
+            if (statusEl) statusEl.textContent = 'Stopped';
+            this._restoreChartButtons();
+            return;
+        }
+
+        if (statusEl) statusEl.textContent = 'Armed';
+        this.chartManager.updateTriggerStatus('Armed');
+
+        // ── 3. Start + Poll (트리거 대기) ───────────────────────
+        let triggered = false;
+        while (this.triggerRunning) {
+            const pollFrame = this.modbus.buildTriggerStartPoll(slaveId);
+            const pollResp  = await this.sendAndReceiveFC65(pollFrame, 0x01, 500);
+
+            if (!this.triggerRunning) break; // 사용자가 Stop 누름
+
+            if (pollResp) {
+                const parsed = this.modbus.parseTriggerStatusResponse(pollResp);
+                if (parsed?.status === 1) {
+                    triggered = true;
+                    break;
+                }
+            }
+            await this.delay(200); // 200ms 간격으로 폴링
+        }
+
+        if (!triggered || !this.triggerRunning) {
+            // 사용자 취소
+            const abortFrame = this.modbus.buildTriggerStop(slaveId);
+            await this.sendAndReceiveFC65(abortFrame, 0x00, 300);
+            this.triggerRunning = false;
+            if (statusEl) statusEl.textContent = 'Stopped';
+            this.chartManager.updateTriggerStatus('Waiting');
+            this._restoreChartButtons();
+            return;
+        }
+
+        this.chartManager.updateTriggerStatus('Triggered');
+        if (statusEl) statusEl.textContent = 'Downloading...';
+
+        // ── 4. 데이터 수집 (채널별 순차) ────────────────────────
+        const periodMs = period * 0.125;
+        const preTriggerSamples = Math.round(numOfData * position / 100);
+        const channelData = {}; // chIdx → float[]
+
+        for (const { chIdx, chNum } of configuredChannels) {
+            const samples = [];
+            let startAddr = 0;
+
+            while (startAddr < numOfData) {
+                const reqFrame = this.modbus.buildTriggerDataRequest(slaveId, chIdx, startAddr);
+                const resp     = await this.sendAndReceiveFC65(reqFrame, 0x03, 500);
+
+                if (!resp) {
+                    this.showToast(`CH${chIdx + 1} 데이터 수신 실패 (addr=${startAddr})`, 'warning');
+                    break;
+                }
+
+                const parsed = this.modbus.parseTriggerDataResponse(resp);
+                if (!parsed || parsed.length === 0) break;
+
+                samples.push(...parsed.data);
+                startAddr += parsed.length;
+
+                if (parsed.length < 14) break; // 마지막 패킷 (end-of-data)
+            }
+
+            channelData[chIdx] = samples;
+        }
+
+        // ── 5. Stop ─────────────────────────────────────────────
+        const finalStop = this.modbus.buildTriggerStop(slaveId);
+        await this.sendAndReceiveFC65(finalStop, 0x00, 300);
+
+        this.triggerRunning = false;
+
+        // ── 6. 차트 렌더링 ───────────────────────────────────────
+        this.chartManager.loadTriggerData(channelData, periodMs, preTriggerSamples, numOfData);
+
+        if (statusEl) statusEl.textContent = 'Done';
+        this._restoreChartButtons();
+    }
+
+    /**
+     * 진행 중인 Trigger 캡처를 중단한다.
+     * triggerRunning = false 로 설정하면 폴링 루프가 스스로 종료되며 Stop 프레임을 전송한다.
+     */
+    async stopTriggerCapture() {
+        this.triggerRunning = false;
+        await this.delay(100); // 루프 종료 대기
+
+        if (this.writer) {
+            const stopFrame = this.modbus.buildTriggerStop(this.chartSlaveId || 1);
+            await this.sendAndReceiveFC65(stopFrame, 0x00, 300);
+        }
+
+        this.chartManager.stopCapture();
+        this.chartManager.updateTriggerStatus('Waiting');
+
+        for (let i = 0; i < 4; i++) {
+            const el = document.getElementById(`chartCh${i + 1}Value`);
+            if (el) el.textContent = '--';
+        }
+
+        const statusEl = document.getElementById('chartStatus');
+        if (statusEl) statusEl.textContent = 'Stopped';
+    }
+
+    /** Start/Stop/Pause 버튼 상태 복원 헬퍼 */
+    _restoreChartButtons() {
+        const startBtn = document.getElementById('chartStartBtn');
+        const stopBtn  = document.getElementById('chartStopBtn');
+        const pauseBtn = document.getElementById('chartPauseBtn');
+        if (startBtn) startBtn.disabled = false;
+        if (stopBtn)  stopBtn.disabled  = true;
+        if (pauseBtn) pauseBtn.disabled = true;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -13514,6 +14070,270 @@ class ModbusDashboard {
         return this.devices.find(d => d.id === deviceId) || null;
     }
 
+    // ─────────────────────────────────────────────────────────────
+    //  Serial Number Tab
+    //  시리얼 형식: {제품(1)}{연도코드(2)}{월코드(1)}{일련번호(5)} = 9자
+    //  예: SA6D00001  →  인코더, 2026년, 4월, 1번
+    //  레지스터: 0xD1A2~0xD1A6 (각 16비트, 2 ASCII chars/reg, 5reg × 2 = 10bytes)
+    // ─────────────────────────────────────────────────────────────
+
+    static get SN_REGEX() { return /^[SMDR][A-Z]\d[A-L]\d{5}$/; }
+
+    /** 탭 열릴 때 초기화 — unlock 상태 리셋 */
+    snOnTabOpen() {
+        this._snUnlocked = false;
+        const today = new Date();
+        const yearEl = document.getElementById('snYear');
+        const monthEl = document.getElementById('snMonth');
+        if (yearEl) yearEl.value = today.getFullYear();
+        if (monthEl) monthEl.value = today.getMonth() + 1;
+        const statusEl = document.getElementById('snPasswordStatus');
+        if (statusEl) { statusEl.textContent = '미확인 — 패스워드를 입력 후 확인 버튼을 누르세요'; statusEl.style.color = '#adb5bd'; }
+        const pwInput = document.getElementById('snPassword');
+        if (pwInput) { pwInput.value = ''; pwInput.style.borderColor = '#dee2e6'; }
+        this._snUpdateWriteBtn();
+        this._snUpdateDeviceLabel();
+    }
+
+    /** 패스워드 확인 버튼 — FC 0x2B로 0x4009에 2017 write */
+    async snConfirmPassword() {
+        const device = this._getManufactureDevice();
+        const statusEl = document.getElementById('snPasswordStatus');
+        const btn = document.getElementById('snPasswordBtn');
+        const pwInput = document.getElementById('snPassword');
+
+        if (!device) {
+            if (statusEl) { statusEl.textContent = '✘ 디바이스가 선택되지 않았습니다'; statusEl.style.color = '#dc3545'; }
+            return;
+        }
+
+        const pwValue = parseInt(pwInput?.value || '', 10);
+        if (isNaN(pwValue)) {
+            if (statusEl) { statusEl.textContent = '✘ 숫자를 입력해주세요'; statusEl.style.color = '#dc3545'; }
+            return;
+        }
+
+        if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
+        if (statusEl) { statusEl.textContent = '디바이스에 패스워드 전송 중...'; statusEl.style.color = '#6c757d'; }
+
+        try {
+            // FC 0x2B CANopen Download: index=0x4009, subIndex=0x00, value=입력값
+            const result = await this.writeCANopenObject(device.slaveId, 0x4009, 0x00, [pwValue]);
+            if (!result || result.error) throw new Error(result?.error || '응답 없음');
+
+            if (pwValue === 2017) {
+                this._snUnlocked = true;
+                if (statusEl) { statusEl.textContent = '✔ 패스워드 확인됨 — 쓰기가 활성화되었습니다'; statusEl.style.color = '#28a745'; }
+                if (pwInput) pwInput.style.borderColor = '#28a745';
+            } else {
+                this._snUnlocked = false;
+                if (statusEl) { statusEl.textContent = '✘ 패스워드가 틀렸습니다'; statusEl.style.color = '#dc3545'; }
+                if (pwInput) pwInput.style.borderColor = '#dc3545';
+            }
+        } catch (e) {
+            this._snUnlocked = false;
+            if (statusEl) { statusEl.textContent = '✘ 실패: ' + e.message; statusEl.style.color = '#dc3545'; }
+            if (pwInput) pwInput.style.borderColor = '#dc3545';
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '확인'; }
+            this._snUpdateWriteBtn();
+        }
+    }
+
+    /** Write 버튼 활성화 조건: 패스워드 unlock + 시리얼 형식 유효 */
+    _snUpdateWriteBtn() {
+        const serial = (document.getElementById('snSerialInput')?.value || '').toUpperCase();
+        const serialOk = ModbusDashboard.SN_REGEX.test(serial);
+        const btn = document.getElementById('snWriteBtn');
+        if (!btn) return;
+        const enabled = !!this._snUnlocked && serialOk;
+        btn.disabled = !enabled;
+        btn.style.opacity = enabled ? '1' : '0.5';
+        btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+    }
+
+    /** 직접 입력 시리얼 변경 시 */
+    snOnSerialInput(el) {
+        const raw = el.value.toUpperCase();
+        el.value = raw;
+
+        const msgEl = document.getElementById('snValidationMsg');
+        const inputEl = el;
+
+        if (raw.length === 0) {
+            inputEl.style.borderColor = '#dee2e6';
+            if (msgEl) { msgEl.textContent = '형식: 제품(S/M/D/R) + 연도코드(2자) + 월코드(A-L) + 일련번호(5자리) = 9자'; msgEl.style.color = '#adb5bd'; }
+        } else if (ModbusDashboard.SN_REGEX.test(raw)) {
+            inputEl.style.borderColor = '#28a745';
+            if (msgEl) { msgEl.textContent = '✔ 유효한 형식입니다'; msgEl.style.color = '#28a745'; }
+        } else {
+            inputEl.style.borderColor = '#dc3545';
+            const hint = this._snValidationHint(raw);
+            if (msgEl) { msgEl.textContent = '✘ ' + hint; msgEl.style.color = '#dc3545'; }
+        }
+        this._snUpdateWriteBtn();
+    }
+
+    /** 형식 오류 힌트 메시지 */
+    _snValidationHint(s) {
+        if (s.length !== 9) return `9자리여야 합니다 (현재 ${s.length}자)`;
+        if (!/^[SMDR]/.test(s)) return '첫 글자는 S/M/D/R 중 하나여야 합니다';
+        if (!/^[SMDR][A-Z]/.test(s)) return '두 번째 글자는 연도 십년 코드 (A=2000s, B=2010s, …)';
+        if (!/^[SMDR][A-Z]\d/.test(s)) return '세 번째 글자는 연도 끝자리 숫자 (0-9)';
+        if (!/^[SMDR][A-Z]\d[A-L]/.test(s)) return '네 번째 글자는 월 코드 (A=1월 … L=12월)';
+        if (!/^[SMDR][A-Z]\d[A-L]\d{5}$/.test(s)) return '다섯 번째부터 끝까지 5자리 숫자여야 합니다';
+        return '형식 오류';
+    }
+
+    /** 선택된 디바이스 레이블 업데이트 */
+    _snUpdateDeviceLabel() {
+        const device = this._getManufactureDevice();
+        const el = document.getElementById('snReadDeviceLabel');
+        if (!el) return;
+        el.textContent = device ? `${device.name || ('Fan #' + device.id)} (Slave ${device.slaveId})` : '선택된 디바이스 없음';
+    }
+
+    /** 시리얼 넘버 생성 */
+    snGenerate() {
+        const product = document.getElementById('snProduct')?.value;
+        const year = parseInt(document.getElementById('snYear')?.value);
+        const month = parseInt(document.getElementById('snMonth')?.value);
+        let seq = parseInt(document.getElementById('snSequence')?.value);
+
+        if (!product || isNaN(year) || year < 2000 || isNaN(month) || month < 1 || month > 12) {
+            alert('연도/월 값을 확인해주세요.');
+            return;
+        }
+        if (isNaN(seq) || seq < 1 || seq > 99999) {
+            alert('일련번호는 1~99999 사이여야 합니다.');
+            return;
+        }
+
+        const decadeIdx = Math.floor((year - 2000) / 10);
+        const yearCode = String.fromCharCode(65 + decadeIdx) + (year % 10);
+        const monthCode = String.fromCharCode(64 + month);
+        const seqCode = seq.toString().padStart(5, '0');
+        const serial = product + yearCode + monthCode + seqCode;
+
+        const outputEl = document.getElementById('snGeneratedOutput');
+        const decodedEl = document.getElementById('snGeneratedDecoded');
+        if (outputEl) outputEl.textContent = serial;
+        if (decodedEl) decodedEl.textContent = `${year}년 ${month}월 / 일련번호 ${seq}번`;
+
+        // 직접 입력 필드에도 자동 채우기 + 유효성 반영
+        const inputEl = document.getElementById('snSerialInput');
+        if (inputEl) {
+            inputEl.value = serial;
+            this.snOnSerialInput(inputEl);
+        } else {
+            this._snUpdateWriteBtn();
+        }
+    }
+
+    /** 9자 ASCII 시리얼을 5개 레지스터(0xD1A2~0xD1A6)에 쓰기 */
+    /** FC 0x2B CANopen SDO — index 0x2424, subIndex 0x00 에 9자 시리얼 쓰기 */
+    async snWriteToDevice() {
+        const device = this._getManufactureDevice();
+        if (!device) { alert('디바이스가 선택되지 않았습니다.'); return; }
+
+        const serial = (document.getElementById('snSerialInput')?.value || '').toUpperCase();
+        if (!ModbusDashboard.SN_REGEX.test(serial)) { alert('유효한 시리얼 넘버를 입력해주세요.'); return; }
+
+        const statusEl = document.getElementById('snWriteStatus');
+        const btn = document.getElementById('snWriteBtn');
+        if (statusEl) { statusEl.textContent = '쓰는 중...'; statusEl.style.color = '#6c757d'; }
+        if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+
+        try {
+            // 9자 ASCII → 16바이트(나머지 0 패딩) → 8개 16-bit 워드
+            const padded = serial.padEnd(16, '\0');
+            const words = [];
+            for (let i = 0; i < 8; i++) {
+                words.push((padded.charCodeAt(i * 2) << 8) | padded.charCodeAt(i * 2 + 1));
+            }
+            // FC 0x2B CANopen Download: index=0x2424, subIndex=0x00
+            const result = await this.writeCANopenObject(device.slaveId, 0x2424, 0x00, words);
+            if (!result || result.error) throw new Error(result?.error || '응답 없음');
+            if (statusEl) { statusEl.textContent = '✔ 쓰기 완료'; statusEl.style.color = '#28a745'; }
+        } catch (e) {
+            if (statusEl) { statusEl.textContent = '✘ 쓰기 실패: ' + e.message; statusEl.style.color = '#dc3545'; }
+        } finally {
+            this._snUpdateWriteBtn();
+        }
+    }
+
+    /** FC 0x2B CANopen SDO — index 0x2424, subIndex 0x00 에서 시리얼 읽기 */
+    async snReadFromDevice() {
+        const device = this._getManufactureDevice();
+        if (!device) { alert('디바이스가 선택되지 않았습니다.'); return; }
+
+        const outputEl = document.getElementById('snReadOutput');
+        const statusEl = document.getElementById('snReadStatus');
+        const decodeBox = document.getElementById('snReadDecodeBox');
+        if (outputEl) { outputEl.textContent = '읽는 중...'; outputEl.style.color = '#adb5bd'; }
+        if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#adb5bd'; }
+        if (decodeBox) decodeBox.style.display = 'none';
+
+        try {
+            // FC 0x2B CANopen Upload: index=0x2424, subIndex=0x00, numData=16 bytes
+            const result = await this.readCANopenObject(device.slaveId, 0x2424, 0x00, 16);
+            if (!result || result.error) throw new Error(result?.error || '응답 없음');
+
+            // rawBytes(10바이트) → null 제거 후 ASCII 문자열 복원
+            const serial = result.rawBytes
+                .filter(b => b !== 0)
+                .map(b => String.fromCharCode(b))
+                .join('')
+                .trim()
+                .toUpperCase();
+
+            if (outputEl) {
+                outputEl.textContent = serial || '(비어있음)';
+                outputEl.style.color = serial ? '#28a745' : '#adb5bd';
+            }
+            if (statusEl) { statusEl.textContent = `읽기 완료 (Slave ${device.slaveId})`; }
+
+            if (serial.length === 9) {
+                this._snRenderDecode(serial);
+                if (decodeBox) decodeBox.style.display = 'block';
+            }
+        } catch (e) {
+            if (outputEl) { outputEl.textContent = '오류'; outputEl.style.color = '#dc3545'; }
+            if (statusEl) { statusEl.textContent = '✘ ' + e.message; statusEl.style.color = '#dc3545'; }
+        }
+    }
+
+    /** 시리얼 해독 결과 렌더링 */
+    _snRenderDecode(serial) {
+        const list = document.getElementById('snReadDecodeList');
+        if (!list) return;
+        try {
+            const pMap = { S: '인코더 (S)', M: '모터 (M)', D: '드라이브 (D)', R: '로봇 (R)' };
+            const pName = pMap[serial[0]] || `알 수 없음 (${serial[0]})`;
+            const decade = (serial.charCodeAt(1) - 65) * 10 + 2000;
+            const fullYear = decade + parseInt(serial[2]);
+            const month = serial.charCodeAt(3) - 64;
+            const seq = parseInt(serial.substring(4));
+
+            list.innerHTML = `
+                <li style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;">
+                    <span style="color:#6c757d;">제품</span>
+                    <span style="font-weight:600;color:#1a1a1a;">${pName}</span>
+                </li>
+                <li style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;">
+                    <span style="color:#6c757d;">제작년월</span>
+                    <span style="font-weight:600;color:#1a1a1a;">${fullYear}년 ${month}월</span>
+                </li>
+                <li style="display:flex;justify-content:space-between;padding:10px 14px;font-size:13px;">
+                    <span style="color:#6c757d;">일련번호</span>
+                    <span style="font-weight:600;color:#1a1a1a;">${seq}번</span>
+                </li>
+            `;
+        } catch {
+            list.innerHTML = `<li style="padding:10px 14px;font-size:13px;color:#dc3545;">해독 실패 — 형식이 올바르지 않습니다</li>`;
+        }
+    }
+
     async runHardwareTest(testId) {
         const device = this._getManufactureDevice();
         if (!device) {
@@ -13934,6 +14754,10 @@ class ModbusDashboard {
         if (statusEl) statusEl.textContent = '보정 진행 중…';
 
         try {
+            // Offset setting 시작 명령: procedure argument → procedure code 순서로 전송
+            await this.writeCANopenObject(device.slaveId, 0x2701, 0x00, 0x0001); // procedure argument = 0x0001
+            await this.writeCANopenObject(device.slaveId, 0x2700, 0x00, 0x0004); // procedure code = 0x0004
+
             await this._runCurrentOffsetStep(device);
             await this._runHallOffsetStep(device);
             this.offsetCalibState.phase = 'complete';
@@ -14341,7 +15165,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (targetSubtab === 'offset') {
                 document.getElementById('manufactureOffset').style.display = 'flex';
             } else if (targetSubtab === 'serial-number') {
-                document.getElementById('manufactureSerialNumber').style.display = 'block';
+                document.getElementById('manufactureSerialNumber').style.display = 'flex';
+                window.dashboard.snOnTabOpen();
             } else if (targetSubtab === 'hw-overview') {
                 document.getElementById('manufactureHwOverview').style.display = 'flex';
                 window.dashboard.initMiniCharts();

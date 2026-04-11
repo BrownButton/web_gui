@@ -2,7 +2,6 @@
   "permissions": {
     "allow": [
       "Bash(dir:*)",
-<<<<<<< Updated upstream
       "Bash(sed -n '1608,1659p' /d/git/web_gui/index.html)",
       "Bash(sed -n '1660,1687p' /d/git/web_gui/index.html)",
       "Bash(sed -n '1688,1743p' /d/git/web_gui/index.html)",
@@ -13,7 +12,6 @@
       "Bash(git commit:*)",
       "Bash(python3 -c \":*)",
       "Bash(ls -la /d/git/web_gui/*.js)"
-=======
       "Bash(git stash:*)",
       "Bash(ls:*)",
       "Bash(/c/github/web_gui/styles.css << 'EOF'\n\n/* OS Verification Styles */\n.os-test-item {\n    transition: all 0.2s ease;\n}\n\n.os-test-item:hover {\n    border-color: #667eea !important;\n    box-shadow: 0 2px 8px rgba\\(102, 126, 234, 0.15\\);\n    transform: translateY\\(-1px\\);\n}\n\n.os-test-item.test-passed {\n    border-left: 4px solid #28a745;\n    background: #f0fff4 !important;\n}\n\n.os-test-item.test-failed {\n    border-left: 4px solid #dc3545;\n    background: #fff5f5 !important;\n}\n\n.os-test-item.test-running {\n    border-left: 4px solid #667eea;\n    background: #f5f7ff !important;\n}\n\n.test-status-badge.status-passed {\n    background: #28a745 !important;\n    color: white !important;\n}\n\n.test-status-badge.status-failed {\n    background: #dc3545 !important;\n    color: white !important;\n}\n\n.test-status-badge.status-running {\n    background: #667eea !important;\n    color: white !important;\n    animation: pulse 1.5s ease-in-out infinite;\n}\n\n@keyframes pulse {\n    0%, 100% {\n        opacity: 1;\n    }\n    50% {\n        opacity: 0.6;\n    }\n}\nEOF)",
@@ -115,7 +113,6 @@
       "Bash(git checkout:*)",
       "Bash(grep -n \"Chart.js\\\\|chartjs\\\\|import.*Chart\\\\|require.*Chart\" /c/github/web_gui/*.js /c/github/web_gui/*.html)",
       "Bash(\"c:/github/web_gui/styles.css\")"
->>>>>>> Stashed changes
     ]
   }
 }
