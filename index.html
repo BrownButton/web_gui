@@ -480,10 +480,6 @@
                                                 </select>
                                             </div>
                                             <div class="form-group">
-                                                <label for="fwPacketDelay">패킷 간격 (ms)</label>
-                                                <input type="number" id="fwPacketDelay" min="10" max="500" value="50">
-                                            </div>
-                                            <div class="form-group">
                                                 <label for="fwResponseTimeout">응답 대기 (ms)</label>
                                                 <input type="number" id="fwResponseTimeout" min="100" max="5000" value="1000">
                                             </div>
@@ -1752,7 +1748,13 @@
                                                 <div style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Offset Calibration</div>
                                                 <div id="offsetOverallStatus" style="font-size: 12px; color: #6c757d; margin-top: 3px;">보정 시작 전 — Start 버튼을 눌러 보정을 시작하세요.</div>
                                             </div>
-                                            <button id="offsetStartBtn" class="btn btn-primary btn-sm" style="min-width: 130px; font-size: 13px;">▶ Start</button>
+                                            <div style="display: flex; align-items: center; gap: 20px;">
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <span style="font-size: 12px; color: #6c757d; white-space: nowrap;">Alarm Code <span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x603F</span></span>
+                                                    <span id="offset-alarm-code" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                </div>
+                                                <button id="offsetStartBtn" class="btn btn-primary btn-sm" style="min-width: 130px; font-size: 13px;">▶ Start</button>
+                                            </div>
                                         </div>
 
                                         <!-- Body: Left steps + Right charts -->
@@ -1830,35 +1832,6 @@
                                                 </div>
 
                                             </div><!-- /Left Panel -->
-
-                                            <!-- Right Panel: Radar Charts -->
-                                            <div style="flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; overflow: hidden; min-width: 0;">
-
-                                                <!-- Chart 1: 전류 Offset -->
-                                                <div style="background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; min-height: 0;">
-                                                    <div style="font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; flex-shrink: 0;">전류 Offset</div>
-                                                    <div style="flex: 1; position: relative; min-height: 0;">
-                                                        <canvas id="offsetCurrentChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
-                                                    </div>
-                                                    <div style="display: flex; gap: 16px; justify-content: center; margin-top: 8px; font-size: 11px; color: #6c757d; flex-shrink: 0;">
-                                                        <span><span style="display:inline-block;width:12px;height:2px;background:#adb5bd;vertical-align:middle;margin-right:4px;border-radius:1px;"></span>보정 전</span>
-                                                        <span><span style="display:inline-block;width:12px;height:2px;background:#667eea;vertical-align:middle;margin-right:4px;border-radius:1px;"></span>보정 후</span>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Chart 2: Hall Offset -->
-                                                <div style="background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; min-height: 0;">
-                                                    <div style="font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; flex-shrink: 0;">Hall 편심 / 편축</div>
-                                                    <div style="flex: 1; position: relative; min-height: 0;">
-                                                        <canvas id="offsetHallChart" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></canvas>
-                                                    </div>
-                                                    <div style="display: flex; gap: 16px; justify-content: center; margin-top: 8px; font-size: 11px; color: #6c757d; flex-shrink: 0;">
-                                                        <span><span style="display:inline-block;width:12px;height:2px;background:#adb5bd;vertical-align:middle;margin-right:4px;border-radius:1px;"></span>보정 전</span>
-                                                        <span><span style="display:inline-block;width:12px;height:2px;background:#667eea;vertical-align:middle;margin-right:4px;border-radius:1px;"></span>보정 후</span>
-                                                    </div>
-                                                </div>
-
-                                            </div><!-- /Right Panel -->
 
                                         </div><!-- /Body -->
 

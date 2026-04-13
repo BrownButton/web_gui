@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제품 시리얼 넘버 통합 툴 (v3)</title>
+    <style>
+        body {
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .main-wrapper {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        .blue-theme h2 { color: #007bff; }
+        .green-theme h2 { color: #28a745; }
+
+        .form-group { margin-bottom: 15px; }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+        
+        /* 메인 버튼 스타일 */
+        button.action-btn {
+            width: 100%;
+            padding: 12px;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+            font-weight: bold;
+        }
+        .btn-gen { background-color: #007bff; }
+        .btn-dec { background-color: #28a745; }
+        button.action-btn:hover { opacity: 0.9; }
+
+        /* 결과 박스 스타일 */
+        .result-box {
+            margin-top: auto;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #eee;
+            position: relative; /* 복사 버튼 배치를 위해 */
+        }
+        .result-label { font-size: 12px; color: #888; margin-bottom: 5px; }
+        
+        .serial-output {
+            font-size: 26px;
+            font-weight: bold;
+            color: #333;
+            letter-spacing: 2px;
+            word-break: break-all;
+            margin-bottom: 5px;
+        }
+
+        /* 복사 버튼 스타일 (추가됨) */
+        .copy-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 5px;
+        }
+        .copy-btn:hover { background-color: #5a6268; }
+        .copy-btn:active { transform: scale(0.98); }
+        .copy-btn.copied { background-color: #28a745; } /* 복사 성공 시 녹색 */
+
+        /* 디코딩 결과 리스트 */
+        .decode-list {
+            text-align: left;
+            font-size: 14px;
+            color: #333;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .decode-list li {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed #ddd;
+            display: flex;
+            justify-content: space-between;
+        }
+        .decode-list li:last-child { border-bottom: none; margin-bottom: 0; }
+        .decode-val { font-weight: bold; color: #28a745; }
+
+        @media (max-width: 768px) {
+            .main-wrapper { flex-direction: column; }
+            .container { width: 100%; max-width: 350px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="main-wrapper">
+    
+    <!-- [왼쪽] 시리얼 생성기 -->
+    <div class="container blue-theme">
+        <h2>🛠️ 시리얼 생성기</h2>
+        
+        <div class="form-group">
+            <label>제품 구분</label>
+            <select id="product">
+                <option value="S">인코더 (S)</option>
+                <option value="M">모터 (M)</option>
+                <option value="D">드라이브 (D)</option>
+                <option value="R">로봇 (R)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>제작 연도</label>
+            <input type="number" id="year" value="2026" min="2000">
+        </div>
+        <div class="form-group">
+            <label>제작 월</label>
+            <select id="month">
+                <option value="1">1월 (A)</option>
+                <option value="2">2월 (B)</option>
+                <option value="3">3월 (C)</option>
+                <option value="4">4월 (D)</option>
+                <option value="5">5월 (E)</option>
+                <option value="6">6월 (F)</option>
+                <option value="7">7월 (G)</option>
+                <option value="8">8월 (H)</option>
+                <option value="9">9월 (I)</option>
+                <option value="10">10월 (J)</option>
+                <option value="11">11월 (K)</option>
+                <option value="12">12월 (L)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>일련번호 (숫자)</label>
+            <input type="number" id="sequence" placeholder="예: 123" min="1" max="99999">
+        </div>
+
+        <button class="action-btn btn-gen" onclick="generateSerial()">생성하기</button>
+
+        <!-- 결과 및 복사 영역 -->
+        <div class="result-box" style="margin-top: 20px;">
+            <div class="result-label">생성 결과</div>
+            <div class="serial-output" id="outputVal" style="color: #007bff;">--------</div>
+            <!-- 복사 버튼 추가 -->
+            <button class="copy-btn" id="copyButton" onclick="copyToClipboard()">📄 복사하기</button>
+        </div>
+    </div>
+
+    <!-- [오른쪽] 시리얼 해독기 -->
+    <div class="container green-theme">
+        <h2>🔍 시리얼 해독기</h2>
+        
+        <div class="form-group">
+            <label>시리얼 넘버 입력</label>
+            <input type="text" id="decodeInput" placeholder="예: MB0A00123" style="text-transform: uppercase;">
+        </div>
+
+        <button class="action-btn btn-dec" onclick="decodeSerial()">정보 확인하기</button>
+
+        <div class="result-box" style="margin-top: 20px;">
+            <div class="result-label">해독 결과</div>
+            <ul class="decode-list" id="decodeResult">
+                <li style="justify-content: center; color: #aaa;">시리얼 넘버를 입력하세요</li>
+            </ul>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    window.onload = function() {
+        const today = new Date();
+        document.getElementById('year').value = today.getFullYear();
+        document.getElementById('month').value = today.getMonth() + 1;
+    };
+
+    // --- 생성 로직 ---
+    function generateSerial() {
+        const product = document.getElementById('product').value;
+        const yearInput = parseInt(document.getElementById('year').value);
+        const monthInput = parseInt(document.getElementById('month').value);
+        let seqInput = document.getElementById('sequence').value;
+
+        if (yearInput < 2000) { alert("연도는 2000년 이후여야 합니다."); return; }
+        
+        const decadeIdx = Math.floor((yearInput - 2000) / 10);
+        const yearChar = String.fromCharCode(65 + decadeIdx);
+        const yearDigit = yearInput % 10;
+        const yearCode = yearChar + yearDigit;
+
+        const monthCode = String.fromCharCode(64 + monthInput);
+
+        if (seqInput === "") seqInput = "0";
+        const seqCode = seqInput.toString().padStart(5, '0');
+
+        const result = product + yearCode + monthCode + seqCode;
+        document.getElementById('outputVal').innerText = result;
+        
+        // 생성 시 복사 버튼 초기화
+        resetCopyButton();
+    }
+
+    // --- 복사 기능 (추가됨) ---
+    function copyToClipboard() {
+        const text = document.getElementById('outputVal').innerText;
+        const btn = document.getElementById('copyButton');
+
+        if (text === '--------') {
+            alert('먼저 시리얼 넘버를 생성해주세요.');
+            return;
+        }
+
+        // 클립보드 복사
+        navigator.clipboard.writeText(text).then(() => {
+            // 버튼 스타일 변경 (피드백)
+            btn.innerText = "✅ 복사됨!";
+            btn.classList.add('copied');
+            
+            // 2초 뒤 원래대로 복귀
+            setTimeout(resetCopyButton, 1000);
+        }).catch(err => {
+            alert('복사에 실패했습니다. 직접 드래그해서 복사해주세요.');
+        });
+    }
+
+    function resetCopyButton() {
+        const btn = document.getElementById('copyButton');
+        btn.innerText = "📄 복사하기";
+        btn.classList.remove('copied');
+    }
+
+    // --- 해독 로직 ---
+    function decodeSerial() {
+        let serial = document.getElementById('decodeInput').value.trim().toUpperCase();
+
+        if (serial.length !== 9) {
+            alert("시리얼 넘버는 9자리여야 합니다.");
+            return;
+        }
+
+        try {
+            const pCode = serial.charAt(0);
+            const pMap = {'S':'인코더(S)', 'M':'모터(M)', 'D':'드라이브(D)', 'R':'로봇(R)'};
+            const pName = pMap[pCode] || "알 수 없는 제품";
+
+            const yChar = serial.charCodeAt(1);
+            const yDigit = parseInt(serial.charAt(2));
+            if (isNaN(yDigit)) throw new Error("연도 오류");
+            
+            const decade = (yChar - 65) * 10 + 2000;
+            const fullYear = decade + yDigit;
+
+            const mChar = serial.charCodeAt(3);
+            const month = mChar - 64;
+            if (month < 1 || month > 12) throw new Error("월 오류");
+
+            const seqNum = parseInt(serial.substring(4));
+            if (isNaN(seqNum)) throw new Error("일련번호 오류");
+
+            const html = `
+                <li><span>📦 제품</span> <span class="decode-val">${pName}</span></li>
+                <li><span>📅 제작년월</span> <span class="decode-val">${fullYear}년 ${month}월</span></li>
+                <li><span>🔢 일련번호</span> <span class="decode-val">${seqNum}번</span></li>
+                <li><span>🔑 원본</span> <span style="font-size:12px; color:#666;">${serial}</span></li>
+            `;
+            document.getElementById('decodeResult').innerHTML = html;
+
+        } catch (e) {
+            alert("해독 실패: 형식이 올바르지 않습니다.");
+        }
+    }
+</script>
+
+</body>
+</html>
