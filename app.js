@@ -1424,6 +1424,184 @@ class MiniChart {
     }
 }
 
+// ─────────────────────────────────────────────────────────
+//  Polar Chart — Clarke α-β 궤적 실시간 극좌표 표시
+// ─────────────────────────────────────────────────────────
+class PolarChart {
+    /**
+     * Hall U/V/W → Clarke 변환 후 α/β 궤적을 극좌표로 표시.
+     *
+     * DC 제거 없음: 원점(0,0)이 캔버스 중심. DC 오프셋이 있으면 원이 중심에서
+     * 벗어나 보이는데, 이것이 Hall 오프셋 교정 목적상 확인해야 할 정보임.
+     */
+    constructor(canvas, { maxPoints = 600 } = {}) {
+        this.canvas    = canvas;
+        this.ctx       = canvas.getContext('2d');
+        this.maxPoints = maxPoints;
+        this._a = [];  // α rolling buffer
+        this._b = [];  // β rolling buffer
+        // render() 후 DOM 업데이트용 공개 통계
+        this.lastAmp   = undefined;
+        this.lastAngle = undefined;
+        this.ampMin    = undefined;
+        this.ampMax    = undefined;
+        this._maxR     = 0;  // scale 고정용: 증가만 허용
+    }
+
+    /** U/V/W 샘플 → Clarke 변환 → 버퍼에 추가 */
+    addSample(rawU, rawV, rawW) {
+        const K = 2 / 3, S3 = Math.sqrt(3);
+        this._a.push(K * (rawU - rawV / 2 - rawW / 2));
+        this._b.push(K * (S3 / 2 * (rawV - rawW)));
+        if (this._a.length > this.maxPoints) { this._a.shift(); this._b.shift(); }
+    }
+
+    clear() {
+        this._a = []; this._b = [];
+        this.lastAmp = undefined; this.lastAngle = undefined;
+        this.ampMin  = undefined; this.ampMax    = undefined;
+        this._maxR   = 0;
+        this.render();
+    }
+
+    render() {
+        // 임계값 상수
+        const THRESH = [
+            { label: '평상시',     min: 600,  max: 2000, color: '#27ae60' },
+            { label: 'Offset 조정', min: 900, max: 1923, color: '#e67e22' },
+        ];
+        const THRESH_MAX = Math.max(...THRESH.map(t => t.max)); // 2000
+
+        const canvas = this.canvas;
+        const ctx    = this.ctx;
+        const dpr    = window.devicePixelRatio || 1;
+        // ctx에 dpr scale이 적용되어 있으므로 CSS 픽셀 기준으로 좌표 계산
+        const W = canvas.width  / dpr;
+        const H = canvas.height / dpr;
+
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#fafafa';
+        ctx.fillRect(0, 0, W, H);
+
+        // 스케일: 임계값 최대값이 항상 들어오도록 보장
+        if (THRESH_MAX > this._maxR) this._maxR = THRESH_MAX;
+
+        const cx     = W / 2;
+        const cy     = H / 2;
+        const radius = Math.min(W, H) / 2 * 0.82;
+        const scale  = radius / (this._maxR * 1.1);
+
+        // 동심원 (배경 격자)
+        ctx.strokeStyle = '#e9ecef';
+        ctx.lineWidth   = 0.8;
+        [0.25, 0.5, 1.0].forEach(frac => {
+            ctx.beginPath(); ctx.arc(cx, cy, radius * frac, 0, 2 * Math.PI); ctx.stroke();
+        });
+
+        // 십자 축선
+        ctx.strokeStyle = '#dee2e6';
+        ctx.lineWidth   = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - radius * 1.05); ctx.lineTo(cx, cy + radius * 1.05);
+        ctx.moveTo(cx - radius * 1.05, cy); ctx.lineTo(cx + radius * 1.05, cy);
+        ctx.stroke();
+
+        // 임계값 밴드 (채움 + 테두리 원 2개)
+        THRESH.forEach(({ label, min, max, color }) => {
+            const rMin = min * scale;
+            const rMax = max * scale;
+            // min 원 (점선)
+            ctx.strokeStyle = color + 'aa';
+            ctx.lineWidth   = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath(); ctx.arc(cx, cy, rMin, 0, 2 * Math.PI); ctx.stroke();
+            // max 원 (실선)
+            ctx.strokeStyle = color + 'cc';
+            ctx.lineWidth   = 1.5;
+            ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(cx, cy, rMax, 0, 2 * Math.PI); ctx.stroke();
+            // 라벨 (max 원 오른쪽 45°)
+            const lx = cx + rMax * 0.707 + 4;
+            const ly = cy - rMax * 0.707 - 3;
+            ctx.fillStyle = color;
+            ctx.font      = '9px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(label, lx, ly);
+        });
+
+        // 데이터 없으면 여기서 종료
+        const n = this._a.length;
+        if (n < 2) {
+            ctx.fillStyle = '#adb5bd';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('데이터 대기 중… (카드 클릭하여 시작)', cx, cy + radius * 1.18);
+            return;
+        }
+
+        // 원점 기준 amplitude 통계
+        let maxR = 0, ampMin = Infinity, ampMax = -Infinity;
+        for (let i = 0; i < n; i++) {
+            const r = Math.sqrt(this._a[i] * this._a[i] + this._b[i] * this._b[i]);
+            if (r > maxR)   maxR   = r;
+            if (r < ampMin) ampMin = r;
+            if (r > ampMax) ampMax = r;
+        }
+        this.ampMin = ampMin;
+        this.ampMax = ampMax;
+        const la = this._a[n - 1], lb = this._b[n - 1];
+        this.lastAmp   = Math.sqrt(la * la + lb * lb);
+        this.lastAngle = ((Math.atan2(lb, la) * 180 / Math.PI) + 360) % 360;
+
+        // scale 갱신 (임계값 하한선 유지하면서 증가만 허용)
+        if (maxR > this._maxR) this._maxR = maxR;
+
+        if (maxR < 1e-9) {
+            ctx.fillStyle = '#adb5bd';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('신호 없음 (정지 상태)', cx, cy + radius * 1.18);
+            ctx.fillStyle = '#6c757d';
+            ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 2 * Math.PI); ctx.fill();
+            return;
+        }
+
+        // 현재 amplitude 평균 기준원 (파란 점선)
+        ctx.strokeStyle = 'rgba(52, 152, 219, 0.5)';
+        ctx.lineWidth   = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, ((ampMax + ampMin) / 2) * scale, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 궤적
+        ctx.strokeStyle = 'rgba(46, 204, 113, 0.85)';
+        ctx.lineWidth   = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(cx + this._a[0] * scale, cy - this._b[0] * scale);
+        for (let i = 1; i < n; i++) {
+            ctx.lineTo(cx + this._a[i] * scale, cy - this._b[i] * scale);
+        }
+        ctx.stroke();
+
+        // 최신 점 강조
+        ctx.fillStyle = '#e74c3c';
+        ctx.beginPath();
+        ctx.arc(cx + la * scale, cy - lb * scale, 4, 0, 2 * Math.PI);
+        ctx.fill();
+
+        // 축 레이블
+        ctx.fillStyle = '#adb5bd';
+        ctx.font      = '9px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('β', cx + 6, cy - radius - 4);
+        ctx.textAlign = 'left';
+        ctx.fillText('α', cx + radius + 4, cy + 3);
+    }
+}
+
+
 // 드라이브 Serial Port 초기값 (단일 출처)
 const DEFAULT_SERIAL = {
     baudRate: 19200,
@@ -1547,6 +1725,8 @@ class ModbusDashboard {
         this.currentPollingIndex = 0;
         this.isPolling = false; // Flag to prevent concurrent polling
         this.commandQueue = []; // Queue for user write commands - prevents 485 bus collision during polling
+        this._busBusy = false;  // Bus Mutex: true이면 TX/RX 쌍 진행 중 — 동시 TX 원천 차단
+        this._tabSeq   = 0;     // Tab Context Token: 서브탭 전환 시 증가 — stale response 감지용
         this._paramReadProgress = null; // 진행 중인 readAllParameters 프로그레스 컨트롤러
         this.pollingTimeout = 200; // Response timeout in ms for polling
         this.commandTimeout = 200; // Response timeout in ms for user commands (write/read)
@@ -1592,7 +1772,9 @@ class ModbusDashboard {
         // Mini Chart (HW Overview)
         this.miniChartHall = null;
         this.miniChartCurrent = null;
-        this.miniChartRunning = { hall: false, current: false };
+        this.miniChartRunning = { hall: false, current: false, offsetHall: false };
+        this.offsetHallChart  = null;
+        this.offsetPolarChart = null; // Clarke α-β 극좌표 차트 (Offset 탭)
         this._fc64Busy = false; // FC64 전환(stop/start) 구간에서 버스 점유 표시
         this.triggerRunning = false; // FC65 Trigger 캡처 진행 중 여부
         this.hidDevice = null;  // WebHID 연결 장치
@@ -2221,6 +2403,7 @@ class ModbusDashboard {
         // HW Overview 폴링은 해당 탭에서만 동작 — 페이지 전환 시 항상 중지
         this.stopOvPolling();
         this.stopOffsetAlarmPolling();
+        this.stopMiniChart('offsetHall');
 
         // Start/stop polling based on page
         if (pageName === 'dashboard') {
@@ -2938,6 +3121,7 @@ class ModbusDashboard {
         try {
             // Stop auto polling (force=true: 즉시 강제 중단)
             this.stopAutoPolling(true);
+            this._busBusy = false; // 연결 해제 시 bus mutex 강제 해제 — stuck 방지
 
             this.readInProgress = false;
 
@@ -7945,9 +8129,29 @@ class ModbusDashboard {
      * commandQueue에 쌓인 명령을 모두 순차 실행.
      * FC 0x64 차트 루프가 폴링 루프 대신 이 함수를 호출해 버스 충돌 없이 큐를 소진한다.
      */
+    // ─────────────────────────────────────────────────────────
+    //  Bus Mutex — 모든 TX/RX 쌍을 serialize하여 485 버스 충돌 원천 차단
+    //  JS 싱글스레드 특성: while 루프 탈출 후 _busBusy = true 대입은 원자적으로 실행됨
+    // ─────────────────────────────────────────────────────────
+    async _acquireBus() {
+        while (this._busBusy) await this.delay(1);
+        this._busBusy = true;
+    }
+
+    _releaseBus() {
+        this._busBusy = false;
+    }
+
     async _drainCommandQueue() {
         while (this.commandQueue.length > 0) {
             const cmd = this.commandQueue.shift();
+
+            // Stale 체크: 큐에 등록된 시점의 탭과 현재 탭이 다르면 조용히 폐기
+            if (cmd.tabSeq !== undefined && cmd.tabSeq !== this._tabSeq) {
+                cmd.resolve(null);
+                continue;
+            }
+
             try {
                 if (cmd.type === 'read') {
                     const value = await this.sendAndWaitResponse(cmd.frame, cmd.slaveId);
@@ -7997,6 +8201,15 @@ class ModbusDashboard {
         // 이 블록에서만 TX가 발생하므로 485 버스 충돌 원천 차단
         if (this.commandQueue.length > 0) {
             const cmd = this.commandQueue.shift();
+
+            // Stale 체크: 큐에 등록된 시점의 탭과 현재 탭이 다르면 조용히 폐기
+            if (cmd.tabSeq !== undefined && cmd.tabSeq !== this._tabSeq) {
+                cmd.resolve(null);
+                this.isPolling = false;
+                this.scheduleNextPoll();
+                return;
+            }
+
             try {
                 if (cmd.type === 'read') {
                     // Read 명령: sendAndWaitResponse로 값을 받아서 resolve에 전달
@@ -8140,7 +8353,7 @@ class ModbusDashboard {
             if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
                 // polling 루프 / FC64 차트 / OV 폴링 중 하나라도 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
-                    this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
+                    this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject, tabSeq: this._tabSeq });
                 });
             }
             // 버스 유휴 — 직접 전송
@@ -8167,7 +8380,7 @@ class ModbusDashboard {
 
         if (this.autoPollingTimer || this._isFc64Active) {
             return new Promise((resolve, reject) => {
-                this.commandQueue.push({ type: 'read', frame, slaveId, address: 0, resolve, reject });
+                this.commandQueue.push({ type: 'read', frame, slaveId, address: 0, resolve, reject, tabSeq: this._tabSeq });
             });
         }
         return await this.sendAndWaitResponse(frame, slaveId);
@@ -8212,56 +8425,61 @@ class ModbusDashboard {
             });
         }
 
-        return new Promise(async (resolve) => {
-            // Clear receive buffer
-            this.receiveIndex = 0;
+        await this._acquireBus();
+        try {
+            return await new Promise(async (resolve) => {
+                // Clear receive buffer
+                this.receiveIndex = 0;
 
-            // Set up response handler
-            const responsePromise = new Promise((resResolve) => {
-                this.pendingResponse = {
-                    slaveId: expectedSlaveId,
-                    resolve: resResolve,
-                    startTime: Date.now()
-                };
-            });
+                // Set up response handler
+                const responsePromise = new Promise((resResolve) => {
+                    this.pendingResponse = {
+                        slaveId: expectedSlaveId,
+                        resolve: resResolve,
+                        startTime: Date.now()
+                    };
+                });
 
-            // Set up timeout
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => {
-                    reject(new Error('Timeout'));
-                }, this.pollingTimeout);
-            });
+                // Set up timeout
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => {
+                        reject(new Error('Timeout'));
+                    }, this.pollingTimeout);
+                });
 
-            try {
-                // Send TX
-                await this.writer.write(frame);
-                this.addMonitorEntry('sent', frame, { functionCode: frame[1], startAddress: (frame[2] << 8) | frame[3], quantity: 1 });
-                this.stats.requests++;
-                this.updateStatsDisplay();
-
-                // Wait for response or timeout
-                const response = await Promise.race([responsePromise, timeoutPromise]);
-
-                this.pendingResponse = null;
-
-                if (response && response.length >= 5 && response[0] === expectedSlaveId && (response[1] & 0x80) === 0) {
-                    this.stats.success++;
+                try {
+                    // Send TX
+                    await this.writer.write(frame);
+                    this.addMonitorEntry('sent', frame, { functionCode: frame[1], startAddress: (frame[2] << 8) | frame[3], quantity: 1 });
+                    this.stats.requests++;
                     this.updateStatsDisplay();
-                    resolve((response[3] << 8) | response[4]);
-                } else {
+
+                    // Wait for response or timeout
+                    const response = await Promise.race([responsePromise, timeoutPromise]);
+
+                    this.pendingResponse = null;
+
+                    if (response && response.length >= 5 && response[0] === expectedSlaveId && (response[1] & 0x80) === 0) {
+                        this.stats.success++;
+                        this.updateStatsDisplay();
+                        resolve((response[3] << 8) | response[4]);
+                    } else {
+                        this.stats.errors++;
+                        this.updateStatsDisplay();
+                        resolve(null);
+                    }
+                } catch (error) {
+                    // Timeout occurred
+                    this.pendingResponse = null;
                     this.stats.errors++;
                     this.updateStatsDisplay();
+                    this.addMonitorEntry('error', `Slave ${expectedSlaveId}: Response timeout (${this.pollingTimeout}ms)`);
                     resolve(null);
                 }
-            } catch (error) {
-                // Timeout occurred
-                this.pendingResponse = null;
-                this.stats.errors++;
-                this.updateStatsDisplay();
-                this.addMonitorEntry('error', `Slave ${expectedSlaveId}: Response timeout (${this.pollingTimeout}ms)`);
-                resolve(null);
-            }
-        });
+            });
+        } finally {
+            this._releaseBus();
+        }
     }
 
     /**
@@ -8433,7 +8651,7 @@ class ModbusDashboard {
             if (this.autoPollingTimer || this._isFc64Active) {
                 // Polling 중이거나 FC64 차트가 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
-                    this.commandQueue.push({ frame, slaveId, address, resolve, reject });
+                    this.commandQueue.push({ frame, slaveId, address, resolve, reject, tabSeq: this._tabSeq });
                 });
             } else {
                 await this.sendWriteAndWaitResponse(frame, slaveId, address);
@@ -8473,49 +8691,54 @@ class ModbusDashboard {
             });
         }
 
-        return new Promise(async (resolve, reject) => {
-            // Set up response handler
-            const responsePromise = new Promise(res => {
-                this.pendingResponse = {
-                    slaveId: slaveId,
-                    resolve: res
-                };
-            });
+        await this._acquireBus();
+        try {
+            await new Promise(async (resolve, reject) => {
+                // Set up response handler
+                const responsePromise = new Promise(res => {
+                    this.pendingResponse = {
+                        slaveId: slaveId,
+                        resolve: res
+                    };
+                });
 
-            const timeoutPromise = new Promise((_, rej) => {
-                setTimeout(() => rej(new Error('Timeout')), this.commandTimeout);
-            });
+                const timeoutPromise = new Promise((_, rej) => {
+                    setTimeout(() => rej(new Error('Timeout')), this.commandTimeout);
+                });
 
-            try {
-                // Send TX
-                await this.writer.write(frame);
-                this.addMonitorEntry('sent', frame, { functionCode: 6, startAddress: address });
-                this.stats.requests++;
-                this.updateStatsDisplay();
-
-                // Wait for response or timeout
-                const response = await Promise.race([responsePromise, timeoutPromise]);
-
-                this.pendingResponse = null;
-
-                if (response && response.length >= 5 && response[0] === slaveId && (response[1] & 0x80) === 0) {
-                    this.stats.success++;
+                try {
+                    // Send TX
+                    await this.writer.write(frame);
+                    this.addMonitorEntry('sent', frame, { functionCode: 6, startAddress: address });
+                    this.stats.requests++;
                     this.updateStatsDisplay();
-                    resolve();
-                } else {
+
+                    // Wait for response or timeout
+                    const response = await Promise.race([responsePromise, timeoutPromise]);
+
+                    this.pendingResponse = null;
+
+                    if (response && response.length >= 5 && response[0] === slaveId && (response[1] & 0x80) === 0) {
+                        this.stats.success++;
+                        this.updateStatsDisplay();
+                        resolve();
+                    } else {
+                        this.stats.errors++;
+                        this.updateStatsDisplay();
+                        resolve(); // Still resolve to continue execution
+                    }
+                } catch (error) {
+                    // Timeout occurred
+                    this.pendingResponse = null;
                     this.stats.errors++;
                     this.updateStatsDisplay();
+                    this.addMonitorEntry('error', `Slave ${slaveId}: Write response timeout (${this.commandTimeout}ms)`);
                     resolve(); // Still resolve to continue execution
                 }
-            } catch (error) {
-                // Timeout occurred
-                this.pendingResponse = null;
-                this.stats.errors++;
-                this.updateStatsDisplay();
-                this.addMonitorEntry('error', `Slave ${slaveId}: Write response timeout (${this.commandTimeout}ms)`);
-                resolve(); // Still resolve to continue execution
-            }
-        });
+            });
+        } finally {
+            this._releaseBus();
+        }
     }
 
     /**
@@ -8526,58 +8749,63 @@ class ModbusDashboard {
      * @returns {Promise<{cs, index, subIndex, value, abortCode, error}|null>}
      */
     async sendCANopenAndWaitResponse(frame, slaveId) {
-        return new Promise(async (resolve) => {
-            this.receiveIndex = 0;
+        await this._acquireBus();
+        try {
+            return await new Promise(async (resolve) => {
+                this.receiveIndex = 0;
 
-            const responsePromise = new Promise((resResolve) => {
-                this.pendingResponse = {
-                    slaveId,
-                    resolve: resResolve,
-                    startTime: Date.now()
-                };
-            });
+                const responsePromise = new Promise((resResolve) => {
+                    this.pendingResponse = {
+                        slaveId,
+                        resolve: resResolve,
+                        startTime: Date.now()
+                    };
+                });
 
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Timeout')), this.commandTimeout);
-            });
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Timeout')), this.commandTimeout);
+                });
 
-            try {
-                await this.writer.write(frame);
-                this.addMonitorEntry('sent', frame, { functionCode: 0x2B, startAddress: (frame[6] << 8) | frame[7] });
-                this.stats.requests++;
-                this.updateStatsDisplay();
+                try {
+                    await this.writer.write(frame);
+                    this.addMonitorEntry('sent', frame, { functionCode: 0x2B, startAddress: (frame[6] << 8) | frame[7] });
+                    this.stats.requests++;
+                    this.updateStatsDisplay();
 
-                const response = await Promise.race([responsePromise, timeoutPromise]);
-                this.pendingResponse = null;
+                    const response = await Promise.race([responsePromise, timeoutPromise]);
+                    this.pendingResponse = null;
 
-                if (response && response[0] === slaveId) {
-                    try {
-                        const parsed = this.modbus.parseCANopenResponse(response);
-                        if (parsed.error) {
+                    if (response && response[0] === slaveId) {
+                        try {
+                            const parsed = this.modbus.parseCANopenResponse(response);
+                            if (parsed.error) {
+                                this.stats.errors++;
+                            } else {
+                                this.stats.success++;
+                            }
+                            this.updateStatsDisplay();
+                            resolve(parsed);
+                        } catch (e) {
                             this.stats.errors++;
-                        } else {
-                            this.stats.success++;
+                            this.updateStatsDisplay();
+                            resolve(null);
                         }
-                        this.updateStatsDisplay();
-                        resolve(parsed);
-                    } catch (e) {
+                    } else {
                         this.stats.errors++;
                         this.updateStatsDisplay();
                         resolve(null);
                     }
-                } else {
+                } catch (error) {
+                    this.pendingResponse = null;
                     this.stats.errors++;
                     this.updateStatsDisplay();
+                    this.addMonitorEntry('error', `Slave ${slaveId}: CANopen response timeout (${this.commandTimeout}ms)`);
                     resolve(null);
                 }
-            } catch (error) {
-                this.pendingResponse = null;
-                this.stats.errors++;
-                this.updateStatsDisplay();
-                this.addMonitorEntry('error', `Slave ${slaveId}: CANopen response timeout (${this.commandTimeout}ms)`);
-                resolve(null);
-            }
-        });
+            });
+        } finally {
+            this._releaseBus();
+        }
     }
 
     /**
@@ -8595,7 +8823,7 @@ class ModbusDashboard {
             if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
                 // polling 루프 / FC64 차트 / OV 폴링 중 하나라도 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
-                    this.commandQueue.push({ type: 'canopen_read', frame, slaveId, resolve, reject });
+                    this.commandQueue.push({ type: 'canopen_read', frame, slaveId, resolve, reject, tabSeq: this._tabSeq });
                 });
             }
             return await this.sendCANopenAndWaitResponse(frame, slaveId);
@@ -8617,9 +8845,9 @@ class ModbusDashboard {
         const frame = this.modbus.buildCANopenDownload(slaveId, index, subIndex, value, 0);
 
         if (this.writer) {
-            if (this.autoPollingTimer || this._isFc64Active) {
+            if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
                 return new Promise((resolve, reject) => {
-                    this.commandQueue.push({ type: 'canopen_write', frame, slaveId, resolve, reject });
+                    this.commandQueue.push({ type: 'canopen_write', frame, slaveId, resolve, reject, tabSeq: this._tabSeq });
                 });
             }
             return await this.sendCANopenAndWaitResponse(frame, slaveId);
@@ -9599,7 +9827,7 @@ class ModbusDashboard {
             if (this.autoPollingTimer || this._isFc64Active) {
                 // Polling 중이거나 FC64 차트가 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
-                    this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject });
+                    this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject, tabSeq: this._tabSeq });
                 });
             }
             return await this.sendAndWaitResponse(frame, slaveId);
@@ -11931,18 +12159,24 @@ class ModbusDashboard {
     // ─────────────────────────────────────────────────────────
 
     initMiniCharts() {
-        const heightMap = { miniChartHall: 160, miniChartCurrent: 160 };
         const init = (canvasId, chartKey, channels) => {
             const canvas = document.getElementById(canvasId);
             if (!canvas || this[chartKey]) return;
-            // offsetWidth: display:flex 설정 직후 호출 시 layout reflow로 올바른 값 반환
-            const w = canvas.offsetWidth || canvas.parentElement?.offsetWidth || 400;
+            // offsetWidth/offsetHeight: display:flex 설정 직후 호출 시 layout reflow로 올바른 값 반환
+            // canvas.height 를 CSS 표시 크기와 동일하게 맞춰야 수직 stretch(blur) 방지
+            const w = canvas.offsetWidth  || canvas.parentElement?.offsetWidth  || 400;
+            const h = canvas.offsetHeight || canvas.parentElement?.offsetHeight || 200;
             canvas.width  = w;
-            canvas.height = heightMap[canvasId] ?? 200;
+            canvas.height = h;
             this[chartKey] = new MiniChart(canvas, channels);
             this[chartKey].render();
         };
         init('miniChartHall', 'miniChartHall', [
+            { name: 'Hall U', color: '#e74c3c', chNum: 22 },
+            { name: 'Hall V', color: '#3498db', chNum: 23 },
+            { name: 'Hall W', color: '#2ecc71', chNum: 24 },
+        ]);
+        init('offsetHallChart', 'offsetHallChart', [
             { name: 'Hall U', color: '#e74c3c', chNum: 22 },
             { name: 'Hall V', color: '#3498db', chNum: 23 },
             { name: 'Hall W', color: '#2ecc71', chNum: 24 },
@@ -11979,6 +12213,38 @@ class ModbusDashboard {
         }
     }
 
+    switchOffsetChartTab(tab) {
+        const hallCard  = document.getElementById('offsetCard-hall');
+        const polarCard = document.getElementById('offsetCard-polar');
+        const tabHall   = document.getElementById('offsetChartTab-hall');
+        const tabPolar  = document.getElementById('offsetChartTab-polar');
+        if (!hallCard || !polarCard) return;
+
+        const showHall = (tab === 'hall');
+        hallCard.style.display  = showHall ? 'flex' : 'none';
+        polarCard.style.display = showHall ? 'none' : 'flex';
+
+        // 탭 버튼 활성 스타일
+        [tabHall, tabPolar].forEach((btn, i) => {
+            if (!btn) return;
+            const active = (i === 0) === showHall;
+            btn.style.color       = active ? '#2563eb' : '#adb5bd';
+            btn.style.borderBottom = active ? '2px solid #2563eb' : '2px solid transparent';
+        });
+
+        // 탭 전환 후 canvas 크기 재반영
+        if (showHall && this.offsetHallChart) {
+            this.offsetHallChart.resize();
+        } else if (!showHall && this.offsetPolarChart) {
+            const c = this.offsetPolarChart.canvas;
+            const dpr = window.devicePixelRatio || 1;
+            const s = Math.min(c.offsetWidth, c.offsetHeight);
+            c.width  = s * dpr;
+            c.height = s * dpr;
+            this.offsetPolarChart.render();
+        }
+    }
+
     async startMiniChart(type) {
         if (!this.writer) {
             this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
@@ -11989,17 +12255,22 @@ class ModbusDashboard {
             return;
         }
         // 다른 미니 차트가 실행 중이면 먼저 중지
-        const other = type === 'hall' ? 'current' : 'hall';
-        if (this.miniChartRunning[other]) await this.stopMiniChart(other);
+        for (const [key, running] of Object.entries(this.miniChartRunning)) {
+            if (key !== type && running) await this.stopMiniChart(key);
+        }
 
         // stopMiniChart가 _fc64Busy를 해제했더라도 configure 프레임 전송 전까지 버스 점유 유지
         this._fc64Busy = true;
 
-        let chart = type === 'hall' ? this.miniChartHall : this.miniChartCurrent;
+        let chart = type === 'hall' ? this.miniChartHall
+            : type === 'offsetHall' ? this.offsetHallChart
+            : this.miniChartCurrent;
         if (!chart) {
             this.initMiniCharts();
             await this.delay(50);
-            chart = type === 'hall' ? this.miniChartHall : this.miniChartCurrent;
+            chart = type === 'hall' ? this.miniChartHall
+                : type === 'offsetHall' ? this.offsetHallChart
+                : this.miniChartCurrent;
         }
         if (!chart) {
             this._fc64Busy = false;
@@ -12007,6 +12278,24 @@ class ModbusDashboard {
             return;
         }
         chart.clear();
+
+        // offsetHall: 극좌표 차트도 함께 초기화
+        if (type === 'offsetHall') {
+            const polarCanvas = document.getElementById('offsetPolarChart');
+            if (polarCanvas) {
+                const dpr = window.devicePixelRatio || 1;
+                const pw = polarCanvas.offsetWidth  || polarCanvas.parentElement?.offsetWidth  || 260;
+                const ph = polarCanvas.offsetHeight || polarCanvas.parentElement?.offsetHeight || 260;
+                const s  = Math.max(pw, ph);
+                polarCanvas.width  = s * dpr;
+                polarCanvas.height = s * dpr;
+                polarCanvas.getContext('2d').scale(dpr, dpr);
+                if (!this.offsetPolarChart) {
+                    this.offsetPolarChart = new PolarChart(polarCanvas);
+                }
+                this.offsetPolarChart.clear();
+            }
+        }
 
         const slaveId = this._getMiniChartSlaveId();
         const channelSlots = [...chart.channels.map(ch => ch.chNum)];
@@ -12040,15 +12329,23 @@ class ModbusDashboard {
     }
 
     async _miniChartDataLoop(type, slaveId, numCh, periodMs) {
-        const chart = type === 'hall' ? this.miniChartHall : this.miniChartCurrent;
+        const chart = type === 'hall' ? this.miniChartHall
+            : type === 'offsetHall' ? this.offsetHallChart
+            : this.miniChartCurrent;
         const valueIds = type === 'hall'
             ? ['ov-hall-u', 'ov-hall-v', 'ov-hall-w']
+            : type === 'offsetHall'
+            ? ['offset-hall-u', 'offset-hall-v', 'offset-hall-w']
             : ['ov-iu', 'ov-iv', 'ov-iw'];
         const minIds = type === 'hall'
             ? ['ov-hall-u-min', 'ov-hall-v-min', 'ov-hall-w-min']
+            : type === 'offsetHall'
+            ? ['offset-hall-u-min', 'offset-hall-v-min', 'offset-hall-w-min']
             : ['ov-iu-min', 'ov-iv-min', 'ov-iw-min'];
         const maxIds = type === 'hall'
             ? ['ov-hall-u-max', 'ov-hall-v-max', 'ov-hall-w-max']
+            : type === 'offsetHall'
+            ? ['offset-hall-u-max', 'offset-hall-v-max', 'offset-hall-w-max']
             : ['ov-iu-max', 'ov-iv-max', 'ov-iw-max'];
         const rmsIds = type === 'current' ? ['ov-iu-rms', 'ov-iv-rms', 'ov-iw-rms'] : null;
 
@@ -12094,6 +12391,45 @@ class ModbusDashboard {
             }
             chart.render();
 
+            // offsetHall: Clarke 변환 → 극좌표 차트 업데이트
+            if (type === 'offsetHall' && this.offsetPolarChart && samplesPerCh > 0) {
+                const uCh = chart.channels[0];
+                const vCh = chart.channels[1];
+                const wCh = chart.channels[2];
+                // 이번 배치에서 추가된 샘플만 처리 (마지막 samplesPerCh개)
+                const tail = samplesPerCh;
+                const uSlice = uCh.data.slice(-tail);
+                const vSlice = vCh.data.slice(-tail);
+                const wSlice = wCh.data.slice(-tail);
+                for (let s = 0; s < uSlice.length; s++) {
+                    const u = uSlice[s], v = vSlice[s], w = wSlice[s];
+                    if (u !== undefined && v !== undefined && w !== undefined) {
+                        this.offsetPolarChart.addSample(u, v, w);
+                    }
+                }
+                this.offsetPolarChart.render();
+
+                // DOM 지표 업데이트 — render() 에서 계산된 통계를 읽음
+                const pol = this.offsetPolarChart;
+                if (pol.lastAmp !== undefined) {
+                    const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+                    setTxt('offset-polar-amp',   pol.lastAmp.toFixed(3));
+                    setTxt('offset-polar-angle', pol.lastAngle.toFixed(1));
+                    if (pol.ampMin !== undefined) setTxt('offset-polar-amp-min', pol.ampMin.toFixed(3));
+                    if (pol.ampMax !== undefined) setTxt('offset-polar-amp-max', pol.ampMax.toFixed(3));
+                    if (pol.ampMin !== undefined && pol.ampMax !== undefined) {
+                        const sum = pol.ampMax + pol.ampMin;
+                        const ecc = sum > 0 ? ((pol.ampMax - pol.ampMin) / sum * 100).toFixed(1) : '-';
+                        setTxt('offset-polar-ecc', ecc);
+                        const eccEl = document.getElementById('offset-polar-ecc');
+                        if (eccEl) {
+                            const v = parseFloat(ecc);
+                            eccEl.style.color = v < 5 ? '#28a745' : v < 15 ? '#fd7e14' : '#dc3545';
+                        }
+                    }
+                }
+            }
+
             // FC64 요청 사이에 대기 중인 큐 명령 소진 (버스 충돌 방지)
             if (this.commandQueue.length > 0) await this._drainCommandQueue();
         }
@@ -12128,6 +12464,15 @@ class ModbusDashboard {
         }
         this._updateMiniChartBtn(type, false);
         this._fc64Busy = false;
+
+        // offsetHall 정지 시 극좌표 DOM 값 초기화
+        if (type === 'offsetHall') {
+            ['offset-polar-amp','offset-polar-amp-min','offset-polar-amp-max',
+             'offset-polar-ecc','offset-polar-angle'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = '-';
+            });
+        }
     }
 
     _getMiniChartSlaveId() {
@@ -12136,10 +12481,15 @@ class ModbusDashboard {
     }
 
     _updateMiniChartBtn(type, running) {
+        if (type === 'offsetHall') {
+            // Hall 카드 + 극좌표 카드 두 개 모두 상태 반영
+            ['offsetCard-hall', 'offsetCard-polar'].forEach(id => {
+                document.getElementById(id)?.classList.toggle('ov-card-running', running);
+            });
+            return;
+        }
         const cardId = type === 'hall' ? 'ovCard-ps-hall-sensor' : 'ovCard-ps-inverter-current';
-        const card   = document.getElementById(cardId);
-        if (!card) return;
-        card.classList.toggle('ov-card-running', running);
+        document.getElementById(cardId)?.classList.toggle('ov-card-running', running);
     }
 
     // CANopen 파라미터 전송만 담당 — 차트 제어는 카드 클릭(toggleMiniChart)이 담당
@@ -15703,6 +16053,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // manufacture 탭 이외 탭으로 전환 시 항상 중지
             if (targetTab !== 'manufacture') {
                 window.dashboard.stopOvPolling();
+                window.dashboard._tabSeq++; // Tab Context Token 증가 — stale response 감지용
             }
 
             // Parameters 탭을 벗어날 때 진행 중인 파라미터 읽기 중단
@@ -15790,12 +16141,16 @@ document.addEventListener('DOMContentLoaded', () => {
             tab.style.color = '#667eea';
             tab.style.borderBottom = '2px solid #667eea';
 
+            // 서브탭 전환: Tab Context Token 증가 — 이전 탭의 in-flight TX 응답을 stale로 표시
+            window.dashboard._tabSeq++;
+
             // 탭을 벗어날 때 해당 탭 전용 폴링 중지
             if (targetSubtab !== 'hw-overview') {
                 window.dashboard.stopOvPolling();
             }
             if (targetSubtab !== 'offset') {
                 window.dashboard.stopOffsetAlarmPolling();
+                window.dashboard.stopMiniChart('offsetHall');
             }
 
             // Hide all subtab contents

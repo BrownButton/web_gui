@@ -1671,8 +1671,8 @@
                                                 </div>
                                                 <!-- 본문: 좌측 채널 패널 + 우측 캔버스 -->
                                                 <div style="display: flex; align-items: stretch; padding: 14px 20px 18px; gap: 18px;">
-                                                    <!-- 좌측: 채널별 현재값 / min / max (클릭 전파 차단) -->
-                                                    <div onclick="event.stopPropagation()" style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 165px;">
+                                                    <!-- 좌측: 채널별 현재값 / min / max -->
+                                                    <div style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 165px;">
                                                         <!-- Iu -->
                                                         <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
                                                             <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
@@ -1758,10 +1758,10 @@
                                         </div>
 
                                         <!-- Body: Left steps + Right charts -->
-                                        <div style="flex: 1; display: flex; overflow: hidden; min-height: 0;">
+                                        <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
 
                                             <!-- Left Panel: Steps -->
-                                            <div style="flex: 0 0 290px; padding: 20px 18px; border-right: 1px solid #e9ecef; overflow-y: auto; background: #fafafa;">
+                                            <div style="flex: 0 0 290px; padding: 20px 18px; border-right: 1px solid #e9ecef; background: #fafafa;">
 
                                                 <!-- Step 1: 전류 Offset -->
                                                 <div id="offsetStep1Card" style="border: 1px solid #e9ecef; border-radius: 8px; background: white; overflow: hidden; margin-bottom: 14px;">
@@ -1832,6 +1832,131 @@
                                                 </div>
 
                                             </div><!-- /Left Panel -->
+
+                                            <!-- Right Panel: Hall Sensor 차트 -->
+                                            <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;">
+                                                <!-- 차트 탭 헤더 -->
+                                                <div style="display: flex; gap: 0; border-bottom: 2px solid #e9ecef; flex-shrink: 0; padding: 0 20px; margin-top: 16px;">
+                                                    <button id="offsetChartTab-hall" onclick="app.switchOffsetChartTab('hall')"
+                                                        style="padding: 8px 18px; font-size: 13px; font-weight: 600; border: none; background: none; cursor: pointer; color: #2563eb; border-bottom: 2px solid #2563eb; margin-bottom: -2px; transition: color 0.15s;">
+                                                        Hall Sensor
+                                                    </button>
+                                                    <button id="offsetChartTab-polar" onclick="app.switchOffsetChartTab('polar')"
+                                                        style="padding: 8px 18px; font-size: 13px; font-weight: 600; border: none; background: none; cursor: pointer; color: #adb5bd; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s;">
+                                                        Clarke α-β
+                                                    </button>
+                                                </div>
+                                                <!-- 탭 컨텐츠 영역 -->
+                                                <div style="flex: 1; min-height: 0; padding: 16px 20px 20px; display: flex; flex-direction: column;">
+                                                <div id="offsetCard-hall" class="ov-card-clickable" style="flex: 1; min-height: 0; display: flex; flex-direction: column; background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('offsetHall')">
+                                                    <!-- 헤더 -->
+                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                        <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
+                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Hall Sensor</span>
+                                                        <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">클릭하여 차트 시작/정지</span>
+                                                    </div>
+                                                    <!-- 본문: 좌측 채널 패널 + 우측 캔버스 -->
+                                                    <div style="flex: 1; min-height: 0; display: flex; align-items: stretch; padding: 14px 20px 18px; gap: 18px;">
+                                                        <!-- 좌측: 채널별 현재값 / min / max -->
+                                                        <div style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 165px;">
+                                                            <!-- Hall U -->
+                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                                <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
+                                                                    <span style="color: #e74c3c; font-size: 14px; line-height: 1;">●</span>
+                                                                    <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall U</span>
+                                                                    <span id="offset-hall-u" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                </div>
+                                                                <div style="display: flex; gap: 10px; padding-left: 21px;">
+                                                                    <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                    <span id="offset-hall-u-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                    <span id="offset-hall-u-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                                </div>
+                                                            </div>
+                                                            <!-- Hall V -->
+                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                                <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
+                                                                    <span style="color: #3498db; font-size: 14px; line-height: 1;">●</span>
+                                                                    <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall V</span>
+                                                                    <span id="offset-hall-v" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                </div>
+                                                                <div style="display: flex; gap: 10px; padding-left: 21px;">
+                                                                    <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                    <span id="offset-hall-v-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                    <span id="offset-hall-v-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                                </div>
+                                                            </div>
+                                                            <!-- Hall W -->
+                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                                <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
+                                                                    <span style="color: #2ecc71; font-size: 14px; line-height: 1;">●</span>
+                                                                    <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall W</span>
+                                                                    <span id="offset-hall-w" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                </div>
+                                                                <div style="display: flex; gap: 10px; padding-left: 21px;">
+                                                                    <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                    <span id="offset-hall-w-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                    <span id="offset-hall-w-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <!-- 우측: 캔버스 -->
+                                                        <div style="flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column;">
+                                                            <canvas id="offsetHallChart" style="flex: 1; width: 100%; min-height: 0; border-radius: 8px; display: block; background: #fafafa;"></canvas>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- 극좌표계 차트 카드 -->
+                                                <div id="offsetCard-polar" class="ov-card-clickable" style="flex: 1; min-height: 0; display: none; flex-direction: column; background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('offsetHall')">
+                                                    <!-- 헤더 -->
+                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
+                                                        <span style="font-size: 12px; background: #e8f4fd; color: #0369a1; padding: 3px 9px; border-radius: 4px; font-weight: 700;">α-β</span>
+                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Clarke 변환 — 극좌표 궤적</span>
+                                                        <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">원 → 정상 &nbsp;/&nbsp; 타원 → 편심</span>
+                                                    </div>
+                                                    <!-- 본문: 지표 패널 + 캔버스 -->
+                                                    <div style="flex: 1; min-height: 0; display: flex; align-items: stretch; padding: 14px 20px 18px; gap: 18px;">
+                                                        <!-- 좌측: Clarke 지표 -->
+                                                        <div style="display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; min-width: 165px;">
+                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px; font-weight: 500;">Amplitude</div>
+                                                                <div style="display: flex; align-items: center; gap: 7px;">
+                                                                    <span id="offset-polar-amp" style="font-size: 18px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                </div>
+                                                                <div style="display: flex; gap: 10px; margin-top: 4px;">
+                                                                    <span style="font-size: 11px; color: #adb5bd;">min</span>
+                                                                    <span id="offset-polar-amp-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #adb5bd;">max</span>
+                                                                    <span id="offset-polar-amp-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                                </div>
+                                                            </div>
+                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 4px; font-weight: 500;">편심 지수 (Ecc)</div>
+                                                                <div style="display: flex; align-items: baseline; gap: 4px;">
+                                                                    <span id="offset-polar-ecc" style="font-size: 20px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                    <span style="font-size: 11px; color: #adb5bd;">%</span>
+                                                                </div>
+                                                                <div style="font-size: 10px; color: #adb5bd; margin-top: 2px;">(max−min)/(max+min)×100</div>
+                                                            </div>
+                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 4px; font-weight: 500;">전기각 (θ)</div>
+                                                                <div style="display: flex; align-items: baseline; gap: 4px;">
+                                                                    <span id="offset-polar-angle" style="font-size: 20px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                    <span style="font-size: 11px; color: #adb5bd;">°</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <!-- 우측: 극좌표 캔버스 (정사각형) -->
+                                                        <div style="flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center;">
+                                                            <canvas id="offsetPolarChart" style="aspect-ratio: 1/1; height: 100%; max-width: 100%; border-radius: 8px; display: block; background: #fafafa;"></canvas>
+                                                        </div>
+                                                    </div>
+                                                </div><!-- /offsetCard-polar -->
+                                                </div><!-- /탭 컨텐츠 영역 -->
+                                            </div><!-- /Right Panel -->
 
                                         </div><!-- /Body -->
 
