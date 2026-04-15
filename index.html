@@ -280,16 +280,16 @@
                             <!-- Tab Buttons -->
                             <div style="display: flex; gap: 4px; background: white; padding: 24px 40px 0 40px; border-bottom: 1px solid #e5e5e5; flex-shrink: 0;">
                                 <button class="device-setup-tab active" data-tab="configuration" style="padding: 10px 16px; border: none; border-bottom: 2px solid #1a1a1a; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #1a1a1a; transition: all 0.2s;">
-                                    Configuration
+                                    ⚙️ Configuration
                                 </button>
                                 <button class="device-setup-tab" data-tab="parameters" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
-                                    Parameters
+                                    📋 Parameters
                                 </button>
                                 <button class="device-setup-tab" data-tab="update" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
-                                    Update
+                                    🔄 Update
                                 </button>
                                 <button class="device-setup-tab" data-tab="manufacture" style="display: none; padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
-                                    Manufacture
+                                    🔧 Manufacture
                                 </button>
                             </div>
 
@@ -333,8 +333,8 @@
                                             <button class="filter-btn" data-filter="lsm">LSM</button>
                                         </div>
                                         <div style="display: flex; gap: 5px;">
-                                            <button class="filter-btn active" data-implemented="all">All Status</button>
-                                            <button class="filter-btn" data-implemented="Y">Implemented</button>
+                                            <button class="filter-btn" data-implemented="all">All Status</button>
+                                            <button class="filter-btn active" data-implemented="Y">Implemented</button>
                                             <button class="filter-btn" data-implemented="N">Not Implemented</button>
                                         </div>
                                         <input type="text" id="paramSearchInput" placeholder="Search by name or address..." style="flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;">
@@ -575,16 +575,16 @@
                                 <!-- Sub-tabs -->
                                 <div style="display: flex; gap: 4px; background: #f8f9fa; padding: 16px 24px 0 24px; border-bottom: 1px solid #e5e5e5; flex-shrink: 0;">
                                     <button class="manufacture-subtab active" data-subtab="hw-overview" style="padding: 10px 16px; border: none; border-bottom: 2px solid #667eea; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #667eea; transition: all 0.2s;">
-                                        HW Overview
+                                        🖥️ HW Overview
                                     </button>
                                     <button class="manufacture-subtab" data-subtab="offset" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
-                                        Offset Setting
+                                        🎚️ Offset Setting
                                     </button>
                                     <button class="manufacture-subtab" data-subtab="os-verification" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
-                                        OS Verification
+                                        ✅ OS Verification
                                     </button>
                                     <button class="manufacture-subtab" data-subtab="serial-number" style="padding: 10px 16px; border: none; border-bottom: 2px solid transparent; background: transparent; cursor: pointer; font-size: 13px; font-weight: 500; color: #6c757d; transition: all 0.2s;">
-                                        Serial Number
+                                        🔢 Serial Number
                                     </button>
                                 </div>
 
@@ -1398,339 +1398,332 @@
                                     <div class="manufacture-subtab-content active" id="manufactureHwOverview" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
 
                                         <!-- Summary Bar -->
-                                        <div style="padding: 16px 28px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
-                                            <div style="display: flex; gap: 20px; align-items: center;">
-                                                <div style="text-align: center;">
-                                                    <div style="font-size: 22px; font-weight: 700; color: #1a1a1a;">14</div>
-                                                    <div style="font-size: 10px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Total</div>
+                                        <div style="padding: 16px 28px; background: white; border-bottom: 1px solid #F2F4F6; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+                                            <div style="display: flex; gap: 6px; align-items: center;">
+                                                <div style="padding: 10px 18px; border-radius: 12px; background: #F5F6F8; text-align: center; min-width: 60px;">
+                                                    <div style="font-size: 20px; font-weight: 700; color: #191F28; line-height: 1.2;">14</div>
+                                                    <div style="font-size: 10px; font-weight: 600; color: #8B95A1; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Total</div>
                                                 </div>
-                                                <div style="width: 1px; height: 28px; background: #dee2e6;"></div>
-                                                <div style="text-align: center;">
-                                                    <div style="font-size: 22px; font-weight: 700; color: #28a745;" id="ovTestPassed">0</div>
-                                                    <div style="font-size: 10px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Passed</div>
+                                                <div style="padding: 10px 18px; border-radius: 12px; background: #E8FAF1; text-align: center; min-width: 60px;">
+                                                    <div style="font-size: 20px; font-weight: 700; color: #00C471; line-height: 1.2;" id="ovTestPassed">0</div>
+                                                    <div style="font-size: 10px; font-weight: 600; color: #00C471; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Passed</div>
                                                 </div>
-                                                <div style="text-align: center;">
-                                                    <div style="font-size: 22px; font-weight: 700; color: #dc3545;" id="ovTestFailed">0</div>
-                                                    <div style="font-size: 10px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Failed</div>
+                                                <div style="padding: 10px 18px; border-radius: 12px; background: #FFF0F0; text-align: center; min-width: 60px;">
+                                                    <div style="font-size: 20px; font-weight: 700; color: #F04452; line-height: 1.2;" id="ovTestFailed">0</div>
+                                                    <div style="font-size: 10px; font-weight: 600; color: #F04452; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Failed</div>
                                                 </div>
-                                                <div style="text-align: center;">
-                                                    <div style="font-size: 22px; font-weight: 700; color: #6c757d;" id="ovTestPending">14</div>
-                                                    <div style="font-size: 10px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Pending</div>
+                                                <div style="padding: 10px 18px; border-radius: 12px; background: #F5F6F8; text-align: center; min-width: 60px;">
+                                                    <div style="font-size: 20px; font-weight: 700; color: #8B95A1; line-height: 1.2;" id="ovTestPending">14</div>
+                                                    <div style="font-size: 10px; font-weight: 600; color: #8B95A1; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Pending</div>
                                                 </div>
-                                                <div style="width: 1px; height: 28px; background: #dee2e6;"></div>
-                                                <div style="text-align: center;">
-                                                    <div style="font-size: 22px; font-weight: 700; color: #667eea;" id="ovTestProgress">0%</div>
-                                                    <div style="font-size: 10px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Progress</div>
+                                                <div style="width: 1px; height: 36px; background: #F2F4F6; margin: 0 6px;"></div>
+                                                <div style="padding: 10px 18px; border-radius: 12px; background: #EBF2FF; text-align: center; min-width: 60px;">
+                                                    <div style="font-size: 20px; font-weight: 700; color: #3182F6; line-height: 1.2;" id="ovTestProgress">0%</div>
+                                                    <div style="font-size: 10px; font-weight: 600; color: #3182F6; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Progress</div>
                                                 </div>
                                             </div>
-                                            <div style="display: flex; gap: 8px;">
-                                                <button class="btn btn-primary btn-sm" onclick="app.runAllHardwareTests()">▶ Run All</button>
-                                                <button class="btn btn-secondary btn-sm" onclick="app.resetAllHardwareTests()">↺ Reset</button>
-                                            </div>
+                                            <button style="font-size: 13px; font-weight: 600; padding: 8px 18px; background: #F5F6F8; color: #4E5968; border: none; border-radius: 10px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#EAECEF'" onmouseout="this.style.background='#F5F6F8'" onclick="app.refreshHwOverview()">↺ Refresh</button>
                                         </div>
 
-                                        <!-- Test Cards Grid (외부: 스크롤 담당, 내부: flex 레이아웃 담당 — 분리하지 않으면 flex-shrink가 자식을 압축함) -->
-                                        <div style="flex: 1; overflow-y: auto; background: #f8f9fa;">
-                                        <div style="padding: 24px 32px; display: flex; flex-direction: column; gap: 16px;">
+                                        <!-- Test Cards Grid -->
+                                        <div style="flex: 1; overflow-y: auto; background: #F5F6F8;">
+                                        <div style="padding: 20px 28px; display: flex; flex-direction: column; gap: 14px;">
 
                                             <!-- Row 1: Interface 2열 -->
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                                                 <!-- IF: 485 통신회로 검증 -->
-                                                <div id="ovCard-if-485" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
-                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 12px; background: #d1fae5; color: #065f46; padding: 3px 9px; border-radius: 4px; font-weight: 700;">IF</span>
-                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">485 통신회로 검증</span>
+                                                <div id="ovCard-if-485" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;">
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #E8FAF1; color: #00A661; padding: 3px 9px; border-radius: 20px;">IF</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #191F28;">485 통신회로 검증</span>
                                                     </div>
                                                     <div style="padding: 14px 20px;">
-                                                        <div style="padding: 10px 14px; background: #f8f9fa; border-radius: 6px; font-size: 13px; color: #6c757d; text-align: center;">RS-485 통신 회로 동작 및 응답 확인</div>
+                                                        <div style="padding: 10px 14px; background: #F5F6F8; border-radius: 10px; font-size: 13px; color: #8B95A1; text-align: center;">RS-485 통신 회로 동작 및 응답 확인</div>
                                                     </div>
                                                 </div>
                                                 <!-- IF: USB 통신회로 검증 -->
-                                                <div id="ovCard-if-usb" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.runUsbHidTest()">
-                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 12px; background: #d1fae5; color: #065f46; padding: 3px 9px; border-radius: 4px; font-weight: 700;">IF</span>
-                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">USB 통신회로 검증</span>
-                                                        <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">클릭하여 테스트</span>
+                                                <div id="ovCard-if-usb" class="ov-card-clickable" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; cursor: pointer;" onclick="app.runUsbHidTest()">
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #E8FAF1; color: #00A661; padding: 3px 9px; border-radius: 20px;">IF</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #191F28;">USB 통신회로 검증</span>
+                                                        <span style="font-size: 11px; color: #C5CBD4; margin-left: 2px;">클릭하여 테스트</span>
                                                     </div>
-                                                    <div style="padding: 12px 20px;">
-                                                        <div style="padding: 10px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 13px; color: #6c757d; white-space: nowrap;">Motor ID &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x2000</span></span>
-                                                            <span id="ov-usb-motor-id" style="font-size: 18px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                    <div style="padding: 14px 20px;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div>
+                                                                <div style="font-size: 11px; font-weight: 600; color: #8B95A1; margin-bottom: 4px;">MOTOR ID</div>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">0x2000</span>
+                                                            </div>
+                                                            <span id="ov-usb-motor-id" style="font-size: 24px; font-weight: 700; font-family: monospace; color: #191F28;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <!-- Row 2: MCU 2열 (동일 높이) -->
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch;">
-                                                <!-- OS 버전 확인 (2x2 grid) -->
-                                                <div id="ovCard-mcu-os-version" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
-                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 12px; background: #dbeafe; color: #1d4ed8; padding: 3px 9px; border-radius: 4px; font-weight: 700;">MCU</span>
-                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">OS 버전 확인</span>
+                                            <!-- Row 2: MCU 2열 -->
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch;">
+                                                <!-- OS 버전 확인 -->
+                                                <div id="ovCard-mcu-os-version" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;">
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #EBF2FF; color: #3182F6; padding: 3px 9px; border-radius: 20px;">MCU</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #191F28;">OS 버전 확인</span>
                                                     </div>
-                                                    <div style="padding: 12px 20px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                                        <div style="padding: 10px 12px; background: #fafafa; border-radius: 6px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                                                <span style="font-size: 12px; color: #6c757d;">MCU Boot</span>
-                                                                <span style="font-size: 11px; font-family: monospace; color: #adb5bd;">0x27F0</span>
+                                                    <div style="padding: 14px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">MCU Boot</span>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4;">0x27F0</span>
                                                             </div>
                                                             <div style="display: flex; gap: 6px; align-items: baseline;">
-                                                                <span id="ov-mcu-boot-ascii" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-mcu-boot" style="font-size: 11px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 2px 5px; border-radius: 3px; white-space: nowrap;">-</span>
+                                                                <span id="ov-mcu-boot-ascii" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-mcu-boot" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">-</span>
                                                             </div>
                                                         </div>
-                                                        <div style="padding: 10px 12px; background: #fafafa; border-radius: 6px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                                                <span style="font-size: 12px; color: #6c757d;">MCU FW</span>
-                                                                <span style="font-size: 11px; font-family: monospace; color: #adb5bd;">0x27F1</span>
+                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">MCU FW</span>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4;">0x27F1</span>
                                                             </div>
                                                             <div style="display: flex; gap: 6px; align-items: baseline;">
-                                                                <span id="ov-mcu-fw-ascii" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-mcu-fw" style="font-size: 11px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 2px 5px; border-radius: 3px; white-space: nowrap;">-</span>
+                                                                <span id="ov-mcu-fw-ascii" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-mcu-fw" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">-</span>
                                                             </div>
                                                         </div>
-                                                        <div style="padding: 10px 12px; background: #fafafa; border-radius: 6px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                                                <span style="font-size: 12px; color: #6c757d;">Inv Boot</span>
-                                                                <span style="font-size: 11px; font-family: monospace; color: #adb5bd;">0x27F2</span>
+                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">Inv Boot</span>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4;">0x27F2</span>
                                                             </div>
                                                             <div style="display: flex; gap: 6px; align-items: baseline;">
-                                                                <span id="ov-inv-boot-ascii" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-inv-boot" style="font-size: 11px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 2px 5px; border-radius: 3px; white-space: nowrap;">-</span>
+                                                                <span id="ov-inv-boot-ascii" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-inv-boot" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">-</span>
                                                             </div>
                                                         </div>
-                                                        <div style="padding: 10px 12px; background: #fafafa; border-radius: 6px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                                                <span style="font-size: 12px; color: #6c757d;">Inv FW</span>
-                                                                <span style="font-size: 11px; font-family: monospace; color: #adb5bd;">0x27F3</span>
+                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">Inv FW</span>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4;">0x27F3</span>
                                                             </div>
                                                             <div style="display: flex; gap: 6px; align-items: baseline;">
-                                                                <span id="ov-inv-fw-ascii" style="font-size: 15px; font-weight: 700; font-family: monospace; color: #1a1a1a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-inv-fw" style="font-size: 11px; font-family: monospace; color: #6c757d; background: #f0f0f0; padding: 2px 5px; border-radius: 3px; white-space: nowrap;">-</span>
+                                                                <span id="ov-inv-fw-ascii" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-inv-fw" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">-</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <!-- 모터 ID 설정 확인 -->
-                                                <div id="ovCard-mcu-motor-id-set" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
-                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 12px; background: #dbeafe; color: #1d4ed8; padding: 3px 9px; border-radius: 4px; font-weight: 700;">MCU</span>
-                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">모터 ID 설정 확인</span>
+                                                <div id="ovCard-mcu-motor-id-set" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;">
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #EBF2FF; color: #3182F6; padding: 3px 9px; border-radius: 20px;">MCU</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #191F28;">모터 ID 설정 확인</span>
                                                     </div>
-                                                    <div style="padding: 12px 20px;">
-                                                        <div style="padding: 12px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 13px; color: #6c757d;">Motor ID &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x2000</span></span>
-                                                            <span id="ov-motor-id" style="font-size: 26px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                    <div style="padding: 14px 20px;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div>
+                                                                <div style="font-size: 11px; font-weight: 600; color: #8B95A1; margin-bottom: 4px;">MOTOR ID</div>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">0x2000</span>
+                                                            </div>
+                                                            <span id="ov-motor-id" style="font-size: 32px; font-weight: 700; font-family: monospace; color: #191F28;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <!-- Row 3: PS 3열 (동일 높이) -->
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 16px; align-items: stretch;">
-                                                <!-- DClink 센싱 회로 검증 -->
-                                                <div id="ovCard-ps-dclink" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
-                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                        <span style="font-size: 14px; font-weight: 600; color: #1a1a1a;">DClink 센싱 회로 검증</span>
+                                            <!-- Row 3: PS 3열 -->
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 14px; align-items: stretch;">
+                                                <!-- DClink -->
+                                                <div id="ovCard-ps-dclink" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;">
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #FFF4E6; color: #F5A623; padding: 3px 9px; border-radius: 20px;">PS</span>
+                                                        <span style="font-size: 13px; font-weight: 600; color: #191F28;">DClink 센싱 검증</span>
                                                     </div>
-                                                    <div style="padding: 12px 20px;">
-                                                        <div style="padding: 12px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 13px; color: #6c757d;">DC link V &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">CH 7</span></span>
-                                                            <span id="ov-dclink-v" style="font-size: 22px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                    <div style="padding: 14px 20px;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div>
+                                                                <div style="font-size: 11px; font-weight: 600; color: #8B95A1; margin-bottom: 4px;">DC LINK V</div>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">CH 7</span>
+                                                            </div>
+                                                            <span id="ov-dclink-v" style="font-size: 28px; font-weight: 700; font-family: monospace; color: #191F28;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <!-- IGBT 모듈 온도 검증 -->
-                                                <div id="ovCard-ps-igbt-temp" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
-                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                        <span style="font-size: 14px; font-weight: 600; color: #1a1a1a;">IGBT 모듈 온도 검증</span>
+                                                <!-- IGBT 온도 -->
+                                                <div id="ovCard-ps-igbt-temp" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;">
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #FFF4E6; color: #F5A623; padding: 3px 9px; border-radius: 20px;">PS</span>
+                                                        <span style="font-size: 13px; font-weight: 600; color: #191F28;">IGBT 모듈 온도 검증</span>
                                                     </div>
-                                                    <div style="padding: 12px 20px;">
-                                                        <div style="padding: 12px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 13px; color: #6c757d;">IGBT Temp &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x260B</span></span>
-                                                            <span id="ov-igbt-motor-id" style="font-size: 22px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                    <div style="padding: 14px 20px;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div>
+                                                                <div style="font-size: 11px; font-weight: 600; color: #8B95A1; margin-bottom: 4px;">IGBT TEMP</div>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">0x260B</span>
+                                                            </div>
+                                                            <span id="ov-igbt-motor-id" style="font-size: 28px; font-weight: 700; font-family: monospace; color: #191F28;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <!-- 입력 결상 감지 회로 검증 -->
-                                                <div id="ovCard-ps-phase-loss" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
-                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">입력 결상 감지 회로 검증</span>
+                                                <!-- 입력 결상 감지 -->
+                                                <div id="ovCard-ps-phase-loss" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;">
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #FFF4E6; color: #F5A623; padding: 3px 9px; border-radius: 20px;">PS</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #191F28;">입력 결상 감지 회로 검증</span>
                                                     </div>
-                                                    <div style="padding: 12px 20px; display: flex; flex-direction: column; gap: 8px;">
-                                                        <div style="padding: 10px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 13px; color: #6c757d; white-space: nowrap;">Alarm Code &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x603F</span></span>
-                                                            <span id="ov-alarm-code" style="font-size: 16px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                    <div style="padding: 14px 20px; display: flex; flex-direction: column; gap: 10px;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div>
+                                                                <div style="font-size: 11px; font-weight: 600; color: #8B95A1; margin-bottom: 4px;">ALARM CODE</div>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">0x603F</span>
+                                                            </div>
+                                                            <span id="ov-alarm-code" style="font-size: 18px; font-weight: 700; font-family: monospace; color: #191F28;">-</span>
                                                         </div>
-                                                        <div style="padding: 10px 14px; background: #fafafa; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                                                            <span style="font-size: 13px; color: #6c757d; white-space: nowrap;">PHA bit &nbsp;<span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0xD011[0]</span></span>
-                                                            <span id="ov-pha-bit" style="font-size: 18px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
+                                                        <div style="height: 1px; background: #F5F6F8;"></div>
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div>
+                                                                <div style="font-size: 11px; font-weight: 600; color: #8B95A1; margin-bottom: 4px;">PHA BIT</div>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">0xD011[0]</span>
+                                                            </div>
+                                                            <span id="ov-pha-bit" style="font-size: 22px; font-weight: 700; font-family: monospace; color: #191F28;">-</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <!-- Row 4: Hall Sensor 검증 -->
-                                            <div id="ovCard-ps-hall-sensor" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('hall')">
-                                                <!-- 헤더 -->
-                                                <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                    <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                    <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Hall Sensor 검증</span>
-                                                    <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">클릭하여 차트 시작/정지</span>
+                                            <div id="ovCard-ps-hall-sensor" class="ov-card-clickable" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; cursor: pointer;" onclick="app.toggleMiniChart('hall')">
+                                                <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                    <span style="font-size: 11px; font-weight: 700; background: #FFF4E6; color: #F5A623; padding: 3px 9px; border-radius: 20px;">PS</span>
+                                                    <span style="font-size: 14px; font-weight: 600; color: #191F28;">Hall Sensor 검증</span>
+                                                    <span style="font-size: 11px; color: #C5CBD4; margin-left: 4px;">클릭하여 차트 시작/정지</span>
                                                 </div>
-                                                <!-- 본문: 좌측 채널 패널 + 우측 캔버스 -->
-                                                <div style="display: flex; align-items: stretch; padding: 14px 20px 18px; gap: 18px;">
-                                                    <!-- 좌측: 채널별 현재값 / min / max -->
-                                                    <div style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 165px;">
-                                                        <!-- Hall U -->
-                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                <div style="display: flex; align-items: stretch; padding: 16px 20px 18px; gap: 16px;">
+                                                    <div style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 170px;">
+                                                        <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
                                                             <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
-                                                                <span style="color: #e74c3c; font-size: 14px; line-height: 1;">●</span>
-                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall U</span>
-                                                                <span id="ov-hall-u" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #F04452; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 12px; font-weight: 600; color: #8B95A1; flex: 1;">Hall U</span>
+                                                                <span id="ov-hall-u" style="font-size: 15px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
-                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                <span id="ov-hall-u-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                <span id="ov-hall-u-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                            <div style="display: flex; gap: 8px; padding-left: 13px;">
+                                                                <span style="font-size: 10px; color: #C5CBD4;">min</span>
+                                                                <span id="ov-hall-u-min" style="font-size: 10px; font-family: monospace; color: #3182F6; min-width: 36px;">-</span>
+                                                                <span style="font-size: 10px; color: #C5CBD4;">max</span>
+                                                                <span id="ov-hall-u-max" style="font-size: 10px; font-family: monospace; color: #F04452; min-width: 36px;">-</span>
                                                             </div>
                                                         </div>
-                                                        <!-- Hall V -->
-                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                        <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
                                                             <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
-                                                                <span style="color: #3498db; font-size: 14px; line-height: 1;">●</span>
-                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall V</span>
-                                                                <span id="ov-hall-v" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #3182F6; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 12px; font-weight: 600; color: #8B95A1; flex: 1;">Hall V</span>
+                                                                <span id="ov-hall-v" style="font-size: 15px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
-                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                <span id="ov-hall-v-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                <span id="ov-hall-v-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                            <div style="display: flex; gap: 8px; padding-left: 13px;">
+                                                                <span style="font-size: 10px; color: #C5CBD4;">min</span>
+                                                                <span id="ov-hall-v-min" style="font-size: 10px; font-family: monospace; color: #3182F6; min-width: 36px;">-</span>
+                                                                <span style="font-size: 10px; color: #C5CBD4;">max</span>
+                                                                <span id="ov-hall-v-max" style="font-size: 10px; font-family: monospace; color: #F04452; min-width: 36px;">-</span>
                                                             </div>
                                                         </div>
-                                                        <!-- Hall W -->
-                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                        <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
                                                             <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
-                                                                <span style="color: #2ecc71; font-size: 14px; line-height: 1;">●</span>
-                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall W</span>
-                                                                <span id="ov-hall-w" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #00C471; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 12px; font-weight: 600; color: #8B95A1; flex: 1;">Hall W</span>
+                                                                <span id="ov-hall-w" style="font-size: 15px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
-                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                <span id="ov-hall-w-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                <span id="ov-hall-w-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                            <div style="display: flex; gap: 8px; padding-left: 13px;">
+                                                                <span style="font-size: 10px; color: #C5CBD4;">min</span>
+                                                                <span id="ov-hall-w-min" style="font-size: 10px; font-family: monospace; color: #3182F6; min-width: 36px;">-</span>
+                                                                <span style="font-size: 10px; color: #C5CBD4;">max</span>
+                                                                <span id="ov-hall-w-max" style="font-size: 10px; font-family: monospace; color: #F04452; min-width: 36px;">-</span>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <!-- 우측: 캔버스 -->
                                                     <div style="flex: 1; min-width: 0;">
-                                                        <canvas id="miniChartHall" style="width: 100%; height: 220px; border-radius: 8px; display: block; background: #fafafa;"></canvas>
+                                                        <canvas id="miniChartHall" style="width: 100%; height: 220px; border-radius: 10px; display: block; background: #F5F6F8;"></canvas>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <!-- Row 5: Inverter 출력 및 전류 센싱 검증 -->
-                                            <div id="ovCard-ps-inverter-current" class="ov-card-clickable" style="background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('current')">
-                                                <!-- 헤더 -->
-                                                <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                    <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                    <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Inverter 출력 및 전류 센싱 검증</span>
-                                                    <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">클릭하여 차트 시작/정지</span>
+                                            <div id="ovCard-ps-inverter-current" class="ov-card-clickable" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; cursor: pointer;" onclick="app.toggleMiniChart('current')">
+                                                <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                    <span style="font-size: 11px; font-weight: 700; background: #FFF4E6; color: #F5A623; padding: 3px 9px; border-radius: 20px;">PS</span>
+                                                    <span style="font-size: 14px; font-weight: 600; color: #191F28;">Inverter 출력 및 전류 센싱 검증</span>
+                                                    <span style="font-size: 11px; color: #C5CBD4; margin-left: 4px;">클릭하여 차트 시작/정지</span>
                                                 </div>
-                                                <!-- 컨트롤 행 (클릭 전파 차단) -->
-                                                <div onclick="event.stopPropagation()" style="padding: 12px 20px 10px; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid #f0f0f0;">
-                                                    <!-- Aging Current -->
-                                                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                                                        <label style="font-size: 12px; color: #6c757d;">Aging Current &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px; font-size: 11px;">0x4004</code></label>
+                                                <!-- 컨트롤 행 -->
+                                                <div onclick="event.stopPropagation()" style="padding: 14px 20px 12px; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid #F5F6F8; background: #FAFBFC;">
+                                                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                                                        <label style="font-size: 11px; font-weight: 600; color: #8B95A1;">AGING CURRENT &nbsp;<span style="font-family: monospace; font-weight: 400; color: #C5CBD4; background: #F5F6F8; padding: 1px 5px; border-radius: 4px; font-size: 10px;">0x4004</span></label>
                                                         <div style="display: flex; align-items: center; gap: 6px;">
-                                                            <input type="number" id="ovInverterCurrent" min="0" max="100" value="10" style="width: 90px; padding: 6px 8px; border: 1px solid #dee2e6; border-radius: 5px; font-size: 14px; font-family: monospace;">
-                                                            <span style="font-size: 13px; color: #6c757d;">%</span>
+                                                            <input type="number" id="ovInverterCurrent" min="0" max="100" value="10" style="width: 80px; padding: 7px 10px; border: 1.5px solid #E8EAED; border-radius: 8px; font-size: 14px; font-family: monospace; color: #191F28; outline: none;">
+                                                            <span style="font-size: 13px; color: #8B95A1; font-weight: 500;">%</span>
                                                         </div>
                                                     </div>
-                                                    <!-- Aging Speed -->
-                                                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                                                        <label style="font-size: 12px; color: #6c757d;">Aging Speed &nbsp;<code style="background: #e9ecef; padding: 1px 4px; border-radius: 3px; font-size: 11px;">0x4005</code></label>
+                                                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                                                        <label style="font-size: 11px; font-weight: 600; color: #8B95A1;">AGING SPEED &nbsp;<span style="font-family: monospace; font-weight: 400; color: #C5CBD4; background: #F5F6F8; padding: 1px 5px; border-radius: 4px; font-size: 10px;">0x4005</span></label>
                                                         <div style="display: flex; align-items: center; gap: 6px;">
-                                                            <input type="number" id="ovInverterSpeed" min="0" value="10" style="width: 90px; padding: 6px 8px; border: 1px solid #dee2e6; border-radius: 5px; font-size: 14px; font-family: monospace;">
-                                                            <span style="font-size: 13px; color: #6c757d;">Hz</span>
+                                                            <input type="number" id="ovInverterSpeed" min="0" value="10" style="width: 80px; padding: 7px 10px; border: 1.5px solid #E8EAED; border-radius: 8px; font-size: 14px; font-family: monospace; color: #191F28; outline: none;">
+                                                            <span style="font-size: 13px; color: #8B95A1; font-weight: 500;">Hz</span>
                                                         </div>
                                                     </div>
-                                                    <!-- Start / Stop / Copy 버튼 -->
                                                     <div style="display: flex; gap: 8px; align-self: flex-end;">
-                                                        <button id="ovInverterStartBtn" class="btn btn-primary btn-sm" style="font-size: 13px; padding: 6px 18px;" onclick="app.startOvInverter()">▶ Start</button>
-                                                        <button id="ovInverterStopBtn" class="btn btn-sm" style="font-size: 13px; padding: 6px 18px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;" onclick="app.stopOvInverter()">■ Stop</button>
-                                                        <button class="btn btn-sm" style="font-size: 13px; padding: 6px 16px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;" onclick="app.copyInverterResults()">Copy</button>
+                                                        <button id="ovInverterStartBtn" style="font-size: 13px; font-weight: 600; padding: 7px 18px; background: #3182F6; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="app.startOvInverter()">▶ Start</button>
+                                                        <button id="ovInverterStopBtn" style="font-size: 13px; font-weight: 600; padding: 7px 18px; background: #F04452; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="app.stopOvInverter()">■ Stop</button>
+                                                        <button style="font-size: 13px; font-weight: 600; padding: 7px 16px; background: #F5F6F8; color: #4E5968; border: none; border-radius: 8px; cursor: pointer;" onclick="app.copyInverterResults()">Copy</button>
                                                     </div>
                                                 </div>
-                                                <!-- 본문: 좌측 채널 패널 + 우측 캔버스 -->
-                                                <div style="display: flex; align-items: stretch; padding: 14px 20px 18px; gap: 18px;">
-                                                    <!-- 좌측: 채널별 현재값 / min / max -->
-                                                    <div style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 165px;">
-                                                        <!-- Iu -->
-                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                <!-- 채널 패널 + 캔버스 -->
+                                                <div style="display: flex; align-items: stretch; padding: 16px 20px 18px; gap: 16px;">
+                                                    <div style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 170px;">
+                                                        <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
                                                             <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
-                                                                <span style="color: #e74c3c; font-size: 14px; line-height: 1;">●</span>
-                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Iu</span>
-                                                                <span id="ov-iu" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #F04452; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 12px; font-weight: 600; color: #8B95A1; flex: 1;">Iu</span>
+                                                                <span id="ov-iu" style="font-size: 15px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
-                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                <span id="ov-iu-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                <span id="ov-iu-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
-                                                            </div>
-                                                            <div style="display: flex; gap: 10px; padding-left: 21px; margin-top: 3px;">
-                                                                <span style="font-size: 11px; color: #adb5bd;">rms</span>
-                                                                <span id="ov-iu-rms" style="font-size: 11px; font-family: monospace; color: #8e44ad; min-width: 40px;">-</span>
+                                                            <div style="display: flex; gap: 8px; padding-left: 13px;">
+                                                                <span style="font-size: 10px; color: #C5CBD4;">min</span>
+                                                                <span id="ov-iu-min" style="font-size: 10px; font-family: monospace; color: #3182F6; min-width: 36px;">-</span>
+                                                                <span style="font-size: 10px; color: #C5CBD4;">max</span>
+                                                                <span id="ov-iu-max" style="font-size: 10px; font-family: monospace; color: #F04452; min-width: 36px;">-</span>
+                                                                <span style="font-size: 10px; color: #C5CBD4;">rms</span>
+                                                                <span id="ov-iu-rms" style="font-size: 10px; font-family: monospace; color: #8B5CF6; min-width: 36px;">-</span>
                                                             </div>
                                                         </div>
-                                                        <!-- Iv -->
-                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                        <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
                                                             <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
-                                                                <span style="color: #3498db; font-size: 14px; line-height: 1;">●</span>
-                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Iv</span>
-                                                                <span id="ov-iv" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #3182F6; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 12px; font-weight: 600; color: #8B95A1; flex: 1;">Iv</span>
+                                                                <span id="ov-iv" style="font-size: 15px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
-                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                <span id="ov-iv-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                <span id="ov-iv-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
-                                                            </div>
-                                                            <div style="display: flex; gap: 10px; padding-left: 21px; margin-top: 3px;">
-                                                                <span style="font-size: 11px; color: #adb5bd;">rms</span>
-                                                                <span id="ov-iv-rms" style="font-size: 11px; font-family: monospace; color: #8e44ad; min-width: 40px;">-</span>
+                                                            <div style="display: flex; gap: 8px; padding-left: 13px;">
+                                                                <span style="font-size: 10px; color: #C5CBD4;">min</span>
+                                                                <span id="ov-iv-min" style="font-size: 10px; font-family: monospace; color: #3182F6; min-width: 36px;">-</span>
+                                                                <span style="font-size: 10px; color: #C5CBD4;">max</span>
+                                                                <span id="ov-iv-max" style="font-size: 10px; font-family: monospace; color: #F04452; min-width: 36px;">-</span>
+                                                                <span style="font-size: 10px; color: #C5CBD4;">rms</span>
+                                                                <span id="ov-iv-rms" style="font-size: 10px; font-family: monospace; color: #8B5CF6; min-width: 36px;">-</span>
                                                             </div>
                                                         </div>
-                                                        <!-- Iw -->
-                                                        <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                        <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
                                                             <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
-                                                                <span style="color: #2ecc71; font-size: 14px; line-height: 1;">●</span>
-                                                                <span style="font-size: 13px; color: #6c757d; flex: 1;">Iw</span>
-                                                                <span id="ov-iw" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #00C471; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 12px; font-weight: 600; color: #8B95A1; flex: 1;">Iw</span>
+                                                                <span id="ov-iw" style="font-size: 15px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 10px; padding-left: 21px;">
-                                                                <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                <span id="ov-iw-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                <span id="ov-iw-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
-                                                            </div>
-                                                            <div style="display: flex; gap: 10px; padding-left: 21px; margin-top: 3px;">
-                                                                <span style="font-size: 11px; color: #adb5bd;">rms</span>
-                                                                <span id="ov-iw-rms" style="font-size: 11px; font-family: monospace; color: #8e44ad; min-width: 40px;">-</span>
+                                                            <div style="display: flex; gap: 8px; padding-left: 13px;">
+                                                                <span style="font-size: 10px; color: #C5CBD4;">min</span>
+                                                                <span id="ov-iw-min" style="font-size: 10px; font-family: monospace; color: #3182F6; min-width: 36px;">-</span>
+                                                                <span style="font-size: 10px; color: #C5CBD4;">max</span>
+                                                                <span id="ov-iw-max" style="font-size: 10px; font-family: monospace; color: #F04452; min-width: 36px;">-</span>
+                                                                <span style="font-size: 10px; color: #C5CBD4;">rms</span>
+                                                                <span id="ov-iw-rms" style="font-size: 10px; font-family: monospace; color: #8B5CF6; min-width: 36px;">-</span>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <!-- 우측: 캔버스 -->
                                                     <div style="flex: 1; min-width: 0;">
-                                                        <canvas id="miniChartCurrent" style="width: 100%; height: 220px; border-radius: 8px; display: block; background: #fafafa;"></canvas>
+                                                        <canvas id="miniChartCurrent" style="width: 100%; height: 220px; border-radius: 10px; display: block; background: #F5F6F8;"></canvas>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1763,55 +1756,78 @@
                                             <!-- Left Panel: Steps -->
                                             <div style="flex: 0 0 290px; padding: 20px 18px; border-right: 1px solid #e9ecef; background: #fafafa;">
 
-                                                <!-- 전류 Offset 값 -->
-                                                <div style="border: 1px solid #e9ecef; border-radius: 8px; background: white; overflow: hidden; margin-bottom: 14px;">
-                                                    <div style="padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0f0f0;">
-                                                        <div style="font-size: 13px; font-weight: 600; color: #1a1a1a;">전류 Offset</div>
-                                                        <button onclick="app.readCurrentOffset()" style="font-size: 11px; padding: 3px 10px; background: #e9ecef; color: #495057; border: none; border-radius: 5px; cursor: pointer; font-weight: 500;">Read</button>
+                                                <!-- Status (0x2617) -->
+                                                <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 18px 20px; margin-bottom: 12px;">
+                                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                                        <span style="font-size: 12px; font-weight: 600; color: #8B95A1; letter-spacing: 0.3px;">STATUS</span>
+                                                        <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 7px; border-radius: 6px;">0x2617</span>
                                                     </div>
-                                                    <div style="padding: 10px 14px;">
-                                                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                                                            <tbody>
-                                                                <tr>
-                                                                    <td style="color: #e74c3c; padding: 5px 0; font-weight: 700; width: 40px;">Iu</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetCurrentU">—</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td style="color: #3498db; padding: 5px 0; font-weight: 700; width: 40px;">Iv</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetCurrentV">—</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td style="color: #2ecc71; padding: 5px 0; font-weight: 700; width: 40px;">Iw</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetCurrentW">—</td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
+                                                    <span id="offsetStatus2617" style="font-size: 26px; font-family: monospace; font-weight: 700; color: #191F28; letter-spacing: 3px; display: block;">-</span>
+                                                </div>
+
+                                                <!-- 전류 Offset -->
+                                                <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 18px 20px; margin-bottom: 12px;">
+                                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                                                        <span style="font-size: 12px; font-weight: 600; color: #8B95A1; letter-spacing: 0.3px;">전류 OFFSET</span>
+                                                        <button onclick="app.readCurrentOffset()" style="font-size: 11px; font-weight: 600; padding: 5px 12px; background: #F5F6F8; color: #4E5968; border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#EAECEF'" onmouseout="this.style.background='#F5F6F8'">Read</button>
+                                                    </div>
+                                                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #F04452; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 13px; color: #8B95A1; font-weight: 500;">Iu</span>
+                                                            </div>
+                                                            <span id="offsetCurrentU" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #191F28;">—</span>
+                                                        </div>
+                                                        <div style="height: 1px; background: #F5F6F8;"></div>
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #3182F6; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 13px; color: #8B95A1; font-weight: 500;">Iv</span>
+                                                            </div>
+                                                            <span id="offsetCurrentV" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #191F28;">—</span>
+                                                        </div>
+                                                        <div style="height: 1px; background: #F5F6F8;"></div>
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #00C471; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 13px; color: #8B95A1; font-weight: 500;">Iw</span>
+                                                            </div>
+                                                            <span id="offsetCurrentW" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #191F28;">—</span>
+                                                        </div>
                                                     </div>
                                                 </div>
 
-                                                <!-- Hall Offset 값 -->
-                                                <div style="border: 1px solid #e9ecef; border-radius: 8px; background: white; overflow: hidden;">
-                                                    <div style="padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0f0f0;">
-                                                        <div style="font-size: 13px; font-weight: 600; color: #1a1a1a;">Hall Offset</div>
-                                                        <button onclick="app.readHallOffset()" style="font-size: 11px; padding: 3px 10px; background: #e9ecef; color: #495057; border: none; border-radius: 5px; cursor: pointer; font-weight: 500;">Read</button>
+                                                <!-- Hall Offset -->
+                                                <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 18px 20px;">
+                                                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                                                        <span style="font-size: 12px; font-weight: 600; color: #8B95A1; letter-spacing: 0.3px;">HALL OFFSET</span>
+                                                        <button onclick="app.readHallOffset()" style="font-size: 11px; font-weight: 600; padding: 5px 12px; background: #F5F6F8; color: #4E5968; border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#EAECEF'" onmouseout="this.style.background='#F5F6F8'">Read</button>
                                                     </div>
-                                                    <div style="padding: 10px 14px;">
-                                                        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                                                            <tbody>
-                                                                <tr>
-                                                                    <td style="color: #e74c3c; padding: 5px 0; font-weight: 700; width: 55px;">Hall U</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetHallUVal">—</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td style="color: #3498db; padding: 5px 0; font-weight: 700; width: 55px;">Hall V</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetHallVVal">—</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <td style="color: #2ecc71; padding: 5px 0; font-weight: 700; width: 55px;">Hall W</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetHallWVal">—</td>
-                                                                </tr>
-                                                            </tbody>
-                                                        </table>
+                                                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #F04452; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 13px; color: #8B95A1; font-weight: 500;">Hall U</span>
+                                                            </div>
+                                                            <span id="offsetHallUVal" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #191F28;">—</span>
+                                                        </div>
+                                                        <div style="height: 1px; background: #F5F6F8;"></div>
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #3182F6; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 13px; color: #8B95A1; font-weight: 500;">Hall V</span>
+                                                            </div>
+                                                            <span id="offsetHallVVal" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #191F28;">—</span>
+                                                        </div>
+                                                        <div style="height: 1px; background: #F5F6F8;"></div>
+                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                                <span style="width: 6px; height: 6px; border-radius: 50%; background: #00C471; display: inline-block; flex-shrink: 0;"></span>
+                                                                <span style="font-size: 13px; color: #8B95A1; font-weight: 500;">Hall W</span>
+                                                            </div>
+                                                            <span id="offsetHallWVal" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #191F28;">—</span>
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -2308,8 +2324,8 @@
                                 <button class="filter-btn" data-filter="lsm">LSM</button>
                             </div>
                             <div style="display: flex; gap: 5px;">
-                                <button class="filter-btn active" data-implemented="all">All Status</button>
-                                <button class="filter-btn" data-implemented="Y">Implemented</button>
+                                <button class="filter-btn" data-implemented="all">All Status</button>
+                                <button class="filter-btn active" data-implemented="Y">Implemented</button>
                                 <button class="filter-btn" data-implemented="N">Not Implemented</button>
                             </div>
                             <input type="text" id="paramSearchInput" placeholder="Search by name or address..." style="flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;">

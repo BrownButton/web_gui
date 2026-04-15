@@ -1520,26 +1520,32 @@ class PolarChart {
         ctx.stroke();
 
         // 임계값 밴드 (채움 + 테두리 원 2개)
-        THRESH.forEach(({ label, min, max, color }) => {
+        // 라벨 각도: 겹치지 않도록 각 항목마다 다른 각도 사용
+        const LABEL_ANGLES = [30, 55]; // degrees, 첫번째=평상시, 두번째=Offset 조정
+        THRESH.forEach(({ label, min, max, color }, i) => {
             const rMin = min * scale;
             const rMax = max * scale;
-            // min 원 (점선)
+            // min 원 (실선)
             ctx.strokeStyle = color + 'aa';
             ctx.lineWidth   = 1;
-            ctx.setLineDash([4, 4]);
+            ctx.setLineDash([]);
             ctx.beginPath(); ctx.arc(cx, cy, rMin, 0, 2 * Math.PI); ctx.stroke();
             // max 원 (실선)
             ctx.strokeStyle = color + 'cc';
             ctx.lineWidth   = 1.5;
             ctx.setLineDash([]);
             ctx.beginPath(); ctx.arc(cx, cy, rMax, 0, 2 * Math.PI); ctx.stroke();
-            // 라벨 (max 원 오른쪽 45°)
-            const lx = cx + rMax * 0.707 + 4;
-            const ly = cy - rMax * 0.707 - 3;
+            // 라벨 + min/max 값 (각도별 배치)
+            const ang = LABEL_ANGLES[i] * Math.PI / 180;
+            const lx = cx + rMax * Math.cos(-ang) + 4;
+            const ly = cy + rMax * Math.sin(-ang) - 3;
             ctx.fillStyle = color;
-            ctx.font      = '9px sans-serif';
+            ctx.font      = '12px sans-serif';
             ctx.textAlign = 'left';
             ctx.fillText(label, lx, ly);
+            ctx.font      = '10px sans-serif';
+            ctx.fillStyle = color + 'cc';
+            ctx.fillText(`${min} ~ ${max}`, lx, ly + 13);
         });
 
         // 데이터 없으면 여기서 종료
@@ -1635,6 +1641,7 @@ class ModbusDashboard {
         this.receiveIndex = 0;
         this.readInProgress = false;
         this._serialDataCb = null; // event-driven RX callback for sendAndReceiveFC64
+        this._autoReconnecting = false; // 충돌 후 자동 재연결 시도 중 여부
         this.displayFormat = 'hex'; // 'hex' or 'dec'
         this.parameters = [];
 
@@ -1798,8 +1805,9 @@ class ModbusDashboard {
         this.ovPollingRunning = false;
         this.ovOnceExecuted   = false; // OS버전/모터ID/EEPROM 1회 실행 여부
 
-        // Offset 탭 알람코드 폴링 (탭 진입 시 자동 시작)
+        // Offset 탭 알람코드 / Status(0x2617) 폴링 (탭 진입 시 자동 시작)
         this.offsetAlarmPollingRunning = false;
+        this.offsetStatus2617PollingRunning = false;
 
         // Device Setup auto-apply debounce timers
         this.applyDebounceTimers = {};
@@ -1824,6 +1832,8 @@ class ModbusDashboard {
             navigator.serial.addEventListener('disconnect', (event) => {
                 if (this.isConnected && event.target === this.port) {
                     this.addMonitorEntry('error', 'RS-485 converter physically removed');
+                    // 자동 재연결 시도 중이라면 중단 (물리 제거 확정)
+                    this._autoReconnecting = false;
                     this.disconnect();
                 }
             });
@@ -1982,7 +1992,7 @@ class ModbusDashboard {
 
         // Parameter filters
         this.paramTypeFilter = 'all';
-        this.paramImplementedFilter = 'all';
+        this.paramImplementedFilter = 'Y';
         this.paramSearchText = '';
 
         document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
@@ -2417,6 +2427,7 @@ class ModbusDashboard {
         // HW Overview 폴링은 해당 탭에서만 동작 — 페이지 전환 시 항상 중지
         this.stopOvPolling();
         this.stopOffsetAlarmPolling();
+        this.stopOffsetStatus2617Polling();
         this.stopMiniChart('offsetHall');
 
         // Start/stop polling based on page
@@ -3175,8 +3186,9 @@ class ModbusDashboard {
             // HW Overview 폴링 중지 + 1회 실행 플래그 리셋 (재연결 시 재실행)
             this.ovPollingRunning = false;
             this.ovOnceExecuted   = false;
-            // Offset 탭 알람코드 폴링 중지
+            // Offset 탭 알람코드 / Status 폴링 중지
             this.offsetAlarmPollingRunning = false;
+            this.offsetStatus2617PollingRunning = false;
         }
     }
 
@@ -3232,12 +3244,10 @@ class ModbusDashboard {
         } catch (error) {
             if (this.readInProgress) {
                 this.addMonitorEntry('error', `Read error: ${error.message}`);
-                // 예기치 않은 읽기 오류 = 485 컨버터 물리적 제거 감지 → 자동 연결 해제
+                // 예기치 않은 읽기 오류 → 충돌 원인인지 물리 제거인지 판단 후 자동 재연결 시도
                 setTimeout(() => {
                     if (this.isConnected) {
-                        this.addMonitorEntry('error', 'Serial port physically removed - auto disconnecting');
-                        this.showToast('시리얼 포트가 제거되어 연결이 해제되었습니다', 'error');
-                        this.disconnect();
+                        this.autoReconnectAfterCollision();
                     }
                 }, 0);
             }
@@ -3247,6 +3257,98 @@ class ModbusDashboard {
                 this.reader = null;
             }
         }
+    }
+
+    /**
+     * RS-485 버스 충돌로 인한 시리얼 포트 끊김 후 자동 재연결 시도.
+     * - 물리적 제거 시: port.open()이 실패 → 기존 disconnect() 호출
+     * - 충돌로 인한 끊김: 동일 포트를 close→reopen 후 폴링 재개
+     */
+    async autoReconnectAfterCollision() {
+        if (this._autoReconnecting) return;
+        this._autoReconnecting = true;
+
+        const port = this.port;
+        if (!port) {
+            this._autoReconnecting = false;
+            return;
+        }
+
+        const saved = localStorage.getItem('serialSettings');
+        if (!saved) {
+            this._autoReconnecting = false;
+            this.addMonitorEntry('error', 'Serial port physically removed - auto disconnecting');
+            this.showToast('시리얼 포트가 제거되어 연결이 해제되었습니다', 'error');
+            this.disconnect();
+            return;
+        }
+
+        const { baudRate, dataBits, parity, stopBits } = JSON.parse(saved);
+
+        // 폴링 즉시 중단 (reader/writer는 disconnect()가 아닌 여기서 직접 해제)
+        this.stopAutoPolling(true);
+        this._busBusy = false;
+        this.readInProgress = false;
+
+        if (this.reader) {
+            try { await this.reader.cancel(); } catch (e) {}
+            try { this.reader.releaseLock(); } catch (e) {}
+            this.reader = null;
+        }
+        if (this.writer) {
+            try { this.writer.releaseLock(); } catch (e) {}
+            this.writer = null;
+        }
+
+        const MAX_RETRIES = 3;
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            // 물리적 제거 이벤트가 도착했으면 중단
+            if (!this._autoReconnecting) {
+                this.addMonitorEntry('error', 'Serial port physically removed - auto disconnecting');
+                this.showToast('시리얼 포트가 제거되어 연결이 해제되었습니다', 'error');
+                this.port = port;
+                this.disconnect();
+                return;
+            }
+
+            try {
+                try { await port.close(); } catch (e) {}
+
+                // 재시도 간 딜레이 (1회: 300ms, 2회: 700ms, 3회: 1200ms)
+                const delay = [300, 700, 1200][attempt - 1];
+                this.addMonitorEntry('error', `버스 충돌 감지 — 재연결 시도 ${attempt}/${MAX_RETRIES} (${delay}ms 후)`);
+                await new Promise(r => setTimeout(r, delay));
+
+                if (!this._autoReconnecting) break; // 물리 제거 이벤트 확인
+
+                await port.open({ baudRate, dataBits, parity, stopBits, flowControl: 'none' });
+
+                // 재연결 성공
+                this.port   = port;
+                this.writer = port.writable.getWriter();
+                this.startReading();
+                this._autoReconnecting = false;
+
+                this.addMonitorEntry('received', `자동 재연결 성공 (시도 ${attempt}회)`);
+                this.showToast('버스 충돌 후 자동 재연결 성공', 'success');
+
+                // 대시보드 페이지라면 폴링 재개
+                if (this.currentPage === 'dashboard' && this.devices.some(d => d.slaveId !== 0)) {
+                    setTimeout(() => this.startAutoPolling(), 300);
+                }
+                return;
+
+            } catch (e) {
+                this.addMonitorEntry('error', `재연결 시도 ${attempt} 실패: ${e.message}`);
+            }
+        }
+
+        // 모든 시도 실패 → 물리적 제거로 판단
+        this._autoReconnecting = false;
+        this.port = port;
+        this.addMonitorEntry('error', 'Serial port physically removed - auto disconnecting');
+        this.showToast('시리얼 포트가 제거되어 연결이 해제되었습니다', 'error');
+        this.disconnect();
     }
 
     /**
@@ -3621,6 +3723,13 @@ class ModbusDashboard {
                     return;
             }
 
+            if (this.autoPollingTimer || this._isFc64Active) {
+                // 폴링 중 — 큐에 등록해서 폴링 사이클 사이에 전송
+                const isRead = [1, 2, 3, 4].includes(functionCode);
+                return new Promise((resolve, reject) => {
+                    this.commandQueue.push({ type: isRead ? 'read' : undefined, frame, slaveId, address: startAddress, resolve, reject, tabSeq: this._tabSeq });
+                });
+            }
             await this.writer.write(frame);
             this.addMonitorEntry('sent', frame, { functionCode, startAddress, quantity });
             this.stats.requests++;
@@ -5792,6 +5901,11 @@ class ModbusDashboard {
             case 4: frame = this.modbus.buildReadInputRegisters(slaveId, param.address, 1); break;
         }
 
+        if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
+            return new Promise((resolve, reject) => {
+                this.commandQueue.push({ type: 'read', frame, slaveId, address: param.address, resolve, reject, tabSeq: this._tabSeq });
+            });
+        }
         await this.writer.write(frame);
         this.addMonitorEntry('sent', frame, { functionCode: param.functionCode, startAddress: param.address, quantity: 1 });
         this.stats.requests++;
@@ -5822,6 +5936,11 @@ class ModbusDashboard {
         const slaveId = this.selectedParamDeviceId;
         const frame = this.modbus.buildWriteSingleRegister(slaveId, param.address, value);
 
+        if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
+            return new Promise((resolve, reject) => {
+                this.commandQueue.push({ frame, slaveId, address: param.address, resolve, reject, tabSeq: this._tabSeq });
+            });
+        }
         await this.writer.write(frame);
         this.addMonitorEntry('sent', frame, { functionCode: 6, startAddress: param.address });
         this.stats.requests++;
@@ -6023,6 +6142,13 @@ class ModbusDashboard {
                     return;
             }
 
+            if (this.autoPollingTimer || this._isFc64Active) {
+                // 폴링 중 — 큐에 등록해서 폴링 사이클 사이에 전송
+                const isRead = [1, 2, 3, 4].includes(functionCode);
+                return new Promise((resolve, reject) => {
+                    this.commandQueue.push({ type: isRead ? 'read' : undefined, frame, slaveId, address: startAddress, resolve, reject, tabSeq: this._tabSeq });
+                });
+            }
             await this.writer.write(frame);
             this.addMonitorEntry('sent', frame, { functionCode, startAddress, quantity });
             this.stats.requests++;
@@ -9838,8 +9964,8 @@ class ModbusDashboard {
                 return null;
             }
         } else if (this.writer) {
-            if (this.autoPollingTimer || this._isFc64Active) {
-                // Polling 중이거나 FC64 차트가 버스를 점유 중이면 큐에 등록
+            if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
+                // Polling 중이거나 FC64 차트 / OV 폴링이 버스를 점유 중이면 큐에 등록
                 return new Promise((resolve, reject) => {
                     this.commandQueue.push({ type: 'read', frame, slaveId, address, resolve, reject, tabSeq: this._tabSeq });
                 });
@@ -12857,6 +12983,31 @@ class ModbusDashboard {
         this._setOvBadge('ps-phase-loss','pending');
     }
 
+    refreshHwOverview() {
+        this.stopOvPolling();
+        this.ovOnceExecuted = false;
+
+        // 기존 표시값 초기화 (시각적 리프레시 효과)
+        const clearIds = [
+            'ov-motor-id', 'ov-dclink-v', 'ov-igbt-motor-id',
+            'ov-alarm-code', 'ov-pha-bit',
+            'ov-mcu-boot-ascii', 'ov-mcu-boot',
+            'ov-mcu-fw-ascii',   'ov-mcu-fw',
+            'ov-inv-boot-ascii', 'ov-inv-boot',
+            'ov-inv-fw-ascii',   'ov-inv-fw',
+        ];
+        clearIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = '—';
+                el.style.color = '';
+            }
+        });
+        this._setOvBadge('mcu-os-version', 'pending');
+
+        this.startOvPolling();
+    }
+
     async _ovPollingLoop() {
         const toInt16 = v => { const n = v & 0xFFFF; return n >= 0x8000 ? n - 0x10000 : n; };
 
@@ -13010,6 +13161,123 @@ class ModbusDashboard {
             }
 
             if (this.offsetAlarmPollingRunning) await this.delay(100);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Offset 탭 Status(0x2617) 폴링 — 100ms 주기로 0x2617:00 읽기 (uint8_t[8])
+    //  버스 충돌 방지: autoPollingTimer / ovPollingRunning / _isFc64Active 활성 시
+    //  readCANopenObject()를 통해 commandQueue 경유, 아니면 직접 전송 후 큐 소진.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // 7-Segment 바이트 → 문자 변환 테이블 (펌웨어 정의 기준)
+    // 충돌 우선순위: 숫자 > 대문자 > 기호
+    static SEG7_TO_CHAR = {
+        0x3F: '0',
+        0x06: '1',   // LETTER_I, BAR_RIGHT 와 충돌 → '1' 우선
+        0x5B: '2',   // LETTER_Z 와 충돌 → '2' 우선
+        0x4F: '3',
+        0x66: '4',
+        0x6D: '5',   // LETTER_S 와 충돌 → '5' 우선
+        0x7D: '6',
+        0x07: '7',
+        0x7F: '8',
+        0x6F: '9',
+        0x77: 'A',
+        0x7C: 'b',
+        0x39: 'C',
+        0x5E: 'd',
+        0x79: 'E',
+        0x71: 'F',
+        0x3D: 'G',
+        0x74: 'h',
+        0x1E: 'J',
+        0x75: 'K',
+        0x38: 'L',
+        0x37: 'M',
+        0x54: 'n',
+        0x5C: 'o',
+        0x73: 'P',
+        0x67: 'Q',
+        0x50: 'r',
+        0x78: 't',
+        0x1C: 'u',
+        0x3E: 'V',
+        0x7E: 'W',
+        0x76: 'X',
+        0x6E: 'Y',
+        0x01: '¯',   // BAR_UP
+        0x40: '-',   // BAR_MID
+        0x08: '_',   // BAR_DOWN
+        0x30: '[',   // BAR_LEFT
+        0x20: '(',   // BAR_LEFT_UP
+        0x10: '\\',  // BAR_LEFT_DOWN
+        0x02: '/',   // BAR_RIGHT_UP
+        0x04: '.',   // BAR_RIGHT_DOWN
+        0x00: ' ',   // BLANK
+    };
+
+    // 5바이트 7-segment 데이터를 표시 문자열로 변환
+    // bit 7 (0x80) = 소수점(dp). 나머지 7비트로 문자 조회 후 '.' 추가
+    _seg7BytesToString(bytes) {
+        return bytes.slice(0, 5).reverse()
+            .map(b => {
+                const dot  = (b & 0x80) ? '.' : '';
+                const base = b & 0x7F;
+                // base가 BLANK(0x00)이고 dot만 있으면 공백 없이 '.'만 출력
+                if (base === 0x00) return dot || ' ';
+                const ch   = ModbusDashboard.SEG7_TO_CHAR[base]
+                          ?? `[${base.toString(16).padStart(2,'0').toUpperCase()}]`;
+                return ch + dot;
+            })
+            .join('');
+    }
+
+    startOffsetStatus2617Polling() {
+        if (this.offsetStatus2617PollingRunning) return;
+        this.offsetStatus2617PollingRunning = true;
+        this._offsetStatus2617PollingLoop();
+    }
+
+    stopOffsetStatus2617Polling() {
+        this.offsetStatus2617PollingRunning = false;
+        const el = document.getElementById('offsetStatus2617');
+        if (el) el.textContent = '-';
+    }
+
+    async _offsetStatus2617PollingLoop() {
+        while (this.offsetStatus2617PollingRunning) {
+            if (!this.writer || !this._getManufactureDevice()) {
+                await this.delay(500);
+                continue;
+            }
+
+            const device  = this._getManufactureDevice();
+            const slaveId = device.slaveId;
+
+            let result;
+            if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
+                // 다른 루프가 버스 점유 중 — commandQueue 경유
+                result = await this.readCANopenObject(slaveId, 0x2617, 0x00, 8);
+            } else {
+                // 이 루프가 버스 소유자 — 직접 전송
+                const frame = this.modbus.buildCANopenUpload(slaveId, 0x2617, 0x00, 0, 8);
+                result = await this.sendCANopenAndWaitResponse(frame, slaveId);
+                if (this.commandQueue.length > 0) await this._drainCommandQueue();
+            }
+
+            if (!this.offsetStatus2617PollingRunning) break;
+
+            const el = document.getElementById('offsetStatus2617');
+            if (el) {
+                if (result && !result.error && result.rawBytes && result.rawBytes.length >= 5) {
+                    el.textContent = this._seg7BytesToString(result.rawBytes).trimEnd() || '-';
+                } else {
+                    el.textContent = '-';
+                }
+            }
+
+            if (this.offsetStatus2617PollingRunning) await this.delay(100);
         }
     }
 
@@ -13509,115 +13777,6 @@ class ModbusDashboard {
                 if (el) el.value = raw;
                 this.saveDevices();
             }},
-            // ── 조그 설정 (LSM FC 0x2B) ───────────────────────────────
-            jogSpeed:         { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2300, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.jogSpeed = raw > 32767 ? raw - 65536 : raw;
-                const el = document.getElementById(`jogSpeed_${deviceId}`);
-                if (el) el.value = device.jogSpeed;
-                this.saveDevices();
-            }},
-            speedAccelTime:   { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2301, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.speedAccelTime = raw;
-                const el = document.getElementById(`speedAccelTime_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            speedDecelTime:   { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2302, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.speedDecelTime = raw;
-                const el = document.getElementById(`speedDecelTime_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            sCurveTime:       { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2303, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.sCurveTime = raw;
-                const el = document.getElementById(`sCurveTime_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            presetJogSpeed0:  { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2304, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.presetJogSpeed0 = raw > 32767 ? raw - 65536 : raw;
-                const el = document.getElementById(`presetJogSpeed0_${deviceId}`);
-                if (el) el.value = device.presetJogSpeed0;
-                this.saveDevices();
-            }},
-            presetJogSpeed1:  { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2305, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.presetJogSpeed1 = raw > 32767 ? raw - 65536 : raw;
-                const el = document.getElementById(`presetJogSpeed1_${deviceId}`);
-                if (el) el.value = device.presetJogSpeed1;
-                this.saveDevices();
-            }},
-            presetJogSpeed2:  { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2306, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.presetJogSpeed2 = raw > 32767 ? raw - 65536 : raw;
-                const el = document.getElementById(`presetJogSpeed2_${deviceId}`);
-                if (el) el.value = device.presetJogSpeed2;
-                this.saveDevices();
-            }},
-            presetJogSpeed3:  { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2307, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.presetJogSpeed3 = raw > 32767 ? raw - 65536 : raw;
-                const el = document.getElementById(`presetJogSpeed3_${deviceId}`);
-                if (el) el.value = device.presetJogSpeed3;
-                this.saveDevices();
-            }},
-            presetJogTime0:   { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2308, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.presetJogTime0 = raw;
-                const el = document.getElementById(`presetJogTime0_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            presetJogTime1:   { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x2309, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.presetJogTime1 = raw;
-                const el = document.getElementById(`presetJogTime1_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            presetJogTime2:   { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x230A, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.presetJogTime2 = raw;
-                const el = document.getElementById(`presetJogTime2_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
-            presetJogTime3:   { category: 'jog',            reader: async () => {
-                const r = await this.readCANopenObject(device.slaveId, 0x230B, 0x00);
-                return (r && !r.error && r.value != null) ? r.value : null;
-            }, apply: (raw) => {
-                device.presetJogTime3 = raw;
-                const el = document.getElementById(`presetJogTime3_${deviceId}`);
-                if (el) el.value = raw;
-                this.saveDevices();
-            }},
         };
     }
 
@@ -13756,7 +13915,6 @@ class ModbusDashboard {
             { id: 'protection',    label: '보호 설정' },
             { id: 'communication', label: '통신 설정' },
             { id: 'servoTuning',   label: '서보 튜닝' },
-            { id: 'jog',           label: '조그 설정' },
             { id: 'system',        label: '시스템' },
         ];
 
@@ -14054,14 +14212,6 @@ class ModbusDashboard {
 
             case 'servoTuning':
                 return `<div style="margin-top: 0;">
-                    ${row('lsmNodeId', 'Node ID (LSM)', 'RS-485 버스 슬레이브 주소 — LSM 드라이브 전용 (FC 0x2B, 0x2003)', `
-                        <input type="number" id="lsmNodeId_${id}"
-                            value="${device.lsmNodeId ?? ''}"
-                            min="1" max="247"
-                            placeholder="1–247"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('lsmNodeId', ${id})"
-                            onclick="event.stopPropagation()">`)}
                     ${row('inertiaRatio', '관성비 (Inertia Ratio)', '부하 관성 / 모터 관성 비율 — 서보 응답성 튜닝 (FC 0x2B, 0x2100)', `
                         <input type="number" id="inertiaRatio_${id}"
                             value="${device.inertiaRatio ?? ''}"
@@ -14136,106 +14286,6 @@ class ModbusDashboard {
                             onclick="event.stopPropagation()">`)}
                 </div>`;
 
-            case 'jog':
-                return `<div style="margin-top: 0;">
-                    ${row('jogSpeed', '조그 속도', '조그 운전 속도 지령값 — 양수:CW / 음수:CCW (FC 0x2B, 0x2300)', `
-                        <input type="number" id="jogSpeed_${id}"
-                            value="${device.jogSpeed ?? ''}"
-                            min="-32768" max="32767"
-                            placeholder="-32768–32767"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('jogSpeed', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('speedAccelTime', '가속 시간', '속도 지령 변화 시 가속 구간 시간 (FC 0x2B, 0x2301)', `
-                        <input type="number" id="speedAccelTime_${id}"
-                            value="${device.speedAccelTime ?? ''}"
-                            min="0" max="65535"
-                            placeholder="0–65535"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('speedAccelTime', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('speedDecelTime', '감속 시간', '속도 지령 변화 시 감속 구간 시간 (FC 0x2B, 0x2302)', `
-                        <input type="number" id="speedDecelTime_${id}"
-                            value="${device.speedDecelTime ?? ''}"
-                            min="0" max="65535"
-                            placeholder="0–65535"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('speedDecelTime', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('sCurveTime', 'S-Curve 시간', '가감속 S커브 적용 시간 — 0이면 선형 (FC 0x2B, 0x2303)', `
-                        <input type="number" id="sCurveTime_${id}"
-                            value="${device.sCurveTime ?? ''}"
-                            min="0" max="65535"
-                            placeholder="0–65535"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('sCurveTime', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('presetJogSpeed0', '프리셋 조그 속도 0', '프리셋 조그 속도 0 — 부호 있음 (FC 0x2B, 0x2304)', `
-                        <input type="number" id="presetJogSpeed0_${id}"
-                            value="${device.presetJogSpeed0 ?? ''}"
-                            min="-32768" max="32767"
-                            placeholder="-32768–32767"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('presetJogSpeed0', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('presetJogSpeed1', '프리셋 조그 속도 1', '프리셋 조그 속도 1 — 부호 있음 (FC 0x2B, 0x2305)', `
-                        <input type="number" id="presetJogSpeed1_${id}"
-                            value="${device.presetJogSpeed1 ?? ''}"
-                            min="-32768" max="32767"
-                            placeholder="-32768–32767"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('presetJogSpeed1', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('presetJogSpeed2', '프리셋 조그 속도 2', '프리셋 조그 속도 2 — 부호 있음 (FC 0x2B, 0x2306)', `
-                        <input type="number" id="presetJogSpeed2_${id}"
-                            value="${device.presetJogSpeed2 ?? ''}"
-                            min="-32768" max="32767"
-                            placeholder="-32768–32767"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('presetJogSpeed2', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('presetJogSpeed3', '프리셋 조그 속도 3', '프리셋 조그 속도 3 — 부호 있음 (FC 0x2B, 0x2307)', `
-                        <input type="number" id="presetJogSpeed3_${id}"
-                            value="${device.presetJogSpeed3 ?? ''}"
-                            min="-32768" max="32767"
-                            placeholder="-32768–32767"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('presetJogSpeed3', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('presetJogTime0', '프리셋 조그 시간 0', '프리셋 조그 속도 0 운전 지속 시간 (FC 0x2B, 0x2308)', `
-                        <input type="number" id="presetJogTime0_${id}"
-                            value="${device.presetJogTime0 ?? ''}"
-                            min="0" max="65535"
-                            placeholder="0–65535"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('presetJogTime0', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('presetJogTime1', '프리셋 조그 시간 1', '프리셋 조그 속도 1 운전 지속 시간 (FC 0x2B, 0x2309)', `
-                        <input type="number" id="presetJogTime1_${id}"
-                            value="${device.presetJogTime1 ?? ''}"
-                            min="0" max="65535"
-                            placeholder="0–65535"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('presetJogTime1', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('presetJogTime2', '프리셋 조그 시간 2', '프리셋 조그 속도 2 운전 지속 시간 (FC 0x2B, 0x230A)', `
-                        <input type="number" id="presetJogTime2_${id}"
-                            value="${device.presetJogTime2 ?? ''}"
-                            min="0" max="65535"
-                            placeholder="0–65535"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('presetJogTime2', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                    ${row('presetJogTime3', '프리셋 조그 시간 3', '프리셋 조그 속도 3 운전 지속 시간 (FC 0x2B, 0x230B)', `
-                        <input type="number" id="presetJogTime3_${id}"
-                            value="${device.presetJogTime3 ?? ''}"
-                            min="0" max="65535"
-                            placeholder="0–65535"
-                            style="${iStyle}"
-                            onchange="window.dashboard.debouncedApply('presetJogTime3', ${id})"
-                            onclick="event.stopPropagation()">`)}
-                </div>`;
-
             case 'system':
                 return `<div style="margin-top: 0;">
                     ${actionRow('softwareReset', '소프트웨어 리셋', '디바이스 소프트웨어를 재시작합니다 (0xD000)', `
@@ -14244,9 +14294,7 @@ class ModbusDashboard {
                     ${actionRow('errorReset', '오류 리셋', '모든 오류 상태와 플래그를 초기화합니다 (0xD000)', `
                         <button class="btn btn-warning btn-sm"
                             onclick="event.stopPropagation(); window.dashboard.resetDevice(${id}, 'error')">Reset</button>`)}
-                    ${actionRow('eepromToRam', 'EEPROM → RAM 로드', 'EEPROM에 저장된 설정을 RAM으로 불러옵니다 (0xD000)', `
-                        <button class="btn btn-info btn-sm"
-                            onclick="event.stopPropagation(); window.dashboard.resetDevice(${id}, 'eeprom')">Load</button>`)}
+
                 </div>`;
 
             default:
@@ -14587,55 +14635,6 @@ class ModbusDashboard {
                         break;
                     case 'driveCtrlInput2':
                         await this.applyGenericLSM(deviceId, 'driveCtrlInput2', 0x2120, 'driveCtrlInput2');
-                        success = true;
-                        break;
-                    // ── 조그 설정 (LSM) ──────────────────────────────────
-                    case 'jogSpeed':
-                        await this.applyGenericLSM(deviceId, 'jogSpeed', 0x2300, 'jogSpeed');
-                        success = true;
-                        break;
-                    case 'speedAccelTime':
-                        await this.applyGenericLSM(deviceId, 'speedAccelTime', 0x2301, 'speedAccelTime');
-                        success = true;
-                        break;
-                    case 'speedDecelTime':
-                        await this.applyGenericLSM(deviceId, 'speedDecelTime', 0x2302, 'speedDecelTime');
-                        success = true;
-                        break;
-                    case 'sCurveTime':
-                        await this.applyGenericLSM(deviceId, 'sCurveTime', 0x2303, 'sCurveTime');
-                        success = true;
-                        break;
-                    case 'presetJogSpeed0':
-                        await this.applyGenericLSM(deviceId, 'presetJogSpeed0', 0x2304, 'presetJogSpeed0');
-                        success = true;
-                        break;
-                    case 'presetJogSpeed1':
-                        await this.applyGenericLSM(deviceId, 'presetJogSpeed1', 0x2305, 'presetJogSpeed1');
-                        success = true;
-                        break;
-                    case 'presetJogSpeed2':
-                        await this.applyGenericLSM(deviceId, 'presetJogSpeed2', 0x2306, 'presetJogSpeed2');
-                        success = true;
-                        break;
-                    case 'presetJogSpeed3':
-                        await this.applyGenericLSM(deviceId, 'presetJogSpeed3', 0x2307, 'presetJogSpeed3');
-                        success = true;
-                        break;
-                    case 'presetJogTime0':
-                        await this.applyGenericLSM(deviceId, 'presetJogTime0', 0x2308, 'presetJogTime0');
-                        success = true;
-                        break;
-                    case 'presetJogTime1':
-                        await this.applyGenericLSM(deviceId, 'presetJogTime1', 0x2309, 'presetJogTime1');
-                        success = true;
-                        break;
-                    case 'presetJogTime2':
-                        await this.applyGenericLSM(deviceId, 'presetJogTime2', 0x230A, 'presetJogTime2');
-                        success = true;
-                        break;
-                    case 'presetJogTime3':
-                        await this.applyGenericLSM(deviceId, 'presetJogTime3', 0x230B, 'presetJogTime3');
                         success = true;
                         break;
                 }
@@ -16037,11 +16036,16 @@ class ModbusDashboard {
         if (!device) { this.showToast('디바이스를 선택하세요.', 'warning'); return; }
         try {
             const [u, v, w] = await Promise.all([
-                this.readCANopenObject(device.slaveId, 0x2015, 0x00),
-                this.readCANopenObject(device.slaveId, 0x2016, 0x00),
-                this.readCANopenObject(device.slaveId, 0x2017, 0x00),
+                this.readCANopenObject(device.slaveId, 0x2015, 0x00, 2),
+                this.readCANopenObject(device.slaveId, 0x2016, 0x00, 2),
+                this.readCANopenObject(device.slaveId, 0x2017, 0x00, 2),
             ]);
-            const fmt = r => r?.value != null ? String(r.value) : '—';
+            // int16_t: uint16 → signed 변환
+            const fmt = r => {
+                if (r?.value == null) return '—';
+                const signed = r.value > 0x7FFF ? r.value - 0x10000 : r.value;
+                return String(signed);
+            };
             document.getElementById('offsetCurrentU').textContent = fmt(u);
             document.getElementById('offsetCurrentV').textContent = fmt(v);
             document.getElementById('offsetCurrentW').textContent = fmt(w);
@@ -16055,11 +16059,15 @@ class ModbusDashboard {
         if (!device) { this.showToast('디바이스를 선택하세요.', 'warning'); return; }
         try {
             const [u, v, w] = await Promise.all([
-                this.readCANopenObject(device.slaveId, 0x2641, 0x00),
-                this.readCANopenObject(device.slaveId, 0x2642, 0x00),
-                this.readCANopenObject(device.slaveId, 0x2643, 0x00),
+                this.readCANopenObject(device.slaveId, 0x2641, 0x00, 4),
+                this.readCANopenObject(device.slaveId, 0x2642, 0x00, 4),
+                this.readCANopenObject(device.slaveId, 0x2643, 0x00, 4),
             ]);
-            const fmt = r => r?.value != null ? String(r.value) : '—';
+            // int32_t: dataWords[0]=상위 16bit, dataWords[1]=하위 16bit → JS 비트 연산으로 signed int32 자동 변환
+            const fmt = r => {
+                if (!r || r.error || !r.dataWords || r.dataWords.length < 2) return '—';
+                return String((r.dataWords[0] << 16) | r.dataWords[1]);
+            };
             document.getElementById('offsetHallUVal').textContent = fmt(u);
             document.getElementById('offsetHallVVal').textContent = fmt(v);
             document.getElementById('offsetHallWVal').textContent = fmt(w);
@@ -16207,6 +16215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (targetSubtab !== 'offset') {
                 window.dashboard.stopOffsetAlarmPolling();
+                window.dashboard.stopOffsetStatus2617Polling();
                 window.dashboard.stopMiniChart('offsetHall');
             }
 
@@ -16223,6 +16232,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('manufactureOffset').style.display = 'flex';
                 window.dashboard.initMiniCharts();   // offsetHallChart lazy init (숨겨진 상태에서 건너뛴 경우 여기서 초기화)
                 window.dashboard.startOffsetAlarmPolling();
+                window.dashboard.startOffsetStatus2617Polling();
             } else if (targetSubtab === 'serial-number') {
                 document.getElementById('manufactureSerialNumber').style.display = 'flex';
                 window.dashboard.snOnTabOpen();
