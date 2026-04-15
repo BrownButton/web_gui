@@ -1763,68 +1763,52 @@
                                             <!-- Left Panel: Steps -->
                                             <div style="flex: 0 0 290px; padding: 20px 18px; border-right: 1px solid #e9ecef; background: #fafafa;">
 
-                                                <!-- Step 1: 전류 Offset -->
-                                                <div id="offsetStep1Card" style="border: 1px solid #e9ecef; border-radius: 8px; background: white; overflow: hidden; margin-bottom: 14px;">
-                                                    <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0f0f0;">
-                                                        <div>
-                                                            <div style="font-size: 13px; font-weight: 600; color: #1a1a1a;">Step 1 &nbsp; 전류 Offset 보정</div>
-                                                            <div id="offsetStep1Desc" style="font-size: 11px; color: #6c757d; margin-top: 3px;">대기 중</div>
-                                                        </div>
-                                                        <span id="offsetStep1Badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500; white-space: nowrap;">대기</span>
+                                                <!-- 전류 Offset 값 -->
+                                                <div style="border: 1px solid #e9ecef; border-radius: 8px; background: white; overflow: hidden; margin-bottom: 14px;">
+                                                    <div style="padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0f0f0;">
+                                                        <div style="font-size: 13px; font-weight: 600; color: #1a1a1a;">전류 Offset</div>
+                                                        <button onclick="app.readCurrentOffset()" style="font-size: 11px; padding: 3px 10px; background: #e9ecef; color: #495057; border: none; border-radius: 5px; cursor: pointer; font-weight: 500;">Read</button>
                                                     </div>
                                                     <div style="padding: 10px 14px;">
                                                         <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                                                            <thead>
-                                                                <tr>
-                                                                    <td style="color: #6c757d; padding: 3px 0; font-size: 10px;"></td>
-                                                                    <td style="color: #adb5bd; font-size: 10px; padding: 3px 6px;">보정 전</td>
-                                                                    <td style="color: #28a745; font-size: 10px; padding: 3px 6px;">보정 후</td>
-                                                                </tr>
-                                                            </thead>
                                                             <tbody>
                                                                 <tr>
-                                                                    <td style="color: #6c757d; padding: 5px 0; font-weight: 500; white-space: nowrap;">편심 지수</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px;" id="offsetStep1EccBefore">—</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #28a745;" id="offsetStep1EccAfter">—</td>
+                                                                    <td style="color: #e74c3c; padding: 5px 0; font-weight: 700; width: 40px;">Iu</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetCurrentU">—</td>
                                                                 </tr>
                                                                 <tr>
-                                                                    <td style="color: #6c757d; padding: 5px 0; font-weight: 500; white-space: nowrap;">편축 지수</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px;" id="offsetStep1MisBefore">—</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #28a745;" id="offsetStep1MisAfter">—</td>
+                                                                    <td style="color: #3498db; padding: 5px 0; font-weight: 700; width: 40px;">Iv</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetCurrentV">—</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td style="color: #2ecc71; padding: 5px 0; font-weight: 700; width: 40px;">Iw</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetCurrentW">—</td>
                                                                 </tr>
                                                             </tbody>
                                                         </table>
                                                     </div>
                                                 </div>
 
-                                                <!-- Step 2: Hall Offset -->
-                                                <div id="offsetStep2Card" style="border: 1px solid #e9ecef; border-radius: 8px; background: white; overflow: hidden;">
-                                                    <div style="padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0f0f0;">
-                                                        <div>
-                                                            <div style="font-size: 13px; font-weight: 600; color: #1a1a1a;">Step 2 &nbsp; Hall Offset 보정</div>
-                                                            <div id="offsetStep2Desc" style="font-size: 11px; color: #6c757d; margin-top: 3px;">대기 중</div>
-                                                        </div>
-                                                        <span id="offsetStep2Badge" style="padding: 3px 10px; background: #e9ecef; color: #6c757d; border-radius: 10px; font-size: 11px; font-weight: 500; white-space: nowrap;">대기</span>
+                                                <!-- Hall Offset 값 -->
+                                                <div style="border: 1px solid #e9ecef; border-radius: 8px; background: white; overflow: hidden;">
+                                                    <div style="padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0f0f0;">
+                                                        <div style="font-size: 13px; font-weight: 600; color: #1a1a1a;">Hall Offset</div>
+                                                        <button onclick="app.readHallOffset()" style="font-size: 11px; padding: 3px 10px; background: #e9ecef; color: #495057; border: none; border-radius: 5px; cursor: pointer; font-weight: 500;">Read</button>
                                                     </div>
                                                     <div style="padding: 10px 14px;">
                                                         <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                                                            <thead>
-                                                                <tr>
-                                                                    <td style="color: #6c757d; padding: 3px 0; font-size: 10px;"></td>
-                                                                    <td style="color: #adb5bd; font-size: 10px; padding: 3px 6px;">보정 전</td>
-                                                                    <td style="color: #28a745; font-size: 10px; padding: 3px 6px;">보정 후</td>
-                                                                </tr>
-                                                            </thead>
                                                             <tbody>
                                                                 <tr>
-                                                                    <td style="color: #6c757d; padding: 5px 0; font-weight: 500; white-space: nowrap;">편심 지수</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px;" id="offsetStep2EccBefore">—</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #28a745;" id="offsetStep2EccAfter">—</td>
+                                                                    <td style="color: #e74c3c; padding: 5px 0; font-weight: 700; width: 55px;">Hall U</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetHallUVal">—</td>
                                                                 </tr>
                                                                 <tr>
-                                                                    <td style="color: #6c757d; padding: 5px 0; font-weight: 500; white-space: nowrap;">편축 지수</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px;" id="offsetStep2MisBefore">—</td>
-                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #28a745;" id="offsetStep2MisAfter">—</td>
+                                                                    <td style="color: #3498db; padding: 5px 0; font-weight: 700; width: 55px;">Hall V</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetHallVVal">—</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td style="color: #2ecc71; padding: 5px 0; font-weight: 700; width: 55px;">Hall W</td>
+                                                                    <td style="font-family: monospace; padding: 5px 6px; color: #1a1a1a; font-size: 13px;" id="offsetHallWVal">—</td>
                                                                 </tr>
                                                             </tbody>
                                                         </table>

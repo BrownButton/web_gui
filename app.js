@@ -1364,11 +1364,24 @@ class MiniChart {
         this.render();
     }
 
+    resize() {
+        const canvas = this.canvas;
+        const dpr = window.devicePixelRatio || 1;
+        const w = canvas.offsetWidth  || canvas.parentElement?.offsetWidth  || 400;
+        const h = canvas.offsetHeight || canvas.parentElement?.offsetHeight || 200;
+        canvas.width  = w * dpr;
+        canvas.height = h * dpr;
+        this.ctx = canvas.getContext('2d');
+        this.ctx.scale(dpr, dpr);
+        this.render();
+    }
+
     render() {
         const canvas = this.canvas;
         const ctx = this.ctx;
-        const W = canvas.width;
-        const H = canvas.height;
+        const dpr = window.devicePixelRatio || 1;
+        const W = canvas.width / dpr;
+        const H = canvas.height / dpr;
         ctx.clearRect(0, 0, W, H);
 
         ctx.fillStyle = '#fafafa';
@@ -1434,7 +1447,7 @@ class PolarChart {
      * DC 제거 없음: 원점(0,0)이 캔버스 중심. DC 오프셋이 있으면 원이 중심에서
      * 벗어나 보이는데, 이것이 Hall 오프셋 교정 목적상 확인해야 할 정보임.
      */
-    constructor(canvas, { maxPoints = 600 } = {}) {
+    constructor(canvas, { maxPoints = 100000 } = {}) {
         this.canvas    = canvas;
         this.ctx       = canvas.getContext('2d');
         this.maxPoints = maxPoints;
@@ -1575,15 +1588,16 @@ class PolarChart {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // 궤적
-        ctx.strokeStyle = 'rgba(46, 204, 113, 0.85)';
-        ctx.lineWidth   = 1.2;
+        // 궤적 (점)
+        ctx.fillStyle = 'rgba(46, 204, 113, 0.7)';
         ctx.beginPath();
-        ctx.moveTo(cx + this._a[0] * scale, cy - this._b[0] * scale);
-        for (let i = 1; i < n; i++) {
-            ctx.lineTo(cx + this._a[i] * scale, cy - this._b[i] * scale);
+        for (let i = 0; i < n; i++) {
+            const x = cx + this._a[i] * scale;
+            const y = cy - this._b[i] * scale;
+            ctx.moveTo(x + 1.5, y);
+            ctx.arc(x, y, 1.5, 0, 2 * Math.PI);
         }
-        ctx.stroke();
+        ctx.fill();
 
         // 최신 점 강조
         ctx.fillStyle = '#e74c3c';
@@ -12163,11 +12177,16 @@ class ModbusDashboard {
             const canvas = document.getElementById(canvasId);
             if (!canvas || this[chartKey]) return;
             // offsetWidth/offsetHeight: display:flex 설정 직후 호출 시 layout reflow로 올바른 값 반환
-            // canvas.height 를 CSS 표시 크기와 동일하게 맞춰야 수직 stretch(blur) 방지
-            const w = canvas.offsetWidth  || canvas.parentElement?.offsetWidth  || 400;
-            const h = canvas.offsetHeight || canvas.parentElement?.offsetHeight || 200;
-            canvas.width  = w;
-            canvas.height = h;
+            // canvas 버퍼를 devicePixelRatio 배율로 설정해야 HiDPI 화면에서 선이 선명하게 렌더링됨
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.offsetWidth  || canvas.parentElement?.offsetWidth  || 0;
+            const h = canvas.offsetHeight || canvas.parentElement?.offsetHeight || 0;
+            // 숨겨진 탭의 canvas는 offsetWidth/Height = 0 → 잘못된 크기로 초기화되어 블러 발생
+            // 이 경우 건너뛰고, 해당 탭이 표시될 때(startMiniChart 내 lazy init) 재시도
+            if (!w || !h) return;
+            canvas.width  = w * dpr;
+            canvas.height = h * dpr;
+            canvas.getContext('2d').scale(dpr, dpr);
             this[chartKey] = new MiniChart(canvas, channels);
             this[chartKey].render();
         };
@@ -16010,6 +16029,44 @@ class ModbusDashboard {
         // TODO: 실제 프로토콜 구현
         this._setOffsetStepStatus(1, 'done', '보정 완료');
     }
+
+    // ─── Offset 값 읽기 ────────────────────────────────────────────────────────
+
+    async readCurrentOffset() {
+        const device = this.devices.find(d => d.id === this.currentSetupDeviceId);
+        if (!device) { this.showToast('디바이스를 선택하세요.', 'warning'); return; }
+        try {
+            const [u, v, w] = await Promise.all([
+                this.readCANopenObject(device.slaveId, 0x2015, 0x00),
+                this.readCANopenObject(device.slaveId, 0x2016, 0x00),
+                this.readCANopenObject(device.slaveId, 0x2017, 0x00),
+            ]);
+            const fmt = r => r?.value != null ? String(r.value) : '—';
+            document.getElementById('offsetCurrentU').textContent = fmt(u);
+            document.getElementById('offsetCurrentV').textContent = fmt(v);
+            document.getElementById('offsetCurrentW').textContent = fmt(w);
+        } catch (err) {
+            this.showToast(`전류 Offset 읽기 오류: ${err.message || err}`, 'error');
+        }
+    }
+
+    async readHallOffset() {
+        const device = this.devices.find(d => d.id === this.currentSetupDeviceId);
+        if (!device) { this.showToast('디바이스를 선택하세요.', 'warning'); return; }
+        try {
+            const [u, v, w] = await Promise.all([
+                this.readCANopenObject(device.slaveId, 0x2641, 0x00),
+                this.readCANopenObject(device.slaveId, 0x2642, 0x00),
+                this.readCANopenObject(device.slaveId, 0x2643, 0x00),
+            ]);
+            const fmt = r => r?.value != null ? String(r.value) : '—';
+            document.getElementById('offsetHallUVal').textContent = fmt(u);
+            document.getElementById('offsetHallVVal').textContent = fmt(v);
+            document.getElementById('offsetHallWVal').textContent = fmt(w);
+        } catch (err) {
+            this.showToast(`Hall Offset 읽기 오류: ${err.message || err}`, 'error');
+        }
+    }
 }
 
 /**
@@ -16164,6 +16221,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('manufactureOsVerification').style.display = 'block';
             } else if (targetSubtab === 'offset') {
                 document.getElementById('manufactureOffset').style.display = 'flex';
+                window.dashboard.initMiniCharts();   // offsetHallChart lazy init (숨겨진 상태에서 건너뛴 경우 여기서 초기화)
                 window.dashboard.startOffsetAlarmPolling();
             } else if (targetSubtab === 'serial-number') {
                 document.getElementById('manufactureSerialNumber').style.display = 'flex';
