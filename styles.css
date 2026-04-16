@@ -316,11 +316,11 @@ body {
 
 /* Sidebar */
 .sidebar {
-    width: 280px;
-    min-width: 280px;
-    background: white;
-    border-right: 1px solid #d0d7e0;
-    box-shadow: 2px 0 12px rgba(0,0,0,0.08);
+    width: 260px;
+    min-width: 260px;
+    background: #F7F8FA;
+    border-right: none;
+    box-shadow: none;
     transition: all 0.3s ease;
     position: fixed;
     top: 56px;
@@ -338,38 +338,45 @@ body {
 }
 
 .sidebar-menu {
-    padding: 0;
+    padding: 12px 12px 0;
     flex: 1;
 }
 
 /* Expandable Menu Item */
 .menu-item-expandable {
-    border-bottom: 1px solid #e0e6ed;
+    border-bottom: none;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 4px;
+    background: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
 .menu-item-header {
-    padding: 15px 20px;
+    padding: 13px 16px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.15s;
     display: flex;
     align-items: center;
     gap: 10px;
     background: white;
+    border-radius: 14px;
 }
 
 .menu-item-header:hover {
-    background: #f8f9fa;
+    background: #F7F8FA;
 }
 
 .menu-item-expandable.expanded .menu-item-header {
-    background: #f8f9fa;
-    border-left: 3px solid #007bff;
+    background: white;
+    border-left: none;
+    border-radius: 14px 14px 0 0;
 }
 
 .menu-item-arrow {
     margin-left: auto;
-    font-size: 10px;
-    color: #6c757d;
+    font-size: 9px;
+    color: #C9CDD4;
     transition: transform 0.3s ease;
 }
 
@@ -378,25 +385,25 @@ body {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 4px 12px;
+    padding: 5px 14px;
     font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
 }
 
 .serial-status-banner.connected {
-    background: #d4edda;
-    color: #155724;
+    background: #E8FAF0;
+    color: #00B85C;
 }
 
 .serial-status-banner.disconnected {
-    background: #e9ecef;
-    color: #6c757d;
+    background: #F2F4F6;
+    color: #8B95A1;
 }
 
 .serial-status-banner-text {
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 .menu-item-expandable.expanded .menu-item-arrow {
@@ -407,20 +414,20 @@ body {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease, padding 0.3s ease;
-    background: #f8f9fa;
-    padding: 0 20px;
+    background: white;
+    padding: 0 16px;
 }
 
 .menu-item-content > * {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px);
     transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .menu-item-expandable.expanded .menu-item-content {
     max-height: 500px;
-    padding: 20px;
-    border-top: 1px solid #e0e6ed;
+    padding: 16px;
+    border-top: 1px solid #F2F4F6;
 }
 
 .menu-item-expandable.expanded .menu-item-content > * {
@@ -436,34 +443,35 @@ body {
 .sidebar-form-group label {
     display: block;
     font-size: 11px;
-    font-weight: 600;
-    color: #6c757d;
-    margin-bottom: 5px;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
+    font-weight: 700;
+    color: #8B95A1;
+    margin-bottom: 6px;
+    letter-spacing: 0.1px;
 }
 
 .sidebar-form-group select {
     width: 100%;
-    padding: 8px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
+    padding: 9px 10px;
+    border: 1.5px solid #E5E8EB;
+    border-radius: 10px;
     font-size: 13px;
-    background: white;
-    color: #495057;
-    transition: all 0.2s;
+    font-weight: 600;
+    background: #F7F8FA;
+    color: #191F28;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
 }
 
 .sidebar-form-group select:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    border-color: #3182F6;
+    background: white;
 }
 
 .sidebar-form-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+    gap: 8px;
     margin-bottom: 12px;
 }
 
@@ -471,7 +479,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-top: 15px;
+    margin-top: 14px;
 }
 
 .btn-block {
@@ -486,37 +494,43 @@ body {
 }
 
 .submenu-item {
-    padding: 10px 15px;
+    padding: 10px 14px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.15s;
     display: flex;
     align-items: center;
     gap: 8px;
-    border-radius: 4px;
+    border-radius: 10px;
 }
 
 .submenu-item:hover {
-    background: #e9ecef;
+    background: #F2F4F6;
 }
 
 .submenu-item.active {
-    background: #007bff;
-    color: white;
+    background: #EEF3FF;
+    color: #3182F6;
 }
 
 .submenu-icon {
     font-size: 10px;
-    color: #6c757d;
+    color: #C9CDD4;
     transition: transform 0.2s;
 }
 
 .submenu-item.active .submenu-icon {
-    color: white;
+    color: #3182F6;
 }
 
 .submenu-text {
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
+    color: #4E5968;
+    letter-spacing: -0.2px;
+}
+
+.submenu-item.active .submenu-text {
+    color: #3182F6;
 }
 
 /* Settings Container */
@@ -529,43 +543,49 @@ body {
 }
 
 .menu-item {
-    padding: 15px 20px;
+    padding: 13px 16px;
     cursor: pointer;
-    transition: all 0.2s;
-    border-left: 3px solid transparent;
+    transition: background 0.15s;
+    border-left: none;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     gap: 10px;
+    margin-bottom: 4px;
+    background: transparent;
 }
 
 .menu-item:hover {
-    background: #f8f9fa;
-    border-left-color: #007bff;
+    background: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
 .menu-item.active {
-    background: #e7f3ff;
-    border-left-color: #007bff;
+    background: white;
+    box-shadow: 0 1px 6px rgba(49,130,246,0.10);
 }
 
 .menu-item-icon {
-    width: 20px;
+    width: 22px;
     text-align: center;
-    color: #6c757d;
+    font-size: 16px;
+    filter: grayscale(30%);
 }
 
 .menu-item.active .menu-item-icon {
-    color: #007bff;
+    filter: none;
 }
 
 .menu-item-text {
     font-size: 14px;
-    color: #495057;
+    font-weight: 600;
+    color: #8B95A1;
+    letter-spacing: -0.2px;
 }
 
 .menu-item.active .menu-item-text {
-    color: #007bff;
-    font-weight: 500;
+    color: #3182F6;
+    font-weight: 700;
 }
 
 /* Toggle Button in Navbar */
@@ -595,7 +615,7 @@ body {
 .main-content {
     flex: 1;
     overflow-y: auto;
-    margin-left: 280px;
+    margin-left: 260px;
     padding-left: 20px;
     padding-right: 20px;
     transition: margin-left 0.3s ease, margin-right 0.3s ease, padding 0.3s ease;
@@ -3051,7 +3071,7 @@ select:focus {
 /* Sidebar Footer */
 .sidebar-footer {
     margin-top: auto;
-    padding: 0;
+    padding: 12px;
 }
 
 .sidebar-settings-btn {
@@ -3059,22 +3079,28 @@ select:focus {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 15px 20px;
-    background: transparent;
+    padding: 13px 16px;
+    background: white;
     border: none;
-    color: #495057;
+    border-radius: 14px;
+    color: #8B95A1;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
 .sidebar-settings-btn:hover {
-    background: #e9ecef;
-    color: #2c3e50;
+    background: #F2F4F6;
+    color: #4E5968;
 }
 
 .sidebar-settings-btn .settings-icon {
     font-size: 18px;
+    width: 22px;
+    text-align: center;
 }
 
 /* Settings Modal */
@@ -3694,27 +3720,29 @@ select:focus {
 /* Device List Section */
 .device-list-section {
     background: white;
-    border: 1px solid #d0d7e0;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 8px 32px rgba(0,0,0,0.05);
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 20px;
-    min-height: 60px;
+    padding: 20px 24px;
+    min-height: 64px;
     box-sizing: border-box;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e6ed;
+    background: white;
+    border-bottom: 1px solid #F2F4F6;
+    border-radius: 20px 20px 0 0;
 }
 
 .section-header h3 {
     font-size: 17px;
-    font-weight: 600;
-    color: #2c3e50;
+    font-weight: 700;
+    color: #191F28;
     margin: 0;
+    letter-spacing: -0.3px;
 }
 
 .section-header-left {
@@ -3725,14 +3753,15 @@ select:focus {
 
 .section-header #addDeviceBtn,
 .section-header #dashboardAutoScanBtn {
-    padding: 6px 12px;
+    padding: 6px 14px;
     font-size: 13px;
+    border-radius: 10px;
 }
 
 .device-count-badge {
     padding: 4px 10px;
-    background: #e9ecef;
-    color: #495057;
+    background: #F2F4F6;
+    color: #4E5968;
     border-radius: 12px;
     font-size: 12px;
     font-weight: 600;
@@ -3740,16 +3769,16 @@ select:focus {
 }
 
 .device-count-badge.has-devices {
-    background: #007bff;
+    background: #3182F6;
     color: #fff;
 }
 
 .device-list-section .device-grid {
     position: relative;
-    padding: 20px;
+    padding: 20px 24px;
     padding-top: 70px;
-    background: #fbfcff;
-    border-radius: 0 0 8px 8px;
+    background: #F7F8FA;
+    border-radius: 0 0 20px 20px;
     overflow: hidden;
     max-height: 2000px;
     transition: max-height 0.25s ease, padding 0.25s ease;
@@ -4344,18 +4373,21 @@ select:focus {
 
 /* 카드 상단 드래그 바 */
 .card-drag-bar {
-    height: 6px;
-    background: #f0f2f5;
-    border-bottom: 1px solid #e0e6ed;
+    height: 5px;
+    background: transparent;
+    border-bottom: none;
     cursor: grab;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: background 0.15s;
+    margin: 6px auto 0;
+    width: 40px;
+    border-radius: 3px;
 }
 
 .card-drag-bar:hover {
-    background: #dde3ea;
+    background: transparent;
 }
 
 .card-drag-bar:active {
@@ -4363,7 +4395,7 @@ select:focus {
 }
 
 .card-drag-dots {
-    width: 24px;
+    width: 28px;
     height: 3px;
     border-radius: 2px;
     background: repeating-linear-gradient(
@@ -4383,16 +4415,16 @@ select:focus {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 14px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e6ed;
+    padding: 6px 16px 10px;
+    background: white;
+    border-bottom: 1px solid #F2F4F6;
     gap: 8px;
 }
 
 .action-bar-right {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
     margin-left: auto;
 }
 
@@ -4400,48 +4432,49 @@ select:focus {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 10px;
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    background: white;
+    padding: 4px 12px;
+    border: none;
+    border-radius: 20px;
+    background: #F2F4F6;
     font-size: 12px;
-    color: #6c757d;
+    font-weight: 600;
+    color: #8B95A1;
     cursor: pointer;
     transition: all 0.15s;
+    letter-spacing: -0.2px;
 }
 
 .device-action-bar .btn-device-live-watch:hover {
-    border-color: #adb5bd;
-    background: #f1f3f5;
+    background: #E5E8EB;
+    color: #4E5968;
 }
 
 .device-action-bar .btn-device-live-watch.active {
-    border-color: #28a745;
-    background: #f0fff4;
-    color: #28a745;
+    background: #E8FAF0;
+    color: #00B85C;
 }
 
 .lw-label {
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .device-card {
     background: white;
-    border: 1px solid #d8dee6;
-    border-radius: 8px;
+    border: none;
+    border-radius: 20px;
     overflow: hidden;
     transition: all 0.2s;
     position: relative;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 4px 20px rgba(0,0,0,0.06);
 }
 
 .device-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.09), 0 8px 32px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
 }
 
 .device-card.selected {
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0,123,255,0.15);
+    box-shadow: 0 0 0 2px #3182F6, 0 4px 20px rgba(49,130,246,0.15);
 }
 
 .device-card.offline {
@@ -4459,9 +4492,9 @@ select:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 18px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e6ed;
+    padding: 16px 20px 12px;
+    background: white;
+    border-bottom: none;
 }
 
 .btn-delete-icon {
@@ -4469,28 +4502,26 @@ select:focus {
     height: 28px;
     border: none;
     background: transparent;
-    color: #95a5a6;
+    color: #C9CDD4;
     font-size: 22px;
     font-weight: 400;
     line-height: 1;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     flex-shrink: 0;
 }
 
 .btn-delete-icon:hover {
-    background: rgba(220, 53, 69, 0.1);
-    color: #dc3545;
-    transform: scale(1.1);
+    background: #FFF0F0;
+    color: #F04452;
 }
 
 .btn-delete-icon:active {
-    transform: scale(0.95);
-    background: rgba(220, 53, 69, 0.2);
+    transform: scale(0.92);
 }
 
 .btn-action-icon {
@@ -4498,28 +4529,26 @@ select:focus {
     height: 28px;
     border: none;
     background: transparent;
-    color: #95a5a6;
-    font-size: 18px;
+    color: #C9CDD4;
+    font-size: 16px;
     line-height: 1;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     flex-shrink: 0;
     padding: 0;
 }
 
 .btn-action-icon:hover {
-    background: rgba(108, 117, 125, 0.1);
-    color: #495057;
-    transform: scale(1.1);
+    background: #F2F4F6;
+    color: #4E5968;
 }
 
 .btn-action-icon:active {
-    transform: scale(0.95);
-    background: rgba(108, 117, 125, 0.2);
+    transform: scale(0.92);
 }
 
 .device-select {
@@ -4548,13 +4577,13 @@ select:focus {
 }
 
 .device-name {
-    font-weight: 600;
+    font-weight: 700;
     font-size: 15px;
-    color: #2c3e50;
+    color: #191F28;
     cursor: pointer;
     padding: 2px 6px;
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
     line-height: 1.2;
     display: inline-block;
     vertical-align: middle;
@@ -4563,10 +4592,11 @@ select:focus {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+    letter-spacing: -0.3px;
 }
 
 .device-name:hover {
-    background-color: #e9ecef;
+    background-color: #F2F4F6;
 }
 
 .device-name-group {
@@ -4578,14 +4608,15 @@ select:focus {
 
 .device-serial {
     font-size: 10px;
-    font-weight: 400;
-    color: #6c757d;
+    font-weight: 500;
+    color: #8B95A1;
     padding: 0 6px;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 160px;
+    letter-spacing: 0.1px;
 }
 
 .device-name-input {
@@ -4624,138 +4655,148 @@ select:focus {
 }
 
 .btn-device-live-watch.active .device-lw-indicator {
-    background: #28a745;
-    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+    background: #00C471;
+    box-shadow: 0 0 0 3px rgba(0, 196, 113, 0.2);
     animation: live-pulse 1.5s ease-in-out infinite;
 }
 
 .device-id-badge {
     font-size: 11px;
-    padding: 3px 8px;
-    background: #e9ecef;
-    border-radius: 4px;
-    color: #495057;
-    font-weight: 600;
+    padding: 4px 10px;
+    background: #F2F4F6;
+    border-radius: 20px;
+    color: #4E5968;
+    font-weight: 700;
     line-height: 1.2;
     display: inline-flex;
     align-items: center;
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
     user-select: none;
+    letter-spacing: -0.1px;
 }
 
 .device-id-badge:hover {
-    background: #0ea5e9;
+    background: #3182F6;
     color: #fff;
 }
 
 .device-id-badge.unassigned {
-    background: #fff3cd;
-    color: #856404;
+    background: #FFF4D6;
+    color: #9E6C00;
 }
 
 .device-id-badge.unassigned:hover {
-    background: #0ea5e9;
+    background: #3182F6;
     color: #fff;
 }
 
 .device-card-body {
-    padding: 18px;
+    padding: 16px 20px 20px;
 }
 
 .device-status-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
 }
 
 .device-status {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #F2F4F6;
 }
 
 .status-indicator {
-    width: 10px;
-    height: 10px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background: #6c757d;
+    background: #8B95A1;
 }
 
 .status-indicator.running {
-    background: #28a745;
+    background: #00C471;
     animation: pulse 1.5s infinite;
 }
 
 .status-indicator.stopped {
-    background: #dc3545;
+    background: #F04452;
 }
 
 .status-indicator.error {
-    background: #ffc107;
+    background: #FF9F0A;
 }
 
 .status-indicator.disconnected {
-    background: #adb5bd;
+    background: #C9CDD4;
 }
 
 @keyframes pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    50% { opacity: 0.4; }
 }
 
 .status-text {
     font-size: 12px;
-    color: #495057;
-    font-weight: 500;
+    color: #4E5968;
+    font-weight: 600;
+    letter-spacing: -0.1px;
 }
 
 .device-mode {
     font-size: 11px;
-    padding: 3px 8px;
-    background: #e7f3ff;
-    color: #0056b3;
-    border-radius: 4px;
-    font-weight: 500;
+    padding: 3px 10px;
+    background: #EEF3FF;
+    color: #3182F6;
+    border-radius: 20px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
 }
 
 /* Mode Toggle Buttons */
 .device-mode-btns {
     display: flex;
     gap: 0;
+    background: #F2F4F6;
+    border-radius: 20px;
+    padding: 2px;
 }
 
 .device-mode-btns .mode-btn {
-    padding: 5px 10px;
-    border: 1px solid #ced4da;
-    background: white;
-    color: #495057;
+    padding: 4px 12px;
+    border: none;
+    background: transparent;
+    color: #8B95A1;
     cursor: pointer;
-    font-size: 11px;
-    font-weight: 600;
-    transition: all 0.2s;
-    min-width: 40px;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.15s;
+    min-width: 42px;
     text-align: center;
+    border-radius: 16px;
+    letter-spacing: -0.2px;
 }
 
 .device-mode-btns .mode-btn:first-child {
-    border-radius: 4px 0 0 4px;
+    border-radius: 16px;
 }
 
 .device-mode-btns .mode-btn:last-child {
-    border-radius: 0 4px 4px 0;
-    border-left: none;
+    border-radius: 16px;
 }
 
 .device-mode-btns .mode-btn.active {
-    background: #0ea5e9;
+    background: #3182F6;
     color: white;
-    border-color: #0ea5e9;
+    box-shadow: 0 1px 4px rgba(49,130,246,0.35);
 }
 
 .device-mode-btns .mode-btn:hover:not(.active) {
-    background: #f8f9fa;
+    color: #4E5968;
 }
 
 /* Compact mode buttons for list view */
@@ -4768,36 +4809,41 @@ select:focus {
 .device-values {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 18px;
+    gap: 10px;
+    margin-bottom: 16px;
 }
 
 .device-value-item {
-    background: #f8f9fa;
-    padding: 14px 12px;
-    border-radius: 8px;
+    background: #F7F8FA;
+    padding: 14px 14px 12px;
+    border-radius: 14px;
     text-align: center;
 }
 
 .device-value-label {
     font-size: 11px;
-    color: #6c757d;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: #8B95A1;
+    font-weight: 600;
+    letter-spacing: 0.2px;
     margin-bottom: 6px;
+    text-transform: none;
 }
 
 .device-value-number {
-    font-size: 22px;
-    font-weight: 700;
-    color: #2c3e50;
+    font-size: 26px;
+    font-weight: 800;
+    color: #191F28;
     font-family: 'Consolas', monospace;
+    letter-spacing: -1px;
+    line-height: 1.1;
 }
 
 .device-value-unit {
-    font-size: 12px;
-    color: #6c757d;
-    margin-left: 3px;
+    font-size: 13px;
+    color: #8B95A1;
+    font-weight: 600;
+    margin-left: 2px;
+    letter-spacing: -0.2px;
 }
 
 /* Status value styles */
@@ -4815,7 +4861,7 @@ select:focus {
 }
 
 .status-value.running {
-    color: #28a745;
+    color: #00C471;
 }
 
 .status-value.error {
@@ -4835,30 +4881,37 @@ select:focus {
 
 .device-controls input {
     flex: 1;
-    padding: 10px 12px;
-    border: 1px solid #ced4da;
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 11px 14px;
+    border: 1.5px solid #E5E8EB;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    background: #F7F8FA;
     cursor: text !important;
     pointer-events: auto !important;
     position: relative;
     z-index: 1;
-    caret-color: #000000 !important;
+    caret-color: #191F28 !important;
+    color: #191F28;
+    transition: border-color 0.15s, background 0.15s;
+    letter-spacing: -0.3px;
 }
 
 .device-controls input:focus {
-    border-color: #007bff;
+    border-color: #3182F6;
+    background: #fff;
     outline: none;
     z-index: 2;
-    caret-color: #000000 !important;
+    caret-color: #191F28 !important;
 }
 
 .device-controls .input-unit {
-    font-size: 12px;
-    color: #6c757d;
-    font-weight: 500;
-    min-width: 35px;
+    font-size: 13px;
+    color: #8B95A1;
+    font-weight: 700;
+    min-width: 30px;
     pointer-events: none;
+    letter-spacing: -0.2px;
 }
 
 .device-controls .btn {
@@ -4868,14 +4921,31 @@ select:focus {
 
 .device-quick-btns {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     margin-top: 10px;
 }
 
 .device-quick-btns .quick-btn {
     flex: 1;
-    padding: 6px 8px;
+    padding: 7px 4px;
     font-size: 11px;
+    font-weight: 700;
+    border: none;
+    background: #F2F4F6;
+    color: #4E5968;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: -0.2px;
+}
+
+.device-quick-btns .quick-btn:hover {
+    background: #3182F6;
+    color: white;
+}
+
+.device-quick-btns .quick-btn:active {
+    transform: scale(0.94);
 }
 
 .device-card-footer {
@@ -4883,9 +4953,9 @@ select:focus {
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    padding: 12px 18px;
-    background: #f8f9fa;
-    border-top: 1px solid #e0e6ed;
+    padding: 12px 20px;
+    background: #F7F8FA;
+    border-top: 1px solid #F2F4F6;
 }
 
 .device-footer-left {
@@ -4913,54 +4983,52 @@ select:focus {
     height: 28px;
     border: none;
     background: transparent;
-    color: #95a5a6;
+    color: #C9CDD4;
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     flex-shrink: 0;
     padding: 0;
 }
 
 .btn-edit:hover {
-    background: rgba(52, 152, 219, 0.1);
-    color: #3498db;
-    transform: scale(1.1);
+    background: #EEF3FF;
+    color: #3182F6;
 }
 
 .btn-edit:active {
-    transform: scale(0.95);
-    background: rgba(52, 152, 219, 0.2);
+    transform: scale(0.92);
 }
 
 /* Device Monitoring Section */
 .device-monitoring-section {
-    border-top: 1px solid #e0e6ed;
+    border-top: 1px solid #F2F4F6;
 }
 
 .monitoring-header {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 18px;
+    padding: 13px 20px;
     cursor: pointer;
-    background: #f8f9fa;
-    transition: background 0.2s;
+    background: #F7F8FA;
+    transition: background 0.15s;
     user-select: none;
 }
 
 .monitoring-header:hover {
-    background: #e9ecef;
+    background: #F0F2F5;
 }
 
 .monitoring-toggle-icon {
     font-size: 10px;
     transition: transform 0.2s;
-    color: #6c757d;
+    color: #8B95A1;
 }
 
 .monitoring-header.expanded .monitoring-toggle-icon {
@@ -4969,23 +5037,25 @@ select:focus {
 
 .monitoring-title {
     font-size: 13px;
-    font-weight: 600;
-    color: #495057;
+    font-weight: 700;
+    color: #4E5968;
+    letter-spacing: -0.2px;
 }
 
 .monitoring-count {
     font-size: 11px;
-    color: #6c757d;
-    background: #e9ecef;
+    color: #8B95A1;
+    background: #E5E8EB;
     padding: 2px 8px;
     border-radius: 10px;
     margin-left: auto;
+    font-weight: 600;
 }
 
 .monitoring-content {
-    padding: 15px 18px;
-    background: #fafbfc;
-    border-top: 1px solid #e0e6ed;
+    padding: 16px 20px;
+    background: #F7F8FA;
+    border-top: 1px solid #F2F4F6;
 }
 
 /* Monitoring Parameters List */
@@ -4999,16 +5069,17 @@ select:focus {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px;
+    padding: 10px 14px;
     background: white;
-    border: 1px solid #e0e6ed;
-    border-radius: 6px;
+    border: none;
+    border-radius: 12px;
     margin-bottom: 6px;
-    transition: border-color 0.2s;
+    transition: box-shadow 0.15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
 .monitoring-param-item:hover {
-    border-color: #007bff;
+    box-shadow: 0 2px 8px rgba(49,130,246,0.12);
 }
 
 .param-info {
@@ -5020,32 +5091,34 @@ select:focus {
 }
 
 .param-name {
-    font-weight: 600;
+    font-weight: 700;
     font-size: 13px;
-    color: #2c3e50;
+    color: #191F28;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    letter-spacing: -0.2px;
 }
 
 .param-address {
     font-size: 11px;
-    color: #6c757d;
+    color: #8B95A1;
     font-family: 'Consolas', 'Monaco', monospace;
 }
 
 .param-value {
     font-size: 18px;
-    font-weight: 700;
-    color: #007bff;
+    font-weight: 800;
+    color: #3182F6;
     font-family: 'Consolas', 'Monaco', monospace;
     min-width: 70px;
     text-align: right;
     padding: 0 10px;
+    letter-spacing: -0.5px;
 }
 
 .param-value.stale {
-    color: #adb5bd;
+    color: #C9CDD4;
 }
 
 .param-value-wrapper {
