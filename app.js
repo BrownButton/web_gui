@@ -3253,7 +3253,9 @@ class ModbusDashboard {
             }
         } finally {
             if (this.reader) {
-                try { this.reader.releaseLock(); } catch (e) { /* ignore */ }
+                // cancel()은 stream을 취소하고 lock을 해제함 — releaseLock()만으로는
+                // errored stream에서 port.close()가 실패할 수 있어 cancel() 사용
+                try { await this.reader.cancel(); } catch (e) { /* stream already errored — ignore */ }
                 this.reader = null;
             }
         }
@@ -3290,9 +3292,12 @@ class ModbusDashboard {
         this._busBusy = false;
         this.readInProgress = false;
 
+        // 충돌로 깨진 수신 버퍼 초기화 — 재연결 후 첫 프레임 파싱 오류 방지
+        this.receiveIndex = 0;
+
+        // reader는 startReading() finally 블록에서 이미 cancel+null 처리됨 (안전망)
         if (this.reader) {
             try { await this.reader.cancel(); } catch (e) {}
-            try { this.reader.releaseLock(); } catch (e) {}
             this.reader = null;
         }
         if (this.writer) {
@@ -3324,9 +3329,12 @@ class ModbusDashboard {
                 await port.open({ baudRate, dataBits, parity, stopBits, flowControl: 'none' });
 
                 // 재연결 성공
-                this.port   = port;
-                this.writer = port.writable.getWriter();
+                this.port        = port;
+                this.writer      = port.writable.getWriter();
+                this.isConnected = true;
+                this.receiveIndex = 0; // 재오픈 직후 버퍼 재초기화 (이중 방어)
                 this.startReading();
+                this.updateConnectionStatus(true);
                 this._autoReconnecting = false;
 
                 this.addMonitorEntry('received', `자동 재연결 성공 (시도 ${attempt}회)`);
@@ -12369,12 +12377,25 @@ class ModbusDashboard {
         hallCard.style.display  = showHall ? 'flex' : 'none';
         polarCard.style.display = showHall ? 'none' : 'flex';
 
-        // 탭 버튼 활성 스타일
+        // 탭 버튼 활성 스타일 (폴더 탭)
         [tabHall, tabPolar].forEach((btn, i) => {
             if (!btn) return;
             const active = (i === 0) === showHall;
-            btn.style.color       = active ? '#2563eb' : '#adb5bd';
-            btn.style.borderBottom = active ? '2px solid #2563eb' : '2px solid transparent';
+            if (active) {
+                btn.style.color        = '#191F28';
+                btn.style.fontWeight   = '600';
+                btn.style.background   = 'white';
+                btn.style.border       = '1px solid #E4E8EE';
+                btn.style.borderBottom = '1px solid white';
+                btn.style.zIndex       = '1';
+            } else {
+                btn.style.color        = '#8B95A1';
+                btn.style.fontWeight   = '500';
+                btn.style.background   = 'transparent';
+                btn.style.border       = '1px solid transparent';
+                btn.style.borderBottom = 'none';
+                btn.style.zIndex       = '0';
+            }
         });
 
         // 탭 전환 후 canvas 크기 재반영
@@ -15371,9 +15392,9 @@ class ModbusDashboard {
         if (yearEl) yearEl.value = today.getFullYear();
         if (monthEl) monthEl.value = today.getMonth() + 1;
         const statusEl = document.getElementById('snPasswordStatus');
-        if (statusEl) { statusEl.textContent = '미확인 — 패스워드를 입력 후 확인 버튼을 누르세요'; statusEl.style.color = '#adb5bd'; }
+        if (statusEl) { statusEl.textContent = '미확인 — 패스워드를 입력 후 확인 버튼을 누르세요'; statusEl.style.color = '#b0b8c1'; }
         const pwInput = document.getElementById('snPassword');
-        if (pwInput) { pwInput.value = ''; pwInput.style.borderColor = '#dee2e6'; }
+        if (pwInput) { pwInput.value = ''; pwInput.style.borderColor = '#e8eaed'; }
         this._snUpdateWriteBtn();
         this._snUpdateDeviceLabel();
     }
@@ -15386,18 +15407,18 @@ class ModbusDashboard {
         const pwInput = document.getElementById('snPassword');
 
         if (!device) {
-            if (statusEl) { statusEl.textContent = '✘ 디바이스가 선택되지 않았습니다'; statusEl.style.color = '#dc3545'; }
+            if (statusEl) { statusEl.textContent = '✘ 디바이스가 선택되지 않았습니다'; statusEl.style.color = '#f04452'; }
             return;
         }
 
         const pwValue = parseInt(pwInput?.value || '', 10);
         if (isNaN(pwValue)) {
-            if (statusEl) { statusEl.textContent = '✘ 숫자를 입력해주세요'; statusEl.style.color = '#dc3545'; }
+            if (statusEl) { statusEl.textContent = '✘ 숫자를 입력해주세요'; statusEl.style.color = '#f04452'; }
             return;
         }
 
         if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
-        if (statusEl) { statusEl.textContent = '디바이스에 패스워드 전송 중...'; statusEl.style.color = '#6c757d'; }
+        if (statusEl) { statusEl.textContent = '디바이스에 패스워드 전송 중...'; statusEl.style.color = '#8b95a1'; }
 
         try {
             // FC 0x2B CANopen Download: index=0x4009, subIndex=0x00, value=입력값
@@ -15405,12 +15426,12 @@ class ModbusDashboard {
             if (!result || result.error) throw new Error(result?.error || '응답 없음');
 
             this._snUnlocked = true;
-            if (statusEl) { statusEl.textContent = '✔ 패스워드가 입력되었습니다'; statusEl.style.color = '#28a745'; }
-            if (pwInput) pwInput.style.borderColor = '#28a745';
+            if (statusEl) { statusEl.textContent = '✔ 패스워드가 입력되었습니다'; statusEl.style.color = '#00c471'; }
+            if (pwInput) pwInput.style.borderColor = '#00c471';
         } catch (e) {
             this._snUnlocked = false;
-            if (statusEl) { statusEl.textContent = '✘ 실패: ' + e.message; statusEl.style.color = '#dc3545'; }
-            if (pwInput) pwInput.style.borderColor = '#dc3545';
+            if (statusEl) { statusEl.textContent = '✘ 실패: ' + e.message; statusEl.style.color = '#f04452'; }
+            if (pwInput) pwInput.style.borderColor = '#f04452';
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = '확인'; }
             this._snUpdateWriteBtn();
@@ -15438,15 +15459,15 @@ class ModbusDashboard {
         const inputEl = el;
 
         if (raw.length === 0) {
-            inputEl.style.borderColor = '#dee2e6';
-            if (msgEl) { msgEl.textContent = '형식: 제품(S/M/D/R) + 연도코드(2자) + 월코드(A-L) + 일련번호(5자리) = 9자'; msgEl.style.color = '#adb5bd'; }
+            inputEl.style.borderColor = '#e8eaed';
+            if (msgEl) { msgEl.textContent = '형식: 제품(S/M/D/R) + 연도코드(2자) + 월코드(A-L) + 일련번호(5자리) = 9자'; msgEl.style.color = '#b0b8c1'; }
         } else if (ModbusDashboard.SN_REGEX.test(raw)) {
-            inputEl.style.borderColor = '#28a745';
-            if (msgEl) { msgEl.textContent = '✔ 유효한 형식입니다'; msgEl.style.color = '#28a745'; }
+            inputEl.style.borderColor = '#00c471';
+            if (msgEl) { msgEl.textContent = '✔ 유효한 형식입니다'; msgEl.style.color = '#00c471'; }
         } else {
-            inputEl.style.borderColor = '#dc3545';
+            inputEl.style.borderColor = '#f04452';
             const hint = this._snValidationHint(raw);
-            if (msgEl) { msgEl.textContent = '✘ ' + hint; msgEl.style.color = '#dc3545'; }
+            if (msgEl) { msgEl.textContent = '✘ ' + hint; msgEl.style.color = '#f04452'; }
         }
         this._snUpdateWriteBtn();
     }
@@ -15518,7 +15539,7 @@ class ModbusDashboard {
 
         const statusEl = document.getElementById('snWriteStatus');
         const btn = document.getElementById('snWriteBtn');
-        if (statusEl) { statusEl.textContent = '쓰는 중...'; statusEl.style.color = '#6c757d'; }
+        if (statusEl) { statusEl.textContent = '쓰는 중...'; statusEl.style.color = '#8b95a1'; }
         if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
 
         try {
@@ -15531,9 +15552,9 @@ class ModbusDashboard {
             // FC 0x2B CANopen Download: index=0x2424, subIndex=0x00
             const result = await this.writeCANopenObject(device.slaveId, 0x2424, 0x00, words);
             if (!result || result.error) throw new Error(result?.error || '응답 없음');
-            if (statusEl) { statusEl.textContent = '✔ 쓰기 완료'; statusEl.style.color = '#28a745'; }
+            if (statusEl) { statusEl.textContent = '✔ 쓰기 완료'; statusEl.style.color = '#00c471'; }
         } catch (e) {
-            if (statusEl) { statusEl.textContent = '✘ 쓰기 실패: ' + e.message; statusEl.style.color = '#dc3545'; }
+            if (statusEl) { statusEl.textContent = '✘ 쓰기 실패: ' + e.message; statusEl.style.color = '#f04452'; }
         } finally {
             this._snUpdateWriteBtn();
         }
@@ -15547,8 +15568,8 @@ class ModbusDashboard {
         const outputEl = document.getElementById('snReadOutput');
         const statusEl = document.getElementById('snReadStatus');
         const decodeBox = document.getElementById('snReadDecodeBox');
-        if (outputEl) { outputEl.textContent = '읽는 중...'; outputEl.style.color = '#adb5bd'; }
-        if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#adb5bd'; }
+        if (outputEl) { outputEl.textContent = '읽는 중...'; outputEl.style.color = '#b0b8c1'; }
+        if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#b0b8c1'; }
         if (decodeBox) decodeBox.style.display = 'none';
 
         try {
@@ -15566,7 +15587,7 @@ class ModbusDashboard {
 
             if (outputEl) {
                 outputEl.textContent = serial || '(비어있음)';
-                outputEl.style.color = serial ? '#28a745' : '#adb5bd';
+                outputEl.style.color = serial ? '#00c471' : '#b0b8c1';
             }
             if (statusEl) { statusEl.textContent = `읽기 완료 (Slave ${device.slaveId})`; }
 
@@ -15575,8 +15596,8 @@ class ModbusDashboard {
                 if (decodeBox) decodeBox.style.display = 'block';
             }
         } catch (e) {
-            if (outputEl) { outputEl.textContent = '오류'; outputEl.style.color = '#dc3545'; }
-            if (statusEl) { statusEl.textContent = '✘ ' + e.message; statusEl.style.color = '#dc3545'; }
+            if (outputEl) { outputEl.textContent = '오류'; outputEl.style.color = '#f04452'; }
+            if (statusEl) { statusEl.textContent = '✘ ' + e.message; statusEl.style.color = '#f04452'; }
         }
     }
 
@@ -15593,21 +15614,21 @@ class ModbusDashboard {
             const seq = parseInt(serial.substring(4));
 
             list.innerHTML = `
-                <li style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;">
-                    <span style="color:#6c757d;">제품</span>
-                    <span style="font-weight:600;color:#1a1a1a;">${pName}</span>
+                <li style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid #f5f6f8;font-size:13px;">
+                    <span style="color:#8b95a1;font-weight:500;">제품</span>
+                    <span style="font-weight:600;color:#191f28;">${pName}</span>
                 </li>
-                <li style="display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;">
-                    <span style="color:#6c757d;">제작년월</span>
-                    <span style="font-weight:600;color:#1a1a1a;">${fullYear}년 ${month}월</span>
+                <li style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid #f5f6f8;font-size:13px;">
+                    <span style="color:#8b95a1;font-weight:500;">제작년월</span>
+                    <span style="font-weight:600;color:#191f28;">${fullYear}년 ${month}월</span>
                 </li>
-                <li style="display:flex;justify-content:space-between;padding:10px 14px;font-size:13px;">
-                    <span style="color:#6c757d;">일련번호</span>
-                    <span style="font-weight:600;color:#1a1a1a;">${seq}번</span>
+                <li style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;font-size:13px;">
+                    <span style="color:#8b95a1;font-weight:500;">일련번호</span>
+                    <span style="font-weight:600;color:#191f28;">${seq}번</span>
                 </li>
             `;
         } catch {
-            list.innerHTML = `<li style="padding:10px 14px;font-size:13px;color:#dc3545;">해독 실패 — 형식이 올바르지 않습니다</li>`;
+            list.innerHTML = `<li style="padding:12px 20px;font-size:13px;color:#f04452;">해독 실패 — 형식이 올바르지 않습니다</li>`;
         }
     }
 
@@ -16227,7 +16248,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Show selected subtab content
             if (targetSubtab === 'os-verification') {
-                document.getElementById('manufactureOsVerification').style.display = 'block';
+                document.getElementById('manufactureOsVerification').style.display = 'flex';
             } else if (targetSubtab === 'offset') {
                 document.getElementById('manufactureOffset').style.display = 'flex';
                 window.dashboard.initMiniCharts();   // offsetHallChart lazy init (숨겨진 상태에서 건너뛴 경우 여기서 초기화)

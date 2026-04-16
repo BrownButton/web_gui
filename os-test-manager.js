@@ -105,9 +105,9 @@ class OSTestManager {
             const badge    = testItem?.querySelector('.test-status-badge');
             if (!badge) return;
             const r = this.results[testId]?.result;
-            if (r === 'pass')      { badge.textContent = 'Passed'; badge.style.background = '#d4edda'; badge.style.color = '#155724'; }
-            else if (r === 'fail') { badge.textContent = 'Failed'; badge.style.background = '#f8d7da'; badge.style.color = '#721c24'; }
-            else                   { badge.textContent = 'Pending'; badge.style.background = '#e9ecef'; badge.style.color = '#6c757d'; }
+            if (r === 'pass')      { badge.textContent = 'Passed'; badge.style.background = '#e6faf3'; badge.style.color = '#00a85a'; }
+            else if (r === 'fail') { badge.textContent = 'Failed'; badge.style.background = '#fff0f1'; badge.style.color = '#f04452'; }
+            else                   { badge.textContent = 'Pending'; badge.style.background = '#f2f4f6'; badge.style.color = '#8b95a1'; }
         });
     }
 
@@ -170,7 +170,7 @@ class OSTestManager {
                     // Phase 부제목
                     if (hasPhases && group.phase !== null) {
                         const header = document.createElement('div');
-                        header.style.cssText = 'margin:12px 0 4px 0;padding:4px 8px;font-size:12px;font-weight:700;color:#495057;border-left:3px solid #667eea;background:#f0f2ff;border-radius:0 4px 4px 0;';
+                        header.style.cssText = 'margin:10px 0 4px 0;padding:4px 10px;font-size:12px;font-weight:600;color:#3182f6;border-left:3px solid #3182f6;background:#f0f6ff;border-radius:0 6px 6px 0;';
                         header.textContent = `Phase ${group.phase}`;
                         stepsList.appendChild(header);
                     }
@@ -193,8 +193,8 @@ class OSTestManager {
                             return `<div>${line}</div>`;
                         }).join('');
                         stepDiv.innerHTML = `
-                            <div class="step-status" style="flex-shrink:0;margin-top:2px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e9ecef;color:#6c757d;font-size:11px;font-weight:600;">${index + 1}</div>
-                            <div style="flex:1;font-size:12px;color:#1a1a1a;line-height:1.5;">${renderedText}</div>
+                            <div class="step-status" style="flex-shrink:0;margin-top:2px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#f2f4f6;color:#8b95a1;font-size:11px;font-weight:600;">${index + 1}</div>
+                            <div style="flex:1;font-size:12px;color:#191f28;line-height:1.6;">${renderedText}</div>
                         `;
                         stepDiv.addEventListener('mouseover', () => { stepDiv.style.filter = 'brightness(0.95)'; });
                         stepDiv.addEventListener('mouseout',  () => { stepDiv.style.filter = ''; });
@@ -300,7 +300,7 @@ class OSTestManager {
         if (!el) return;
         const entries = this.testLogs[testId];
         if (!entries?.length) {
-            el.innerHTML = '<div style="color:#6c757d;">테스트 로그가 여기에 표시됩니다...</div>';
+            el.innerHTML = '<div style="color:#6e7681;">테스트 로그가 여기에 표시됩니다...</div>';
             return;
         }
         el.innerHTML = '';
@@ -321,11 +321,11 @@ class OSTestManager {
         // 모든 step 스타일 초기화
         testItem?.querySelectorAll('[id^="test-step-"]').forEach(stepEl => {
             const statusEl = stepEl.querySelector('.step-status');
-            stepEl.style.background = '#f8f9fa';
+            stepEl.style.background = '#f7f8fa';
             stepEl.style.borderLeft = '';
             if (statusEl) {
-                statusEl.style.background = '#e9ecef';
-                statusEl.style.color      = '#6c757d';
+                statusEl.style.background = '#f2f4f6';
+                statusEl.style.color      = '#8b95a1';
                 statusEl.innerHTML        = stepEl.id.split('-').pop();
             }
         });
@@ -340,7 +340,7 @@ class OSTestManager {
         const progressBar = testItem?.querySelector('.test-progress-bar');
         const progressTxt = testItem?.querySelector('.test-progress-text');
         if (progressBar) progressBar.style.width = '0%';
-        if (progressTxt) progressTxt.textContent = '테스트를 시작하려면 Start Test 버튼을 클릭하세요';
+        if (progressTxt) progressTxt.textContent = '테스트를 시작하려면 Start 버튼을 클릭하세요';
     }
 
     // ================================================================
@@ -370,10 +370,10 @@ class OSTestManager {
         if (!stepEl || !statusEl) return;
 
         const S = {
-            running: { bg: '#e0e7ff', border: '#667eea', dot: '#667eea', icon: '⏳' },
-            success: { bg: '#d4edda', border: '#28a745', dot: '#28a745', icon: '✓'  },
-            warning: { bg: '#fff3cd', border: '#ffc107', dot: '#ffc107', icon: '⚠'  },
-            error:   { bg: '#f8d7da', border: '#dc3545', dot: '#dc3545', icon: '✗'  }
+            running: { bg: '#f0f6ff', border: '#3182f6', dot: '#3182f6', icon: '⏳' },
+            success: { bg: '#e6faf3', border: '#00c471', dot: '#00c471', icon: '✓'  },
+            warning: { bg: '#fffbeb', border: '#f59e0b', dot: '#f59e0b', icon: '⚠'  },
+            error:   { bg: '#fff0f1', border: '#f04452', dot: '#f04452', icon: '✗'  }
         }[status];
         if (!S) return;
         stepEl.style.background   = S.bg;
@@ -387,10 +387,10 @@ class OSTestManager {
         const stepEl   = document.getElementById(`test-step-${testId}-${index}`);
         const statusEl = stepEl?.querySelector('.step-status');
         if (!stepEl || !statusEl) return;
-        stepEl.style.background = '#f8f9fa';
+        stepEl.style.background = '#f7f8fa';
         stepEl.style.borderLeft = '';
-        statusEl.style.background = '#e9ecef';
-        statusEl.style.color      = '#6c757d';
+        statusEl.style.background = '#f2f4f6';
+        statusEl.style.color      = '#8b95a1';
         statusEl.innerHTML        = String(index + 1);
     }
 
@@ -472,9 +472,9 @@ class OSTestManager {
         if (display) display.style.display = 'block';
 
         const isPass  = result === 'pass';
-        const bg      = isPass ? '#d4edda' : '#f8d7da';
-        const border  = isPass ? '#28a745' : '#dc3545';
-        const color   = isPass ? '#155724' : '#721c24';
+        const bg      = isPass ? '#e6faf3' : '#fff0f1';
+        const border  = isPass ? '#00c471' : '#f04452';
+        const color   = isPass ? '#00845a' : '#d63b49';
         const icon    = isPass ? '✓' : '✗';
         const label   = isPass ? '합격 (PASS)' : '불합격 (FAIL)';
 
@@ -1207,17 +1207,17 @@ class OSTestManager {
         container.innerHTML = '';
         for (const [cat, tests] of groups) {
             const section = document.createElement('section');
-            section.style.marginBottom = '28px';
+            section.style.marginBottom = '0';
             section.dataset.category = cat;
             section.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                    <h3 style="margin:0;font-size:17px;font-weight:600;color:#1a1a1a;">${cat}</h3>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px;">
+                    <h3 style="margin:0;font-size:15px;font-weight:700;color:#191f28;letter-spacing:-0.2px;">${cat}</h3>
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:12px;color:#6c757d;">${tests.length} tests</span>
-                        <button class="btn btn-success btn-sm os-run-category-btn" style="font-size:12px;padding:3px 10px;">▶ Run</button>
+                        <span style="font-size:12px;color:#b0b8c1;font-weight:500;">${tests.length}개 항목</span>
+                        <button class="os-run-category-btn" style="padding:6px 14px;background:#f0f6ff;color:#3182f6;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:-0.1px;">▶ Run</button>
                     </div>
                 </div>
-                <div style="display:grid;gap:10px;">
+                <div style="display:flex;flex-direction:column;gap:8px;">
                     ${tests.map(t => this._buildTestItemHtml(t)).join('')}
                 </div>`;
             section.querySelector('.os-run-category-btn').addEventListener('click', () => {
@@ -1232,61 +1232,68 @@ class OSTestManager {
     _buildTestItemHtml(test) {
         const esc = s => String(s ?? '-').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return `
-<div class="os-test-item" data-test-id="${test.id}" style="background:white;border:1px solid #e9ecef;border-radius:8px;overflow:hidden;transition:all 0.2s;">
-  <div class="os-test-header" style="padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+<div class="os-test-item" data-test-id="${test.id}" style="background:#fff;border:1px solid #f0f0f5;border-radius:14px;overflow:hidden;transition:box-shadow 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+  <div class="os-test-header" style="padding:16px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
     <div style="flex:1;min-width:0;">
-      <div style="font-size:14px;font-weight:500;color:#1a1a1a;margin-bottom:4px;">${test.number ? `[${esc(test.number)}]  ` : ''}${esc(test.title)}</div>
-      <div style="font-size:12px;color:#6c757d;">${esc(test.description)}</div>
+      <div style="font-size:14px;font-weight:600;color:#191f28;margin-bottom:3px;letter-spacing:-0.1px;">${test.number ? `<span style="color:#8b95a1;font-weight:500;margin-right:6px;">[${esc(test.number)}]</span>` : ''}${esc(test.title)}</div>
+      <div style="font-size:12px;color:#8b95a1;">${esc(test.description)}</div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;margin-left:12px;">
-      <span class="test-status-badge" style="padding:4px 12px;background:#e9ecef;color:#6c757d;border-radius:12px;font-size:12px;font-weight:500;">Pending</span>
-      <span class="test-expand-icon" style="font-size:18px;color:#6c757d;transition:transform 0.3s;">▼</span>
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:12px;">
+      <span class="test-status-badge" style="padding:4px 12px;background:#f2f4f6;color:#8b95a1;border-radius:20px;font-size:12px;font-weight:500;">Pending</span>
+      <span class="test-expand-icon" style="font-size:16px;color:#b0b8c1;transition:transform 0.3s;">▼</span>
     </div>
   </div>
-  <div class="os-test-content" style="display:none;border-top:1px solid #e9ecef;">
-    <div style="padding:20px;background:#f8f9fa;">
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;font-size:13px;">
-        <div><div style="color:#6c757d;margin-bottom:4px;">시험 분류</div><div style="color:#1a1a1a;font-weight:500;" class="test-category">${esc(test.category)}</div></div>
-        <div><div style="color:#6c757d;margin-bottom:4px;">시험 번호</div><div style="color:#1a1a1a;font-weight:500;" class="test-number">${esc(test.number)}</div></div>
-        <div style="grid-column:1/-1;"><div style="color:#6c757d;margin-bottom:4px;">시험 목적</div><div style="color:#1a1a1a;line-height:1.5;" class="test-purpose">${esc(test.purpose)}</div></div>
-        <div><div style="color:#6c757d;margin-bottom:4px;">적용 모델</div><div style="color:#1a1a1a;" class="test-model">${esc(test.model)}</div></div>
-        <div><div style="color:#6c757d;margin-bottom:4px;">시험 장비</div><div style="color:#1a1a1a;" class="test-equipment">${esc(test.equipment)}</div></div>
+  <div class="os-test-content" style="display:none;border-top:1px solid #f0f0f5;">
+    <div style="padding:16px 18px;background:#f7f8fa;">
+      <div style="font-size:11px;font-weight:600;color:#8b95a1;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:10px;">시험 정보</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;font-size:13px;">
+        <div><div style="color:#b0b8c1;font-size:11px;margin-bottom:3px;">시험 분류</div><div style="color:#191f28;font-weight:500;" class="test-category">${esc(test.category)}</div></div>
+        <div><div style="color:#b0b8c1;font-size:11px;margin-bottom:3px;">시험 번호</div><div style="color:#191f28;font-weight:500;" class="test-number">${esc(test.number)}</div></div>
+        <div style="grid-column:1/-1;"><div style="color:#b0b8c1;font-size:11px;margin-bottom:3px;">시험 목적</div><div style="color:#191f28;line-height:1.6;" class="test-purpose">${esc(test.purpose)}</div></div>
+        <div><div style="color:#b0b8c1;font-size:11px;margin-bottom:3px;">적용 모델</div><div style="color:#191f28;" class="test-model">${esc(test.model)}</div></div>
+        <div><div style="color:#b0b8c1;font-size:11px;margin-bottom:3px;">시험 장비</div><div style="color:#191f28;" class="test-equipment">${esc(test.equipment)}</div></div>
       </div>
     </div>
-    <div style="padding:20px;background:#f8f9fa;border-top:1px solid #e9ecef;">
+    <div style="padding:16px 18px;background:#fff;border-top:1px solid #f0f0f5;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <h4 style="margin:0;font-size:15px;font-weight:600;">테스트 실행</h4>
+        <div style="font-size:13px;font-weight:600;color:#191f28;">테스트 실행</div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm test-start-btn">▶ Start Test</button>
-          <button class="btn btn-secondary btn-sm test-stop-btn" style="display:none;">⏹ Stop</button>
+          <button class="test-start-btn" style="padding:7px 16px;background:#3182f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">▶ Start</button>
+          <button class="test-stop-btn" style="display:none;padding:7px 16px;background:#f7f8fa;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">⏹ Stop</button>
         </div>
       </div>
-      <div style="background:#e9ecef;height:6px;border-radius:3px;overflow:hidden;">
-        <div class="test-progress-bar" style="height:100%;background:linear-gradient(90deg,#667eea,#764ba2);width:0%;transition:width 0.3s;"></div>
+      <div style="background:#f2f4f6;height:4px;border-radius:2px;overflow:hidden;">
+        <div class="test-progress-bar" style="height:100%;background:#3182f6;width:0%;transition:width 0.3s;border-radius:2px;"></div>
       </div>
-      <div class="test-progress-text" style="margin-top:6px;font-size:12px;color:#6c757d;text-align:center;">테스트를 시작하려면 Start Test 버튼을 클릭하세요</div>
+      <div class="test-progress-text" style="margin-top:6px;font-size:12px;color:#b0b8c1;text-align:center;">테스트를 시작하려면 Start 버튼을 클릭하세요</div>
     </div>
-    <div style="padding:20px;">
-      <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600;">시험 단계</h4>
-      <div class="test-steps-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    <div style="padding:16px 18px;border-top:1px solid #f0f0f5;">
+      <div style="font-size:13px;font-weight:600;color:#191f28;margin-bottom:10px;">시험 단계</div>
+      <div class="test-steps-list" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
-    <div style="padding:0 20px 20px 20px;">
-      <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600;">실행 로그</h4>
-      <div class="test-log-container" style="background:#1e1e1e;color:#d4d4d4;padding:12px;border-radius:4px;font-family:'Consolas','Monaco',monospace;font-size:11px;max-height:200px;overflow-y:auto;line-height:1.5;">
-        <div style="color:#6c757d;">테스트 로그가 여기에 표시됩니다...</div>
+    <div style="padding:0 18px 16px 18px;">
+      <div style="font-size:13px;font-weight:600;color:#191f28;margin-bottom:8px;">실행 로그</div>
+      <div class="test-log-container" style="background:#13141a;color:#c9d1d9;padding:12px 14px;border-radius:10px;font-family:'Consolas','Monaco',monospace;font-size:11px;max-height:200px;overflow-y:auto;line-height:1.6;">
+        <div style="color:#6e7681;">테스트 로그가 여기에 표시됩니다...</div>
       </div>
     </div>
-    <div style="padding:20px;background:#f8f9fa;border-top:1px solid #e9ecef;">
-      <h4 style="margin:0 0 12px 0;font-size:15px;font-weight:600;">테스트 결과</h4>
+    <div style="padding:0 18px 16px 18px;">
+      <div style="font-size:13px;font-weight:600;color:#191f28;margin-bottom:8px;">판정 기준</div>
+      <div style="padding:12px 14px;background:#f0f6ff;border-left:3px solid #3182f6;border-radius:6px;">
+        <div style="font-size:13px;color:#191f28;" class="test-criteria">-</div>
+      </div>
+    </div>
+    <div style="padding:16px 18px;background:#f7f8fa;border-top:1px solid #f0f0f5;">
+      <div style="font-size:13px;font-weight:600;color:#191f28;margin-bottom:10px;">테스트 결과</div>
       <div class="test-result-display" style="display:none;"></div>
-      <div class="test-result-pending" style="padding:12px;background:#e9ecef;border-radius:4px;text-align:center;color:#6c757d;font-size:13px;">테스트를 실행하면 결과가 자동으로 표시됩니다</div>
+      <div class="test-result-pending" style="padding:12px;background:#f0f0f5;border-radius:8px;text-align:center;color:#8b95a1;font-size:13px;">테스트를 실행하면 결과가 자동으로 표시됩니다</div>
     </div>
-    <div style="padding:12px 20px 20px 20px;background:#f8f9fa;border-top:1px solid #e9ecef;display:flex;gap:8px;justify-content:flex-end;">
-      <button class="btn btn-sm test-copy-png-btn" style="background:#6c757d;color:#fff;border:none;">📋 Copy PNG</button>
-      <button class="btn btn-sm test-copy-log-btn" style="background:#6c757d;color:#fff;border:none;">📋 Copy Log</button>
-      <button class="btn btn-sm test-save-png-btn" style="background:#6c757d;color:#fff;border:none;">📷 Save PNG</button>
-      <button class="btn btn-sm test-save-log-btn" style="background:#6c757d;color:#fff;border:none;">📄 Save Log</button>
-      <button class="btn btn-sm test-save-lsm-btn" style="background:#6c757d;color:#fff;border:none;display:none;">💾 Save LSM</button>
+    <div style="padding:12px 18px 16px 18px;background:#f7f8fa;border-top:1px solid #f0f0f5;display:flex;gap:6px;justify-content:flex-end;">
+      <button class="test-copy-png-btn" style="padding:6px 12px;background:#fff;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;">📋 PNG 복사</button>
+      <button class="test-copy-log-btn" style="padding:6px 12px;background:#fff;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;">📋 로그 복사</button>
+      <button class="test-save-png-btn" style="padding:6px 12px;background:#fff;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;">📷 PNG 저장</button>
+      <button class="test-save-log-btn" style="padding:6px 12px;background:#fff;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;">📄 로그 저장</button>
+      <button class="test-save-lsm-btn" style="display:none;padding:6px 12px;background:#fff;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;">💾 LSM 저장</button>
     </div>
   </div>
 </div>`;

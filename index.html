@@ -591,23 +591,59 @@
                                 <!-- Sub-tab Contents Container -->
                                 <div style="flex: 1; overflow-y: auto; background: white;">
                                     <!-- OS Verification Sub-tab -->
-                                    <div class="manufacture-subtab-content" id="manufactureOsVerification" style="display: none; height: 100%;">
+                                    <div class="manufacture-subtab-content" id="manufactureOsVerification" style="display: none; height: 100%; flex-direction: column; overflow: hidden; background: #f7f8fa;">
 
-                                <!-- Progress Summary -->
-                                <div style="padding:20px 32px;background:#f8f9fa;border-bottom:1px solid #e9ecef;flex-shrink:0;">
-                                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:16px;margin-bottom:12px;">
-                                    <div style="text-align:center;"><div style="font-size:28px;font-weight:700;color:#1a1a1a;" id="osTestTotal">53</div><div style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:0.5px;">Total Tests</div></div>
-                                    <div style="text-align:center;"><div style="font-size:28px;font-weight:700;color:#28a745;" id="osTestPassed">0</div><div style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:0.5px;">Passed</div></div>
-                                    <div style="text-align:center;"><div style="font-size:28px;font-weight:700;color:#dc3545;" id="osTestFailed">0</div><div style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:0.5px;">Failed</div></div>
-                                    <div style="text-align:center;"><div style="font-size:28px;font-weight:700;color:#6c757d;" id="osTestPending">53</div><div style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:0.5px;">Pending</div></div>
-                                    <div style="text-align:center;"><div style="font-size:28px;font-weight:700;color:#667eea;" id="osTestProgress">0%</div><div style="font-size:11px;color:#6c757d;text-transform:uppercase;letter-spacing:0.5px;">Progress</div></div>
-                                  </div>
-                                  <div style="display:flex;gap:8px;justify-content:flex-end;">
-                                    <button class="btn btn-success btn-sm" id="osRunAllTestsBtn">▶ Run All Tests</button>
-                                    <button class="btn btn-warning btn-sm" id="osResetTestsBtn">↺ Reset All</button>
-                                  </div>
+                                <!-- Combined Header (한 줄) -->
+                                <div style="padding:14px 18px;background:#fff;border-bottom:1px solid #f0f0f5;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+
+                                    <!-- 타이틀 -->
+                                    <div style="flex-shrink:0;">
+                                        <div style="font-size:15px;font-weight:700;color:#191f28;letter-spacing:-0.3px;white-space:nowrap;">OS 검증</div>
+                                        <div style="font-size:11px;color:#b0b8c1;margin-top:1px;white-space:nowrap;">EC-FAN 기능 검증</div>
+                                    </div>
+
+                                    <!-- 구분선 -->
+                                    <div style="width:1px;height:32px;background:#f0f0f5;flex-shrink:0;"></div>
+
+                                    <!-- 통계 칩 (한 줄) -->
+                                    <div style="display:flex;gap:5px;flex:1;min-width:0;">
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#f7f8fa;border-radius:8px;padding:6px 4px;">
+                                            <span style="font-size:16px;font-weight:700;color:#191f28;letter-spacing:-0.3px;line-height:1;" id="osTestTotal">53</span>
+                                            <span style="font-size:10px;color:#8b95a1;font-weight:500;margin-top:2px;">Total</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#f0fdf8;border-radius:8px;padding:6px 4px;">
+                                            <span style="font-size:16px;font-weight:700;color:#00c471;letter-spacing:-0.3px;line-height:1;" id="osTestPassed">0</span>
+                                            <span style="font-size:10px;color:#00a85a;font-weight:500;margin-top:2px;">Passed</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#fff5f5;border-radius:8px;padding:6px 4px;">
+                                            <span style="font-size:16px;font-weight:700;color:#f04452;letter-spacing:-0.3px;line-height:1;" id="osTestFailed">0</span>
+                                            <span style="font-size:10px;color:#d63b49;font-weight:500;margin-top:2px;">Failed</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#f7f8fa;border-radius:8px;padding:6px 4px;">
+                                            <span style="font-size:16px;font-weight:700;color:#8b95a1;letter-spacing:-0.3px;line-height:1;" id="osTestPending">53</span>
+                                            <span style="font-size:10px;color:#8b95a1;font-weight:500;margin-top:2px;">Pending</span>
+                                        </div>
+                                        <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#f0f6ff;border-radius:8px;padding:6px 4px;">
+                                            <span style="font-size:16px;font-weight:700;color:#3182f6;letter-spacing:-0.3px;line-height:1;" id="osTestProgress">0%</span>
+                                            <span style="font-size:10px;color:#3182f6;font-weight:500;margin-top:2px;">Progress</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- 구분선 -->
+                                    <div style="width:1px;height:32px;background:#f0f0f5;flex-shrink:0;"></div>
+
+                                    <!-- 버튼 -->
+                                    <div style="display:flex;gap:6px;flex-shrink:0;">
+                                        <button id="osRunAllTestsBtn"
+                                            style="padding:7px 14px;background:#3182f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 0.15s;"
+                                            onmouseover="this.style.background='#1b6ef3'" onmouseout="this.style.background='#3182f6'">▶ Run All</button>
+                                        <button id="osResetTestsBtn"
+                                            style="padding:7px 12px;background:#f7f8fa;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 0.15s;"
+                                            onmouseover="this.style.background='#eef0f3'" onmouseout="this.style.background='#f7f8fa'">↺ Reset</button>
+                                    </div>
+
                                 </div>
-                                <div id="osTestListContainer" style="flex:1;overflow-y:auto;padding:24px 32px;">
+                                <div id="osTestListContainer" style="flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:20px;">
                                     <section style="margin-bottom:28px;">
                                       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                                         <h3 style="margin:0;font-size:17px;font-weight:600;color:#1a1a1a;">1. RS485</h3>
@@ -1397,32 +1433,37 @@
                                     <!-- HW Overview Dashboard Sub-tab -->
                                     <div class="manufacture-subtab-content active" id="manufactureHwOverview" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
 
-                                        <!-- Summary Bar -->
-                                        <div style="padding: 16px 28px; background: white; border-bottom: 1px solid #F2F4F6; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
-                                            <div style="display: flex; gap: 6px; align-items: center;">
-                                                <div style="padding: 10px 18px; border-radius: 12px; background: #F5F6F8; text-align: center; min-width: 60px;">
-                                                    <div style="font-size: 20px; font-weight: 700; color: #191F28; line-height: 1.2;">14</div>
-                                                    <div style="font-size: 10px; font-weight: 600; color: #8B95A1; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Total</div>
+                                        <!-- Header Bar -->
+                                        <div style="padding:14px 18px;background:#fff;border-bottom:1px solid #f0f0f5;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+                                            <div style="flex-shrink:0;">
+                                                <div style="font-size:15px;font-weight:700;color:#191f28;letter-spacing:-0.3px;white-space:nowrap;">HW Overview</div>
+                                                <div style="font-size:11px;color:#b0b8c1;margin-top:1px;white-space:nowrap;">하드웨어 기능 검증</div>
+                                            </div>
+                                            <div style="width:1px;height:32px;background:#f0f0f5;flex-shrink:0;"></div>
+                                            <div style="display:flex;gap:5px;flex:1;min-width:0;">
+                                                <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#f7f8fa;border-radius:8px;padding:6px 4px;">
+                                                    <span style="font-size:16px;font-weight:700;color:#191f28;letter-spacing:-0.3px;line-height:1;">14</span>
+                                                    <span style="font-size:10px;color:#8b95a1;font-weight:500;margin-top:2px;">Total</span>
                                                 </div>
-                                                <div style="padding: 10px 18px; border-radius: 12px; background: #E8FAF1; text-align: center; min-width: 60px;">
-                                                    <div style="font-size: 20px; font-weight: 700; color: #00C471; line-height: 1.2;" id="ovTestPassed">0</div>
-                                                    <div style="font-size: 10px; font-weight: 600; color: #00C471; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Passed</div>
+                                                <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#f0fdf8;border-radius:8px;padding:6px 4px;">
+                                                    <span style="font-size:16px;font-weight:700;color:#00c471;letter-spacing:-0.3px;line-height:1;" id="ovTestPassed">0</span>
+                                                    <span style="font-size:10px;color:#00a85a;font-weight:500;margin-top:2px;">Passed</span>
                                                 </div>
-                                                <div style="padding: 10px 18px; border-radius: 12px; background: #FFF0F0; text-align: center; min-width: 60px;">
-                                                    <div style="font-size: 20px; font-weight: 700; color: #F04452; line-height: 1.2;" id="ovTestFailed">0</div>
-                                                    <div style="font-size: 10px; font-weight: 600; color: #F04452; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Failed</div>
+                                                <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#fff5f5;border-radius:8px;padding:6px 4px;">
+                                                    <span style="font-size:16px;font-weight:700;color:#f04452;letter-spacing:-0.3px;line-height:1;" id="ovTestFailed">0</span>
+                                                    <span style="font-size:10px;color:#d63b49;font-weight:500;margin-top:2px;">Failed</span>
                                                 </div>
-                                                <div style="padding: 10px 18px; border-radius: 12px; background: #F5F6F8; text-align: center; min-width: 60px;">
-                                                    <div style="font-size: 20px; font-weight: 700; color: #8B95A1; line-height: 1.2;" id="ovTestPending">14</div>
-                                                    <div style="font-size: 10px; font-weight: 600; color: #8B95A1; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Pending</div>
+                                                <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#f7f8fa;border-radius:8px;padding:6px 4px;">
+                                                    <span style="font-size:16px;font-weight:700;color:#8b95a1;letter-spacing:-0.3px;line-height:1;" id="ovTestPending">14</span>
+                                                    <span style="font-size:10px;color:#8b95a1;font-weight:500;margin-top:2px;">Pending</span>
                                                 </div>
-                                                <div style="width: 1px; height: 36px; background: #F2F4F6; margin: 0 6px;"></div>
-                                                <div style="padding: 10px 18px; border-radius: 12px; background: #EBF2FF; text-align: center; min-width: 60px;">
-                                                    <div style="font-size: 20px; font-weight: 700; color: #3182F6; line-height: 1.2;" id="ovTestProgress">0%</div>
-                                                    <div style="font-size: 10px; font-weight: 600; color: #3182F6; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;">Progress</div>
+                                                <div style="flex:1;display:flex;flex-direction:column;align-items:center;background:#f0f6ff;border-radius:8px;padding:6px 4px;">
+                                                    <span style="font-size:16px;font-weight:700;color:#3182f6;letter-spacing:-0.3px;line-height:1;" id="ovTestProgress">0%</span>
+                                                    <span style="font-size:10px;color:#3182f6;font-weight:500;margin-top:2px;">Progress</span>
                                                 </div>
                                             </div>
-                                            <button style="font-size: 13px; font-weight: 600; padding: 8px 18px; background: #F5F6F8; color: #4E5968; border: none; border-radius: 10px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#EAECEF'" onmouseout="this.style.background='#F5F6F8'" onclick="app.refreshHwOverview()">↺ Refresh</button>
+                                            <div style="width:1px;height:32px;background:#f0f0f5;flex-shrink:0;"></div>
+                                            <button style="padding:7px 14px;background:#f7f8fa;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 0.15s;flex-shrink:0;" onmouseover="this.style.background='#eef0f3'" onmouseout="this.style.background='#f7f8fa'" onclick="app.refreshHwOverview()">↺ Refresh</button>
                                         </div>
 
                                         <!-- Test Cards Grid -->
@@ -1736,28 +1777,29 @@
                                     <div class="manufacture-subtab-content" id="manufactureOffset" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
 
                                         <!-- Header Bar -->
-                                        <div style="padding: 18px 28px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;">
-                                            <div>
-                                                <div style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Offset Calibration</div>
-                                                <div id="offsetOverallStatus" style="font-size: 12px; color: #6c757d; margin-top: 3px;">보정 시작 전 — Start 버튼을 눌러 보정을 시작하세요.</div>
+                                        <div style="padding:14px 18px;background:#fff;border-bottom:1px solid #f0f0f5;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+                                            <div style="flex-shrink:0;">
+                                                <div style="font-size:15px;font-weight:700;color:#191f28;letter-spacing:-0.3px;white-space:nowrap;">Offset 보정</div>
+                                                <div id="offsetOverallStatus" style="font-size:11px;color:#b0b8c1;margin-top:1px;white-space:nowrap;">보정 시작 전 — Start 버튼을 눌러 시작하세요</div>
                                             </div>
-                                            <div style="display: flex; align-items: center; gap: 20px;">
-                                                <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <span style="font-size: 12px; color: #6c757d; white-space: nowrap;">Alarm Code <span style="font-family: monospace; color: #adb5bd; font-size: 11px;">0x603F</span></span>
-                                                    <span id="offset-alarm-code" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #1a1a1a;">-</span>
-                                                </div>
-                                                <button id="offsetStartBtn" class="btn btn-primary btn-sm" style="min-width: 130px; font-size: 13px;">▶ Start</button>
+                                            <div style="width:1px;height:32px;background:#f0f0f5;flex-shrink:0;"></div>
+                                            <div style="display:flex;flex-direction:column;align-items:center;background:#f7f8fa;border-radius:8px;padding:6px 16px;flex-shrink:0;">
+                                                <span style="font-size:11px;color:#8b95a1;font-weight:500;">Alarm Code <span style="font-family:monospace;font-size:10px;color:#b0b8c1;">0x603F</span></span>
+                                                <span id="offset-alarm-code" style="font-size:16px;font-weight:700;font-family:monospace;color:#191f28;letter-spacing:-0.3px;line-height:1;margin-top:2px;">-</span>
                                             </div>
+                                            <div style="flex:1;"></div>
+                                            <div style="width:1px;height:32px;background:#f0f0f5;flex-shrink:0;"></div>
+                                            <button id="offsetStartBtn" style="padding:7px 18px;background:#3182f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background 0.15s;" onmouseover="this.style.background='#1b6ef3'" onmouseout="this.style.background='#3182f6'">▶ Start</button>
                                         </div>
 
                                         <!-- Body: Left steps + Right charts -->
-                                        <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
+                                        <div style="display: flex; flex: 1; min-height: 0; overflow: hidden; background: #F5F6F8;">
 
                                             <!-- Left Panel: Steps -->
-                                            <div style="flex: 0 0 290px; padding: 20px 18px; border-right: 1px solid #e9ecef; background: #fafafa;">
+                                            <div style="flex: 0 0 290px; padding: 20px 16px; border-right: 1px solid #F2F4F6; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
 
                                                 <!-- Status (0x2617) -->
-                                                <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 18px 20px; margin-bottom: 12px;">
+                                                <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 18px 20px;">
                                                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                                                         <span style="font-size: 12px; font-weight: 600; color: #8B95A1; letter-spacing: 0.3px;">STATUS</span>
                                                         <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 7px; border-radius: 6px;">0x2617</span>
@@ -1766,7 +1808,7 @@
                                                 </div>
 
                                                 <!-- 전류 Offset -->
-                                                <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 18px 20px; margin-bottom: 12px;">
+                                                <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 18px 20px;">
                                                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
                                                         <span style="font-size: 12px; font-weight: 600; color: #8B95A1; letter-spacing: 0.3px;">전류 OFFSET</span>
                                                         <button onclick="app.readCurrentOffset()" style="font-size: 11px; font-weight: 600; padding: 5px 12px; background: #F5F6F8; color: #4E5968; border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#EAECEF'" onmouseout="this.style.background='#F5F6F8'">Read</button>
@@ -1799,7 +1841,7 @@
                                                 </div>
 
                                                 <!-- Hall Offset -->
-                                                <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); padding: 18px 20px;">
+                                                <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 18px 20px;">
                                                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
                                                         <span style="font-size: 12px; font-weight: 600; color: #8B95A1; letter-spacing: 0.3px;">HALL OFFSET</span>
                                                         <button onclick="app.readHallOffset()" style="font-size: 11px; font-weight: 600; padding: 5px 12px; background: #F5F6F8; color: #4E5968; border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s;" onmouseover="this.style.background='#EAECEF'" onmouseout="this.style.background='#F5F6F8'">Read</button>
@@ -1833,125 +1875,125 @@
 
                                             </div><!-- /Left Panel -->
 
-                                            <!-- Right Panel: Hall Sensor 차트 -->
+                                            <!-- Right Panel: 차트 -->
                                             <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0;">
-                                                <!-- 차트 탭 헤더 -->
-                                                <div style="display: flex; gap: 0; border-bottom: 2px solid #e9ecef; flex-shrink: 0; padding: 0 20px; margin-top: 16px;">
+                                                <!-- 차트 탭 헤더 (폴더 탭 스타일) -->
+                                                <div style="display: flex; gap: 4px; flex-shrink: 0; padding: 10px 0 0; background: #F5F6F8; align-items: flex-end;">
                                                     <button id="offsetChartTab-hall" onclick="app.switchOffsetChartTab('hall')"
-                                                        style="padding: 8px 18px; font-size: 13px; font-weight: 600; border: none; background: none; cursor: pointer; color: #2563eb; border-bottom: 2px solid #2563eb; margin-bottom: -2px; transition: color 0.15s;">
+                                                        style="padding: 8px 18px 9px; font-size: 13px; font-weight: 600; border: 1px solid #E4E8EE; border-bottom: 1px solid white; background: white; cursor: pointer; color: #191F28; border-radius: 10px 10px 0 0; transition: all 0.15s; position: relative; z-index: 1; margin-bottom: -1px;">
                                                         Hall Sensor
                                                     </button>
                                                     <button id="offsetChartTab-polar" onclick="app.switchOffsetChartTab('polar')"
-                                                        style="padding: 8px 18px; font-size: 13px; font-weight: 600; border: none; background: none; cursor: pointer; color: #adb5bd; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s;">
+                                                        style="padding: 8px 18px 9px; font-size: 13px; font-weight: 600; border: 1px solid transparent; border-bottom: none; background: transparent; cursor: pointer; color: #8B95A1; border-radius: 10px 10px 0 0; transition: all 0.15s; position: relative; z-index: 0; margin-bottom: -1px;">
                                                         Clarke α-β
                                                     </button>
                                                 </div>
                                                 <!-- 탭 컨텐츠 영역 -->
-                                                <div style="flex: 1; min-height: 0; padding: 16px 20px 20px; display: flex; flex-direction: column;">
-                                                <div id="offsetCard-hall" class="ov-card-clickable" style="flex: 1; min-height: 0; display: flex; flex-direction: column; background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('offsetHall')">
+                                                <div style="flex: 1; min-height: 0; padding: 16px 20px 20px; display: flex; flex-direction: column; background: white; border-top: 1px solid #E4E8EE;">
+                                                <div id="offsetCard-hall" class="ov-card-clickable" style="flex: 1; min-height: 0; display: flex; flex-direction: column; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('offsetHall')">
                                                     <!-- 헤더 -->
-                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 12px; background: #fff3cd; color: #b45309; padding: 3px 9px; border-radius: 4px; font-weight: 700;">PS</span>
-                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Hall Sensor</span>
-                                                        <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">클릭하여 차트 시작/정지</span>
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #FEF3C7; color: #B45309; padding: 3px 9px; border-radius: 20px;">PS</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #191F28;">Hall Sensor</span>
+                                                        <span style="font-size: 11px; color: #C5CBD4; margin-left: 4px;">클릭하여 차트 시작/정지</span>
                                                     </div>
                                                     <!-- 본문: 좌측 채널 패널 + 우측 캔버스 -->
                                                     <div style="flex: 1; min-height: 0; display: flex; align-items: stretch; padding: 14px 20px 18px; gap: 18px;">
                                                         <!-- 좌측: 채널별 현재값 / min / max -->
                                                         <div style="display: flex; flex-direction: column; justify-content: space-around; gap: 8px; min-width: 165px;">
                                                             <!-- Hall U -->
-                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                            <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
                                                                 <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
-                                                                    <span style="color: #e74c3c; font-size: 14px; line-height: 1;">●</span>
-                                                                    <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall U</span>
-                                                                    <span id="offset-hall-u" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                    <span style="color: #F04452; font-size: 14px; line-height: 1;">●</span>
+                                                                    <span style="font-size: 13px; color: #8B95A1; flex: 1;">Hall U</span>
+                                                                    <span id="offset-hall-u" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                                 </div>
                                                                 <div style="display: flex; gap: 10px; padding-left: 21px;">
-                                                                    <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                    <span id="offset-hall-u-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                    <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                    <span id="offset-hall-u-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">min</span>
+                                                                    <span id="offset-hall-u-min" style="font-size: 11px; font-family: monospace; color: #3182F6; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">max</span>
+                                                                    <span id="offset-hall-u-max" style="font-size: 11px; font-family: monospace; color: #F04452; min-width: 40px;">-</span>
                                                                 </div>
                                                             </div>
                                                             <!-- Hall V -->
-                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                            <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
                                                                 <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
-                                                                    <span style="color: #3498db; font-size: 14px; line-height: 1;">●</span>
-                                                                    <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall V</span>
-                                                                    <span id="offset-hall-v" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                    <span style="color: #3182F6; font-size: 14px; line-height: 1;">●</span>
+                                                                    <span style="font-size: 13px; color: #8B95A1; flex: 1;">Hall V</span>
+                                                                    <span id="offset-hall-v" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                                 </div>
                                                                 <div style="display: flex; gap: 10px; padding-left: 21px;">
-                                                                    <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                    <span id="offset-hall-v-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                    <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                    <span id="offset-hall-v-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">min</span>
+                                                                    <span id="offset-hall-v-min" style="font-size: 11px; font-family: monospace; color: #3182F6; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">max</span>
+                                                                    <span id="offset-hall-v-max" style="font-size: 11px; font-family: monospace; color: #F04452; min-width: 40px;">-</span>
                                                                 </div>
                                                             </div>
                                                             <!-- Hall W -->
-                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
+                                                            <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
                                                                 <div style="display: flex; align-items: center; gap: 7px; margin-bottom: 6px;">
-                                                                    <span style="color: #2ecc71; font-size: 14px; line-height: 1;">●</span>
-                                                                    <span style="font-size: 13px; color: #6c757d; flex: 1;">Hall W</span>
-                                                                    <span id="offset-hall-w" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                    <span style="color: #00C471; font-size: 14px; line-height: 1;">●</span>
+                                                                    <span style="font-size: 13px; color: #8B95A1; flex: 1;">Hall W</span>
+                                                                    <span id="offset-hall-w" style="font-size: 16px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                                 </div>
                                                                 <div style="display: flex; gap: 10px; padding-left: 21px;">
-                                                                    <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                    <span id="offset-hall-w-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                    <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                    <span id="offset-hall-w-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">min</span>
+                                                                    <span id="offset-hall-w-min" style="font-size: 11px; font-family: monospace; color: #3182F6; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">max</span>
+                                                                    <span id="offset-hall-w-max" style="font-size: 11px; font-family: monospace; color: #F04452; min-width: 40px;">-</span>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <!-- 우측: 캔버스 -->
                                                         <div style="flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column;">
-                                                            <canvas id="offsetHallChart" style="flex: 1; width: 100%; min-height: 0; border-radius: 8px; display: block; background: #fafafa;"></canvas>
+                                                            <canvas id="offsetHallChart" style="flex: 1; width: 100%; min-height: 0; border-radius: 10px; display: block; background: #F5F6F8;"></canvas>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <!-- 극좌표계 차트 카드 -->
-                                                <div id="offsetCard-polar" class="ov-card-clickable" style="flex: 1; min-height: 0; display: none; flex-direction: column; background: white; border: 1px solid #e9ecef; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('offsetHall')">
+                                                <div id="offsetCard-polar" class="ov-card-clickable" style="flex: 1; min-height: 0; display: none; flex-direction: column; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); cursor: pointer;" onclick="app.toggleMiniChart('offsetHall')">
                                                     <!-- 헤더 -->
-                                                    <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #f0f0f0;">
-                                                        <span style="font-size: 12px; background: #e8f4fd; color: #0369a1; padding: 3px 9px; border-radius: 4px; font-weight: 700;">α-β</span>
-                                                        <span style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Clarke 변환 — 극좌표 궤적</span>
-                                                        <span style="font-size: 11px; color: #adb5bd; margin-left: 4px;">원 → 정상 &nbsp;/&nbsp; 타원 → 편심</span>
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #EBF5FF; color: #0369A1; padding: 3px 9px; border-radius: 20px;">α-β</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #191F28;">Clarke 변환 — 극좌표 궤적</span>
+                                                        <span style="font-size: 11px; color: #C5CBD4; margin-left: 4px;">원 → 정상 &nbsp;/&nbsp; 타원 → 편심</span>
                                                     </div>
                                                     <!-- 본문: 지표 패널 + 캔버스 -->
                                                     <div style="flex: 1; min-height: 0; display: flex; align-items: stretch; padding: 14px 20px 18px; gap: 18px;">
                                                         <!-- 좌측: Clarke 지표 -->
                                                         <div style="display: flex; flex-direction: column; justify-content: flex-start; gap: 8px; min-width: 165px;">
-                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
-                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 6px; font-weight: 500;">Amplitude</div>
+                                                            <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
+                                                                <div style="font-size: 11px; color: #8B95A1; margin-bottom: 6px; font-weight: 500;">Amplitude</div>
                                                                 <div style="display: flex; align-items: center; gap: 7px;">
-                                                                    <span id="offset-polar-amp" style="font-size: 18px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
+                                                                    <span id="offset-polar-amp" style="font-size: 18px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
                                                                 </div>
                                                                 <div style="display: flex; gap: 10px; margin-top: 4px;">
-                                                                    <span style="font-size: 11px; color: #adb5bd;">min</span>
-                                                                    <span id="offset-polar-amp-min" style="font-size: 11px; font-family: monospace; color: #3498db; min-width: 40px;">-</span>
-                                                                    <span style="font-size: 11px; color: #adb5bd;">max</span>
-                                                                    <span id="offset-polar-amp-max" style="font-size: 11px; font-family: monospace; color: #e74c3c; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">min</span>
+                                                                    <span id="offset-polar-amp-min" style="font-size: 11px; font-family: monospace; color: #3182F6; min-width: 40px;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">max</span>
+                                                                    <span id="offset-polar-amp-max" style="font-size: 11px; font-family: monospace; color: #F04452; min-width: 40px;">-</span>
                                                                 </div>
                                                             </div>
-                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
-                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 4px; font-weight: 500;">편심 지수 (Ecc)</div>
+                                                            <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
+                                                                <div style="font-size: 11px; color: #8B95A1; margin-bottom: 4px; font-weight: 500;">편심 지수 (Ecc)</div>
                                                                 <div style="display: flex; align-items: baseline; gap: 4px;">
-                                                                    <span id="offset-polar-ecc" style="font-size: 20px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
-                                                                    <span style="font-size: 11px; color: #adb5bd;">%</span>
+                                                                    <span id="offset-polar-ecc" style="font-size: 20px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">%</span>
                                                                 </div>
-                                                                <div style="font-size: 10px; color: #adb5bd; margin-top: 2px;">(max−min)/(max+min)×100</div>
+                                                                <div style="font-size: 10px; color: #C5CBD4; margin-top: 2px;">(max−min)/(max+min)×100</div>
                                                             </div>
-                                                            <div style="background: #fafafa; border-radius: 8px; padding: 10px 12px;">
-                                                                <div style="font-size: 11px; color: #6c757d; margin-bottom: 4px; font-weight: 500;">전기각 (θ)</div>
+                                                            <div style="background: #F5F6F8; border-radius: 10px; padding: 10px 12px;">
+                                                                <div style="font-size: 11px; color: #8B95A1; margin-bottom: 4px; font-weight: 500;">전기각 (θ)</div>
                                                                 <div style="display: flex; align-items: baseline; gap: 4px;">
-                                                                    <span id="offset-polar-angle" style="font-size: 20px; font-family: monospace; font-weight: 700; color: #1a1a1a;">-</span>
-                                                                    <span style="font-size: 11px; color: #adb5bd;">°</span>
+                                                                    <span id="offset-polar-angle" style="font-size: 20px; font-family: monospace; font-weight: 700; color: #191F28;">-</span>
+                                                                    <span style="font-size: 11px; color: #C5CBD4;">°</span>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <!-- 우측: 극좌표 캔버스 (정사각형) -->
                                                         <div style="flex: 1; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center;">
-                                                            <canvas id="offsetPolarChart" style="aspect-ratio: 1/1; height: 100%; max-width: 100%; border-radius: 8px; display: block; background: #fafafa;"></canvas>
+                                                            <canvas id="offsetPolarChart" style="aspect-ratio: 1/1; height: 100%; max-width: 100%; border-radius: 10px; display: block; background: #F5F6F8;"></canvas>
                                                         </div>
                                                     </div>
                                                 </div><!-- /offsetCard-polar -->
@@ -1963,45 +2005,57 @@
                                     </div><!-- /manufactureOffset -->
 
                                     <!-- Serial Number Sub-tab -->
-                                    <div class="manufacture-subtab-content" id="manufactureSerialNumber" style="display: none; flex-direction: column; height: 100%; overflow: hidden;">
+                                    <div class="manufacture-subtab-content" id="manufactureSerialNumber" style="display: none; flex-direction: column; height: 100%; overflow: hidden; background: #f7f8fa;">
 
                                         <!-- Header Bar -->
-                                        <div style="padding: 18px 28px; background: #f8f9fa; border-bottom: 1px solid #e9ecef; flex-shrink: 0;">
-                                            <div style="font-size: 15px; font-weight: 600; color: #1a1a1a;">Serial Number Assignment</div>
-                                            <div style="font-size: 12px; color: #6c757d; margin-top: 3px;">디바이스에 시리얼 넘버를 부여합니다 — 패스워드 확인 후 쓰기가 활성화됩니다</div>
+                                        <div style="padding:14px 18px;background:#fff;border-bottom:1px solid #f0f0f5;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+                                            <div style="flex-shrink:0;">
+                                                <div style="font-size:15px;font-weight:700;color:#191f28;letter-spacing:-0.3px;white-space:nowrap;">시리얼 넘버 관리</div>
+                                                <div style="font-size:11px;color:#b0b8c1;margin-top:1px;white-space:nowrap;">패스워드 확인 후 디바이스에 쓸 수 있습니다</div>
+                                            </div>
+                                            <div style="flex:1;"></div>
+                                            <div style="width:1px;height:32px;background:#f0f0f5;flex-shrink:0;"></div>
+                                            <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;">
+                                                <span style="font-size:10px;color:#b0b8c1;font-weight:500;">선택된 디바이스</span>
+                                                <span id="snReadDeviceLabel" style="font-size:13px;font-weight:600;color:#191f28;margin-top:1px;">—</span>
+                                            </div>
                                         </div>
 
                                         <!-- Body: Left (Write) + Right (Read) -->
-                                        <div style="flex: 1; display: flex; overflow: hidden; min-height: 0;">
+                                        <div style="flex: 1; display: flex; overflow: hidden; min-height: 0; gap: 0;">
 
                                             <!-- Left Panel: Generate & Write -->
-                                            <div style="flex: 0 0 50%; padding: 24px 28px; border-right: 1px solid #e9ecef; overflow-y: auto; background: #fafafa;">
+                                            <div style="flex: 0 0 50%; padding: 20px 20px 20px 20px; border-right: 1px solid #f0f0f5; overflow-y: auto; background: #f7f8fa; display: flex; flex-direction: column; gap: 12px;">
 
-                                                <!-- Password -->
-                                                <div style="margin-bottom: 20px;">
-                                                    <div style="font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">패스워드</div>
+                                                <!-- Password Card -->
+                                                <div style="background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="font-size: 12px; font-weight: 600; color: #8b95a1; letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 12px;">패스워드 확인</div>
                                                     <div style="display: flex; gap: 8px; align-items: center;">
-                                                        <input type="number" id="snPassword" placeholder="패스워드 입력"
-                                                            style="flex: 1; padding: 9px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 14px; background: white;"
+                                                        <input type="number" id="snPassword" placeholder="패스워드를 입력하세요"
+                                                            style="flex: 1; padding: 11px 14px; border: 1.5px solid #e8eaed; border-radius: 10px; font-size: 14px; background: #f7f8fa; color: #191f28; outline: none; transition: border-color 0.15s;"
+                                                            onfocus="this.style.borderColor='#3182f6'; this.style.background='#fff';"
+                                                            onblur="this.style.borderColor='#e8eaed'; this.style.background='#f7f8fa';"
                                                             onkeydown="if(event.key==='Enter') window.dashboard.snConfirmPassword()">
                                                         <button onclick="window.dashboard.snConfirmPassword()" id="snPasswordBtn"
-                                                            style="padding: 9px 14px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                                                            style="padding: 11px 18px; background: #3182f6; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; letter-spacing: -0.1px; transition: background 0.15s;"
+                                                            onmouseover="this.style.background='#1b6ef3'"
+                                                            onmouseout="this.style.background='#3182f6'">
                                                             확인
                                                         </button>
                                                     </div>
-                                                    <div id="snPasswordStatus" style="font-size: 12px; color: #adb5bd; margin-top: 5px; min-height: 16px;">미확인 — 패스워드를 입력 후 확인 버튼을 누르세요</div>
+                                                    <div id="snPasswordStatus" style="font-size: 12px; color: #8b95a1; margin-top: 8px; min-height: 16px; display: flex; align-items: center; gap: 5px;">미확인 — 패스워드를 입력 후 확인 버튼을 누르세요</div>
                                                 </div>
 
-                                                <div style="border-top: 1px solid #e9ecef; margin-bottom: 20px;"></div>
-
-                                                <!-- Serial Number Generator -->
-                                                <div style="margin-bottom: 16px;">
-                                                    <div style="font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 12px;">시리얼 넘버 생성</div>
+                                                <!-- Generator Card -->
+                                                <div style="background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="font-size: 12px; font-weight: 600; color: #8b95a1; letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 14px;">시리얼 넘버 생성</div>
 
                                                     <!-- 제품 구분 -->
-                                                    <div style="display: flex; align-items: center; margin-bottom: 10px; gap: 12px;">
-                                                        <label style="font-size: 13px; color: #6c757d; width: 90px; flex-shrink: 0;">제품 구분</label>
-                                                        <select id="snProduct" style="flex: 1; padding: 7px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; background: white;">
+                                                    <div style="margin-bottom: 10px;">
+                                                        <label style="font-size: 12px; font-weight: 500; color: #8b95a1; display: block; margin-bottom: 5px;">제품 구분</label>
+                                                        <select id="snProduct" style="width: 100%; padding: 10px 12px; border: 1.5px solid #e8eaed; border-radius: 10px; font-size: 13px; background: #f7f8fa; color: #191f28; outline: none; cursor: pointer; transition: border-color 0.15s;"
+                                                            onfocus="this.style.borderColor='#3182f6'; this.style.background='#fff';"
+                                                            onblur="this.style.borderColor='#e8eaed'; this.style.background='#f7f8fa';">
                                                             <option value="S">인코더 (S)</option>
                                                             <option value="M">모터 (M)</option>
                                                             <option value="D" selected>드라이브 (D)</option>
@@ -2009,100 +2063,109 @@
                                                         </select>
                                                     </div>
 
-                                                    <!-- 제작 연도 -->
-                                                    <div style="display: flex; align-items: center; margin-bottom: 10px; gap: 12px;">
-                                                        <label style="font-size: 13px; color: #6c757d; width: 90px; flex-shrink: 0;">제작 연도</label>
-                                                        <input type="number" id="snYear" min="2000" style="flex: 1; padding: 7px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; background: white;">
-                                                    </div>
-
-                                                    <!-- 제작 월 -->
-                                                    <div style="display: flex; align-items: center; margin-bottom: 10px; gap: 12px;">
-                                                        <label style="font-size: 13px; color: #6c757d; width: 90px; flex-shrink: 0;">제작 월</label>
-                                                        <select id="snMonth" style="flex: 1; padding: 7px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; background: white;">
-                                                            <option value="1">1월 (A)</option>
-                                                            <option value="2">2월 (B)</option>
-                                                            <option value="3">3월 (C)</option>
-                                                            <option value="4">4월 (D)</option>
-                                                            <option value="5">5월 (E)</option>
-                                                            <option value="6">6월 (F)</option>
-                                                            <option value="7">7월 (G)</option>
-                                                            <option value="8">8월 (H)</option>
-                                                            <option value="9">9월 (I)</option>
-                                                            <option value="10">10월 (J)</option>
-                                                            <option value="11">11월 (K)</option>
-                                                            <option value="12">12월 (L)</option>
-                                                        </select>
+                                                    <!-- 제작 연도 + 월 (2열) -->
+                                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                                        <div>
+                                                            <label style="font-size: 12px; font-weight: 500; color: #8b95a1; display: block; margin-bottom: 5px;">제작 연도</label>
+                                                            <input type="number" id="snYear" min="2000" placeholder="2026"
+                                                                style="width: 100%; padding: 10px 12px; border: 1.5px solid #e8eaed; border-radius: 10px; font-size: 13px; background: #f7f8fa; color: #191f28; outline: none; box-sizing: border-box; transition: border-color 0.15s;"
+                                                                onfocus="this.style.borderColor='#3182f6'; this.style.background='#fff';"
+                                                                onblur="this.style.borderColor='#e8eaed'; this.style.background='#f7f8fa';">
+                                                        </div>
+                                                        <div>
+                                                            <label style="font-size: 12px; font-weight: 500; color: #8b95a1; display: block; margin-bottom: 5px;">제작 월</label>
+                                                            <select id="snMonth" style="width: 100%; padding: 10px 12px; border: 1.5px solid #e8eaed; border-radius: 10px; font-size: 13px; background: #f7f8fa; color: #191f28; outline: none; cursor: pointer; transition: border-color 0.15s;"
+                                                                onfocus="this.style.borderColor='#3182f6'; this.style.background='#fff';"
+                                                                onblur="this.style.borderColor='#e8eaed'; this.style.background='#f7f8fa';">
+                                                                <option value="1">1월 (A)</option>
+                                                                <option value="2">2월 (B)</option>
+                                                                <option value="3">3월 (C)</option>
+                                                                <option value="4">4월 (D)</option>
+                                                                <option value="5">5월 (E)</option>
+                                                                <option value="6">6월 (F)</option>
+                                                                <option value="7">7월 (G)</option>
+                                                                <option value="8">8월 (H)</option>
+                                                                <option value="9">9월 (I)</option>
+                                                                <option value="10">10월 (J)</option>
+                                                                <option value="11">11월 (K)</option>
+                                                                <option value="12">12월 (L)</option>
+                                                            </select>
+                                                        </div>
                                                     </div>
 
                                                     <!-- 일련번호 -->
-                                                    <div style="display: flex; align-items: center; margin-bottom: 16px; gap: 12px;">
-                                                        <label style="font-size: 13px; color: #6c757d; width: 90px; flex-shrink: 0;">일련번호</label>
+                                                    <div style="margin-bottom: 14px;">
+                                                        <label style="font-size: 12px; font-weight: 500; color: #8b95a1; display: block; margin-bottom: 5px;">일련번호</label>
                                                         <input type="number" id="snSequence" min="1" max="99999" placeholder="예: 1"
-                                                            style="flex: 1; padding: 7px 10px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 13px; background: white;">
+                                                            style="width: 100%; padding: 10px 12px; border: 1.5px solid #e8eaed; border-radius: 10px; font-size: 13px; background: #f7f8fa; color: #191f28; outline: none; box-sizing: border-box; transition: border-color 0.15s;"
+                                                            onfocus="this.style.borderColor='#3182f6'; this.style.background='#fff';"
+                                                            onblur="this.style.borderColor='#e8eaed'; this.style.background='#f7f8fa';">
                                                     </div>
 
                                                     <button onclick="window.dashboard.snGenerate()"
-                                                        style="width: 100%; padding: 10px; background: #667eea; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;">
+                                                        style="width: 100%; padding: 12px; background: #3182f6; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; letter-spacing: -0.2px; transition: background 0.15s;"
+                                                        onmouseover="this.style.background='#1b6ef3'"
+                                                        onmouseout="this.style.background='#3182f6'">
                                                         생성하기
                                                     </button>
-                                                </div>
 
-                                                <!-- Generated Result (auto-fill → input) -->
-                                                <div style="background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; margin-bottom: 16px; text-align: center;">
-                                                    <div style="font-size: 11px; color: #adb5bd; margin-bottom: 6px;">생성된 시리얼 넘버</div>
-                                                    <div id="snGeneratedOutput" style="font-size: 24px; font-weight: 700; letter-spacing: 3px; color: #667eea; font-family: monospace;">—————————</div>
-                                                    <div id="snGeneratedDecoded" style="font-size: 11px; color: #6c757d; margin-top: 4px; min-height: 14px;"></div>
-                                                </div>
-
-                                                <div style="border-top: 1px solid #e9ecef; margin-bottom: 16px;"></div>
-
-                                                <!-- Direct Input -->
-                                                <div style="margin-bottom: 6px;">
-                                                    <div style="font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">직접 입력 <span style="font-size: 11px; font-weight: 400; color: #adb5bd;">— 생성기 결과가 자동으로 채워지며, 직접 수정할 수도 있습니다</span></div>
-                                                    <input type="text" id="snSerialInput" maxlength="9" placeholder="예: SA6D00001"
-                                                        style="width: 100%; padding: 10px 12px; border: 2px solid #dee2e6; border-radius: 6px; font-size: 20px; font-weight: 700; letter-spacing: 3px; font-family: monospace; text-transform: uppercase; box-sizing: border-box; text-align: center; transition: border-color 0.2s;"
-                                                        oninput="window.dashboard.snOnSerialInput(this)">
-                                                    <div id="snValidationMsg" style="font-size: 12px; margin-top: 5px; min-height: 16px; text-align: center; color: #adb5bd;">
-                                                        형식: 제품(S/M/D/R) + 연도코드(2자) + 월코드(A-L) + 일련번호(5자리) = 9자
+                                                    <!-- Generated Result -->
+                                                    <div style="background: #f0f6ff; border-radius: 10px; padding: 14px; margin-top: 12px; text-align: center;">
+                                                        <div style="font-size: 11px; font-weight: 500; color: #3182f6; margin-bottom: 6px; letter-spacing: 0.3px;">생성된 시리얼 넘버</div>
+                                                        <div id="snGeneratedOutput" style="font-size: 22px; font-weight: 700; letter-spacing: 4px; color: #3182f6; font-family: 'SF Mono', 'Fira Code', monospace;">—————————</div>
+                                                        <div id="snGeneratedDecoded" style="font-size: 11px; color: #6b90c9; margin-top: 5px; min-height: 14px;"></div>
                                                     </div>
                                                 </div>
 
-                                                <!-- Write Button -->
-                                                <button id="snWriteBtn" onclick="window.dashboard.snWriteToDevice()" disabled
-                                                    style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: not-allowed; opacity: 0.5; transition: all 0.2s; margin-top: 12px;">
-                                                    디바이스에 쓰기
-                                                </button>
-                                                <div id="snWriteStatus" style="font-size: 12px; color: #6c757d; text-align: center; margin-top: 8px; min-height: 16px;"></div>
+                                                <!-- Direct Input + Write Card -->
+                                                <div style="background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="font-size: 12px; font-weight: 600; color: #8b95a1; letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 4px;">직접 입력 / 최종 확인</div>
+                                                    <div style="font-size: 11px; color: #b0b8c1; margin-bottom: 12px;">생성기 결과가 자동으로 채워지며, 직접 수정할 수도 있습니다</div>
+                                                    <input type="text" id="snSerialInput" maxlength="9" placeholder="SA6D00001"
+                                                        style="width: 100%; padding: 14px 12px; border: 2px solid #e8eaed; border-radius: 10px; font-size: 22px; font-weight: 700; letter-spacing: 4px; font-family: 'SF Mono', 'Fira Code', monospace; text-transform: uppercase; box-sizing: border-box; text-align: center; color: #191f28; background: #f7f8fa; outline: none; transition: border-color 0.15s, background 0.15s;"
+                                                        onfocus="this.style.borderColor='#3182f6'; this.style.background='#fff';"
+                                                        onblur="this.style.borderColor='#e8eaed'; this.style.background='#f7f8fa';"
+                                                        oninput="window.dashboard.snOnSerialInput(this)">
+                                                    <div id="snValidationMsg" style="font-size: 12px; margin-top: 6px; min-height: 16px; text-align: center; color: #b0b8c1;">
+                                                        형식: 제품(S/M/D/R) + 연도코드(2자) + 월코드(A-L) + 일련번호(5자리) = 9자
+                                                    </div>
+
+                                                    <!-- Write Button -->
+                                                    <button id="snWriteBtn" onclick="window.dashboard.snWriteToDevice()" disabled
+                                                        style="width: 100%; padding: 13px; background: #00c471; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: not-allowed; opacity: 0.4; transition: all 0.2s; margin-top: 12px; letter-spacing: -0.2px;">
+                                                        디바이스에 쓰기
+                                                    </button>
+                                                    <div id="snWriteStatus" style="font-size: 12px; color: #8b95a1; text-align: center; margin-top: 8px; min-height: 16px;"></div>
+                                                </div>
 
                                             </div><!-- /Left Panel -->
 
                                             <!-- Right Panel: Read from Device -->
-                                            <div style="flex: 1; padding: 24px 28px; overflow-y: auto; background: white;">
+                                            <div style="flex: 1; padding: 20px; overflow-y: auto; background: #f7f8fa; display: flex; flex-direction: column; gap: 12px;">
 
-                                                <div style="font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 16px;">디바이스 시리얼 넘버 읽기</div>
-
-                                                <!-- Device info + Read button -->
-                                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding: 12px 14px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px;">
-                                                    <div>
-                                                        <div id="snReadDeviceLabel" style="font-size: 13px; font-weight: 500; color: #1a1a1a;">—</div>
-                                                        <div style="font-size: 11px; color: #adb5bd; margin-top: 2px;">현재 선택된 디바이스</div>
+                                                <!-- Device Selector Card -->
+                                                <div style="background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="font-size: 12px; font-weight: 600; color: #8b95a1; letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 14px;">디바이스에서 읽기</div>
+                                                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                                                        <button onclick="window.dashboard.snReadFromDevice()"
+                                                            style="padding: 10px 20px; background: #3182f6; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; letter-spacing: -0.1px; transition: background 0.15s;"
+                                                            onmouseover="this.style.background='#1b6ef3'"
+                                                            onmouseout="this.style.background='#3182f6'">
+                                                            읽기
+                                                        </button>
                                                     </div>
-                                                    <button onclick="window.dashboard.snReadFromDevice()"
-                                                        style="padding: 8px 16px; background: #17a2b8; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">
-                                                        읽기
-                                                    </button>
                                                 </div>
 
-                                                <!-- Read Result -->
-                                                <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 20px;">
-                                                    <div style="font-size: 11px; color: #adb5bd; margin-bottom: 8px;">읽어온 시리얼 넘버</div>
-                                                    <div id="snReadOutput" style="font-size: 28px; font-weight: 700; letter-spacing: 3px; color: #28a745; font-family: monospace;">—————————</div>
-                                                    <div id="snReadStatus" style="font-size: 12px; color: #adb5bd; margin-top: 6px; min-height: 14px;"></div>
+                                                <!-- Read Result Card -->
+                                                <div style="background: #fff; border-radius: 14px; padding: 24px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); text-align: center;">
+                                                    <div style="font-size: 12px; font-weight: 500; color: #b0b8c1; margin-bottom: 10px; letter-spacing: 0.3px;">읽어온 시리얼 넘버</div>
+                                                    <div id="snReadOutput" style="font-size: 30px; font-weight: 700; letter-spacing: 4px; color: #00c471; font-family: 'SF Mono', 'Fira Code', monospace; line-height: 1.2;">—————————</div>
+                                                    <div id="snReadStatus" style="font-size: 12px; color: #b0b8c1; margin-top: 8px; min-height: 16px;"></div>
                                                 </div>
 
-                                                <!-- Decoded Info -->
-                                                <div id="snReadDecodeBox" style="display: none; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden;">
-                                                    <div style="padding: 10px 14px; background: #f0fdf4; border-bottom: 1px solid #e9ecef; font-size: 12px; font-weight: 600; color: #28a745;">해독 결과</div>
+                                                <!-- Decoded Info Card -->
+                                                <div id="snReadDecodeBox" style="display: none; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">
+                                                    <div style="padding: 12px 20px; background: #f0fdf8; border-bottom: 1px solid #e6f9f1; font-size: 12px; font-weight: 600; color: #00a85a; letter-spacing: 0.3px; text-transform: uppercase;">해독 결과</div>
                                                     <ul id="snReadDecodeList" style="list-style: none; margin: 0; padding: 0;"></ul>
                                                 </div>
 
