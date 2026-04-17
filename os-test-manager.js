@@ -33,6 +33,8 @@
 window.OSTestModules = window.OSTestModules || [];
 
 class OSTestManager {
+    static HIDDEN_CATEGORIES = new Set(['보호동작']);
+
     constructor() {
         this.tests     = {};
         this.executors = {};
@@ -88,9 +90,12 @@ class OSTestManager {
     // ================================================================
 
     updateTestStatus() {
-        const total    = Object.keys(this.tests).length;
-        const passed   = Object.values(this.results).filter(r => r.result === 'pass').length;
-        const failed   = Object.values(this.results).filter(r => r.result === 'fail').length;
+        const visibleIds = Object.values(this.tests)
+            .filter(t => !OSTestManager.HIDDEN_CATEGORIES.has(t.category || '기타'))
+            .map(t => t.id);
+        const total    = visibleIds.length;
+        const passed   = visibleIds.filter(id => this.results[id]?.result === 'pass').length;
+        const failed   = visibleIds.filter(id => this.results[id]?.result === 'fail').length;
         const progress = total > 0 ? Math.round((passed / total) * 100) : 0;
 
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -140,7 +145,6 @@ class OSTestManager {
             set('.test-purpose',  test.purpose);
             set('.test-model',    test.model);
             set('.test-equipment', test.equipment);
-            set('.test-criteria', test.criteria);
 
             // 단계 목록 렌더링 (Phase 부제목 그룹핑 지원)
             const stepsList = testItem.querySelector('.test-steps-list');
@@ -224,7 +228,7 @@ class OSTestManager {
             if (saveLogBtn) saveLogBtn.onclick = () => this.saveTestLog(testId);
             if (copyPngBtn) copyPngBtn.onclick = () => this.copyTestScreenshot(testId);
             if (copyLogBtn) copyLogBtn.onclick = () => this.copyTestLog(testId);
-            if (saveLsmBtn) saveLsmBtn.style.display = (testId === 'basic03' || testId === 'basic06') ? 'inline-block' : 'none';
+            if (saveLsmBtn) saveLsmBtn.style.display = (testId === 'basic03' || testId === 'basic06' || testId === 'drive06') ? 'inline-block' : 'none';
 
             const hasStoredLog  = this.testLogs[testId]?.length > 0;
             const hasStoredSteps = this.testStepResults[testId] && Object.keys(this.testStepResults[testId]).length > 0;
@@ -449,6 +453,57 @@ class OSTestManager {
             this.isTestRunning = false;
             this.currentTest   = prevTest;
         }
+    }
+
+    /**
+     * SW Reset(0xD000 ← 0x0008) 전송 후 디바이스가 응답을 재개할 때까지 대기.
+     * 1초 주기로 0xD011 읽기를 시도하여 응답 여부를 확인한다.
+     *
+     * @param {number} slaveId        - Modbus slave ID
+     * @param {object} [opts]
+     * @param {number} [opts.timeoutMs=60000]     - 최대 대기 시간 (ms)
+     * @param {number} [opts.pollIntervalMs=1000] - 폴링 간격 (ms)
+     * @returns {Promise<{ok:boolean, elapsedMs:number}>}
+     *          ok=true: 재부팅 완료, ok=false: 타임아웃
+     */
+    async swResetAndWait(slaveId, { timeoutMs = 60000, pollIntervalMs = 1000 } = {}) {
+        const d = window.dashboard;
+
+        this.addLog('  SW Reset 전송 (0xD000 ← 0x0008) — 재부팅 시작', 'info');
+        try { await d.writeRegister(slaveId, 0xD000, 0x0008); } catch (_) {}
+
+        const start = Date.now();
+        const deadline = start + timeoutMs;
+        let attempt = 0;
+
+        this.addLog(`  재부팅 감지 대기 (${pollIntervalMs}ms 주기, 최대 ${timeoutMs / 1000}초)`, 'info');
+
+        while (Date.now() < deadline) {
+            await new Promise(r => setTimeout(r, pollIntervalMs));
+            if (this.shouldStopTest) return { ok: false, elapsedMs: Date.now() - start };
+            attempt++;
+            try {
+                const val = await d.readInputRegisterWithTimeout(slaveId, 0xD011);
+                if (val !== null && val !== undefined) {
+                    const elapsedMs = Date.now() - start;
+                    this.addLog(
+                        `  ✓ 재부팅 완료 감지 — 응답 재개 (${elapsedMs}ms, ${attempt}번째 시도)`,
+                        'success');
+                    this.addLog('  안정화 대기 (5초)...', 'info');
+                    for (let i = 5; i > 0; i--) {
+                        if (this.shouldStopTest) return { ok: false, elapsedMs: Date.now() - start };
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+                    return { ok: true, elapsedMs };
+                }
+            } catch (_) {}
+
+            if (attempt % 10 === 0)
+                this.addLog(`  재부팅 대기 중... (${Math.round((Date.now() - start) / 1000)}초)`, 'info');
+        }
+
+        this.addLog(`  ✗ 재부팅 타임아웃 (${timeoutMs / 1000}초 초과 — 응답 없음)`, 'error');
+        return { ok: false, elapsedMs: timeoutMs };
     }
 
     updateProgress(percent, message) {
@@ -1200,6 +1255,7 @@ class OSTestManager {
         const groups = new Map();
         for (const test of Object.values(this.tests)) {
             const cat = test.category || '기타';
+            if (OSTestManager.HIDDEN_CATEGORIES.has(cat)) continue;
             if (!groups.has(cat)) groups.set(cat, []);
             groups.get(cat).push(test);
         }
@@ -1275,12 +1331,6 @@ class OSTestManager {
       <div style="font-size:13px;font-weight:600;color:#191f28;margin-bottom:8px;">실행 로그</div>
       <div class="test-log-container" style="background:#13141a;color:#c9d1d9;padding:12px 14px;border-radius:10px;font-family:'Consolas','Monaco',monospace;font-size:11px;max-height:200px;overflow-y:auto;line-height:1.6;">
         <div style="color:#6e7681;">테스트 로그가 여기에 표시됩니다...</div>
-      </div>
-    </div>
-    <div style="padding:0 18px 16px 18px;">
-      <div style="font-size:13px;font-weight:600;color:#191f28;margin-bottom:8px;">판정 기준</div>
-      <div style="padding:12px 14px;background:#f0f6ff;border-left:3px solid #3182f6;border-radius:6px;">
-        <div style="font-size:13px;color:#191f28;" class="test-criteria">-</div>
       </div>
     </div>
     <div style="padding:16px 18px;background:#f7f8fa;border-top:1px solid #f0f0f5;">

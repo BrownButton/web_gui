@@ -2236,24 +2236,24 @@ class ModbusDashboard {
     // Global ESC key handler for all modals
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        // Check and close each modal type
         const addParamModal = document.getElementById('addParamModal');
         const settingsModal = document.getElementById('settingsModal');
         const deviceEditModal = document.getElementById('deviceEditModal');
         const confirmModal = document.getElementById('confirmModal');
+        const addDeviceModal = document.getElementById('addDeviceModal');
 
         if (addParamModal && addParamModal.style.display === 'flex') {
           this.hideAddParameterModal();
-        } else if (settingsModal && settingsModal.style.display === 'flex') {
+        } else if (settingsModal && settingsModal.classList.contains('active')) {
           this.closeSettingsModal();
-        } else if (
-            deviceEditModal && deviceEditModal.style.display === 'flex') {
+        } else if (deviceEditModal && deviceEditModal.style.display === 'flex') {
           const closeBtn = document.getElementById('closeDeviceEditBtn');
           if (closeBtn) closeBtn.click();
         } else if (confirmModal && confirmModal.style.display === 'flex') {
-          // Confirm modal is handled by its own ESC handler in showConfirm()
           const cancelBtn = document.getElementById('confirmCancelBtn');
           if (cancelBtn) cancelBtn.click();
+        } else if (addDeviceModal && addDeviceModal.classList.contains('active')) {
+          this.hideAddDeviceModal();
         }
       }
     });

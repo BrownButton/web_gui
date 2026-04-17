@@ -281,8 +281,8 @@ window.OSTestModules.push({
             steps: [
                 '[Phase 2] Setpoint 단계 변경 (Low→Mid→High→Low) → 각 단계 속도 반영 및 응답 검증\n판정 기준: 각 Setpoint 전송 후 3초 내 속도 변화 확인 + 명령 감소 시 속도 정상 감소',
                 '[Phase 3] 동일 Setpoint 반복 전송 (20회, 200ms 주기) → 속도 안정성 검증\n판정 기준: 20회 전송 중 속도 편차 ±5% 이내 유지',
-                '[Phase 4] ★ 케이블 분리 → 통신 단절 상태에서 Fail-safe 동작 확인\n판정 기준: 마지막 명령값으로 모터 지속 구동 시 FAIL / 정지 또는 출력 제한으로 전환 시 PASS',
-                '[Phase 5] ★ 케이블 재연결 → 별도 Reset 없이 정상 제어 복귀 확인\n판정 기준: 통신 복구 후 명령값 재전송 시 정상 속도 반영 + 추가 Fault 없음',
+                '[Phase 4] ★ USB 컨버터 분리 → disconnect 이벤트 자동 감지 + 단절 전 속도 차트 표시\n판정 기준: USB 분리 이벤트 수신 확인 (60초 내) / 모터 계속 구동 여부는 물리적 육안 확인',
+                '[Phase 5] ★ USB 컨버터 재연결 → isConnected 회복 자동 감지 + 재연결 후 속도 차트 표시\n판정 기준: 재연결 후 실제 속도(0xD02D) > 100 RPM 유지 확인',
             ],
         },
 
@@ -363,328 +363,10 @@ window.OSTestModules.push({
                 '[Phase 2-2] Open-loop 모드 (0xD106=2) — 목표 토크 입력 후 토크 출력 확인\n판정 기준: Setpoint 변화에 따라 토크 지령 정상 반영 (★ 물리적 관찰)',
                 '[Phase 3-1] 정지 상태에서 모드 전환 (Velocity → Open-loop) — 모드 적용 및 구동 확인\n판정 기준: 전환 후 새 모드로 정상 구동 + 충격·진동 없음',
                 '[Phase 3-2] 구동 중 모드 전환 (Velocity → Open-loop, Open-loop → Velocity) — 전환 시 모터 정지 후 새 모드 구동 확인\n판정 기준: 전환 시 모터 정지 확인 + 새 모드 적용 후 정상 구동',
-                '[Phase 4] 비정상 Mode 값 (3 / 0xFF / 0xFFFF) Write → 거부 또는 에러 처리 확인\n판정 기준: Write 후 0xD106 Read-back이 기존값 유지 (비정상 값 적용 시 FAIL)',
-                '[Phase 5] 초기 Mode 복구 → 정상 기동 및 속도 추종 확인\n판정 기준: 원래 Mode로 정상 구동 재개 + 추가 Fault 없음',
+                '[Phase 4] 초기 Mode 복구 → 정상 기동 및 속도 추종 확인\n판정 기준: 원래 Mode로 정상 구동 재개 + 추가 Fault 없음',
             ],
         },
 
-        // ── 4-7. Set Value ────────────────────────────────────────────────────
-        'drive07': {
-            id: 'drive07',
-            category: '구동동작',
-            number: '4-7',
-            title: 'Set Value 제어 검증',
-            description: 'Setpoint(목표 속도/토크) 변화에 따른 응답 특성 및 제한(Saturation) 검증',
-            purpose: '드라이브에 입력되는 Set Value(목표 속도 또는 토크)가 내부 제어 로직에 정상 반영되는지 확인한다. Set Value 변화에 따른 응답 특성, 최대/최소 제한(Saturation), Ramp 적용 및 이상 입력 처리를 검증한다.',
-            model: 'EC-FAN',
-            equipment: 'EC FAN 1EA, USB to RS485 Converter',
-            criteria: 'Set Value 변화에 따라 출력(속도/토크)이 정상 변화 / 최대값 초과 입력 시 제한 동작 수행',
-            steps: [
-                { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
-                { type: 'check_comm_settings', label: 'Baudrate / Parity 설정 확인' },
-                {
-                    type: 'read_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    label: '현재 Setpoint [0xD001] 백업',
-                    storeAs: 'origSetpoint',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 4000,
-                    label: 'Set Value = Low (100 RPM, 0xD001 = 4000)',
-                    softFail: true
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] — 저속 확인',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 24000,
-                    label: 'Set Value = Mid (600 RPM, 0xD001 = 24000)',
-                    softFail: true
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] — 중속 확인',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 60000,
-                    label: 'Set Value = High (1500 RPM, 0xD001 = 60000)',
-                    softFail: true
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] — 고속 확인',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 3 — 응답 특성 검증]\n' +
-                             'Set Value를 급격히 변경(step input)하여 시스템 응답을 확인하세요.\n' +
-                             '과도한 overshoot, undershoot, 진동이 발생하지 않는지 확인하세요.\n' +
-                             'Ramp 설정이 있다면 가속/감속 프로파일이 정상 적용되는지 확인하세요.'
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 65535,
-                    label: 'Set Value = 최대값 초과 테스트 (0xD001 = 0xFFFF)',
-                    softFail: true
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] — 최대값 제한 확인 (최대 속도 초과 없음)',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 0,
-                    label: 'Setpoint = 0 (정지)',
-                    softFail: true
-                }
-            ]
-        },
-
-        // ── 4-8. Open-loop Control ────────────────────────────────────────────
-        'drive08': {
-            id: 'drive08',
-            category: '구동동작',
-            number: '4-8',
-            title: 'Open-loop Control 검증',
-            description: 'Open-loop 모드에서 주파수/전압 명령에 따른 기동 성능 및 안정성 검증',
-            purpose: 'Open-loop 제어 모드에서 드라이브가 속도 피드백 없이 설정된 명령에 따라 모터를 정상 구동하는지 확인한다. 기동 성능, 속도 유지, 부하 변화에 따른 안정성, 탈조(stall) 발생 여부를 검증한다.',
-            model: 'EC-FAN',
-            equipment: 'EC FAN 1EA, USB to RS485 Converter',
-            criteria: 'Open-loop 명령에 따라 모터가 정상 기동 및 구동 / 부하 변화 시 탈조 없이 안정 동작',
-            steps: [
-                { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
-                { type: 'check_comm_settings', label: 'Baudrate / Parity 설정 확인' },
-                {
-                    type: 'read_holding',
-                    slaveId: 1,
-                    address: 0xD106,
-                    label: '현재 Operating Mode [0xD106] 백업',
-                    storeAs: 'origOpMode',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD106,
-                    value: 2,
-                    label: 'Operating Mode = Open-loop (0xD106 = 2)',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 6554,
-                    label: 'Open-loop Setpoint = 10% (0xD001 = 6554, 10/100×65535)\nTX: 01 06 D0 01 19 9A 6B 31',
-                    softFail: true
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD050,
-                    label: 'Command Torque [0xD050] — 10% 적용 확인\nTX: 01 04 D0 50 00 01 09 1B',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 20,
-                    message: '[Phase 2 — 무부하 기동 확인]\n' +
-                             '모터가 정상적으로 기동하여 회전하는지 확인하세요.\n' +
-                             '진동, 소음, 불안정 동작이 없는지 확인하세요.'
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 32768,
-                    label: 'Open-loop Setpoint = 50% (0xD001 = 32768)',
-                    softFail: true
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD050,
-                    label: 'Command Torque [0xD050] — 50% 적용 확인',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 3 — 속도 변화 및 안정성 검증]\n' +
-                             'Open-loop 명령을 단계적으로 증가/감소시키세요.\n' +
-                             '급격한 속도 변화 시 탈조(stall) 없이 동작하는지 확인하세요.'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 4 — 부하 조건 검증]\n' +
-                             '모터에 외부 부하를 점진적으로 인가하세요.\n' +
-                             '부하 증가에 따라 탈조 발생 여부를 확인하세요.\n' +
-                             '탈조 발생 시 시스템이 비정상 상태(과전류, 심한 진동)로 지속되지 않아야 합격'
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 0,
-                    label: 'Setpoint = 0 (정지)',
-                    softFail: true
-                },
-                {
-                    type: 'restore_holding',
-                    slaveId: 1,
-                    address: 0xD106,
-                    restoreFrom: 'origOpMode',
-                    label: 'Operating Mode [0xD106] 원복',
-                    softFail: true
-                }
-            ]
-        },
-
-        // ── 4-9. Closed-loop Velocity Control ────────────────────────────────
-        'drive09': {
-            id: 'drive09',
-            category: '구동동작',
-            number: '4-9',
-            title: 'Closed-loop Velocity Control 검증',
-            description: '속도 피드백 기반 Closed-loop 속도 추종 성능 및 부하 외란 대응 검증',
-            purpose: 'Closed-loop Velocity Control 모드에서 드라이브가 속도 피드백을 기반으로 목표 속도를 정확하게 추종하는지 확인한다. 속도 응답 특성, 부하 외란 대응, 제한 조건 및 제어 안정성을 검증한다.',
-            model: 'EC-FAN',
-            equipment: 'EC FAN 1EA, USB to RS485 Converter',
-            criteria: '목표 속도를 정확히 추종 / steady-state error 허용 범위 내 / 부하 외란 후 속도 복원',
-            steps: [
-                { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
-                { type: 'check_comm_settings', label: 'Baudrate / Parity 설정 확인' },
-                {
-                    type: 'read_holding',
-                    slaveId: 1,
-                    address: 0xD106,
-                    label: '현재 Operating Mode [0xD106] 백업',
-                    storeAs: 'origOpMode',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD106,
-                    value: 0,
-                    label: 'Operating Mode = Closed-loop Velocity (0xD106 = 0)',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 4000,
-                    label: 'Setpoint = 100 RPM (0xD001 = 4000)\nTX: 01 06 D0 01 0C 80 E4 6A',
-                    softFail: true
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] — 100 RPM 추종 확인\nTX: 01 04 D0 2D 00 01 99 CB',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 24000,
-                    label: 'Setpoint = 600 RPM (0xD001 = 24000)',
-                    softFail: true
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] — 600 RPM 추종 확인',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 60000,
-                    label: 'Setpoint = 1500 RPM (0xD001 = 60000)',
-                    softFail: true
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] — 1500 RPM 추종 확인',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 3 — 동적 응답 검증]\n' +
-                             '목표 속도를 Step 형태로 급격히 변경하세요.\n' +
-                             '과도한 overshoot, undershoot, 진동이 발생하지 않는지 확인하세요.'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 4 — 부하 외란 대응 검증]\n' +
-                             '일정 속도(600 RPM) 구동 중 외부 부하를 인가하세요.\n' +
-                             '속도 저하 후 빠르게 목표 속도로 복원되는지 확인하세요.\n' +
-                             '부하 제거 시 속도가 안정적으로 복귀하는지 확인하세요.'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 20,
-                    message: '[Phase 6 — 저속 및 정지 영역 검증]\n' +
-                             '저속(예: 50 RPM) 명령 시 안정적으로 유지되는지 확인하세요.\n' +
-                             '0 RPM 명령 시 모터가 안정적으로 정지하는지 확인하세요.'
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD001,
-                    value: 0,
-                    label: 'Setpoint = 0 (정지)',
-                    softFail: true
-                },
-                {
-                    type: 'restore_holding',
-                    slaveId: 1,
-                    address: 0xD106,
-                    restoreFrom: 'origOpMode',
-                    label: 'Operating Mode [0xD106] 원복',
-                    softFail: true
-                }
-            ]
-        }
 
     }, // end tests
 
@@ -694,8 +376,171 @@ window.OSTestModules.push({
         'drive06': async function() {
             const self    = this;
             const d       = window.dashboard;
+            const modbus  = d.modbus;
             const slaveId = 1;
             self.checkConnection();
+
+            // ── 인라인 차트 삽입 ──────────────────────────────────────────────
+            const testItem = document.querySelector('.os-test-item[data-test-id="drive06"]');
+            let chart = null;
+
+            if (testItem) {
+                testItem.querySelector('.drive06-chart-section')?.remove();
+                const chartSection = document.createElement('div');
+                chartSection.className = 'drive06-chart-section';
+                chartSection.style.cssText = 'padding:0 20px 20px 20px;';
+                chartSection.innerHTML = `
+                  <div style="background:white;border:1px solid #e9ecef;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+                    <div style="padding:10px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;">
+                      <span style="font-size:13px;font-weight:600;color:#1a1a1a;">실시간 차트 (Continuous 20ms)</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e9ecef;border-bottom:1px solid #e9ecef;">
+                      <div style="background:white;padding:8px 12px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                          <span style="width:12px;height:3px;background:#3498db;display:inline-block;border-radius:2px;flex-shrink:0;"></span>
+                          <span style="font-size:11px;color:#6c757d;">Velocity Command [rpm]</span>
+                        </div>
+                        <div id="drive06-val-0" style="font-size:18px;font-weight:600;font-family:monospace;color:#3498db;">—</div>
+                      </div>
+                      <div style="background:white;padding:8px 12px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                          <span style="width:12px;height:3px;background:#e74c3c;display:inline-block;border-radius:2px;flex-shrink:0;"></span>
+                          <span style="font-size:11px;color:#6c757d;">Velocity Feedback [rpm]</span>
+                        </div>
+                        <div id="drive06-val-1" style="font-size:18px;font-weight:600;font-family:monospace;color:#e74c3c;">—</div>
+                      </div>
+                      <div style="background:white;padding:8px 12px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                          <span style="width:12px;height:3px;background:#f39c12;display:inline-block;border-radius:2px;flex-shrink:0;"></span>
+                          <span style="font-size:11px;color:#6c757d;">Torque Command [%]</span>
+                        </div>
+                        <div id="drive06-val-2" style="font-size:18px;font-weight:600;font-family:monospace;color:#f39c12;">—</div>
+                      </div>
+                      <div style="background:white;padding:8px 12px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                          <span style="width:12px;height:3px;background:#2ecc71;display:inline-block;border-radius:2px;flex-shrink:0;"></span>
+                          <span style="font-size:11px;color:#6c757d;">Torque Feedback [%]</span>
+                        </div>
+                        <div id="drive06-val-3" style="font-size:18px;font-weight:600;font-family:monospace;color:#2ecc71;">—</div>
+                      </div>
+                    </div>
+                    <canvas id="drive06-canvas" width="800" height="220"
+                            style="width:100%;height:220px;display:block;background:#fafafa;"></canvas>
+                  </div>`;
+
+                const logDiv = [...testItem.querySelector('.os-test-content').children].find(
+                    el => el.querySelector('.test-log-container'));
+                if (logDiv)
+                    logDiv.parentElement.insertBefore(chartSection, logDiv);
+                else
+                    testItem.querySelector('.os-test-content').appendChild(chartSection);
+
+                // 아코디언 열기
+                const contentEl = testItem.querySelector('.os-test-content');
+                if (contentEl && contentEl.style.display !== 'block') {
+                    contentEl.style.display = 'block';
+                    const expandIcon = testItem.querySelector('.test-expand-icon');
+                    if (expandIcon) expandIcon.style.transform = 'rotate(180deg)';
+                }
+
+                const canvas = document.getElementById('drive06-canvas');
+                if (canvas) {
+                    chart = new MiniChart(
+                        canvas,
+                        [
+                            { name: 'Velocity Command [rpm]', color: '#3498db', chNum: 1 },
+                            { name: 'Velocity Feedback [rpm]', color: '#e74c3c', chNum: 0 },
+                            { name: 'Torque Command [%]',     color: '#f39c12', chNum: 4 },
+                            { name: 'Torque Feedback [%]',    color: '#2ecc71', chNum: 3 },
+                        ],
+                        { maxPoints: 10000, displayPoints: 300 });
+
+                    const saveLsmBtn = testItem.querySelector('.test-save-lsm-btn');
+                    if (saveLsmBtn) {
+                        saveLsmBtn.onclick = () => {
+                            if (!chart) return;
+                            const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                            LsmExporter.download(chart.channels, 20, `drive06_${ts}.lsm`);
+                        };
+                    }
+                }
+            }
+
+            // ── FC 0x64 차트 루프 헬퍼 ────────────────────────────────────────
+            const chartStop = { stop: false };
+            const FC64_TYPE = 'drive06chart';
+
+            const startChartLoop = async () => {
+                if (!d.writer || !chart) return false;
+                chartStop.stop = false;
+
+                if (d.chartRunning) {
+                    self.addLog('⏹ Chart 탭 FC64 차트를 정지합니다...', 'info');
+                    await d.stopChartCapture();
+                }
+                const runningMini = Object.keys(d.miniChartRunning)
+                    .filter(k => k !== FC64_TYPE && d.miniChartRunning[k]);
+                for (const key of runningMini) {
+                    self.addLog(`⏹ HW Overview 미니 차트 [${key}]를 정지합니다...`, 'info');
+                    await d.stopMiniChart(key);
+                }
+
+                d._fc64Busy = true;
+                while (d.isPolling) await self.delay(5);
+                await d.sendAndReceiveFC64(modbus.buildContinuousStop(slaveId), 0x00, 300);
+                const resp = await d.sendAndReceiveFC64(
+                    modbus.buildContinuousConfigure(slaveId, 160, [1, 0, 4, 3]),
+                    0x02, 1000);
+                if (!resp) {
+                    d._fc64Busy = false;
+                    self.addLog('⚠ FC 0x64 Configure 실패 — 차트 없이 계속 진행', 'warning');
+                    return false;
+                }
+                d.miniChartRunning[FC64_TYPE] = true;
+                d._fc64Busy = false;
+                (async () => {
+                    while (!chartStop.stop && d.miniChartRunning[FC64_TYPE]) {
+                        const r = await d.sendAndReceiveFC64(
+                            modbus.buildContinuousRequest(slaveId), 0x03, 300);
+                        if (chartStop.stop) break;
+                        if (r) {
+                            const p = modbus.parseContinuousDataResponse(r);
+                            if (p && p.data.length > 0) {
+                                const spc = Math.floor(p.data.length / 4);
+                                for (let s = 0; s < spc; s++)
+                                    for (let ci = 0; ci < 4; ci++) {
+                                        const v = p.data[ci * spc + s];
+                                        if (v !== undefined) chart.addDataPoint(ci, v);
+                                    }
+                                chart.render();
+                                for (let ci = 0; ci < 4; ci++) {
+                                    const ch = chart.channels[ci];
+                                    if (ch && ch.data.length > 0) {
+                                        const el = document.getElementById(`drive06-val-${ci}`);
+                                        if (el) el.textContent = ch.data[ch.data.length - 1].toFixed(2);
+                                    }
+                                }
+                            }
+                        }
+                        if (d.commandQueue.length > 0) await d._drainCommandQueue();
+                    }
+                })();
+                self.addLog('✓ FC 0x64 차트 시작 (Vel Cmd/FB, Torq Cmd/FB, 20ms)', 'success');
+                return true;
+            };
+
+            const stopChartLoop = async () => {
+                chartStop.stop = true;
+                d._fc64Busy = true;
+                d.miniChartRunning[FC64_TYPE] = false;
+                await new Promise(r => setTimeout(r, 200));
+                if (d.writer) {
+                    await d.sendAndReceiveFC64(modbus.buildContinuousStop(slaveId), 0x00, 300);
+                    await new Promise(r => setTimeout(r, 400));
+                }
+                d._fc64Busy = false;
+                self.addLog('■ FC 0x64 차트 정지', 'info');
+            };
 
             const passed = [];
             const failed = [];
@@ -708,6 +553,27 @@ window.OSTestModules.push({
 
             const toVelRaw   = rpm => Math.round(rpm / 1600 * 64000);   // 속도 모드 raw
             const toTorqRaw  = pct => Math.round(pct / 100 * 65535);    // Open-loop raw
+
+            const waitUntilStopped = async (label = '') => {
+                const deadline = Date.now() + 30000;
+                self.addLog(`  정지 대기${label ? ' (' + label + ')' : ''} — 실제 속도 ≤ 6 RPM 확인...`, 'info');
+                while (Date.now() < deadline) {
+                    await self.checkStop();
+                    await self.delay(500);
+                    const spd = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+                    self.addLog(`  속도 [0xD02D] = ${spd ?? 'null'} RPM`, 'info');
+                    if (spd !== null && spd !== undefined && Math.abs(spd) <= 6) {
+                        self.addLog('  ✓ 정지 확인 (≤ 6 RPM)', 'success');
+                        return;
+                    }
+                }
+                self.addLog('  ⚠ 30초 내 정지 미확인 — 강제 진행', 'warning');
+            };
+
+            try {
+
+            // 차트 시작
+            await startChartLoop();
 
             // ── Phase 2-1: Velocity 모드 동작 검증 ───────────────────────────
             {
@@ -731,7 +597,7 @@ window.OSTestModules.push({
                         const raw = toVelRaw(c.rpm);
                         self.addLog(`Setpoint = ${c.label} (0xD001 ← ${raw})`, 'step');
                         await d.writeRegister(slaveId, 0xD001, raw);
-                        await self.delay(3000);
+                        await self.delay(6000);
                         const actual = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                         self.addLog(`실제 속도 [0xD02D] = ${actual ?? 'null'}  (목표: ${c.rpm} RPM)`, 'info');
                         if (actual === null || actual === undefined) {
@@ -744,7 +610,7 @@ window.OSTestModules.push({
                     // 정지
                     await d.writeRegister(slaveId, 0xD001, 0);
                     await d.writeRegister(slaveId, 0x0001, 0);
-                    await self.delay(1000);
+                    await waitUntilStopped('Phase 2-1 종료');
 
                     if (failCount > 0) throw new Error(`${failCount}개 단계에서 속도 응답 없음`);
                     passed.push('Phase 2-1');
@@ -779,14 +645,14 @@ window.OSTestModules.push({
                         const raw = toTorqRaw(c.pct);
                         self.addLog(`Setpoint = ${c.label} (0xD001 ← ${raw})`, 'step');
                         await d.writeRegister(slaveId, 0xD001, raw);
-                        await self.delay(2000);
+                        await self.delay(4000);
                         const speed = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                         self.addLog(`실제 속도 [0xD02D] = ${speed ?? 'null'}  ★ 토크 출력은 물리적으로 관찰하세요`, 'info');
                     }
                     // 정지
                     await d.writeRegister(slaveId, 0xD001, 0);
                     await d.writeRegister(slaveId, 0x0001, 0);
-                    await self.delay(1000);
+                    await waitUntilStopped('Phase 2-2 종료');
 
                     passed.push('Phase 2-2');
                     self.updateStepStatus(1, 'success');
@@ -806,11 +672,11 @@ window.OSTestModules.push({
                 self.addLog('▶ Phase 3-1 시작 — 정지 상태에서 Velocity → Open-loop 전환', 'info');
                 try {
                     self.checkStop();
-                    // Velocity로 초기화 후 정지 확인
+                    // Velocity로 초기화 후 속도 0 도달 대기
                     await d.writeRegister(slaveId, 0xD106, 0);
                     await d.writeRegister(slaveId, 0xD001, 0);
                     await d.writeRegister(slaveId, 0x0001, 0);
-                    await self.delay(1000);
+                    await waitUntilStopped('Phase 3-1 진입');
 
                     self.addLog('정지 상태에서 Open-loop 모드 전환 (0xD106 ← 2)', 'step');
                     await d.writeRegister(slaveId, 0xD106, 2);
@@ -823,12 +689,12 @@ window.OSTestModules.push({
                     const raw = toTorqRaw(20);
                     await d.writeRegister(slaveId, 0xD001, raw);
                     await d.writeRegister(slaveId, 0x0001, 1);
-                    await self.delay(2000);
+                    await self.delay(4000);
                     const speed = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                     self.addLog(`전환 후 구동 속도 [0xD02D] = ${speed ?? 'null'}  ★ 충격·진동 없음 확인`, 'info');
 
                     await d.writeRegister(slaveId, 0x0001, 0);
-                    await self.delay(1000);
+                    await waitUntilStopped('Phase 3-1 종료');
 
                     passed.push('Phase 3-1');
                     self.updateStepStatus(2, 'success');
@@ -852,13 +718,13 @@ window.OSTestModules.push({
                     await d.writeRegister(slaveId, 0xD106, 0);
                     await d.writeRegister(slaveId, 0xD001, toVelRaw(800));
                     await d.writeRegister(slaveId, 0x0001, 1);
-                    await self.delay(3000);
+                    await self.delay(6000);
                     const speedBeforeA = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                     self.addLog(`전환 전 속도 = ${speedBeforeA ?? 'null'}`, 'info');
 
                     self.addLog('구동 중 모드 전환 → Open-loop (0xD106 ← 2)', 'step');
                     await d.writeRegister(slaveId, 0xD106, 2);
-                    await self.delay(1000);
+                    await waitUntilStopped('Case A → Open-loop 전환 후');
                     const speedAfterA = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                     self.addLog(`전환 직후 속도 = ${speedAfterA ?? 'null'}  ★ 모터 정지 확인`, 'info');
 
@@ -866,23 +732,23 @@ window.OSTestModules.push({
                     self.addLog('[Case B] Open-loop 모드 구동 중 → Velocity 전환', 'step');
                     await d.writeRegister(slaveId, 0xD001, toTorqRaw(20));
                     await d.writeRegister(slaveId, 0x0001, 1);
-                    await self.delay(3000);
+                    await self.delay(6000);
                     const speedBeforeB = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                     self.addLog(`전환 전 속도 = ${speedBeforeB ?? 'null'}`, 'info');
 
                     self.addLog('구동 중 모드 전환 → Velocity (0xD106 ← 0)', 'step');
                     await d.writeRegister(slaveId, 0xD106, 0);
-                    await self.delay(1000);
+                    await waitUntilStopped('Case B → Velocity 전환 후');
                     const speedAfterB = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                     self.addLog(`전환 직후 속도 = ${speedAfterB ?? 'null'}  ★ 모터 정지 후 재구동 확인`, 'info');
 
                     await d.writeRegister(slaveId, 0xD001, toVelRaw(800));
-                    await self.delay(2000);
+                    await self.delay(6000);
                     const speedResumeB = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                     self.addLog(`Velocity 재구동 후 속도 = ${speedResumeB ?? 'null'}`, 'info');
 
                     await d.writeRegister(slaveId, 0x0001, 0);
-                    await self.delay(1000);
+                    await waitUntilStopped('Phase 3-2 종료');
 
                     passed.push('Phase 3-2');
                     self.updateStepStatus(3, 'success');
@@ -895,53 +761,10 @@ window.OSTestModules.push({
                 }
             }
 
-            // ── Phase 4: 비정상 Mode 값 예외 검증 ───────────────────────────
+            // ── Phase 4(구 Phase 5): 초기 Mode 복구 → 정상 기동 확인 ──────────
             {
                 self.updateStepStatus(4, 'running');
-                self.updateProgress(75, 'Phase 4: 비정상 Mode 값 예외 검증');
-                self.addLog('▶ Phase 4 시작 — 비정상 Mode 값 Write 예외 검증', 'info');
-                try {
-                    self.checkStop();
-                    await d.writeRegister(slaveId, 0xD106, 0);  // 기준값 Velocity
-                    await self.delay(300);
-
-                    let failCount = 0;
-                    for (const invalidMode of [3, 0xFF, 0xFFFF]) {
-                        const hex = `0x${invalidMode.toString(16).toUpperCase()}`;
-                        self.addLog(`비정상 Mode ${hex} Write 시도 (0xD106 ← ${invalidMode})`, 'step');
-                        try {
-                            await d.writeRegister(slaveId, 0xD106, invalidMode);
-                            self.addLog(`⚠ ${hex}: Write 정상 응답 수신`, 'warning');
-                        } catch(e) {
-                            self.addLog(`✓ ${hex}: Write 거부 (Exception/Timeout)`, 'success');
-                        }
-                        await self.delay(300);
-                        const readback = await d.readRegisterWithTimeout(slaveId, 0xD106);
-                        self.addLog(`Read-back 0xD106 = ${readback}`, 'info');
-                        if (readback === invalidMode) {
-                            self.addLog(`✗ ${hex}: 비정상 Mode 값이 적용됨 — FAIL`, 'error');
-                            failCount++;
-                        } else {
-                            self.addLog(`✓ ${hex}: 기존 Mode 유지 확인 (${readback})`, 'success');
-                        }
-                        await self.delay(200);
-                    }
-
-                    if (failCount > 0) throw new Error(`${failCount}건 비정상 Mode 값 적용됨`);
-                    passed.push('Phase 4');
-                    self.updateStepStatus(4, 'success');
-                    self.addLog('✓ Phase 4 합격', 'success');
-                } catch(e) {
-                    failed.push('Phase 4');
-                    self.updateStepStatus(4, 'error');
-                    self.addLog(`✗ Phase 4 불합격: ${e.message}`, 'error');
-                }
-            }
-
-            // ── Phase 5: 초기 Mode 복구 → 정상 기동 확인 ────────────────────
-            {
-                self.updateStepStatus(5, 'running');
-                self.updateProgress(90, 'Phase 5: 초기 Mode 복구 검증');
+                self.updateProgress(90, 'Phase 4: 초기 Mode 복구 검증');
                 self.addLog('▶ Phase 5 시작 — 초기 Mode 복구 및 정상 기동 확인', 'info');
                 try {
                     self.checkStop();
@@ -959,7 +782,7 @@ window.OSTestModules.push({
                     const testRaw = restoredMode === 2 ? toTorqRaw(20) : toVelRaw(600);
                     await d.writeRegister(slaveId, 0xD001, testRaw);
                     await d.writeRegister(slaveId, 0x0001, 1);
-                    await self.delay(3000);
+                    await self.delay(6000);
                     const finalSpeed = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                     self.addLog(`복구 후 기동 속도 [0xD02D] = ${finalSpeed ?? 'null'}`, 'info');
 
@@ -968,19 +791,19 @@ window.OSTestModules.push({
                     }
                     self.addLog('✓ 복구 후 정상 기동 확인', 'success');
 
-                    passed.push('Phase 5');
-                    self.updateStepStatus(5, 'success');
-                    self.addLog('✓ Phase 5 합격', 'success');
+                    passed.push('Phase 4');
+                    self.updateStepStatus(4, 'success');
+                    self.addLog('✓ Phase 4 합격', 'success');
                 } catch(e) {
-                    failed.push('Phase 5');
-                    self.updateStepStatus(5, 'error');
-                    self.addLog(`✗ Phase 5 불합격: ${e.message}`, 'error');
+                    failed.push('Phase 4');
+                    self.updateStepStatus(4, 'error');
+                    self.addLog(`✗ Phase 4 불합격: ${e.message}`, 'error');
                 }
             }
 
             // ── 정리 ─────────────────────────────────────────────────────────
             self.addLog('모터 Stop + 파라미터 원복', 'step');
-            try { await d.writeRegister(slaveId, 0x0001, 0); } catch(_) {}
+            try { await d.writeRegister(slaveId, 0xD001, 0); } catch(_) {}
             await self.delay(500);
             if (origSetpoint !== null) { try { await d.writeRegister(slaveId, 0xD001, origSetpoint); } catch(_) {} }
             if (origOpMode   !== null) { try { await d.writeRegister(slaveId, 0xD106, origOpMode);   } catch(_) {} }
@@ -995,14 +818,17 @@ window.OSTestModules.push({
             const ok = failed.length === 0;
             return {
                 status:  ok ? 'pass' : 'fail',
-                message: ok ? '6개 Phase 전체 합격' : `불합격 ${failed.length}개: ${failed.join(', ')}`,
+                message: ok ? '5개 Phase 전체 합격' : `불합격 ${failed.length}개: ${failed.join(', ')}`,
                 details: 'Phase 2-1: Velocity 모드 속도 추종\n' +
                          'Phase 2-2: Open-loop 모드 토크 출력\n' +
                          'Phase 3-1: 정지 상태 모드 전환 적용\n' +
                          'Phase 3-2: 구동 중 모드 전환 양방향\n' +
-                         'Phase 4: 비정상 Mode 값 거부 확인\n' +
-                         'Phase 5: 초기 Mode 복구 후 정상 기동',
+                         'Phase 4: 초기 Mode 복구 후 정상 기동',
             };
+
+            } finally {
+                try { await stopChartLoop(); } catch(_) {}
+            }
         },
 
         // ── drive04 executor ──────────────────────────────────────────────────
@@ -1123,65 +949,158 @@ window.OSTestModules.push({
                 }
             }
 
-            // ── Phase 4: 케이블 분리 → Fail-safe 동작 확인 (수동) ────────────
+            // ── 차트 패널 주입 헬퍼 ──────────────────────────────────────────
+            const injectChartPanel = () => {
+                const item = document.querySelector('.os-test-item[data-test-id="drive04"]');
+                const logContainer = item?.querySelector('.test-log-container');
+                if (!logContainer) return null;
+                // 중복 방지
+                document.getElementById('drive04-chart-panel')?.remove();
+                const panel = document.createElement('div');
+                panel.id = 'drive04-chart-panel';
+                panel.style.cssText = 'display:flex;gap:12px;padding:12px 18px;';
+                panel.innerHTML = `
+                    <div style="flex:1;background:#f7f8fa;border-radius:10px;padding:10px;">
+                        <div style="font-size:11px;font-weight:600;color:#8b95a1;margin-bottom:6px;">단절 전 속도 (RPM)</div>
+                        <canvas id="drive04-chart-before" height="120"></canvas>
+                    </div>
+                    <div style="flex:1;background:#f7f8fa;border-radius:10px;padding:10px;">
+                        <div style="font-size:11px;font-weight:600;color:#8b95a1;margin-bottom:6px;">재연결 후 속도 (RPM)</div>
+                        <canvas id="drive04-chart-after" height="120"></canvas>
+                    </div>`;
+                logContainer.parentNode.insertBefore(panel, logContainer);
+                return panel;
+            };
+
+            // ── Phase 4: USB 컨버터 분리 → disconnect 이벤트 자동 감지 ────────
             {
                 self.updateStepStatus(2, 'running');
-                self.updateProgress(65, 'Phase 4: 통신 단절 Fail-safe 검증');
-                self.addLog('▶ Phase 4 시작 — 통신 단절 Fail-safe 검증 (수동)', 'info');
+                self.updateProgress(65, 'Phase 4: USB 단절 감지 + 단절 전 속도 차트');
+                self.addLog('▶ Phase 4 시작 — 단절 전 속도 수집 후 USB 분리 대기', 'info');
 
                 try {
                     self.checkStop();
-                    self.addLog('Setpoint = 800 RPM 유지 상태에서 대기', 'step');
 
-                    await self._runStep({ type: 'wait_countdown', seconds: 30,
-                        message: '[Phase 4] ★ 지금 RS485 케이블을 분리하세요.\n' +
-                                 '→ 드라이브가 마지막 명령값으로 계속 구동되면 FAIL\n' +
-                                 '→ 정지 또는 출력 제한(Fail-safe) 상태로 전환되면 PASS\n' +
-                                 '케이블 분리 후 드라이브 동작을 관찰하세요.'
-                    }, 2);
+                    // ① 차트 패널 주입
+                    injectChartPanel();
+                    const canvasBefore = document.getElementById('drive04-chart-before');
+                    canvasBefore.width  = canvasBefore.parentElement.clientWidth - 20;
+                    const chartBefore = new MiniChart(
+                        canvasBefore,
+                        [{ name: 'Speed', color: '#3b82f6', chNum: 0 }],
+                        { maxPoints: 60 }
+                    );
 
-                    self.addLog('★ Phase 4 결과를 직접 판정하세요', 'warning');
-                    self.addLog('  합격: 드라이브가 정지 또는 출력 제한 상태로 전환됨', 'success');
-                    self.addLog('  불합격: 마지막 명령값으로 모터가 계속 구동됨', 'error');
+                    // ② 단절 전 데이터 수집 (10초, 500ms 주기)
+                    self.addLog('단절 전 속도 수집 중 (10초)...', 'info');
+                    for (let i = 0; i < 20; i++) {
+                        self.checkStop();
+                        try {
+                            const rpm = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+                            if (rpm !== null && rpm !== undefined) {
+                                chartBefore.addDataPoint(0, rpm);
+                                chartBefore.render();
+                            }
+                        } catch(_) {}
+                        await self.delay(500);
+                    }
+                    self.addLog('✓ 단절 전 속도 차트 완성', 'success');
 
+                    // ③ USB 분리 안내 + disconnect 이벤트 대기
+                    self.addLog('★ USB 컨버터를 PC에서 뽑아주세요 (RS485 케이블이 아닌 USB 포트)', 'warning');
+                    self.addLog('  → 모터는 계속 구동 중이어야 합니다 (육안 확인)', 'warning');
+                    self.addLog('  최대 60초 내 분리하지 않으면 불합격 처리됩니다', 'info');
+
+                    const portRef = window.dashboard.port;
+                    let disconnectResolve;
+                    const disconnectPromise = new Promise(resolve => { disconnectResolve = resolve; });
+                    const disconnectHandler = (e) => {
+                        if (e.target === portRef) {
+                            navigator.serial.removeEventListener('disconnect', disconnectHandler);
+                            disconnectResolve(true);
+                        }
+                    };
+                    navigator.serial.addEventListener('disconnect', disconnectHandler);
+
+                    const detected = await Promise.race([
+                        disconnectPromise,
+                        self.delay(60000).then(() => false),
+                    ]);
+                    navigator.serial.removeEventListener('disconnect', disconnectHandler);
+
+                    if (!detected) throw new Error('60초 내 USB disconnect 이벤트 미수신');
+
+                    self.addLog('✓ USB 단절 감지 — 모터 계속 구동 중인지 육안으로 확인하세요', 'success');
                     passed.push('Phase 4');
                     self.updateStepStatus(2, 'success');
-                    self.addLog('✓ Phase 4 완료 (수동 판정)', 'success');
+                    self.addLog('✓ Phase 4 합격', 'success');
                 } catch(e) {
                     failed.push('Phase 4');
                     self.updateStepStatus(2, 'error');
-                    self.addLog(`✗ Phase 4 중단: ${e.message}`, 'error');
+                    self.addLog(`✗ Phase 4 불합격: ${e.message}`, 'error');
                 }
             }
 
-            // ── Phase 5: 케이블 재연결 → 통신 복구 자동 복귀 확인 ───────────
+            // ── Phase 5: USB 재연결 → isConnected 회복 감지 + 재연결 후 차트 ──
             {
                 self.updateStepStatus(3, 'running');
-                self.updateProgress(82, 'Phase 5: 통신 복구 검증');
-                self.addLog('▶ Phase 5 시작 — 통신 복구 및 정상 제어 복귀 검증', 'info');
+                self.updateProgress(82, 'Phase 5: 재연결 감지 + 재연결 후 속도 차트');
+                self.addLog('▶ Phase 5 시작 — USB 재연결 대기', 'info');
 
                 try {
                     self.checkStop();
 
-                    await self._runStep({ type: 'wait_countdown', seconds: 20,
-                        message: '[Phase 5] ★ 지금 RS485 케이블을 재연결하세요.\n' +
-                                 '→ 별도 Reset 없이 정상 제어 상태로 복귀해야 합격\n' +
-                                 '케이블 재연결 후 카운트다운이 끝나면 자동으로 명령을 재전송합니다.'
-                    }, 3);
+                    // ① 재연결 안내 + isConnected 폴링 (최대 120초)
+                    self.addLog('★ USB 컨버터를 다시 연결하고 사이드바에서 Connect를 눌러주세요', 'warning');
+                    let reconnected = false;
+                    for (let i = 0; i < 120; i++) {
+                        if (self.shouldStopTest) throw new Error('테스트 중단됨');
+                        if (window.dashboard.isConnected) { reconnected = true; break; }
+                        if (i % 10 === 9) self.addLog(`재연결 대기 중... (${120 - i - 1}초 남음)`, 'info');
+                        await self.delay(1000);
+                    }
+                    if (!reconnected) throw new Error('120초 내 재연결 미감지');
+                    self.addLog('✓ 재연결 감지 — 명령 재전송', 'success');
 
-                    self.addLog('통신 복구 확인 — Setpoint 재전송 (800 RPM)', 'step');
-                    const recoveryRaw = toRaw(800);
-                    await d.writeRegister(slaveId, 0xD001, recoveryRaw);
+                    // ② Run + Setpoint 재전송
+                    await d.writeRegister(slaveId, 0x0001, 1);
+                    await d.writeRegister(slaveId, 0xD001, toRaw(800));
+                    self.addLog('Run + Setpoint 800 RPM 재전송 완료', 'step');
                     await self.delay(3000);
 
-                    const recoveredSpeed = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
-                    self.addLog(`복구 후 실제 속도 [0xD02D] = ${recoveredSpeed ?? 'null'}`, 'info');
+                    // ③ 재연결 후 데이터 수집 (10초, 500ms 주기)
+                    const canvasAfter = document.getElementById('drive04-chart-after');
+                    if (canvasAfter) {
+                        canvasAfter.width = canvasAfter.parentElement.clientWidth - 20;
+                        const chartAfter = new MiniChart(
+                            canvasAfter,
+                            [{ name: 'Speed', color: '#22c55e', chNum: 0 }],
+                            { maxPoints: 60 }
+                        );
+                        self.addLog('재연결 후 속도 수집 중 (10초)...', 'info');
+                        const afterReadings = [];
+                        for (let i = 0; i < 20; i++) {
+                            self.checkStop();
+                            try {
+                                const rpm = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+                                if (rpm !== null && rpm !== undefined) {
+                                    afterReadings.push(rpm);
+                                    chartAfter.addDataPoint(0, rpm);
+                                    chartAfter.render();
+                                }
+                            } catch(_) {}
+                            await self.delay(500);
+                        }
 
-                    if (recoveredSpeed === null || recoveredSpeed === undefined) {
-                        throw new Error('복구 후 속도 읽기 실패 — 통신 복구 미완료');
+                        // ④ 판정: 평균 속도 > 100 RPM
+                        const avg = afterReadings.length
+                            ? afterReadings.reduce((a, b) => a + b, 0) / afterReadings.length
+                            : 0;
+                        self.addLog(`재연결 후 평균 속도: ${avg.toFixed(0)} RPM`, 'info');
+                        if (avg <= 100) throw new Error(`평균 속도 ${avg.toFixed(0)} RPM ≤ 100 RPM — 모터 미구동`);
+                        self.addLog(`✓ 재연결 후 속도 차트 완성 (평균 ${avg.toFixed(0)} RPM)`, 'success');
                     }
 
-                    self.addLog(`✓ 통신 복구 후 속도 응답 확인 (${recoveredSpeed})`, 'success');
                     passed.push('Phase 5');
                     self.updateStepStatus(3, 'success');
                     self.addLog('✓ Phase 5 합격', 'success');

@@ -42,8 +42,8 @@ OS 검증 리스트
     4-09. Closed-loop Velocity Control
 
 5. 보호 동작
-    5-01. IGBT 온도에 따른 속도 Derating
-    5-02. Dynamic brake
+    5-01. Dynamic brake
+    5-02. IGBT 온도에 따른 속도 Derating
 
 6. 알람 및 경고 동작
     6-01. Alarm History
