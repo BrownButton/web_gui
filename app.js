@@ -16903,62 +16903,53 @@ class ModbusDashboard {
 
     configContainer.innerHTML = `
             <div style="display: block; position: relative;">
-                <!-- Device Header -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-height: 48px;">
-                    <div>
-                        <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; line-height: 1.4; min-height: 29px; display: flex; align-items: center;">
-                            <span class="device-name-group" style="display:flex;flex-direction:column;align-items:flex-start;">
-                                <span class="device-name"
-                                      id="deviceName_${device.id}"
-                                      title="Click to edit name"
-                                      style="cursor: pointer; display: inline-block; padding: 2px 4px; border: 1px solid transparent; border-radius: 4px; transition: background 0.2s; box-sizing: border-box;"
-                                      onmouseover="this.style.background='#f0f0f0'"
-                                      onmouseout="this.style.background='transparent'">${
-        device.name}</span>
-                                <span class="device-serial" data-serial-for="${
-        device.id}" style="font-size:11px;font-weight:400;">${
-        device.serialNumber ? 'S/N: ' + device.serialNumber : ''}</span>
+                <!-- Device Header — Toss style -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-height: 52px;">
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="device-name"
+                                  id="deviceName_${device.id}"
+                                  title="클릭하여 이름 편집"
+                                  style="font-size: 17px; font-weight: 700; color: #191F28; cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: background 0.15s; letter-spacing: -0.02em;"
+                                  onmouseover="this.style.background='#F2F4F8'"
+                                  onmouseout="this.style.background='transparent'">${device.name}</span>
+                            <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}" style="font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: ${device.slaveId === 0 ? '#FFF0F0' : '#EBF1FF'}; color: ${device.slaveId === 0 ? '#E53E3E' : '#0064FF'}; border: none;">
+                                ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
                             </span>
-                        </h2>
-                        <span class="device-id-badge ${
-        device.slaveId === 0 ? 'unassigned' : ''}">
-                            ${
-        device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
-                        </span>
+                        </div>
+                        <span class="device-serial" data-serial-for="${device.id}" style="font-size: 12px; color: #8B95A1; letter-spacing: 0;">${device.serialNumber ? 'S/N: ' + device.serialNumber : ''}</span>
                     </div>
-                    <div style="display: flex; gap: 10px; width: 220px; justify-content: flex-end; padding-right: 32px;">
-                        <button onclick="window.dashboard.refreshDevice(${
-        device.id})" class="btn btn-secondary btn-sm">
-                            <span>↻</span> Refresh
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button onclick="window.dashboard.refreshDevice(${device.id})"
+                            style="padding: 8px 14px; border: 1px solid #E8EAED; border-radius: 8px; background: white; color: #4E5968; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s; letter-spacing: -0.01em;"
+                            onmouseover="this.style.background='#F4F6F9';this.style.borderColor='#D1D9E0'"
+                            onmouseout="this.style.background='white';this.style.borderColor='#E8EAED'">
+                            <span style="font-size: 14px;">↻</span> Refresh
                         </button>
-                        <button onclick="window.dashboard.deleteDevice(${
-        device.id})" class="btn btn-danger btn-sm">
-                            <span>🗑️</span> Delete
+                        <button onclick="window.dashboard.deleteDevice(${device.id})"
+                            style="padding: 8px 14px; border: 1px solid #FFD6D6; border-radius: 8px; background: white; color: #E53E3E; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s; letter-spacing: -0.01em;"
+                            onmouseover="this.style.background='#FFF5F5';this.style.borderColor='#FFA0A0'"
+                            onmouseout="this.style.background='white';this.style.borderColor='#FFD6D6'">
+                            <span style="font-size: 14px;">🗑️</span> Delete
                         </button>
                     </div>
                 </div>
 
-                <!-- Category Layout -->
-                <div style="display: flex; gap: 20px; height: 440px; align-items: stretch;">
+                <!-- Category Layout — Toss style -->
+                <div style="display: flex; gap: 16px; height: 440px; align-items: stretch;">
                     <!-- Category Sidebar -->
-                    <div style="width: 140px; flex-shrink: 0; border: 1px solid #e9ecef; border-radius: 8px; padding: 8px; background: #fafafa; display: flex; flex-direction: column; gap: 6px;">
-                        ${
-        categories
-            .map(
-                cat => `
-                            <div class="config-category-item ${
-                    activeCategory === cat.id ? 'config-category-active' : ''}"
+                    <div style="width: 136px; flex-shrink: 0; background: #F9FAFB; border-radius: 12px; padding: 8px 4px; display: flex; flex-direction: column; gap: 2px;">
+                        ${categories.map(cat => `
+                            <div class="config-category-item ${activeCategory === cat.id ? 'config-category-active' : ''}"
                                  data-category="${cat.id}"
-                                 onclick="window.dashboard.switchConfigCategory('${
-                    cat.id}')">
+                                 onclick="window.dashboard.switchConfigCategory('${cat.id}')">
                                 ${cat.label}
                             </div>
-                        `)
-            .join('')}
+                        `).join('')}
                     </div>
 
                     <!-- Category Content -->
-                    <div id="configContent" style="flex: 1; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; background: white; overflow-y: auto;">
+                    <div id="configContent" style="flex: 1; background: white; border: 1px solid #F2F4F8; border-radius: 12px; padding: 4px 0; overflow-y: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
                         ${this.getConfigCategoryHTML(device, activeCategory)}
                     </div>
                 </div>
@@ -16986,42 +16977,37 @@ class ModbusDashboard {
   getConfigCategoryHTML(device, category) {
     const id = device.id;
     const iStyle =
-        'width: 180px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px; background: white;';
+        'width: 180px; padding: 7px 11px; border: 1px solid #E8EAED; border-radius: 8px; font-size: 13px; background: white; color: #191F28; outline: none; transition: border-color 0.15s; font-family: inherit;';
 
     const row = (key, label, desc, inputHTML) => `
-            <div class="config-item" data-config="${
-        key}" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
-                <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
-                    <span onclick="window.dashboard.showConfigMenu(event, '${
-        key}', '${id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
+            <div class="config-item" data-config="${key}" onclick="window.dashboard.selectConfigItem(this, event)"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid #F2F4F8; position: relative; cursor: pointer; transition: background 0.15s; margin: 0;">
+                <div class="config-item-icon" style="width: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 10px; opacity: 0; transition: opacity 0.15s; pointer-events: none;">
+                    <span onclick="window.dashboard.showConfigMenu(event, '${key}', '${id}')" style="cursor: pointer; font-size: 15px; color: #8B95A1;">⚙</span>
                 </div>
-                <div style="flex: 1; padding-right: 20px;">
-                    <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">${
-        label}</div>
-                    <div style="font-size: 12px; color: #6c757d;">${desc}</div>
+                <div style="flex: 1; padding-right: 16px; min-width: 0;">
+                    <div style="font-size: 14px; font-weight: 500; color: #191F28; margin-bottom: 2px; letter-spacing: -0.01em;">${label}</div>
+                    <div style="font-size: 12px; color: #8B95A1; letter-spacing: 0;">${desc}</div>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center; width: 220px; justify-content: flex-end;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                     ${inputHTML}
-                    <span id="${key}_${
-        id}_status" style="width: 24px; font-size: 13px; color: #6c757d; text-align: center;"></span>
+                    <span id="${key}_${id}_status" style="width: 20px; font-size: 13px; color: #8B95A1; text-align: center; flex-shrink: 0;"></span>
                 </div>
             </div>`;
 
     const actionRow = (key, label, desc, btnHTML) => `
-            <div class="config-item" data-config="${
-        key}" onclick="window.dashboard.selectConfigItem(this, event)" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0 12px 8px; border-bottom: 1px solid #e9ecef; position: relative; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin: 0 -8px;">
-                <div class="config-item-icon" style="width: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0; transition: opacity 0.2s; pointer-events: none;">
-                    <span onclick="window.dashboard.showConfigMenu(event, '${
-        key}', '${id}')" style="cursor: pointer; font-size: 16px;">⚙</span>
+            <div class="config-item" data-config="${key}" onclick="window.dashboard.selectConfigItem(this, event)"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid #F2F4F8; position: relative; cursor: pointer; transition: background 0.15s; margin: 0;">
+                <div class="config-item-icon" style="width: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 10px; opacity: 0; transition: opacity 0.15s; pointer-events: none;">
+                    <span onclick="window.dashboard.showConfigMenu(event, '${key}', '${id}')" style="cursor: pointer; font-size: 15px; color: #8B95A1;">⚙</span>
                 </div>
-                <div style="flex: 1; padding-right: 20px;">
-                    <div style="font-size: 13px; font-weight: 500; color: #1a1a1a; margin-bottom: 2px;">${
-        label}</div>
-                    <div style="font-size: 12px; color: #6c757d;">${desc}</div>
+                <div style="flex: 1; padding-right: 16px; min-width: 0;">
+                    <div style="font-size: 14px; font-weight: 500; color: #191F28; margin-bottom: 2px; letter-spacing: -0.01em;">${label}</div>
+                    <div style="font-size: 12px; color: #8B95A1; letter-spacing: 0;">${desc}</div>
                 </div>
-                <div style="display: flex; gap: 8px; width: 220px; justify-content: flex-end;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                     ${btnHTML}
-                    <span style="width: 24px;"></span>
+                    <span style="width: 20px; flex-shrink: 0;"></span>
                 </div>
             </div>`;
 

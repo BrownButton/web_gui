@@ -145,13 +145,13 @@ window.OSTestModules.push(
           model: 'EC-FAN',
           equipment: 'EC FAN 1EA, USB to RS485 Converter, 부하 장치',
           criteria:
-              '[Phase 2-1] Torque: Ch0,1,3,4 파형이 Current Limit 200 레벨에서 Clamping (차트 육안 확인)\n[Phase 2-2] Velocity: 급가속 시 400 레벨 Saturation 후 목표 속도 도달 (차트 육안 확인)\n[Phase 3-1] 범위 초과 Write → Read-back 값 ≤ 1000 (자동)\n[Phase 3-2] Current Limit 0% 시 실제 속도 0xD02D ≤ 50 RPM (자동)\n[Phase 4] Anti-windup 복구 후 최대 속도 ≤ 1680 RPM (0xD02D 자동, Overshoot < 5%)',
+              '[Phase 2-1] Torque: Ch0,1,3,4 파형이 Current Limit 200 레벨에서 Clamping (차트 육안 확인)\n[Phase 2-2] Velocity: 급가속 시 400 레벨 Saturation 후 목표 속도 도달 (차트 육안 확인)\n[Phase 3-1] 범위 초과 Write → Read-back 값 ≤ 1000 (자동)\n[Phase 3-2] Current Limit 0% 시 실제 속도 0xD02D ≤ 50 RPM (자동)\n[Phase 4] Anti-windup 복구 후 최대 속도 ≤ MaxSpeed(0xD119)×1.05 RPM (0xD02D 자동, Overshoot < 5%)',
           steps: [
             '[Phase 2-1] Torque 모드 — Current Limit 20% (200) 설정 후 50%/100% 지령 Clamping 검증\n판정 기준: 차트 채널이 200 레벨에서 평탄하게 Clamping 유지 (차트 육안 판독)',
             '[Phase 2-2] Velocity 모드 — Current Limit 40% (400) + 1600 RPM 급가속 Saturation 검증\n판정 기준: 급가속 구간 채널이 400 레벨에서 Saturation 후 목표 속도 도달 (차트 육안 판독)',
             '[Phase 3-1] 범위 초과 150% (1500, 0x05DC) Write → Read-back 값 ≤ 1000 검증\n판정 기준: Write 후 Read-back 값 ≤ 1000 (자동)',
             '[Phase 3-2] Current Limit 0% 설정 후 Run — 모터 무회전 검증\n판정 기준: 실제 속도 0xD02D ≤ 50 RPM (자동)',
-            '[Phase 4] On-the-fly 전류 제한 10% 하향 → 속도 하락 → 100% 복구 Anti-windup 검증\n판정 기준: 복구 후 최대 속도 0xD02D ≤ 1680 RPM (자동, Overshoot < 5%)',
+            '[Phase 4] On-the-fly 전류 제한 10% 하향 → 속도 하락 → 100% 복구 Anti-windup 검증\n판정 기준: 복구 후 최대 속도 0xD02D ≤ MaxSpeed(0xD119)×1.05 RPM (자동, Overshoot < 5%)',
           ],
         },
 
@@ -168,12 +168,11 @@ window.OSTestModules.push(
           model: 'EC-FAN',
           equipment: 'EC FAN 1EA, USB to RS485 Converter',
           criteria:
-              '[Phase 2] SW Reset 후 재연결 시 0xD102 = 0(CCW) 유지\n[Phase 3-1] Torque 모드 CW/CCW 방향 전환 육안 확인 (자동 판정 제외)\n[Phase 3-2] Velocity 모드 CW/CCW 방향 전환 육안 확인 (자동 판정 제외)\n[Phase 4] 비정상값(0x0002, 0xFFFF) Write 후 Read-back 값 불변 확인',
+              '[Phase 2] SW Reset 후 재연결 시 0xD102 = 0(CCW) 유지\n[Phase 3-1] Torque 모드 CW/CCW → Hall 위상 자동 판정\n[Phase 3-2] Velocity 모드 CW/CCW → Hall 위상 자동 판정',
           steps: [
             '[Phase 2] CCW 설정 후 SW Reset → 재연결 후 Read-back 검증\n판정 기준: 재연결 후 0xD102 = 0(CCW) 유지 시 합격',
-            '[Phase 3-1] Torque 모드(0xD106=2) CW/CCW 방향 전환 육안 확인\n판정 기준: 모터 회전 방향 육안 확인 (자동 판정 제외)',
-            '[Phase 3-2] Velocity 모드(0xD106=0) CW/CCW 방향 전환 육안 확인\n판정 기준: 모터 회전 방향 육안 확인 (자동 판정 제외)',
-            '[Phase 4] 비정상값(0x0002, 0xFFFF) Write 거부 검증\n판정 기준: Write 후 이중 Read-back 값이 기존값과 동일하면 합격',
+            '[Phase 3-1] Torque 모드(0xD106=2) CW/CCW 방향 전환 자동 판정\n판정 기준: Hall 위상 순서 분석 → CW/CCW 일치 여부 자동 확인',
+            '[Phase 3-2] Velocity 모드(0xD106=0) CW/CCW 방향 전환 자동 판정\n판정 기준: Hall 위상 순서 분석 → CW/CCW 일치 여부 자동 확인',
           ],
         },
 
@@ -496,8 +495,8 @@ window.OSTestModules.push(
               self.checkStop();
 
               // 모터 Run 명령
-              self.addLog('Run 명령 전송 (Setpoint = 64000, Run = 1)', 'step');
-              await d.writeRegister(slaveId, 0xD001, 64000);
+              self.addLog('Run 명령 전송 (Setpoint = 8000, Run = 1)', 'step');
+              await d.writeRegister(slaveId, 0xD001, 8000);  // 200 RPM = 200/1600*64000
               await d.writeRegister(slaveId, 0x0001, 1);
               self.addLog('모터 가속 대기 (3초)...', 'info');
               await self.delay(3000);
@@ -582,6 +581,12 @@ window.OSTestModules.push(
               self.addLog(`✗ Phase 4 불합격: ${e.message}`, 'error');
             }
           }
+
+          // 모터 정지 (정리)
+          try {
+            await d.writeRegister(slaveId, 0xD001, 0);
+            self.addLog('■ 모터 정지 명령 전송 (0xD001 ← 0)', 'info');
+          } catch (_) {}
 
           // 최종 요약
           self.updateProgress(100, '테스트 완료');
@@ -795,6 +800,21 @@ window.OSTestModules.push(
             self.addLog('■ FC 0x64 차트 정지', 'info');
           };
 
+          const waitUntilStopped = async (label = '') => {
+            const deadline = Date.now() + 30000;
+            self.addLog(`  정지 대기${label ? ' (' + label + ')' : ''} — 실제 속도 ≤ 6 RPM 확인...`, 'info');
+            while (Date.now() < deadline) {
+              await self.checkStop();
+              await self.delay(500);
+              const spd = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+              if (spd !== null && spd !== undefined && Math.abs(spd) <= 6) {
+                self.addLog('  ✓ 정지 확인 (≤ 6 RPM)', 'success');
+                return;
+              }
+            }
+            self.addLog('  ⚠ 30초 내 정지 미확인 — 강제 진행', 'warning');
+          };
+
           // ── 테스트 본체 ───────────────────────────────────────────────────
           // 복원용 초기값 — 중단(Stop) 시 finally에서 접근하기 위해 try 밖에
           // 선언
@@ -823,11 +843,13 @@ window.OSTestModules.push(
             initOpMode = await d.readRegisterWithTimeout(slaveId, 0xD106);
             initCurLimit = await d.readRegisterWithTimeout(slaveId, 0xD13B);
             initSetpoint = await d.readRegisterWithTimeout(slaveId, 0xD001);
+            const maxSpeedRaw = await d.readRegisterWithTimeout(slaveId, 0xD119);
+            const maxSpeedRpm = (maxSpeedRaw != null && maxSpeedRaw > 0) ? maxSpeedRaw : 1800;
             self.addLog(
                 `초기값 — OperationMode[0xD106]: ${
                     initOpMode ?? 'N/A'}, CurrentLimit[0xD13B]: ${
                     initCurLimit ??
-                    'N/A'}, Setpoint[0xD001]: ${initSetpoint ?? 'N/A'}`,
+                    'N/A'}, Setpoint[0xD001]: ${initSetpoint ?? 'N/A'}, MaxSpeed[0xD119]: ${maxSpeedRpm} RPM${maxSpeedRaw == null || maxSpeedRaw === 0 ? ' (읽기 실패 — 기본값 1800 사용)' : ''}`,
                 'info');
 
             await startChartLoop();
@@ -875,9 +897,9 @@ window.OSTestModules.push(
             await self.delay(7000);
             self.checkStop();
 
-            self.addLog('★ 모터를 Stop 하세요', 'warning');
-            await self.delay(2000);
-            self.checkStop();
+            self.addLog('정지 명령 전송 (0xD001 ← 0)', 'info');
+            await d.writeRegister(slaveId, 0xD001, 0);
+            await waitUntilStopped('Phase 2-1 종료');
 
             // 초기값 복원
             if (initOpMode != null) {
@@ -939,8 +961,9 @@ window.OSTestModules.push(
             self.checkStop();
 
             self.addLog('★ 모터를 Stop 하세요', 'warning');
-            await self.delay(2000);
-            self.checkStop();
+            self.addLog('정지 명령 전송 (0xD001 ← 0)', 'info');
+            await d.writeRegister(slaveId, 0xD001, 0);
+            await waitUntilStopped('Phase 2-2 종료');
 
             // 초기값 복원
             if (initOpMode != null) {
@@ -1028,8 +1051,9 @@ window.OSTestModules.push(
             self.addLog(`  측정 완료 — 최대 실제 속도: ${maxSpeed32} RPM`, 'info');
 
             self.addLog('★ 모터를 Stop 하세요', 'warning');
-            await self.delay(2000);
-            self.checkStop();
+            self.addLog('정지 명령 전송 (0xD001 ← 0)', 'info');
+            await d.writeRegister(slaveId, 0xD001, 0);
+            await waitUntilStopped('Phase 3-2 종료');
 
             // 복원 (다음 Phase를 위해 100%로)
             await d.writeRegister(slaveId, 0xD13B, 1000);
@@ -1073,7 +1097,7 @@ window.OSTestModules.push(
             await self.delay(100);
             await d.writeRegister(slaveId, 0xD001, 64000);
             self.addLog(
-                '  Write: Setpoint [0xD001] = 64000 (100% = 1600 RPM)', 'info');
+                `  Write: Setpoint [0xD001] = 64000 (100% = ${maxSpeedRpm} RPM)`, 'info');
             await self.delay(200);
 
             self.addLog(
@@ -1098,9 +1122,9 @@ window.OSTestModules.push(
                 '  Write: Current Limit [0xD13B] = 1000 (100.0%) ← 복구',
                 'info');
             // 10초간 실제 속도 모니터링 (Overshoot 감시)
-            const overshootLimit = Math.round(1600 * 1.05);  // 1680 RPM
+            const overshootLimit = Math.round(maxSpeedRpm * 1.05);
             self.addLog(
-                `  → Anti-windup 확인: 한계 ${overshootLimit} RPM (1600×1.05) — 10초 자동 측정`,
+                `  → Anti-windup 확인: 한계 ${overshootLimit} RPM (${maxSpeedRpm}×1.05) — 10초 자동 측정`,
                 'info');
             let maxSpeed4 = 0;
             const endTime4 = Date.now() + 10000;
@@ -1115,7 +1139,9 @@ window.OSTestModules.push(
                 'info');
 
             self.addLog('★ 모터를 Stop 하세요', 'warning');
-            await self.delay(2000);
+            self.addLog('정지 명령 전송 (0xD001 ← 0)', 'info');
+            await d.writeRegister(slaveId, 0xD001, 0);
+            await waitUntilStopped('Phase 4 종료');
 
             // 초기값 복원
             if (initOpMode != null) {
@@ -1203,6 +1229,21 @@ window.OSTestModules.push(
           const _wait = ms => new Promise(r => setTimeout(r, ms));
           const dirLabel = v =>
               v === 0 ? 'CCW(0)' : v === 1 ? 'CW(1)' : `Unknown(${v})`;
+
+          const waitUntilStopped = async (label = '') => {
+            const deadline = Date.now() + 30000;
+            self.addLog(`  정지 대기${label ? ' (' + label + ')' : ''} — 실제 속도 ≤ 6 RPM 확인...`, 'info');
+            while (Date.now() < deadline) {
+              await self.checkStop();
+              await _wait(500);
+              const spd = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+              if (spd !== null && spd !== undefined && Math.abs(spd) <= 6) {
+                self.addLog('  ✓ 정지 확인 (≤ 6 RPM)', 'success');
+                return;
+              }
+            }
+            self.addLog('  ⚠ 30초 내 정지 미확인 — 강제 진행', 'warning');
+          };
 
           let origDir = null, origOpMode = null;
           const failed = [], passed = [];
@@ -1411,7 +1452,7 @@ window.OSTestModules.push(
                     origOpMode === 2 ? 'Torque(2)' : `Unknown(${origOpMode})`}`,
                 'info');
             self.addLog(
-                `  최대속도: ${maxSpeed} RPM${maxSpeedRaw == null || maxSpeedRaw === 0 ? ' (읽기 실패 — 기본값 1600 사용)' : ''}`,
+                `  최대속도: ${maxSpeed} RPM${maxSpeedRaw == null || maxSpeedRaw === 0 ? ' (읽기 실패 — 기본값 1800 사용)' : ''}`,
                 maxSpeedRaw == null || maxSpeedRaw === 0 ? 'warning' : 'info');
 
             // 속도 Setpoint raw 값 (150 RPM 기준)
@@ -1506,118 +1547,130 @@ window.OSTestModules.push(
               }
             }
 
-            // ─── Phase 3-1: Torque 모드 CW/CCW 방향 전환
+            // ─── Phase 3-1: Torque 모드 CW/CCW 방향 전환 자동 판정
             self.updateProgress(28, '[Phase 3-1] Torque 모드 방향 전환 중...');
             self.updateStepStatus(1, 'running');
-            self.addLog('[Phase 3-1] Torque 모드(0xD106=2) CW/CCW 방향 전환 육안 확인', 'info');
-
-            await d.writeRegister(slaveId, 0xD106, 2);
-            await _wait(300);
-            self.addLog('  Torque 모드 설정 완료 (0xD106=2)', 'info');
-            // Torque 10% Setpoint + Run
+            self.addLog('[Phase 3-1] Torque 모드(0xD106=2) CW/CCW 방향 전환 자동 판정 (Hall 위상)', 'info');
             const rawTorque10 = Math.round(0.1 * 65535); // 6554
-            await d.writeRegister(slaveId, 0xD001, rawTorque10);
-            self.addLog(`  Setpoint = ${rawTorque10} (10%), 모터 Run (0xD001 > 0)`, 'info');
-            await _wait(300);
+            let phase31Pass = true;
 
-            await d.writeRegister(slaveId, 0xD102, 1);
-            await _wait(200);
-            self.addLog('★ CW(1) 설정 — 모터 시계 방향 회전 육안 확인 (15초)', 'warning');
-            for (let c = 15; c > 0; c--) {
-              await self.checkStop();
-              self.updateProgress(28 + Math.round((15 - c) / 15 * 14), `[Phase 3-1] CW 육안 확인 (${c}초)`);
-              await _wait(1000);
-            }
+            for (const [dirVal, dirName, progBase] of [[1, 'CW', 28], [0, 'CCW', 42]]) {
+              // 정지 → 방향 Write → SW Reset
+              self.addLog(`  [${dirName} 전환] 정지 명령 전송 (0xD001 ← 0)`, 'info');
+              await d.writeRegister(slaveId, 0xD001, 0);
+              await waitUntilStopped(`${dirName} 전환 전`);
+              await d.writeRegister(slaveId, 0xD102, dirVal);
+              await _wait(200);
+              self.addLog(`  ${dirName}(${dirVal}) Write 완료 → SW Reset (EEPROM 저장 + 재부팅)`, 'info');
+              const reboot31 = await self.swResetAndWait(slaveId, { timeoutMs: 60000, pollIntervalMs: 1000 });
+              if (!reboot31.ok) throw new Error(`[Phase 3-1] ${dirName} 전환 후 재부팅 응답 없음`);
+              await _wait(300);
 
-            await d.writeRegister(slaveId, 0xD102, 0);
-            await _wait(200);
-            self.addLog('★ CCW(0) 설정 — 모터 반시계 방향 회전 육안 확인 (15초)', 'warning');
-            for (let c = 15; c > 0; c--) {
-              await self.checkStop();
-              self.updateProgress(42 + Math.round((15 - c) / 15 * 14), `[Phase 3-1] CCW 육안 확인 (${c}초)`);
-              await _wait(1000);
-            }
+              // Hall 데이터 초기화 후 차트 재시작
+              hallData[0].length = 0; hallData[1].length = 0; hallData[2].length = 0;
+              await startHallChart();
 
-            // Phase 3-1 종료 후 모터 Stop
-            await d.writeRegister(slaveId, 0xD001, 0);
-            await _wait(200);
-            self.addLog('  Phase 3-1 완료 — 모터 Stop', 'info');
-            self.updateStepStatus(1, 'success');
-            passed.push('Phase 3-1');
+              // Torque 모드 + 구동
+              await d.writeRegister(slaveId, 0xD106, 2);
+              await _wait(200);
+              await d.writeRegister(slaveId, 0xD001, rawTorque10);
+              self.addLog(`  Torque 모드(0xD106=2) + Setpoint=${rawTorque10}(10%) — 모터 Run, 8초 수집`, 'info');
 
-            // ─── Phase 3-2: Velocity 모드 CW/CCW 방향 전환
-            self.updateProgress(57, '[Phase 3-2] Velocity 모드 방향 전환 중...');
-            self.updateStepStatus(2, 'running');
-            self.addLog('[Phase 3-2] Velocity 모드(0xD106=0) CW/CCW 방향 전환 육안 확인', 'info');
+              // 8초 데이터 수집
+              for (let c = 8; c > 0; c--) {
+                await self.checkStop();
+                self.updateProgress(progBase + Math.round((8 - c) / 8 * 12), `[Phase 3-1] ${dirName} Hall 수집 (${c}초)`);
+                await _wait(1000);
+              }
+              await stopHallChart();
 
-            await d.writeRegister(slaveId, 0xD106, 0);
-            await _wait(300);
-            self.addLog('  Velocity 모드 설정 완료 (0xD106=0)', 'info');
-            // 100 RPM Setpoint + Run
-            await d.writeRegister(slaveId, 0xD001, rawSpeed); // 4000
-            self.addLog(`  Setpoint = ${rawSpeed} (150 RPM), 모터 Run (0xD001 > 0)`, 'info');
-            await _wait(300);
-
-            await d.writeRegister(slaveId, 0xD102, 1);
-            await _wait(200);
-            self.addLog('★ CW(1) 설정 — 모터 시계 방향 회전 육안 확인 (15초)', 'warning');
-            for (let c = 15; c > 0; c--) {
-              await self.checkStop();
-              self.updateProgress(57 + Math.round((15 - c) / 15 * 14), `[Phase 3-2] CW 육안 확인 (${c}초)`);
-              await _wait(1000);
-            }
-
-            await d.writeRegister(slaveId, 0xD102, 0);
-            await _wait(200);
-            self.addLog('★ CCW(0) 설정 — 모터 반시계 방향 회전 육안 확인 (15초)', 'warning');
-            for (let c = 15; c > 0; c--) {
-              await self.checkStop();
-              self.updateProgress(71 + Math.round((15 - c) / 15 * 14), `[Phase 3-2] CCW 육안 확인 (${c}초)`);
-              await _wait(1000);
-            }
-
-            // Phase 3-2 종료 후 모터 Stop
-            await d.writeRegister(slaveId, 0xD001, 0);
-            await _wait(200);
-            self.addLog('  Phase 3-2 완료 — 모터 Stop', 'info');
-            self.updateStepStatus(2, 'success');
-            passed.push('Phase 3-2');
-
-            // ─── Phase 4: 비정상값 Write 거부 검증
-            self.updateProgress(86, '[Phase 4] 비정상값 Write 거부 검증 중...');
-            self.updateStepStatus(3, 'running');
-            self.addLog('[Phase 4] 비정상값(0x0002, 0xFFFF) Write 거부 검증', 'info');
-
-            const dirBefore = await d.readRegisterWithTimeout(slaveId, 0xD102);
-            self.addLog(`  Write 전 기준값 0xD102 = ${dirBefore}`, 'info');
-
-            let invalidFail = 0;
-            for (const iv of [0x0002, 0xFFFF]) {
-              const hex = `0x${iv.toString(16).toUpperCase()}`;
-              try {
-                await d.writeRegister(slaveId, 0xD102, iv);
-                await _wait(200);
-                const rb1 = await d.readRegisterWithTimeout(slaveId, 0xD102);
-                await _wait(200);
-                const rb2 = await d.readRegisterWithTimeout(slaveId, 0xD102);
-                if (rb2 === iv) {
-                  self.addLog(`  ✗ ${hex}: Write 수락 + Read-back = ${rb2} (값 변경됨) → 불합격`, 'error');
-                  invalidFail++;
-                } else {
-                  self.addLog(`  ✓ ${hex}: Write 수락됐으나 Read-back = ${rb2} (값 불변) → 합격`, 'success');
-                }
-              } catch (_) {
-                self.addLog(`  ✓ ${hex}: Write 거부 (Exception) → 합격`, 'success');
+              // 자동 판정
+              const res = analyzeHallDirection();
+              if (!res) {
+                self.addLog(`  ⚠ [Phase 3-1] ${dirName}: Hall 데이터 부족 — 판정 불가`, 'warning');
+                phase31Pass = false;
+              } else if (res.stopped) {
+                self.addLog(`  ✗ [Phase 3-1] ${dirName}: 모터 미구동 (${res.reason}) — 불합격`, 'error');
+                phase31Pass = false;
+              } else {
+                const confPct = (res.confidence * 100).toFixed(0);
+                const ok = res.direction === dirName;
+                self.addLog(
+                    `  ${ok ? '✓' : '✗'} [Phase 3-1] ${dirName}: Hall 위상 판정=${res.direction} (CW표 ${res.cwVotes}/CCW표 ${res.ccwVotes}, 신뢰도 ${confPct}%) — ${ok ? '합격' : '불합격'}`,
+                    ok ? 'success' : 'error');
+                if (!ok) phase31Pass = false;
               }
             }
 
-            if (invalidFail === 0) {
-              passed.push('Phase 4');
-              self.updateStepStatus(3, 'success');
-            } else {
-              failed.push('Phase 4');
-              self.updateStepStatus(3, 'error');
+            // Phase 3-1 종료
+            self.addLog('  [Phase 3-1 종료] 정지 명령 전송 (0xD001 ← 0)', 'info');
+            await d.writeRegister(slaveId, 0xD001, 0);
+            await waitUntilStopped('Phase 3-1 종료');
+            self.addLog(`  Phase 3-1 완료 — ${phase31Pass ? '합격' : '불합격'}`, phase31Pass ? 'success' : 'error');
+            self.updateStepStatus(1, phase31Pass ? 'success' : 'error');
+            (phase31Pass ? passed : failed).push('Phase 3-1');
+
+            // ─── Phase 3-2: Velocity 모드 CW/CCW 방향 전환 자동 판정
+            self.updateProgress(57, '[Phase 3-2] Velocity 모드 방향 전환 중...');
+            self.updateStepStatus(2, 'running');
+            self.addLog('[Phase 3-2] Velocity 모드(0xD106=0) CW/CCW 방향 전환 자동 판정 (Hall 위상)', 'info');
+            let phase32Pass = true;
+
+            for (const [dirVal, dirName, progBase] of [[1, 'CW', 57], [0, 'CCW', 71]]) {
+              // 정지 → 방향 Write → SW Reset
+              self.addLog(`  [${dirName} 전환] 정지 명령 전송 (0xD001 ← 0)`, 'info');
+              await d.writeRegister(slaveId, 0xD001, 0);
+              await waitUntilStopped(`${dirName} 전환 전`);
+              await d.writeRegister(slaveId, 0xD102, dirVal);
+              await _wait(200);
+              self.addLog(`  ${dirName}(${dirVal}) Write 완료 → SW Reset (EEPROM 저장 + 재부팅)`, 'info');
+              const reboot32 = await self.swResetAndWait(slaveId, { timeoutMs: 60000, pollIntervalMs: 1000 });
+              if (!reboot32.ok) throw new Error(`[Phase 3-2] ${dirName} 전환 후 재부팅 응답 없음`);
+              await _wait(300);
+
+              // Hall 데이터 초기화 후 차트 재시작
+              hallData[0].length = 0; hallData[1].length = 0; hallData[2].length = 0;
+              await startHallChart();
+
+              // Velocity 모드 + 구동
+              await d.writeRegister(slaveId, 0xD106, 0);
+              await _wait(200);
+              await d.writeRegister(slaveId, 0xD001, rawSpeed);
+              self.addLog(`  Velocity 모드(0xD106=0) + Setpoint=${rawSpeed}(150 RPM) — 모터 Run, 8초 수집`, 'info');
+
+              // 8초 데이터 수집
+              for (let c = 8; c > 0; c--) {
+                await self.checkStop();
+                self.updateProgress(progBase + Math.round((8 - c) / 8 * 12), `[Phase 3-2] ${dirName} Hall 수집 (${c}초)`);
+                await _wait(1000);
+              }
+              await stopHallChart();
+
+              // 자동 판정
+              const res = analyzeHallDirection();
+              if (!res) {
+                self.addLog(`  ⚠ [Phase 3-2] ${dirName}: Hall 데이터 부족 — 판정 불가`, 'warning');
+                phase32Pass = false;
+              } else if (res.stopped) {
+                self.addLog(`  ✗ [Phase 3-2] ${dirName}: 모터 미구동 (${res.reason}) — 불합격`, 'error');
+                phase32Pass = false;
+              } else {
+                const confPct = (res.confidence * 100).toFixed(0);
+                const ok = res.direction === dirName;
+                self.addLog(
+                    `  ${ok ? '✓' : '✗'} [Phase 3-2] ${dirName}: Hall 위상 판정=${res.direction} (CW표 ${res.cwVotes}/CCW표 ${res.ccwVotes}, 신뢰도 ${confPct}%) — ${ok ? '합격' : '불합격'}`,
+                    ok ? 'success' : 'error');
+                if (!ok) phase32Pass = false;
+              }
             }
+
+            // Phase 3-2 종료
+            self.addLog('  [Phase 3-2 종료] 정지 명령 전송 (0xD001 ← 0)', 'info');
+            await d.writeRegister(slaveId, 0xD001, 0);
+            await waitUntilStopped('Phase 3-2 종료');
+            self.addLog(`  Phase 3-2 완료 — ${phase32Pass ? '합격' : '불합격'}`, phase32Pass ? 'success' : 'error');
+            self.updateStepStatus(2, phase32Pass ? 'success' : 'error');
+            (phase32Pass ? passed : failed).push('Phase 3-2');
 
             const ok = failed.length === 0;
             self.updateProgress(100, ok ? '테스트 완료 — 합격' : '테스트 완료 — 불합격');
@@ -1631,9 +1684,8 @@ window.OSTestModules.push(
               message: ok ? '구동 방향 설정 검증 완료' : `불합격 항목: ${failed.join(', ')}`,
               details:
                   `Phase 2: SW Reset 후 CCW(0) 유지 → ${passed.includes('Phase 2') ? '합격' : '불합격'}\n` +
-                  `Phase 3-1: Torque 모드 CW/CCW 방향 전환 육안 확인 → ${passed.includes('Phase 3-1') ? '완료' : '미완료'}\n` +
-                  `Phase 3-2: Velocity 모드 CW/CCW 방향 전환 육안 확인 → ${passed.includes('Phase 3-2') ? '완료' : '미완료'}\n` +
-                  `Phase 4: 비정상값(0x0002, 0xFFFF) Write 거부 → ${passed.includes('Phase 4') ? '합격' : '불합격'}`,
+                  `Phase 3-1: Torque 모드 CW/CCW Hall 자동 판정 → ${passed.includes('Phase 3-1') ? '합격' : '불합격'}\n` +
+                  `Phase 3-2: Velocity 모드 CW/CCW Hall 자동 판정 → ${passed.includes('Phase 3-2') ? '합격' : '불합격'}`,
             };
 
           } finally {

@@ -561,7 +561,6 @@ window.OSTestModules.push({
                     await self.checkStop();
                     await self.delay(500);
                     const spd = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
-                    self.addLog(`  속도 [0xD02D] = ${spd ?? 'null'} RPM`, 'info');
                     if (spd !== null && spd !== undefined && Math.abs(spd) <= 6) {
                         self.addLog('  ✓ 정지 확인 (≤ 6 RPM)', 'success');
                         return;
@@ -835,8 +834,154 @@ window.OSTestModules.push({
         'drive04': async function() {
             const self    = this;
             const d       = window.dashboard;
+            const modbus  = d.modbus;
             const slaveId = 1;
             self.checkConnection();
+
+            // ── 인라인 차트 삽입 ──────────────────────────────────────────────
+            const testItem = document.querySelector('.os-test-item[data-test-id="drive04"]');
+            let chart = null;
+
+            if (testItem) {
+                testItem.querySelector('.drive04-chart-section')?.remove();
+                const chartSection = document.createElement('div');
+                chartSection.className = 'drive04-chart-section';
+                chartSection.style.cssText = 'padding:0 20px 20px 20px;';
+                chartSection.innerHTML = `
+                  <div style="background:white;border:1px solid #e9ecef;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+                    <div style="padding:10px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;">
+                      <span style="font-size:13px;font-weight:600;color:#1a1a1a;">실시간 차트 (Continuous 20ms)</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:#e9ecef;border-bottom:1px solid #e9ecef;">
+                      <div style="background:white;padding:8px 12px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                          <span style="width:12px;height:3px;background:#3498db;display:inline-block;border-radius:2px;flex-shrink:0;"></span>
+                          <span style="font-size:11px;color:#6c757d;">Velocity Command [rpm]</span>
+                        </div>
+                        <div id="drive04-val-0" style="font-size:18px;font-weight:600;font-family:monospace;color:#3498db;">—</div>
+                      </div>
+                      <div style="background:white;padding:8px 12px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                          <span style="width:12px;height:3px;background:#e74c3c;display:inline-block;border-radius:2px;flex-shrink:0;"></span>
+                          <span style="font-size:11px;color:#6c757d;">Velocity Feedback [rpm]</span>
+                        </div>
+                        <div id="drive04-val-1" style="font-size:18px;font-weight:600;font-family:monospace;color:#e74c3c;">—</div>
+                      </div>
+                    </div>
+                    <canvas id="drive04-canvas" width="800" height="220"
+                            style="width:100%;height:220px;display:block;background:#fafafa;"></canvas>
+                  </div>`;
+
+                const logDiv = [...testItem.querySelector('.os-test-content').children].find(
+                    el => el.querySelector('.test-log-container'));
+                if (logDiv)
+                    logDiv.parentElement.insertBefore(chartSection, logDiv);
+                else
+                    testItem.querySelector('.os-test-content').appendChild(chartSection);
+
+                const contentEl = testItem.querySelector('.os-test-content');
+                if (contentEl && contentEl.style.display !== 'block') {
+                    contentEl.style.display = 'block';
+                    const expandIcon = testItem.querySelector('.test-expand-icon');
+                    if (expandIcon) expandIcon.style.transform = 'rotate(180deg)';
+                }
+
+                const canvas = document.getElementById('drive04-canvas');
+                if (canvas) {
+                    chart = new MiniChart(
+                        canvas,
+                        [
+                            { name: 'Velocity Command [rpm]', color: '#3498db', chNum: 1 },
+                            { name: 'Velocity Feedback [rpm]', color: '#e74c3c', chNum: 0 },
+                        ],
+                        { maxPoints: 10000, displayPoints: 300 });
+
+                    const saveLsmBtn = testItem.querySelector('.test-save-lsm-btn');
+                    if (saveLsmBtn) {
+                        saveLsmBtn.onclick = () => {
+                            if (!chart) return;
+                            const ts = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                            LsmExporter.download(chart.channels, 20, `drive04_${ts}.lsm`);
+                        };
+                    }
+                }
+            }
+
+            // ── FC 0x64 차트 루프 헬퍼 ────────────────────────────────────────
+            const chartStop = { stop: false };
+            const FC64_TYPE = 'drive04chart';
+
+            const startChartLoop = async () => {
+                if (!d.writer || !chart) return false;
+                chartStop.stop = false;
+
+                if (d.chartRunning) {
+                    self.addLog('⏹ Chart 탭 FC64 차트를 정지합니다...', 'info');
+                    await d.stopChartCapture();
+                }
+                const runningMini = Object.keys(d.miniChartRunning)
+                    .filter(k => k !== FC64_TYPE && d.miniChartRunning[k]);
+                for (const key of runningMini) {
+                    self.addLog(`⏹ HW Overview 미니 차트 [${key}]를 정지합니다...`, 'info');
+                    await d.stopMiniChart(key);
+                }
+
+                d._fc64Busy = true;
+                while (d.isPolling) await self.delay(5);
+                await d.sendAndReceiveFC64(modbus.buildContinuousStop(slaveId), 0x00, 300);
+                const resp = await d.sendAndReceiveFC64(
+                    modbus.buildContinuousConfigure(slaveId, 160, [1, 0]),
+                    0x02, 1000);
+                if (!resp) {
+                    d._fc64Busy = false;
+                    self.addLog('⚠ FC 0x64 Configure 실패 — 차트 없이 계속 진행', 'warning');
+                    return false;
+                }
+                d.miniChartRunning[FC64_TYPE] = true;
+                d._fc64Busy = false;
+                (async () => {
+                    while (!chartStop.stop && d.miniChartRunning[FC64_TYPE]) {
+                        const r = await d.sendAndReceiveFC64(
+                            modbus.buildContinuousRequest(slaveId), 0x03, 300);
+                        if (chartStop.stop) break;
+                        if (r) {
+                            const p = modbus.parseContinuousDataResponse(r);
+                            if (p && p.data.length > 0) {
+                                const spc = Math.floor(p.data.length / 2);
+                                for (let s = 0; s < spc; s++)
+                                    for (let ci = 0; ci < 2; ci++) {
+                                        const v = p.data[ci * spc + s];
+                                        if (v !== undefined) chart.addDataPoint(ci, v);
+                                    }
+                                chart.render();
+                                for (let ci = 0; ci < 2; ci++) {
+                                    const ch = chart.channels[ci];
+                                    if (ch && ch.data.length > 0) {
+                                        const el = document.getElementById(`drive04-val-${ci}`);
+                                        if (el) el.textContent = ch.data[ch.data.length - 1].toFixed(1);
+                                    }
+                                }
+                            }
+                        }
+                        if (d.commandQueue.length > 0) await d._drainCommandQueue();
+                    }
+                })();
+                self.addLog('✓ FC 0x64 차트 시작 (Vel Cmd/FB, 20ms)', 'success');
+                return true;
+            };
+
+            const stopChartLoop = async () => {
+                chartStop.stop = true;
+                d._fc64Busy = true;
+                d.miniChartRunning[FC64_TYPE] = false;
+                await new Promise(r => setTimeout(r, 200));
+                if (d.writer) {
+                    await d.sendAndReceiveFC64(modbus.buildContinuousStop(slaveId), 0x00, 300);
+                    await new Promise(r => setTimeout(r, 400));
+                }
+                d._fc64Busy = false;
+                self.addLog('■ FC 0x64 차트 정지', 'info');
+            };
 
             const passed = [];
             const failed = [];
@@ -847,13 +992,15 @@ window.OSTestModules.push({
             const origSetpoint       = await d.readRegisterWithTimeout(slaveId, 0xD001);
             self.addLog(`초기값 백업 — SetValueSource(0xD101)=${origSetValueSource} / OpMode(0xD106)=${origOpMode} / Setpoint(0xD001)=${origSetpoint}`, 'info');
 
+            try {
+
+            await startChartLoop();
+
             // Set Value Source = RS485, Operating Mode = Closed-loop Velocity
             self.addLog('Set Value Source = RS485 (0xD101 ← 1)', 'step');
             await d.writeRegister(slaveId, 0xD101, 1);
             self.addLog('Operating Mode = Closed-loop Velocity (0xD106 ← 0)', 'step');
             await d.writeRegister(slaveId, 0xD106, 0);
-            self.addLog('Run 명령 전송 (0x0001 ← 1)', 'step');
-            await d.writeRegister(slaveId, 0x0001, 1);
 
             // 각 Setpoint → raw 변환 (maxSpeed=1600, raw = rpm/1600*64000)
             const toRaw = rpm => Math.round(rpm / 1600 * 64000);
@@ -878,8 +1025,8 @@ window.OSTestModules.push({
                         const raw = toRaw(step.rpm);
                         self.addLog(`Setpoint = ${step.label} ${step.rpm} RPM (0xD001 ← ${raw})`, 'step');
                         await d.writeRegister(slaveId, 0xD001, raw);
-                        self.addLog('속도 안정화 대기 (3초)...', 'info');
-                        await self.delay(3000);
+                        self.addLog('속도 안정화 대기 (6초)...', 'info');
+                        await self.delay(6000);
 
                         const actual = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
                         self.addLog(`실제 속도 [0xD02D] = ${actual ?? 'null'} (목표: ${step.rpm} RPM)`, 'info');
@@ -949,29 +1096,6 @@ window.OSTestModules.push({
                 }
             }
 
-            // ── 차트 패널 주입 헬퍼 ──────────────────────────────────────────
-            const injectChartPanel = () => {
-                const item = document.querySelector('.os-test-item[data-test-id="drive04"]');
-                const logContainer = item?.querySelector('.test-log-container');
-                if (!logContainer) return null;
-                // 중복 방지
-                document.getElementById('drive04-chart-panel')?.remove();
-                const panel = document.createElement('div');
-                panel.id = 'drive04-chart-panel';
-                panel.style.cssText = 'display:flex;gap:12px;padding:12px 18px;';
-                panel.innerHTML = `
-                    <div style="flex:1;background:#f7f8fa;border-radius:10px;padding:10px;">
-                        <div style="font-size:11px;font-weight:600;color:#8b95a1;margin-bottom:6px;">단절 전 속도 (RPM)</div>
-                        <canvas id="drive04-chart-before" height="120"></canvas>
-                    </div>
-                    <div style="flex:1;background:#f7f8fa;border-radius:10px;padding:10px;">
-                        <div style="font-size:11px;font-weight:600;color:#8b95a1;margin-bottom:6px;">재연결 후 속도 (RPM)</div>
-                        <canvas id="drive04-chart-after" height="120"></canvas>
-                    </div>`;
-                logContainer.parentNode.insertBefore(panel, logContainer);
-                return panel;
-            };
-
             // ── Phase 4: USB 컨버터 분리 → disconnect 이벤트 자동 감지 ────────
             {
                 self.updateStepStatus(2, 'running');
@@ -981,32 +1105,11 @@ window.OSTestModules.push({
                 try {
                     self.checkStop();
 
-                    // ① 차트 패널 주입
-                    injectChartPanel();
-                    const canvasBefore = document.getElementById('drive04-chart-before');
-                    canvasBefore.width  = canvasBefore.parentElement.clientWidth - 20;
-                    const chartBefore = new MiniChart(
-                        canvasBefore,
-                        [{ name: 'Speed', color: '#3b82f6', chNum: 0 }],
-                        { maxPoints: 60 }
-                    );
+                    // FC 0x64 차트 먼저 정지 — writer.write() hang 방지
+                    // (USB 뽑힌 상태에서 write()가 무한대기 → port.close() hang → 페이지 freeze)
+                    await stopChartLoop();
 
-                    // ② 단절 전 데이터 수집 (10초, 500ms 주기)
-                    self.addLog('단절 전 속도 수집 중 (10초)...', 'info');
-                    for (let i = 0; i < 20; i++) {
-                        self.checkStop();
-                        try {
-                            const rpm = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
-                            if (rpm !== null && rpm !== undefined) {
-                                chartBefore.addDataPoint(0, rpm);
-                                chartBefore.render();
-                            }
-                        } catch(_) {}
-                        await self.delay(500);
-                    }
-                    self.addLog('✓ 단절 전 속도 차트 완성', 'success');
-
-                    // ③ USB 분리 안내 + disconnect 이벤트 대기
+                    // USB 분리 안내 + disconnect 이벤트 대기
                     self.addLog('★ USB 컨버터를 PC에서 뽑아주세요 (RS485 케이블이 아닌 USB 포트)', 'warning');
                     self.addLog('  → 모터는 계속 구동 중이어야 합니다 (육안 확인)', 'warning');
                     self.addLog('  최대 60초 내 분리하지 않으면 불합격 처리됩니다', 'info');
@@ -1062,44 +1165,27 @@ window.OSTestModules.push({
                     if (!reconnected) throw new Error('120초 내 재연결 미감지');
                     self.addLog('✓ 재연결 감지 — 명령 재전송', 'success');
 
-                    // ② Run + Setpoint 재전송
-                    await d.writeRegister(slaveId, 0x0001, 1);
+                    // ② Setpoint 재전송 + FC 0x64 차트 재시작
                     await d.writeRegister(slaveId, 0xD001, toRaw(800));
-                    self.addLog('Run + Setpoint 800 RPM 재전송 완료', 'step');
+                    self.addLog('Setpoint 800 RPM 재전송 완료', 'step');
                     await self.delay(3000);
+                    await startChartLoop();
 
-                    // ③ 재연결 후 데이터 수집 (10초, 500ms 주기)
-                    const canvasAfter = document.getElementById('drive04-chart-after');
-                    if (canvasAfter) {
-                        canvasAfter.width = canvasAfter.parentElement.clientWidth - 20;
-                        const chartAfter = new MiniChart(
-                            canvasAfter,
-                            [{ name: 'Speed', color: '#22c55e', chNum: 0 }],
-                            { maxPoints: 60 }
-                        );
-                        self.addLog('재연결 후 속도 수집 중 (10초)...', 'info');
-                        const afterReadings = [];
-                        for (let i = 0; i < 20; i++) {
-                            self.checkStop();
-                            try {
-                                const rpm = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
-                                if (rpm !== null && rpm !== undefined) {
-                                    afterReadings.push(rpm);
-                                    chartAfter.addDataPoint(0, rpm);
-                                    chartAfter.render();
-                                }
-                            } catch(_) {}
-                            await self.delay(500);
-                        }
-
-                        // ④ 판정: 평균 속도 > 100 RPM
-                        const avg = afterReadings.length
-                            ? afterReadings.reduce((a, b) => a + b, 0) / afterReadings.length
-                            : 0;
-                        self.addLog(`재연결 후 평균 속도: ${avg.toFixed(0)} RPM`, 'info');
-                        if (avg <= 100) throw new Error(`평균 속도 ${avg.toFixed(0)} RPM ≤ 100 RPM — 모터 미구동`);
-                        self.addLog(`✓ 재연결 후 속도 차트 완성 (평균 ${avg.toFixed(0)} RPM)`, 'success');
+                    // ③ 재연결 후 속도 판정 (10초 수집, 평균 > 100 RPM)
+                    self.addLog('재연결 후 속도 수집 중 (10초)...', 'info');
+                    const afterReadings = [];
+                    for (let i = 0; i < 20; i++) {
+                        self.checkStop();
+                        try {
+                            const rpm = await d.readInputRegisterWithTimeout(slaveId, 0xD02D);
+                            if (rpm !== null && rpm !== undefined) afterReadings.push(rpm);
+                        } catch(_) {}
+                        await self.delay(500);
                     }
+                    const avg = afterReadings.length
+                        ? afterReadings.reduce((a, b) => a + b, 0) / afterReadings.length : 0;
+                    self.addLog(`재연결 후 평균 속도: ${avg.toFixed(0)} RPM`, 'info');
+                    if (avg <= 100) throw new Error(`평균 속도 ${avg.toFixed(0)} RPM ≤ 100 RPM — 모터 미구동`);
 
                     passed.push('Phase 5');
                     self.updateStepStatus(3, 'success');
@@ -1112,12 +1198,12 @@ window.OSTestModules.push({
             }
 
             // ── 정리: 모터 Stop + 원복 ────────────────────────────────────────
-            self.addLog('모터 Stop 명령 전송 (0x0001 ← 0)', 'step');
-            try { await d.writeRegister(slaveId, 0x0001, 0); } catch(_) {}
+            self.addLog('모터 Stop (0xD001 ← 0)', 'step');
+            try { await d.writeRegister(slaveId, 0xD001, 0); } catch(_) {}
             await self.delay(500);
-            if (origSetpoint   !== null) { try { await d.writeRegister(slaveId, 0xD001, origSetpoint);       } catch(_) {} }
-            if (origOpMode     !== null) { try { await d.writeRegister(slaveId, 0xD106, origOpMode);         } catch(_) {} }
-            if (origSetValueSource !== null) { try { await d.writeRegister(slaveId, 0xD101, origSetValueSource); } catch(_) {} }
+            if (origSetpoint       !== null) { try { await d.writeRegister(slaveId, 0xD001, origSetpoint);           } catch(_) {} }
+            if (origOpMode         !== null) { try { await d.writeRegister(slaveId, 0xD106, origOpMode);             } catch(_) {} }
+            if (origSetValueSource !== null) { try { await d.writeRegister(slaveId, 0xD101, origSetValueSource);     } catch(_) {} }
             self.addLog('파라미터 원복 완료 (0xD001 / 0xD106 / 0xD101)', 'info');
 
             // 최종 요약
@@ -1135,6 +1221,10 @@ window.OSTestModules.push({
                          'Phase 4: 케이블 분리 → Fail-safe 동작 (수동 판정)\n' +
                          'Phase 5: 케이블 재연결 → 통신 복구 자동 복귀',
             };
+
+            } finally {
+                try { await stopChartLoop(); } catch(_) {}
+            }
         },
 
     }

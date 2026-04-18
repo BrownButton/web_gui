@@ -228,7 +228,7 @@ class OSTestManager {
             if (saveLogBtn) saveLogBtn.onclick = () => this.saveTestLog(testId);
             if (copyPngBtn) copyPngBtn.onclick = () => this.copyTestScreenshot(testId);
             if (copyLogBtn) copyLogBtn.onclick = () => this.copyTestLog(testId);
-            if (saveLsmBtn) saveLsmBtn.style.display = (testId === 'basic03' || testId === 'basic06' || testId === 'drive06') ? 'inline-block' : 'none';
+            if (saveLsmBtn) saveLsmBtn.style.display = (testId === 'basic03' || testId === 'basic06' || testId === 'drive06' || testId === 'drive04') ? 'inline-block' : 'none';
 
             const hasStoredLog  = this.testLogs[testId]?.length > 0;
             const hasStoredSteps = this.testStepResults[testId] && Object.keys(this.testStepResults[testId]).length > 0;

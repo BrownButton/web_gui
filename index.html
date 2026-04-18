@@ -294,56 +294,70 @@
                             </div>
 
                             <!-- Configuration Tab Content -->
-                            <div class="device-setup-tab-content active" id="deviceSetupConfigTab" style="flex: 1; overflow-y: auto; padding: 32px 40px; display: block; background: white;">
+                            <div class="device-setup-tab-content active" id="deviceSetupConfigTab" style="flex: 1; overflow-y: auto; padding: 24px 32px; display: block; background: #FAFBFC;">
                                 <div id="deviceSetupConfig">
-                                    <div style="text-align: center; padding: 80px 20px; color: #6c757d;">
-                                        <div style="font-size: 48px; margin-bottom: 12px; opacity: 0.3;">🔧</div>
-                                        <p style="font-size: 15px; font-weight: 500; color: #404040;">디바이스를 선택하세요</p>
-                                        <p style="font-size: 13px; margin-top: 6px; color: #999;">왼쪽에서 디바이스를 선택하면 설정을 변경할 수 있습니다</p>
+                                    <div style="text-align: center; padding: 80px 20px;">
+                                        <div style="font-size: 44px; margin-bottom: 16px; opacity: 0.18;">⚙</div>
+                                        <p style="font-size: 15px; font-weight: 600; color: #191F28; margin: 0; letter-spacing: -0.02em;">디바이스를 선택하세요</p>
+                                        <p style="font-size: 13px; margin-top: 8px; color: #8B95A1; letter-spacing: 0;">왼쪽 목록에서 디바이스를 선택하면 설정을 변경할 수 있습니다</p>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Parameters Tab Content -->
-                            <div class="device-setup-tab-content" id="deviceSetupParamsTab" style="flex: 1; padding: 32px 40px; display: none; background: white; overflow: hidden;">
+                            <div class="device-setup-tab-content" id="deviceSetupParamsTab" style="flex: 1; padding: 24px 32px; display: none; background: #FAFBFC; overflow: hidden;">
                                 <div id="deviceSetupParams" style="display: flex; flex-direction: column; height: 100%;">
                                     <!-- Header with Actions -->
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;">
-                                        <div style="display: flex; align-items: center; gap: 12px;">
-                                            <h2 style="margin: 0; font-size: 18px; font-weight: 600;">Parameter List</h2>
-                                            <button id="paramReadAllBtn" class="btn btn-success btn-sm" disabled>📖 Read All</button>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-shrink: 0;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <h2 style="margin: 0; font-size: 17px; font-weight: 700; color: #191F28; letter-spacing: -0.02em;">Parameter List</h2>
+                                            <button id="paramReadAllBtn"
+                                                style="padding: 7px 13px; border: none; background: #00C471; color: white; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; letter-spacing: -0.01em; transition: background 0.15s; opacity: 1;"
+                                                onmouseover="if(!this.disabled)this.style.background='#00A85F'" onmouseout="if(!this.disabled)this.style.background='#00C471'"
+                                                disabled>📖 Read All</button>
                                         </div>
-                                        <div style="display: flex; gap: 10px; align-items: center;">
-                                            <div class="csv-import-group">
+                                        <div style="display: flex; gap: 6px; align-items: center;">
+                                            <div class="csv-import-group" style="display: flex; gap: 6px;">
                                                 <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
-                                                <button id="importCsvBtn" class="btn btn-secondary btn-sm">📥 Import CSV</button>
-                                                <button id="exportCsvBtn" class="btn btn-secondary btn-sm">📤 Export CSV</button>
-                                                <button id="loadDefaultCsvBtn" class="btn btn-info btn-sm">📋 Load Default</button>
+                                                <button id="importCsvBtn"
+                                                    style="padding: 7px 12px; border: 1px solid #E8EAED; background: white; color: #4E5968; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; letter-spacing: -0.01em;"
+                                                    onmouseover="this.style.background='#F4F6F9'" onmouseout="this.style.background='white'">📥 Import</button>
+                                                <button id="exportCsvBtn"
+                                                    style="padding: 7px 12px; border: 1px solid #E8EAED; background: white; color: #4E5968; border-radius: 8px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; letter-spacing: -0.01em;"
+                                                    onmouseover="this.style.background='#F4F6F9'" onmouseout="this.style.background='white'">📤 Export</button>
+                                                <button id="loadDefaultCsvBtn"
+                                                    style="padding: 7px 12px; border: 1px solid #D4E5FF; background: #EBF1FF; color: #0064FF; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; letter-spacing: -0.01em;"
+                                                    onmouseover="this.style.background='#DCE9FF'" onmouseout="this.style.background='#EBF1FF'">📋 Default</button>
                                             </div>
-                                            <button id="addParamBtn" class="btn btn-success btn-sm">+ Add Parameter</button>
+                                            <button id="addParamBtn"
+                                                style="padding: 7px 13px; border: none; background: #0064FF; color: white; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; letter-spacing: -0.01em;"
+                                                onmouseover="this.style.background='#0050CC'" onmouseout="this.style.background='#0064FF'">+ Add</button>
                                         </div>
                                     </div>
 
-                                    <!-- Filter Group -->
-                                    <div class="param-filter-group" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex-shrink: 0;">
-                                        <div style="display: flex; gap: 5px;">
+                                    <!-- Filter Group — Toss style -->
+                                    <div class="param-filter-group" style="margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; flex-shrink: 0;">
+                                        <div style="display: flex; gap: 4px; background: #F2F4F8; border-radius: 20px; padding: 3px;">
                                             <button class="filter-btn active" data-filter="all">All</button>
                                             <button class="filter-btn" data-filter="holding">Holding</button>
                                             <button class="filter-btn" data-filter="input">Input</button>
                                             <button class="filter-btn" data-filter="lsm">LSM</button>
                                         </div>
-                                        <div style="display: flex; gap: 5px;">
-                                            <button class="filter-btn" data-implemented="all">All Status</button>
-                                            <button class="filter-btn active" data-implemented="Y">Implemented</button>
-                                            <button class="filter-btn" data-implemented="N">Not Implemented</button>
+                                        <div style="display: flex; gap: 4px; background: #F2F4F8; border-radius: 20px; padding: 3px;">
+                                            <button class="filter-btn" data-implemented="all">All</button>
+                                            <button class="filter-btn active" data-implemented="Y">Impl</button>
+                                            <button class="filter-btn" data-implemented="N">N/A</button>
                                         </div>
-                                        <input type="text" id="paramSearchInput" placeholder="Search by name or address..." style="flex: 1; min-width: 200px; padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;">
-                                        <span id="paramCount" style="color: #6c757d; font-size: 13px;">0 parameters</span>
+                                        <input type="text" id="paramSearchInput" placeholder="이름 또는 주소 검색..."
+                                            style="flex: 1; min-width: 180px; padding: 7px 14px; border: 1px solid #E8EAED; border-radius: 20px; font-size: 13px; color: #191F28; background: white; outline: none; transition: border-color 0.15s;"
+                                            onfocus="this.style.borderColor='#0064FF';this.style.boxShadow='0 0 0 3px rgba(0,100,255,0.10)'"
+                                            onblur="this.style.borderColor='#E8EAED';this.style.boxShadow='none'">
+                                        <span id="paramCount" style="color: #8B95A1; font-size: 12px; font-weight: 500; white-space: nowrap; letter-spacing: -0.01em;">0 parameters</span>
                                     </div>
 
                                     <!-- Parameter List -->
-                                    <div id="paramList" class="param-list" style="flex: 1; overflow-y: auto;">
-                                        <p class="placeholder">No parameters defined. Click "Import CSV" or "Load Default" to load parameters.</p>
+                                    <div id="paramList" class="param-list" style="flex: 1; overflow-y: auto; background: white; border-radius: 12px; border: 1px solid #F2F4F8; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+                                        <p class="placeholder" style="color: #8B95A1; padding: 60px 20px; text-align: center; font-size: 14px;">파라미터가 없습니다. Import CSV 또는 Load Default 를 클릭하세요.</p>
                                     </div>
                                 </div>
                             </div>
