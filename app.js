@@ -249,8 +249,17 @@ class ChartManager {
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
 
     if (e.shiftKey) {
-      // X-axis zoom
-      this.zoom.x = Math.max(0.1, Math.min(10, this.zoom.x * delta));
+      // X-axis zoom: adjust visible time range, centered on cursor
+      const chartWidth = this.width - this.chartMargins.left - this.chartMargins.right;
+      const relX = (x - this.chartMargins.left - this.pan.x) / (chartWidth * this.zoom.x);
+      const timeAtCursor = this.viewMinTime + relX * this.timeScale;
+      const factor = e.deltaY > 0 ? 1.1 : 0.9;
+      this.timeScale = Math.max(500, Math.min(600000, this.timeScale * factor));
+      this.viewMinTime = timeAtCursor - relX * this.timeScale;
+      const latestTime = this.getLatestTime();
+      const maxMinTime = Math.max(0, latestTime - this.timeScale);
+      this.viewMinTime = Math.max(0, Math.min(maxMinTime, this.viewMinTime));
+      this.autoScroll = (this.viewMinTime >= maxMinTime);
     } else {
       // Y-axis zoom
       this.zoom.y = Math.max(0.1, Math.min(10, this.zoom.y * delta));
@@ -725,6 +734,7 @@ class ChartManager {
           this.viewMinTime = Math.max(0, this.viewMinTime);
         }
         this.render();
+        if (this.showCursor && this.cursorPos) this.updateCursorInfo();
       }
       this.updateStats();
 
