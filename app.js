@@ -12468,12 +12468,17 @@ class ModbusDashboard {
   /**
    * Converts raw register value to human-readable string for special registers.
    * D023: AIN1 voltage  → (raw / 65536) × 10000 mV
-   * D024: AIN2 current  → (raw / 65536) × 20.625 mA  (Vref 3.3V / Rvios 160Ω)
+   * D024: AIN2 current  → 4mA ~ 20mA linear (raw=0 → ≤4mA, raw=65535 → ≥20mA)
    * Returns null if address is not a special register.
    */
   convertParamRawToString(address, raw) {
     if (address === 0xD023) return ((raw / 65536) * 10100).toFixed(1) + ' mV';
-    if (address === 0xD024) return ((raw / 65536) * 20.625).toFixed(3) + ' mA';
+    if (address === 0xD024) {
+      const mA = 4 + (raw / 65535) * 16;
+      if (raw === 0) return '≤' + mA.toFixed(3) + ' mA';
+      if (raw >= 65535) return '≥' + mA.toFixed(3) + ' mA';
+      return mA.toFixed(3) + ' mA';
+    }
     if (address === 0xD025) return ((raw / 65536) * 100).toFixed(2) + ' %';
     return null;
   }
