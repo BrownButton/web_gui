@@ -1273,6 +1273,15 @@ window.OSTestModules.push(
                 {name: 'Hall W', color: '#2ecc71', chNum: 2},
               ], {maxPoints: 10000, displayPoints: 300});
             }
+
+            const saveLsmBtn = testItem.querySelector('.test-save-lsm-btn');
+            if (saveLsmBtn) {
+              saveLsmBtn.onclick = () => {
+                if (!hallChart) return;
+                const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                LsmExporter.download(hallChart.channels, 20, `3-3_${ts}.lsm`);
+              };
+            }
           }
 
           // ── Hall FC 0x64 제어 헬퍼 ──────────────────────────────────────
