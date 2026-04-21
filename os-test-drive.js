@@ -20,79 +20,14 @@ window.OSTestModules.push({
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA, USB to RS485 Converter, PWM 신호 발생기 (Function Generator 또는 MCU)',
             criteria: 'PWM Duty 변화에 따라 목표 속도/토크가 비례 변화 / PWM 신호 유실 시 Safe 동작(정지 또는 출력 제한) 수행',
+            manual: true,
             steps: [
-                { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
-                { type: 'check_comm_settings', label: 'Baudrate / Parity 설정 확인' },
-                {
-                    type: 'read_holding',
-                    slaveId: 1,
-                    address: 0xD101,
-                    label: '현재 Set Value Source [0xD101] 백업',
-                    storeAs: 'origSetValueSource',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD101,
-                    value: 3,
-                    label: 'Set Value Source = PWM 입력 (0xD101 = 3)',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 1 — Base Setup]\n' +
-                             'PWM 신호 발생기를 FG 입력 핀에 연결하세요.\n' +
-                             '주파수: 사양 범위 내 (예: 1kHz ~ 10kHz), Duty: 50%로 초기 설정'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 60,
-                    message: '[Phase 2 — 정상 PWM 입력 검증]\n' +
-                             'PWM Duty를 단계적으로 변경하세요: 10% → 50% → 90%\n' +
-                             'Duty 변화에 따라 모터 속도/토크가 비례적으로 변화하는지 확인하세요.\n' +
-                             'Duty 감소 시 정상적으로 속도가 감소하는지도 확인하세요.'
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] 읽기 (현재 속도 확인)',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 3 — 경계 조건 검증]\n' +
-                             '최소 Duty (0%) 입력 → 모터 정지 확인\n' +
-                             '최대 Duty (100%) 입력 → 최대 속도 초과 없음 확인\n' +
-                             'Deadband 구간이 있는 경우 해당 구간에서 출력 변화 없음 확인'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 4 — 입력 이상 및 보호 동작 검증 (Negative Test)]\n' +
-                             'PWM 신호를 제거(Open 상태)하여 입력 신호 유실 상황을 구성하세요.\n' +
-                             '→ 드라이브가 Safe 동작(정지 또는 출력 제한)을 수행하는지 확인\n' +
-                             'PWM 주파수를 허용 범위 밖으로 변경하여 비정상 입력을 인가하세요.\n' +
-                             '→ 제어 불능(속도 튐, 진동) 없음 확인'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 20,
-                    message: '[Phase 5 — 복구 검증]\n' +
-                             'PWM 신호를 정상 범위로 복구하세요.\n' +
-                             '별도 Reset 없이 정상 제어 상태로 복귀하는지 확인하세요.'
-                },
-                {
-                    type: 'restore_holding',
-                    slaveId: 1,
-                    address: 0xD101,
-                    restoreFrom: 'origSetValueSource',
-                    label: 'Set Value Source [0xD101] 원복',
-                    softFail: true
-                }
+                'PWM 신호 발생기를 FG 입력 핀에 연결한다 (주파수: 1kHz~10kHz, Duty: 50% 초기 설정).',
+                '0xD101 = 3 으로 Set Value Source를 PWM 입력으로 설정한다.',
+                'PWM Duty를 10% → 50% → 90%로 단계 변경 후 모터 속도/토크가 비례 변화하는지 확인한다.\n판정 기준: Duty 변화에 따라 출력이 비례 변화함',
+                'PWM 신호를 제거(Open)하여 Safe 동작(정지 또는 출력 제한)을 수행하는지 확인한다.\n판정 기준: 신호 유실 시 Safe 동작 수행 — 출력 계속 시 불합격',
+                'PWM 신호를 정상 범위로 복구 후 별도 Reset 없이 정상 제어 상태로 복귀하는지 확인한다.',
+                '0xD101을 원래 값으로 복원한다.',
             ]
         },
 
@@ -107,78 +42,14 @@ window.OSTestModules.push({
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA, USB to RS485 Converter, 정밀 전압 발생기 (DC Power Supply 또는 Signal Generator)',
             criteria: '입력 전압 변화에 따라 목표 속도/토크가 선형 변화 / 단선 상태에서 Safe 동작 수행',
+            manual: true,
             steps: [
-                { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
-                { type: 'check_comm_settings', label: 'Baudrate / Parity 설정 확인' },
-                {
-                    type: 'read_holding',
-                    slaveId: 1,
-                    address: 0xD101,
-                    label: '현재 Set Value Source [0xD101] 백업',
-                    storeAs: 'origSetValueSource',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD101,
-                    value: 0,
-                    label: 'Set Value Source = Analog V (0xD101 = 0: AIN1V)',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 1 — Base Setup]\n' +
-                             '정밀 전압 발생기를 아날로그 입력 단자에 연결하세요.\n' +
-                             '초기 전압: 0V (최소값)'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 60,
-                    message: '[Phase 2 — 정상 아날로그 입력 검증]\n' +
-                             '입력 전압을 단계적으로 증가하세요: 1V → 5V → 9V\n' +
-                             '전압 변화에 따라 목표 속도/토크가 비례 변화하는지 확인하세요.\n' +
-                             '전압 감소 시 출력이 정상적으로 감소하는지도 확인하세요.'
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] 읽기 (현재 속도 확인)',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 3 — 경계 조건 검증]\n' +
-                             '최소 전압(0V) → 모터 정지/최소 출력 확인\n' +
-                             '최대 전압(10V) → 설정된 최대 속도/토크 초과 없음 확인'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 4 — 입력 이상 및 보호 동작 검증 (Negative Test)]\n' +
-                             '입력을 Open 상태로 만들어 단선 상황을 구성하세요.\n' +
-                             '→ 모터가 계속 구동되면 즉시 불합격\n' +
-                             '입력에 노이즈를 인가하여 불안정 신호를 구성하세요.\n' +
-                             '→ 제어 불안정(속도 튐, 진동) 없음 확인'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 20,
-                    message: '[Phase 5 — 복구 검증]\n' +
-                             '아날로그 입력을 정상 전압 범위로 복구하세요.\n' +
-                             '별도 Reset 없이 정상 제어 상태로 복귀하는지 확인하세요.'
-                },
-                {
-                    type: 'restore_holding',
-                    slaveId: 1,
-                    address: 0xD101,
-                    restoreFrom: 'origSetValueSource',
-                    label: 'Set Value Source [0xD101] 원복',
-                    softFail: true
-                }
+                '정밀 전압 발생기를 아날로그 입력 단자에 연결한다 (초기 전압: 0V).',
+                '0xD101 = 0 으로 Set Value Source를 Analog V로 설정한다 (AIN1V).',
+                '입력 전압을 1V → 5V → 9V로 단계 증가 후 모터 출력이 선형 변화하는지 확인한다.\n판정 기준: 전압 변화에 따라 출력이 선형 변화함',
+                '입력을 Open(단선) 상태로 만들어 Safe 동작(정지)을 수행하는지 확인한다.\n판정 기준: 단선 시 모터 정지 — 계속 구동 시 불합격',
+                '아날로그 입력을 정상 전압 범위로 복구 후 별도 Reset 없이 정상 제어 상태로 복귀하는지 확인한다.',
+                '0xD101을 원래 값으로 복원한다.',
             ]
         },
 
@@ -193,78 +64,14 @@ window.OSTestModules.push({
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA, USB to RS485 Converter, 4~20mA 전류 발생기',
             criteria: '입력 전류(4~20mA) 변화에 따라 목표 속도/토크가 선형 변화 / 전류 단선(0mA) 시 Safe 동작 수행',
+            manual: true,
             steps: [
-                { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
-                { type: 'check_comm_settings', label: 'Baudrate / Parity 설정 확인' },
-                {
-                    type: 'read_holding',
-                    slaveId: 1,
-                    address: 0xD101,
-                    label: '현재 Set Value Source [0xD101] 백업',
-                    storeAs: 'origSetValueSource',
-                    softFail: true
-                },
-                {
-                    type: 'write_holding',
-                    slaveId: 1,
-                    address: 0xD101,
-                    value: 2,
-                    label: 'Set Value Source = Analog I (0xD101 = 2: AIN2I)',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 1 — Base Setup]\n' +
-                             '4~20mA 전류 발생기를 아날로그 전류 입력 단자에 연결하세요.\n' +
-                             '초기 전류: 4mA (최소값)'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 60,
-                    message: '[Phase 2 — 정상 아날로그 전류 입력 검증]\n' +
-                             '입력 전류를 단계적으로 증가하세요: 4mA → 12mA → 20mA\n' +
-                             '전류 변화에 따라 목표 속도/토크가 비례 변화하는지 확인하세요.\n' +
-                             '전류 감소 시 출력이 정상적으로 감소하는지도 확인하세요.'
-                },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] 읽기 (현재 속도 확인)',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 3 — 경계 조건 검증]\n' +
-                             '최소 전류(4mA) → 모터 정지 또는 최소 출력 확인\n' +
-                             '최대 전류(20mA) → 설정된 최대 속도/토크 초과 없음 확인'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 4 — 입력 이상 및 보호 동작 검증 (Negative Test)]\n' +
-                             '입력 회로를 Open 상태로 만들어 전류 단선(0mA) 상황을 구성하세요.\n' +
-                             '→ 모터가 계속 구동되면 즉시 불합격\n' +
-                             '입력 전류를 20mA 초과로 인가하세요.\n' +
-                             '→ 보호 없이 출력이 증가하면 불합격'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 20,
-                    message: '[Phase 5 — 복구 검증]\n' +
-                             '아날로그 전류 입력을 정상 범위(4~20mA)로 복구하세요.\n' +
-                             '별도 Reset 없이 정상 제어 상태로 복귀하는지 확인하세요.'
-                },
-                {
-                    type: 'restore_holding',
-                    slaveId: 1,
-                    address: 0xD101,
-                    restoreFrom: 'origSetValueSource',
-                    label: 'Set Value Source [0xD101] 원복',
-                    softFail: true
-                }
+                '4~20mA 전류 발생기를 아날로그 전류 입력 단자에 연결한다 (초기: 4mA).',
+                '0xD101 = 2 으로 Set Value Source를 Analog I로 설정한다 (AIN2I).',
+                '입력 전류를 4mA → 12mA → 20mA로 단계 증가 후 모터 출력이 선형 변화하는지 확인한다.\n판정 기준: 전류 변화에 따라 출력이 선형 변화함',
+                '입력 회로를 Open(단선, 0mA)으로 만들어 Safe 동작(정지)을 수행하는지 확인한다.\n판정 기준: 단선 시 모터 정지 — 계속 구동 시 불합격',
+                '아날로그 전류 입력을 정상 범위(4~20mA)로 복구 후 별도 Reset 없이 정상 제어 상태로 복귀하는지 확인한다.',
+                '0xD101을 원래 값으로 복원한다.',
             ]
         },
 
@@ -297,54 +104,13 @@ window.OSTestModules.push({
             model: 'EC-FAN',
             equipment: 'EC FAN 1EA, USB to RS485 Converter, 오실로스코프 또는 주파수 측정기',
             criteria: 'PPR 설정값에 따라 FG 출력 주파수가 정확히 비례 변화 / 모터 속도 변화에 따라 FG 출력 선형성 유지',
+            manual: true,
             steps: [
-                { type: 'check_connection', label: 'EC FAN 연결 상태 확인' },
-                { type: 'check_comm_settings', label: 'Baudrate / Parity 설정 확인' },
-                {
-                    type: 'read_input',
-                    slaveId: 1,
-                    address: 0xD02D,
-                    label: 'Actual Speed [0xD02D] — 현재 속도 확인 (정속 구동 필요)',
-                    softFail: true
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 1 — Base Setup]\n' +
-                             '오실로스코프 또는 주파수 측정기를 FG 출력 핀에 연결하세요.\n' +
-                             '모터를 일정 속도(예: 600 RPM)로 구동하세요.'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 60,
-                    message: '[Phase 2 — PPR 설정에 따른 출력 주파수 검증]\n' +
-                             'FG PPR을 1 → 2 → 4 → 8 순으로 변경하세요.\n' +
-                             '동일 속도 조건에서 FG 출력 주파수가 PPR 값에 비례하여 2배씩 증가하는지 확인하세요.\n' +
-                             '(예: PPR=1 기준값, PPR=2 → 2배, PPR=4 → 4배, PPR=8 → 8배)'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 60,
-                    message: '[Phase 3 — 속도 변화에 따른 선형성 검증]\n' +
-                             '모터 속도를 단계적으로 변경하세요: 저속 → 중속 → 고속\n' +
-                             '각 속도에서 FG 출력 주파수를 측정하세요.\n' +
-                             '모터 속도와 FG 출력 주파수 간의 선형 비례 관계를 확인하세요.'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 30,
-                    message: '[Phase 4 — 경계 조건 및 신호 안정성 검증]\n' +
-                             '저속 영역에서 FG 펄스가 정상적으로 출력되는지 확인하세요.\n' +
-                             '고속 영역에서 FG 출력이 누락/왜곡되지 않는지 확인하세요.\n' +
-                             'PPR 변경 시 glitch(이상 펄스) 발생 여부를 확인하세요.'
-                },
-                {
-                    type: 'wait_countdown',
-                    seconds: 20,
-                    message: '[Phase 5 — 설정 복구]\n' +
-                             'FG PPR을 초기값(1)으로 복구하세요.\n' +
-                             'FG 출력이 정상적으로 동작하는지 확인하세요.'
-                }
+                '오실로스코프 또는 주파수 측정기를 FG 출력 핀에 연결한다.',
+                '모터를 일정 속도(예: 600 RPM)로 구동한다.',
+                'FG PPR을 1 → 2 → 4 → 8 순으로 변경하며 동일 속도에서 출력 주파수가 2배씩 비례 증가하는지 확인한다.\n판정 기준: PPR 설정값에 따라 FG 출력 주파수가 정확히 비례 변화함',
+                '모터 속도를 저속→중속→고속으로 변경하며 속도와 FG 출력 주파수 간의 선형 비례 관계를 확인한다.\n판정 기준: 모터 속도 변화에 따라 FG 출력 주파수가 선형 비례함',
+                'FG PPR을 초기값(1)으로 복원한다.',
             ]
         },
 

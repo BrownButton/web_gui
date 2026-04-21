@@ -222,7 +222,7 @@ class OSTestManager {
             const saveLsmBtn  = testItem.querySelector('.test-save-lsm-btn');
             const progressBar = testItem.querySelector('.test-progress-bar');
             const progressTxt = testItem.querySelector('.test-progress-text');
-            if (startBtn)   startBtn.style.display   = 'inline-block';
+            if (startBtn)   startBtn.style.display   = test.manual ? 'none' : 'inline-block';
             if (stopBtn)    stopBtn.style.display     = 'none';
             if (savePngBtn) savePngBtn.onclick = () => this.saveTestScreenshot(testId);
             if (saveLogBtn) saveLogBtn.onclick = () => this.saveTestLog(testId);
@@ -625,7 +625,8 @@ class OSTestManager {
         if (!testItem) return;
 
         const test     = this.getTest(testId);
-        const filename = `${testId}_${this._fileTimestamp()}.png`;
+        const fileId   = (test?.number || testId).replace(/[/:]/g, '-');
+        const filename = `${fileId}_${this._fileTimestamp()}.png`;
 
         try {
             const canvas = await html2canvas(testItem, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
@@ -645,7 +646,8 @@ class OSTestManager {
         const test      = this.getTest(testId);
         const range     = this.testTimeRange[testId];
         const logs      = this.testLogs[testId] || [];
-        const filename  = `${testId}_${this._fileTimestamp()}_log.txt`;
+        const fileId    = (test?.number || testId).replace(/[/:]/g, '-');
+        const filename  = `${fileId}_${this._fileTimestamp()}_log.txt`;
 
         const lines = [];
 
@@ -1287,6 +1289,33 @@ class OSTestManager {
 
     _buildTestItemHtml(test) {
         const esc = s => String(s ?? '-').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const manualBadge = test.manual
+            ? `<span style="padding:3px 9px;background:#fff8e1;color:#b45309;border:1px solid #fde68a;border-radius:20px;font-size:11px;font-weight:600;">수동</span>`
+            : '';
+        const executionSection = test.manual ? `
+    <div style="padding:16px 18px;background:#fffbf0;border-top:1px solid #f0f0f5;">
+      <div style="font-size:13px;font-weight:600;color:#191f28;margin-bottom:8px;">수동 테스트</div>
+      <div style="padding:10px 14px;background:#fff8e1;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;font-size:12px;color:#78350f;line-height:1.7;">
+        자동 실행 불가 항목입니다.<br>각 단계를 직접 수행한 후 단계를 클릭하여 합격(✓) / 불합격(✗)을 체크하세요.
+      </div>
+      <button class="test-start-btn" style="display:none;"></button>
+      <button class="test-stop-btn" style="display:none;"></button>
+      <div class="test-progress-bar" style="display:none;"></div>
+      <div class="test-progress-text" style="display:none;"></div>
+    </div>` : `
+    <div style="padding:16px 18px;background:#fff;border-top:1px solid #f0f0f5;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:600;color:#191f28;">테스트 실행</div>
+        <div style="display:flex;gap:8px;">
+          <button class="test-start-btn" style="padding:7px 16px;background:#3182f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">▶ Start</button>
+          <button class="test-stop-btn" style="display:none;padding:7px 16px;background:#f7f8fa;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">⏹ Stop</button>
+        </div>
+      </div>
+      <div style="background:#f2f4f6;height:4px;border-radius:2px;overflow:hidden;">
+        <div class="test-progress-bar" style="height:100%;background:#3182f6;width:0%;transition:width 0.3s;border-radius:2px;"></div>
+      </div>
+      <div class="test-progress-text" style="margin-top:6px;font-size:12px;color:#b0b8c1;text-align:center;">테스트를 시작하려면 Start 버튼을 클릭하세요</div>
+    </div>`;
         return `
 <div class="os-test-item" data-test-id="${test.id}" style="background:#fff;border:1px solid #f0f0f5;border-radius:14px;overflow:hidden;transition:box-shadow 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
   <div class="os-test-header" style="padding:16px 18px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
@@ -1295,6 +1324,7 @@ class OSTestManager {
       <div style="font-size:12px;color:#8b95a1;">${esc(test.description)}</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:12px;">
+      ${manualBadge}
       <span class="test-status-badge" style="padding:4px 12px;background:#f2f4f6;color:#8b95a1;border-radius:20px;font-size:12px;font-weight:500;">Pending</span>
       <span class="test-expand-icon" style="font-size:16px;color:#b0b8c1;transition:transform 0.3s;">▼</span>
     </div>
@@ -1310,19 +1340,7 @@ class OSTestManager {
         <div><div style="color:#b0b8c1;font-size:11px;margin-bottom:3px;">시험 장비</div><div style="color:#191f28;" class="test-equipment">${esc(test.equipment)}</div></div>
       </div>
     </div>
-    <div style="padding:16px 18px;background:#fff;border-top:1px solid #f0f0f5;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:13px;font-weight:600;color:#191f28;">테스트 실행</div>
-        <div style="display:flex;gap:8px;">
-          <button class="test-start-btn" style="padding:7px 16px;background:#3182f6;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">▶ Start</button>
-          <button class="test-stop-btn" style="display:none;padding:7px 16px;background:#f7f8fa;color:#4e5968;border:1.5px solid #e8eaed;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">⏹ Stop</button>
-        </div>
-      </div>
-      <div style="background:#f2f4f6;height:4px;border-radius:2px;overflow:hidden;">
-        <div class="test-progress-bar" style="height:100%;background:#3182f6;width:0%;transition:width 0.3s;border-radius:2px;"></div>
-      </div>
-      <div class="test-progress-text" style="margin-top:6px;font-size:12px;color:#b0b8c1;text-align:center;">테스트를 시작하려면 Start 버튼을 클릭하세요</div>
-    </div>
+    ${executionSection}
     <div style="padding:16px 18px;border-top:1px solid #f0f0f5;">
       <div style="font-size:13px;font-weight:600;color:#191f28;margin-bottom:10px;">시험 단계</div>
       <div class="test-steps-list" style="display:flex;flex-direction:column;gap:6px;"></div>

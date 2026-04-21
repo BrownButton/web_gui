@@ -13,13 +13,12 @@
  * basic01 (3-1) : 통신 인터페이스 기반 Software Reset 동작 및 구동 중 강제 리셋 예외/복구 통합 검증
  * basic03 (3-2) : Current Limit 파라미터 설정 검증
  * basic04 (3-3) : 구동 방향(CW/CCW) 설정 검증
- * basic05 (3-4) : EEPROM Save/Load 검증
- * basic06 (3-5) : DC Link 전압 모니터링 검증
- * basic07 (3-6) : Board 온도 센싱 검증
- * basic08 (3-7) : 인버터 모듈 온도 센싱 검증
- * basic09 (3-8) : 펌웨어 버전 확인
- * basic10 (3-9) : Main OS 다운로드 검증
- * basic11 (3-10): Inverter OS 다운로드 검증
+ * basic06 (3-4) : DC Link 전압 모니터링 검증
+ * basic07 (3-5) : Board 온도 센싱 검증
+ * basic08 (3-6) : 인버터 모듈 온도 센싱 검증
+ * basic09 (3-7) : 펌웨어 버전 확인
+ * basic10 (3-8) : Main OS 다운로드 검증
+ * basic11 (3-9) : Inverter OS 다운로드 검증
  */
 
 window.OSTestModules = window.OSTestModules || [];
@@ -176,37 +175,11 @@ window.OSTestModules.push(
           ],
         },
 
-        // ── basic05: EEPROM Save/Load 검증 ─────────────────────────────────
-        'basic05': {
-          id: 'basic05',
-          category: '기본동작',
-          number: '3-4',
-          title: 'EEPROM Save/Load 검증',
-          description:
-              'EEPROM Save(0xD000←0x0004) 후 전원 재투입으로 파라미터 유지 여부를 검증한다.',
-          purpose:
-              'EEPROM Save 명령(0xD000←0x0004) 전송 후 전원 차단/재투입 시 Setpoint(0xD001) 저장값이 유지되는지 확인. 비정상 EEPROM 코드(0xFFFF) 처리 검증.',
-          model: 'EC-FAN',
-          equipment: 'EC FAN 1EA, USB to RS485 Converter',
-          criteria:
-              '전원 재투입 후 저장된 Setpoint 값 일치 / 비정상 코드(0xFFFF) 전송 시 무시 또는 예외 응답',
-          steps: [
-            {type: 'check_connection'},
-            {
-              type: 'read_holding',
-              slaveId: 1,
-              address: 0xD001,
-              storeAs: 'origSetpoint',
-              label: '기존 Setpoint 읽기'
-            },
-          ],
-        },
-
         // ── basic06: DC Link 전압 모니터링 검증 ──────────────────────────────
         'basic06': {
           id: 'basic06',
           category: '기본동작',
-          number: '3-5',
+          number: '3-4',
           title: 'DC Link 전압 모니터링 검증',
           description:
               '통신 인터페이스를 통해 DC-link Voltage 파라미터를 읽어, 정격전압(380Vac) 인가 시 실제 물리적 직류 전압(DC 537V 기준)을 오차 범위(±10%) 내에서 표시하는지 검증한다.',
@@ -226,7 +199,7 @@ window.OSTestModules.push(
         'basic07': {
           id: 'basic07',
           category: '기본동작',
-          number: '3-6',
+          number: '3-5',
           title: 'Board 온도 센싱 검증',
           description:
               '통신 인터페이스를 통해 Board Temperature 파라미터를 읽어 상온에서 드라이브의 온도 센싱 기능이 정상적으로 동작하는지 확인한다. (FC04, 0xD017)',
@@ -246,7 +219,7 @@ window.OSTestModules.push(
         'basic08': {
           id: 'basic08',
           category: '기본동작',
-          number: '3-7',
+          number: '3-6',
           title: '인버터 모듈 온도 센싱 검증',
           description:
               '통신 인터페이스를 통해 Module Temperature 파라미터를 읽어 상온에서 인버터 모듈의 온도 센싱 기능이 정상적으로 동작하는지 확인한다. (FC04, 0xD015)',
@@ -266,7 +239,7 @@ window.OSTestModules.push(
         'basic09': {
           id: 'basic09',
           category: '기본동작',
-          number: '3-8',
+          number: '3-7',
           title: '펌웨어 버전 확인',
           description:
               '통신 인터페이스를 통해 Main/Inverter의 Firmware/Bootloader 버전을 읽어 올바른 버전 정보를 출력하는지 확인하고, Inverter 버전 정보 수신으로 Main-Inverter 간 내부 통신(IPC) 상태를 검증한다.',
@@ -289,25 +262,19 @@ window.OSTestModules.push(
         'basic10': {
           id: 'basic10',
           category: '기본동작',
-          number: '3-9',
+          number: '3-8',
           title: 'Main OS 다운로드 검증',
-          description:
-              'Main F/W 버전(0xD003)을 기록한 뒤, OS 업데이트 후 버전 변경 여부를 확인한다.',
+          description: 'OS 업데이트 툴로 Main F/W를 다운로드하고 버전 변경 여부를 확인한다.',
           purpose:
               'OS 업데이트 툴을 통해 Main F/W를 다운로드하고, 업데이트 전후 버전 레지스터(0xD003) 값 변경으로 정상 업데이트 여부를 검증한다.',
           model: 'EC-FAN',
           equipment: 'EC FAN 1EA, USB to RS485 Converter, OS 업데이트 툴',
-          criteria:
-              '업데이트 후 Main SW Version(0xD003) 값이 업데이트 전과 다름',
+          criteria: '업데이트 후 Main SW Version(0xD003) 값이 업데이트 전과 다름',
+          manual: true,
           steps: [
-            {type: 'check_connection'},
-            {
-              type: 'read_input',
-              slaveId: 1,
-              address: 0xD003,
-              storeAs: 'mainSwVerBefore',
-              label: 'Main SW 버전 (업데이트 전)'
-            },
+            'OS 업데이트 툴을 사용하여 Main F/W 다운로드를 진행한다.',
+            '다운로드 완료 후 장치가 자동으로 재부팅되는지 확인한다.',
+            '재부팅 후 Main SW 버전(0xD003, FC04)을 읽어 업데이트 전과 다른지 확인한다.\n판정 기준: 업데이트 후 버전이 업데이트 전과 다름',
           ],
         },
 
@@ -315,25 +282,19 @@ window.OSTestModules.push(
         'basic11': {
           id: 'basic11',
           category: '기본동작',
-          number: '3-10',
+          number: '3-9',
           title: 'Inverter OS 다운로드 검증',
-          description:
-              'Inverter F/W 버전(0xD005)을 기록한 뒤, OS 업데이트 후 버전 변경 여부를 확인한다.',
+          description: 'OS 업데이트 툴로 Inverter F/W를 다운로드하고 버전 변경 여부를 확인한다.',
           purpose:
               'OS 업데이트 툴을 통해 Inverter F/W를 다운로드하고, 업데이트 전후 버전 레지스터(0xD005) 값 변경으로 정상 업데이트 여부를 검증한다.',
           model: 'EC-FAN',
           equipment: 'EC FAN 1EA, USB to RS485 Converter, OS 업데이트 툴',
-          criteria:
-              '업데이트 후 Inverter SW Version(0xD005) 값이 업데이트 전과 다름',
+          criteria: '업데이트 후 Inverter SW Version(0xD005) 값이 업데이트 전과 다름',
+          manual: true,
           steps: [
-            {type: 'check_connection'},
-            {
-              type: 'read_input',
-              slaveId: 1,
-              address: 0xD005,
-              storeAs: 'invSwVerBefore',
-              label: 'Inverter SW 버전 (업데이트 전)'
-            },
+            'OS 업데이트 툴을 사용하여 Inverter F/W 다운로드를 진행한다.',
+            '다운로드 완료 후 장치가 자동으로 재부팅되는지 확인한다.',
+            '재부팅 후 Inverter SW 버전(0xD005, FC04)을 읽어 업데이트 전과 다른지 확인한다.\n판정 기준: 업데이트 후 버전이 업데이트 전과 다름',
           ],
         },
 
@@ -710,7 +671,7 @@ window.OSTestModules.push(
                   if (!chart) return;
                   const ts =
                       new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-                  LsmExporter.download(chart.channels, 20, `basic03_${ts}.lsm`);
+                  LsmExporter.download(chart.channels, 20, `3-2_${ts}.lsm`);
                 };
               }
             }
@@ -1711,95 +1672,6 @@ window.OSTestModules.push(
           }
         },
 
-        // ── basic05 executor ─────────────────────────────────────────────────
-        'basic05': async function() {
-          const self = this;
-          self.checkConnection();
-
-          // Phase 1: 기존 Setpoint 저장
-          self.addLog('[Phase 1] 기존 Setpoint 읽기 (0xD001)', 'info');
-          const origSetpoint =
-              await window.dashboard.readRegisterWithTimeout(1, 0xD001);
-          if (origSetpoint === null || origSetpoint === undefined) {
-            return {
-              status: 'fail',
-              message: 'Setpoint 읽기 실패',
-              details: '0xD001 FC03 응답 없음'
-            };
-          }
-          self.addLog(`기존 Setpoint: ${origSetpoint}`, 'info');
-
-          // Phase 2-1: 테스트용 Setpoint 쓰기
-          const testSetpoint = 0x1000;
-          self.addLog(
-              `[Phase 2-1] 테스트 Setpoint 쓰기: 0x${
-                  testSetpoint.toString(16).toUpperCase()}`,
-              'info');
-          await window.dashboard.writeRegister(1, 0xD001, testSetpoint);
-          await new Promise(r => setTimeout(r, 200));
-
-          // Phase 2-2: EEPROM Save
-          self.addLog('[Phase 2-2] EEPROM Save (0xD000 ← 0x0004)', 'info');
-          await window.dashboard.writeRegister(1, 0xD000, 0x0004);
-          await new Promise(r => setTimeout(r, 500));
-
-          // Phase 2-3: 전원 재투입 안내
-          self.addLog('[Phase 2-3] 전원 재투입 안내', 'warn');
-          self.addLog(
-              '전원을 차단한 뒤 재투입하세요. EEPROM 저장값 유지 여부를 확인합니다.',
-              'info');
-          await self._runStep(
-              {
-                type: 'wait_countdown',
-                seconds: 20,
-                message: '전원 재투입 대기 (20초)'
-              },
-              0);
-
-          // Phase 2-4: 재연결 후 읽기
-          self.addLog('[Phase 2-4] 재연결 후 Setpoint 읽기', 'info');
-          let readAfterPower = null;
-          for (let i = 0; i < 3; i++) {
-            readAfterPower =
-                await window.dashboard.readRegisterWithTimeout(1, 0xD001);
-            if (readAfterPower !== null) break;
-            await new Promise(r => setTimeout(r, 1000));
-          }
-
-          const eepromVerified = readAfterPower === testSetpoint;
-          self.addLog(
-              `재투입 후 Setpoint: ${
-                  readAfterPower !== null ? readAfterPower : 'null'} (기대: ${
-                  testSetpoint}) → ${eepromVerified ? 'PASS' : 'FAIL'}`,
-              'info');
-
-          // Phase 3: 비정상 EEPROM 코드 쓰기
-          self.addLog(
-              '[Phase 3] 비정상 EEPROM 코드 쓰기 (0xD000 ← 0xFFFF)', 'info');
-          await window.dashboard.writeRegister(1, 0xD000, 0xFFFF);
-          await new Promise(r => setTimeout(r, 300));
-
-          // 복원
-          self.addLog('[복원] 기존 Setpoint 복원 + EEPROM 저장', 'info');
-          await window.dashboard.writeRegister(1, 0xD001, origSetpoint);
-          await window.dashboard.writeRegister(1, 0xD000, 0x0004);
-
-          const pass = eepromVerified;
-          return {
-            status: pass ? 'pass' : 'fail',
-            message: pass ? 'EEPROM Save/Load 검증 완료' :
-                            '전원 재투입 후 EEPROM 값 불일치',
-            details: [
-              `기존 Setpoint: ${origSetpoint}`,
-              `EEPROM 저장값(0x${
-                  testSetpoint.toString(16).toUpperCase()}) 유지: ${
-                  eepromVerified ? 'PASS' : 'FAIL'} (실제: ${
-                  readAfterPower !== null ? readAfterPower : 'N/A'})`,
-              '비정상 EEPROM 코드(0xFFFF) 전송 완료',
-            ].join('\n'),
-          };
-        },
-
         // ── basic06 executor ─────────────────────────────────────────────────
         'basic06': async function() {
           const self = this;
@@ -1868,7 +1740,7 @@ window.OSTestModules.push(
                   if (!chart) return;
                   const ts =
                       new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-                  LsmExporter.download(chart.channels, 20, `basic06_${ts}.lsm`);
+                  LsmExporter.download(chart.channels, 20, `3-4_${ts}.lsm`);
                 };
               }
             }
@@ -2618,134 +2490,6 @@ window.OSTestModules.push(
                   return `${r.label} (0x${r.index.toString(16).toUpperCase()}): "${r.ascii ?? 'ERR'}" → ${matchStr}`;
                 })
                 .join('\n'),
-          };
-        },
-
-        // ── basic10 executor ─────────────────────────────────────────────────
-        'basic10': async function() {
-          const self = this;
-          self.checkConnection();
-
-          // Phase 1: 업데이트 전 버전 읽기
-          self.addLog('[Phase 1] Main SW 버전 읽기 (0xD003, FC04)', 'info');
-          const verBefore =
-              await window.dashboard.readInputRegisterWithTimeout(1, 0xD003);
-          if (verBefore === null || verBefore === undefined) {
-            return {
-              status: 'fail',
-              message: 'Main SW 버전 읽기 실패',
-              details: '0xD003 FC04 응답 없음'
-            };
-          }
-          self.addLog(`업데이트 전 Main SW 버전: ${verBefore}`, 'info');
-
-          // Phase 2: OS 다운로드 안내
-          self.addLog('[Phase 2] Main OS 다운로드 안내', 'warn');
-          self.addLog(
-              'OS 업데이트 툴을 사용하여 Main F/W 다운로드를 진행하세요.',
-              'info');
-          self.addLog('다운로드 완료 후 장치가 자동으로 재부팅됩니다.', 'info');
-          await self._runStep(
-              {
-                type: 'wait_countdown',
-                seconds: 60,
-                message: 'Main OS 다운로드 대기 (60초)'
-              },
-              0);
-
-          // Phase 3: 재연결 후 버전 읽기
-          self.addLog('[Phase 3] 재연결 후 Main SW 버전 읽기', 'info');
-          let verAfter = null;
-          for (let i = 0; i < 5; i++) {
-            verAfter =
-                await window.dashboard.readInputRegisterWithTimeout(1, 0xD003);
-            if (verAfter !== null) break;
-            await new Promise(r => setTimeout(r, 2000));
-          }
-
-          const versionChanged = verAfter !== null && verAfter !== verBefore;
-          self.addLog(
-              `업데이트 후 Main SW 버전: ${
-                  verAfter !== null ? verAfter : 'null'} → ${
-                  versionChanged ? '버전 변경 확인(PASS)' :
-                                   '버전 동일 또는 읽기 실패'}`,
-              'info');
-
-          return {
-            status: versionChanged ? 'pass' : 'warn',
-            message: versionChanged ?
-                'Main OS 다운로드 및 버전 변경 확인' :
-                '버전 미변경 또는 재연결 실패 (수동 확인 필요)',
-            details: [
-              `업데이트 전 버전: ${verBefore}`,
-              `업데이트 후 버전: ${verAfter !== null ? verAfter : 'N/A'}`,
-              `버전 변경: ${
-                  versionChanged ? 'PASS' : 'WARN — 동일하거나 읽기 실패'}`,
-            ].join('\n'),
-          };
-        },
-
-        // ── basic11 executor ─────────────────────────────────────────────────
-        'basic11': async function() {
-          const self = this;
-          self.checkConnection();
-
-          // Phase 1: 업데이트 전 버전 읽기
-          self.addLog('[Phase 1] Inverter SW 버전 읽기 (0xD005, FC04)', 'info');
-          const verBefore =
-              await window.dashboard.readInputRegisterWithTimeout(1, 0xD005);
-          if (verBefore === null || verBefore === undefined) {
-            return {
-              status: 'fail',
-              message: 'Inverter SW 버전 읽기 실패',
-              details: '0xD005 FC04 응답 없음'
-            };
-          }
-          self.addLog(`업데이트 전 Inverter SW 버전: ${verBefore}`, 'info');
-
-          // Phase 2: OS 다운로드 안내
-          self.addLog('[Phase 2] Inverter OS 다운로드 안내', 'warn');
-          self.addLog(
-              'OS 업데이트 툴을 사용하여 Inverter F/W 다운로드를 진행하세요.',
-              'info');
-          self.addLog('다운로드 완료 후 장치가 자동으로 재부팅됩니다.', 'info');
-          await self._runStep(
-              {
-                type: 'wait_countdown',
-                seconds: 60,
-                message: 'Inverter OS 다운로드 대기 (60초)'
-              },
-              0);
-
-          // Phase 3: 재연결 후 버전 읽기
-          self.addLog('[Phase 3] 재연결 후 Inverter SW 버전 읽기', 'info');
-          let verAfter = null;
-          for (let i = 0; i < 5; i++) {
-            verAfter =
-                await window.dashboard.readInputRegisterWithTimeout(1, 0xD005);
-            if (verAfter !== null) break;
-            await new Promise(r => setTimeout(r, 2000));
-          }
-
-          const versionChanged = verAfter !== null && verAfter !== verBefore;
-          self.addLog(
-              `업데이트 후 Inverter SW 버전: ${
-                  verAfter !== null ? verAfter : 'null'} → ${
-                  versionChanged ? '버전 변경 확인(PASS)' :
-                                   '버전 동일 또는 읽기 실패'}`,
-              'info');
-
-          return {
-            status: versionChanged ? 'pass' : 'warn',
-            message: versionChanged ?
-                'Inverter OS 다운로드 및 버전 변경 확인' :
-                '버전 미변경 또는 재연결 실패 (수동 확인 필요)',
-            details: [
-              `업데이트 전 버전: ${verBefore}`,
-              `업데이트 후 버전: ${verAfter !== null ? verAfter : 'N/A'}`,
-              `버전 변경: ${
-                  versionChanged ? 'PASS' : 'WARN — 동일하거나 읽기 실패'}`,
-            ].join('\n'),
           };
         },
 
