@@ -26,6 +26,8 @@ class ChartManager {
         address: 0xD011,
         scale: 1,
         offset: 0,
+        yPan: 0,
+        yZoom: 1,
         chYMin: null,
         chYMax: null,
         runMin: null,
@@ -39,6 +41,8 @@ class ChartManager {
         address: 0xD001,
         scale: 1,
         offset: 0,
+        yPan: 0,
+        yZoom: 1,
         chYMin: null,
         chYMax: null,
         runMin: null,
@@ -52,6 +56,8 @@ class ChartManager {
         address: 0x0000,
         scale: 1,
         offset: 0,
+        yPan: 0,
+        yZoom: 1,
         chYMin: null,
         chYMax: null,
         runMin: null,
@@ -65,6 +71,8 @@ class ChartManager {
         address: 0x0000,
         scale: 1,
         offset: 0,
+        yPan: 0,
+        yZoom: 1,
         chYMin: null,
         chYMax: null,
         runMin: null,
@@ -126,6 +134,9 @@ class ChartManager {
     // Drawing margins
     this.chartMargins = {top: 20, right: 20, bottom: 40, left: 60};
 
+    // Y-axis drag state
+    this.yAxisDrag = null; // { channelIdx, startY, startOffset }
+
     // Animation frame
     this.animationId = null;
 
@@ -146,32 +157,36 @@ class ChartManager {
 
   setupCanvas() {
     this.resizeCanvas();
-    window.addEventListener('resize', () => this.resizeCanvas());
+    let rafId = null;
+    const ro = new ResizeObserver(() => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        this.resizeCanvas();
+      });
+    });
+    ro.observe(this.canvas.parentElement);
   }
 
   resizeCanvas() {
     const container = this.canvas.parentElement;
     const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
 
-    // Set display size
-    this.canvas.style.width = rect.width + 'px';
-    this.canvas.style.height = rect.height + 'px';
-
-    // Set actual size with device pixel ratio for sharp rendering
     const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = rect.width * dpr;
-    this.canvas.height = rect.height * dpr;
+    const newW = Math.round(rect.width * dpr);
+    const newH = Math.round(rect.height * dpr);
 
-    // Scale context
+    if (this.canvas.width === newW && this.canvas.height === newH) return;
+
+    this.canvas.width = newW;
+    this.canvas.height = newH;
     this.ctx.scale(dpr, dpr);
 
     this.width = rect.width;
     this.height = rect.height;
 
-    // Render after resize
-    if (!this.isRunning) {
-      this.render();
-    }
+    this.render();
   }
 
   setupEventListeners() {
@@ -188,6 +203,17 @@ class ChartManager {
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    if (this.yAxisDrag) {
+      const ch = this.channels[this.yAxisDrag.channelIdx];
+      const dy = y - this.yAxisDrag.startY;
+      const chartHeight = this.yAxisDrag.chartHeight;
+      const { visMin, visMax } = this.getChVisRange(ch);
+      const range = (visMax - visMin) || 1;
+      ch.yPan = this.yAxisDrag.startPan - dy / chartHeight * range;
+      if (!this.isRunning) this.render();
+      return;
+    }
 
     if (this.isDragging) {
       const dx = x - this.dragStart.x;
@@ -207,6 +233,9 @@ class ChartManager {
     } else {
       this.cursorPos = {x, y};
       this.showCursor = this.isInChartArea(x, y);
+      // Y축 위에 있으면 커서 변경
+      const overAxis = this.getYAxisChannelAt(x, y);
+      this.canvas.style.cursor = overAxis >= 0 ? 'ns-resize' : (this.showCursor ? 'crosshair' : 'default');
       this.updateCursorInfo();
     }
   }
@@ -215,6 +244,25 @@ class ChartManager {
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    const yAxisCh = this.getYAxisChannelAt(x, y);
+    if (yAxisCh >= 0) {
+      let chartHeight;
+      if (this.splitView) {
+        const info = this.getSplitPanelAt(y);
+        chartHeight = info ? info.chartHeight : this.height - this.chartMargins.top - this.chartMargins.bottom;
+      } else {
+        chartHeight = this.height - this.chartMargins.top - this.chartMargins.bottom;
+      }
+      this.yAxisDrag = {
+        channelIdx: yAxisCh,
+        startY: y,
+        startPan: this.channels[yAxisCh].yPan ?? 0,
+        chartHeight,
+      };
+      this.canvas.style.cursor = 'ns-resize';
+      return;
+    }
 
     if (this.isInChartArea(x, y)) {
       this.isDragging = true;
@@ -226,11 +274,13 @@ class ChartManager {
   }
 
   handleMouseUp(e) {
+    this.yAxisDrag = null;
     this.isDragging = false;
     this.canvas.style.cursor = 'crosshair';
   }
 
   handleMouseLeave(e) {
+    this.yAxisDrag = null;
     this.isDragging = false;
     this.showCursor = false;
     this.cursorPos = null;
@@ -243,6 +293,16 @@ class ChartManager {
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    // Y축 위에서 스크롤 → 해당 채널 yZoom 조절
+    const yAxisCh = this.getYAxisChannelAt(x, y);
+    if (yAxisCh >= 0) {
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      const ch = this.channels[yAxisCh];
+      ch.yZoom = Math.max(0.01, Math.min(100, (ch.yZoom ?? 1) * factor));
+      if (!this.isRunning) this.render();
+      return;
+    }
 
     if (!this.isInChartArea(x, y)) return;
 
@@ -270,7 +330,20 @@ class ChartManager {
   }
 
   handleDblClick(e) {
-    // Reset zoom and pan
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Y축 더블클릭 → 해당 채널 yPan/yZoom 초기화
+    const yAxisCh = this.getYAxisChannelAt(x, y);
+    if (yAxisCh >= 0) {
+      this.channels[yAxisCh].yPan = 0;
+      this.channels[yAxisCh].yZoom = 1;
+      if (!this.isRunning) this.render();
+      return;
+    }
+
+    // 차트 영역 더블클릭 → zoom/pan 초기화
     this.zoom = {x: 1, y: 1};
     this.pan = {x: 0, y: 0};
     this.autoScale = true;
@@ -308,6 +381,59 @@ class ChartManager {
         x <= this.width - this.chartMargins.right &&
         y >= this.chartMargins.top &&
         y <= this.height - this.chartMargins.bottom;
+  }
+
+  // split view에서 y픽셀이 속한 패널 정보 반환
+  getSplitPanelAt(y) {
+    const enabledChs = this.channels.map((ch, i) => ({ch, i})).filter(({ch}) => ch.enabled);
+    const n = enabledChs.length;
+    if (n === 0) return null;
+    const panelGap = 3;
+    const panelH = Math.floor((this.height - 30 - panelGap * (n - 1)) / n);
+    for (let pIdx = 0; pIdx < n; pIdx++) {
+      const panelTop = pIdx * (panelH + panelGap);
+      const panelBottom = panelTop + panelH;
+      if (y >= panelTop && y <= panelBottom) {
+        return { channelIdx: enabledChs[pIdx].i, chartHeight: panelH - 14 };
+      }
+    }
+    return null;
+  }
+
+  // independent 모드에서 채널의 실제 표시 Y 범위 계산 (yPan/yZoom 반영)
+  getChVisRange(ch) {
+    const rawMin = ch.chYMin ?? 0;
+    const rawMax = ch.chYMax ?? 100;
+    const center = (rawMin + rawMax) / 2;
+    const halfRange = (rawMax - rawMin) / 2 / (ch.yZoom ?? 1);
+    const pan = ch.yPan ?? 0;
+    return { visMin: center - halfRange - pan, visMax: center + halfRange - pan };
+  }
+
+  // (x,y)가 어느 채널의 Y축 위인지 반환 (-1이면 없음)
+  getYAxisChannelAt(x, y) {
+    if (this.splitView) {
+      // split view: 각 패널 Y축은 항상 x=60
+      if (x < 60 - 48 || x > 60 + 6) return -1;
+      const info = this.getSplitPanelAt(y);
+      return info ? info.channelIdx : -1;
+    }
+    if (this.yAxisMode !== 'independent') return -1;
+    // non-split: chartMargins.left는 채널 수에 따라 render()에서 동적으로 조정됨
+    const left = this.chartMargins.left;
+    const top = this.chartMargins.top;
+    const bottom = this.height - this.chartMargins.bottom;
+    if (y < top - 12 || y > bottom) return -1;
+    const activeChannels = this.channels
+        .map((ch, i) => ({ch, i}))
+        .filter(({ch}) => ch.enabled);
+    for (let activeIdx = 0; activeIdx < activeChannels.length; activeIdx++) {
+      const axisX = left - 50 * activeIdx;
+      if (x >= axisX - 48 && x <= axisX + 6) {
+        return activeChannels[activeIdx].i;
+      }
+    }
+    return -1;
   }
 
   screenToChartX(screenX) {
@@ -428,6 +554,7 @@ class ChartManager {
     if (channelIndex < 0 || channelIndex >= this.channels.length) return;
     if (!this.channels[channelIndex].enabled) return;
 
+    if (this.startTime === null) this.startTime = timestamp;
     const relTime = timestamp - this.startTime;
     const point = {t: relTime, v: value};
 
@@ -520,10 +647,33 @@ class ChartManager {
     }
   }
 
+  setChannelYRange(index, min, max) {
+    if (index >= 0 && index < this.channels.length) {
+      this.channels[index].fixedYMin = min;
+      this.channels[index].fixedYMax = max;
+      this.calculateAutoScale();
+      if (!this.isRunning) this.render();
+    }
+  }
+
+  clearChannelYRange(index) {
+    if (index >= 0 && index < this.channels.length) {
+      this.channels[index].fixedYMin = null;
+      this.channels[index].fixedYMax = null;
+      this.calculateAutoScale();
+      if (!this.isRunning) this.render();
+    }
+  }
+
   // O(channels) — uses running min/max, never scans data[]
   calculateAutoScale() {
     if (this.yAxisMode === 'independent') {
       for (const ch of this.channels) {
+        if (ch.fixedYMin != null && ch.fixedYMax != null) {
+          ch.chYMin = ch.fixedYMin;
+          ch.chYMax = ch.fixedYMax;
+          continue;
+        }
         if (!ch.enabled || ch.runMin === null) {
           ch.chYMin = 0;
           ch.chYMax = 100;
@@ -671,6 +821,18 @@ class ChartManager {
   updateStatus(status) {
     const el = document.getElementById('chartStatus');
     if (el) el.textContent = status;
+    const dot = document.getElementById('chartStatusDot');
+    if (dot) {
+      dot.className = 'status-dot';
+      const s = status.toLowerCase();
+      if (s === 'running') dot.classList.add('running');
+      else if (s === 'armed') dot.classList.add('armed');
+      else if (s === 'paused') dot.classList.add('paused');
+      else if (s === 'error') dot.classList.add('error');
+      else if (s.startsWith('download')) dot.classList.add('running');
+      else if (s === 'done') dot.classList.add('done');
+      else dot.classList.add('stopped');
+    }
   }
 
   updateTriggerStatus(status) {
@@ -1036,8 +1198,7 @@ class ChartManager {
       ctx.textBaseline = 'middle';
       activeChannels.forEach(({ch}, activeIdx) => {
         const axisX = left - 50 * activeIdx;
-        const yMin = ch.chYMin ?? 0;
-        const yMax = ch.chYMax ?? 100;
+        const { visMin: yMin, visMax: yMax } = this.getChVisRange(ch);
 
         // Axis line
         ctx.strokeStyle = ch.color;
@@ -1145,7 +1306,8 @@ class ChartManager {
         const x = this.chartToScreenX(point.t);
         let y;
         if (this.yAxisMode === 'independent') {
-          y = this.valueToScreenY(point.v, ch.chYMin ?? 0, ch.chYMax ?? 100);
+          const { visMin, visMax } = this.getChVisRange(ch);
+          y = this.valueToScreenY(point.v, visMin, visMax);
         } else if (this.yAxisMode === 'normalize') {
           const range = (ch.chYMax ?? 1) - (ch.chYMin ?? 0);
           const normalized =
@@ -2578,6 +2740,7 @@ class ModbusDashboard {
     if (pageElement) {
       // Directly set active class to avoid rendering unwanted pages
       pageElement.classList.add('active');
+      document.body.classList.toggle('chart-active', pageToShow === 'chart');
 
       // Update menu item active state immediately
       this._setMenuActive(pageToShow);
@@ -2626,6 +2789,9 @@ class ModbusDashboard {
       page.classList.remove('active');
     });
     document.getElementById(`page-${pageName}`).classList.add('active');
+
+    // Chart 페이지는 스크롤 없이 전체 화면을 채우도록 body 클래스 토글
+    document.body.classList.toggle('chart-active', pageName === 'chart');
 
     // Track current page
     this.currentPage = pageName;
@@ -11799,6 +11965,10 @@ class ModbusDashboard {
 
       popup.addEventListener('click', (e) => e.stopPropagation());
 
+      document.addEventListener('click', () => {
+        popup.style.display = 'none';
+      });
+
       // Pre-select default channel
       const defNum = defaults[i];
       const defCh = channels.find(c => c.chNum === defNum);
@@ -11824,7 +11994,7 @@ class ModbusDashboard {
         if (typeof savedCh.enabled === 'boolean') {
           const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
           if (enableEl) {
-            enableEl.checked = savedCh.enabled;
+            enableEl.dataset.enabled = String(savedCh.enabled);
             this.chartManager.setChannelEnabled(i, savedCh.enabled);
           }
         }
@@ -11957,6 +12127,10 @@ class ModbusDashboard {
     });
 
     popup.addEventListener('click', (e) => e.stopPropagation());
+
+    document.addEventListener('click', () => {
+      popup.style.display = 'none';
+    });
 
     // 기본 선택: Immediate Trigger
     triggerBtn.dataset.selectedValue = '255';
@@ -14402,13 +14576,11 @@ class ModbusDashboard {
     const startBtn = document.getElementById('chartStartBtn');
     const stopBtn = document.getElementById('chartStopBtn');
     const clearBtn = document.getElementById('chartClearBtn');
-    const pauseBtn = document.getElementById('chartPauseBtn');
 
     if (startBtn) {
       startBtn.addEventListener('click', async () => {
         startBtn.disabled = true;
         stopBtn.disabled = false;
-        pauseBtn.disabled = false;
         await this.startChartCapture();
       });
     }
@@ -14418,21 +14590,12 @@ class ModbusDashboard {
         await this.stopChartCapture();
         startBtn.disabled = false;
         stopBtn.disabled = true;
-        pauseBtn.disabled = true;
       });
     }
 
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
         this.chartManager.clearData();
-      });
-    }
-
-    if (pauseBtn) {
-      pauseBtn.addEventListener('click', () => {
-        this.chartManager.pauseCapture();
-        pauseBtn.textContent =
-            this.chartManager.isPaused ? '⏵ Resume' : '⏸ Pause';
       });
     }
 
@@ -14453,13 +14616,15 @@ class ModbusDashboard {
     for (let i = 0; i < 4; i++) {
       const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
       if (enableEl) {
-        enableEl.addEventListener('change', () => {
-          this.chartManager.setChannelEnabled(i, enableEl.checked);
+        enableEl.addEventListener('click', () => {
+          const nowEnabled = enableEl.dataset.enabled !== 'true';
+          enableEl.dataset.enabled = String(nowEnabled);
+          this.chartManager.setChannelEnabled(i, nowEnabled);
           // Persist enable state
           const saved =
               JSON.parse(localStorage.getItem('chartChSettings') || '{}');
           if (!saved[i]) saved[i] = {};
-          saved[i].enabled = enableEl.checked;
+          saved[i].enabled = nowEnabled;
           localStorage.setItem('chartChSettings', JSON.stringify(saved));
         });
       }
@@ -14473,30 +14638,6 @@ class ModbusDashboard {
       triggerLevelEl.addEventListener('change', () => {
         this.chartManager.setTriggerLevel(parseFloat(triggerLevelEl.value));
       });
-    }
-
-    // Zoom controls
-    const zoomInBtn = document.getElementById('chartZoomIn');
-    const zoomOutBtn = document.getElementById('chartZoomOut');
-    const zoomResetBtn = document.getElementById('chartZoomReset');
-    const autoScaleBtn = document.getElementById('chartAutoScale');
-
-    if (zoomInBtn) {
-      zoomInBtn.addEventListener('click', () => this.chartManager.zoomIn());
-    }
-
-    if (zoomOutBtn) {
-      zoomOutBtn.addEventListener('click', () => this.chartManager.zoomOut());
-    }
-
-    if (zoomResetBtn) {
-      zoomResetBtn.addEventListener(
-          'click', () => this.chartManager.resetZoom());
-    }
-
-    if (autoScaleBtn) {
-      autoScaleBtn.addEventListener(
-          'click', () => this.chartManager.enableAutoScale());
     }
 
     // Export buttons
@@ -14577,6 +14718,91 @@ class ModbusDashboard {
 
     this.initChartChannelPickers();
     this.initTriggerSourcePicker();
+
+    // ── 새 UI 요소 연결 ──────────────────────────────────────────
+
+    // 탭 전환
+    document.querySelectorAll('.chart-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.chart-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.chart-tab-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const tabId = {
+          yaxis: 'chartTabYAxis',
+          trigger: 'chartTabTrigger', cursor: 'chartTabCursor', freq: 'chartTabFreq'
+        }[btn.dataset.tab];
+        const pane = document.getElementById(tabId);
+        if (pane) pane.classList.add('active');
+      });
+    });
+
+    // 패널 접기/펼치기
+    const collapseBtn = document.getElementById('chartPanelCollapseBtn');
+    const panelBody   = document.querySelector('.chart-panel-body');
+    if (collapseBtn && panelBody) {
+      collapseBtn.addEventListener('click', () => {
+        const isNowCollapsed = panelBody.classList.toggle('collapsed');
+        collapseBtn.classList.toggle('collapsed', isNowCollapsed);
+      });
+    }
+
+    // X-Axis: Sampling Time + Time Span Multiplier → chartManager.setTimeScale()
+    const sampleRateEl  = document.getElementById('chartSampleRate');
+    const timeSpanMultEl = document.getElementById('chartTimeSpanMult');
+    const timeSpanSecEl  = document.getElementById('chartTimeSpanSeconds');
+    const timeSpanDecBtn = document.getElementById('chartTimeSpanDec');
+    const timeSpanIncBtn = document.getElementById('chartTimeSpanInc');
+
+    const updateTimeScale = () => {
+      const ticks = parseInt(sampleRateEl?.value ?? 160);
+      const mult  = parseInt(timeSpanMultEl?.value ?? 250);
+      const ms    = (ticks / 8) * mult;
+      if (timeSpanSecEl) timeSpanSecEl.textContent = (ms / 1000).toFixed(3);
+      this.chartManager.setTimeScale(ms);
+    };
+
+    if (sampleRateEl)   sampleRateEl.addEventListener('change', updateTimeScale);
+    if (timeSpanMultEl) timeSpanMultEl.addEventListener('input', updateTimeScale);
+    if (timeSpanDecBtn) timeSpanDecBtn.addEventListener('click', () => {
+      if (timeSpanMultEl) { timeSpanMultEl.value = Math.max(10, parseInt(timeSpanMultEl.value) - 10); updateTimeScale(); }
+    });
+    if (timeSpanIncBtn) timeSpanIncBtn.addEventListener('click', () => {
+      if (timeSpanMultEl) { timeSpanMultEl.value = Math.min(10000, parseInt(timeSpanMultEl.value) + 10); updateTimeScale(); }
+    });
+    updateTimeScale();
+
+    // X-Axis: Mode (Continuous / Trigger) — 기존 chartMode 로직 연결
+    const timeModeEl = document.getElementById('chartTimeBaseMode');
+    if (timeModeEl) {
+      timeModeEl.addEventListener('change', () => {
+        this.chartManager.setMode(timeModeEl.value);
+      });
+    }
+
+    // Y-Axis: Auto 체크박스 + Min/Max 입력 → fixedYRange
+    for (let i = 0; i < 4; i++) {
+      const autoEl = document.getElementById(`chartCh${i + 1}Auto`);
+      const minEl  = document.getElementById(`chartCh${i + 1}Min`);
+      const maxEl  = document.getElementById(`chartCh${i + 1}Max`);
+      if (!autoEl || !minEl || !maxEl) continue;
+
+      const applyRange = () => {
+        if (autoEl.checked) {
+          this.chartManager.clearChannelYRange(i);
+          minEl.disabled = true;
+          maxEl.disabled = true;
+        } else {
+          minEl.disabled = false;
+          maxEl.disabled = false;
+          this.chartManager.setChannelYRange(
+              i, parseFloat(minEl.value) || -100, parseFloat(maxEl.value) || 100);
+        }
+      };
+
+      autoEl.addEventListener('change', applyRange);
+      minEl.addEventListener('change', applyRange);
+      maxEl.addEventListener('change', applyRange);
+    }
   }
 
   /**
@@ -14594,10 +14820,8 @@ class ModbusDashboard {
       // Restore buttons
       const startBtn = document.getElementById('chartStartBtn');
       const stopBtn = document.getElementById('chartStopBtn');
-      const pauseBtn = document.getElementById('chartPauseBtn');
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
-      if (pauseBtn) pauseBtn.disabled = true;
       return;
     }
 
@@ -14609,7 +14833,7 @@ class ModbusDashboard {
     for (let i = 0; i < 4; i++) {
       const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
       const triggerEl = document.getElementById(`chartCh${i + 1}Trigger`);
-      if (enableEl?.checked) {
+      if (enableEl?.dataset.enabled === 'true') {
         const chNum = parseInt(triggerEl?.dataset.selectedValue);
         if (!isNaN(chNum) && chNum >= 0 && chNum <= 254) {
           configuredChannels.push({chIdx: i, chNum});
@@ -14621,10 +14845,8 @@ class ModbusDashboard {
       this.showToast('활성화된 채널이 없습니다 (Ch# 1~254 범위 확인)', 'error');
       const startBtn = document.getElementById('chartStartBtn');
       const stopBtn = document.getElementById('chartStopBtn');
-      const pauseBtn = document.getElementById('chartPauseBtn');
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
-      if (pauseBtn) pauseBtn.disabled = true;
       return;
     }
 
@@ -14663,10 +14885,8 @@ class ModbusDashboard {
       if (statusEl) statusEl.textContent = 'Stopped';
       const startBtn = document.getElementById('chartStartBtn');
       const stopBtn = document.getElementById('chartStopBtn');
-      const pauseBtn = document.getElementById('chartPauseBtn');
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
-      if (pauseBtn) pauseBtn.disabled = true;
       return;
     }
 
@@ -14804,7 +15024,7 @@ class ModbusDashboard {
     for (let i = 0; i < 4; i++) {
       const enableEl = document.getElementById(`chartCh${i + 1}Enable`);
       const triggerEl = document.getElementById(`chartCh${i + 1}Trigger`);
-      if (enableEl?.checked) {
+      if (enableEl?.dataset.enabled === 'true') {
         const chNum = parseInt(triggerEl?.dataset.selectedValue);
         if (!isNaN(chNum) && chNum >= 0 && chNum <= 254) {
           configuredChannels.push({chIdx: i, chNum});
@@ -14852,8 +15072,7 @@ class ModbusDashboard {
     this.chartSlaveId = slaveId;
     this.chartManager.clearData();
 
-    const statusEl = document.getElementById('chartStatus');
-    if (statusEl) statusEl.textContent = 'Configuring...';
+    this.chartManager.updateStatus('Configuring...');
     this.chartManager.updateTriggerStatus('Waiting');
 
     // ── 1. Stop (이전 세션 초기화) ──────────────────────────
@@ -14868,12 +15087,12 @@ class ModbusDashboard {
     if (!configResp) {
       this.showToast('Trigger Configure 실패: 디바이스 응답 없음', 'error');
       this.triggerRunning = false;
-      if (statusEl) statusEl.textContent = 'Stopped';
+      this.chartManager.updateStatus('Stopped');
       this._restoreChartButtons();
       return;
     }
 
-    if (statusEl) statusEl.textContent = 'Armed';
+    this.chartManager.updateStatus('Armed');
     this.chartManager.updateTriggerStatus('Armed');
 
     // ── 3. Start + Poll (트리거 대기) ───────────────────────
@@ -14899,21 +15118,23 @@ class ModbusDashboard {
       const abortFrame = this.modbus.buildTriggerStop(slaveId);
       await this.sendAndReceiveFC65(abortFrame, 0x00, 300);
       this.triggerRunning = false;
-      if (statusEl) statusEl.textContent = 'Stopped';
+      this.chartManager.updateStatus('Stopped');
       this.chartManager.updateTriggerStatus('Waiting');
       this._restoreChartButtons();
       return;
     }
 
     this.chartManager.updateTriggerStatus('Triggered');
-    if (statusEl) statusEl.textContent = 'Downloading...';
+    this.chartManager.updateStatus('Download 0%');
 
     // ── 4. 데이터 수집 (채널별 순차) ────────────────────────
     const periodMs = period * 0.125;
     const preTriggerSamples = Math.round(numOfData * position / 100);
     const channelData = {};  // chIdx → float[]
+    const totalWork = configuredChannels.length * numOfData;
 
-    for (const {chIdx, chNum} of configuredChannels) {
+    for (let chI = 0; chI < configuredChannels.length; chI++) {
+      const {chIdx, chNum} = configuredChannels[chI];
       const samples = [];
       let startAddr = 0;
 
@@ -14934,6 +15155,9 @@ class ModbusDashboard {
         samples.push(...parsed.data);
         startAddr += parsed.length;
 
+        const pct = Math.min(99, Math.round((chI * numOfData + startAddr) / totalWork * 100));
+        this.chartManager.updateStatus(`Download ${pct}%`);
+
         if (parsed.length < 14) break;  // 마지막 패킷 (end-of-data)
       }
 
@@ -14950,7 +15174,7 @@ class ModbusDashboard {
     this.chartManager.loadTriggerData(
         channelData, periodMs, preTriggerSamples, numOfData);
 
-    if (statusEl) statusEl.textContent = 'Done';
+    this.chartManager.updateStatus('Done');
     this._restoreChartButtons();
   }
 
@@ -14984,10 +15208,8 @@ class ModbusDashboard {
   _restoreChartButtons() {
     const startBtn = document.getElementById('chartStartBtn');
     const stopBtn = document.getElementById('chartStopBtn');
-    const pauseBtn = document.getElementById('chartPauseBtn');
     if (startBtn) startBtn.disabled = false;
     if (stopBtn) stopBtn.disabled = true;
-    if (pauseBtn) pauseBtn.disabled = true;
   }
 
   // ─────────────────────────────────────────────────────────
@@ -16284,6 +16506,8 @@ class ModbusDashboard {
     if (activeTab === 'configuration' &&
         (this.writer || this.simulatorEnabled)) {
       this.refreshDevice(device.id);
+    } else if (activeTab === 'information') {
+      this.renderDeviceInfoTab(device.id);
     }
 
     // Set selected device for parameters and render
@@ -16892,6 +17116,144 @@ class ModbusDashboard {
 
     const category = this.activeConfigCategory || 'motorInfo';
     await this.readConfigCategory(category, deviceId);
+  }
+
+  renderDeviceInfoTab(deviceId) {
+    const device = this.devices.find(d => d.id === deviceId);
+    const container = document.getElementById('deviceSetupInfo');
+    if (!device || !container) return;
+
+    const isOnline = device.online || this.simulatorEnabled;
+
+    const verRow = (label, addr, valueId, last = false) => `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; ${last ? '' : 'border-bottom:1px solid #F2F4F6;'}">
+        <div>
+          <div style="font-size:13px; color:#4E5968; font-weight:700; letter-spacing:-0.2px;">${label}</div>
+          <div style="font-size:11px; color:#C9CDD4; font-weight:500; margin-top:2px; font-family:'Consolas',monospace;">${addr}</div>
+        </div>
+        <span id="${valueId}" style="font-size:12px; font-weight:700; font-family:'Consolas',monospace; color:#8B95A1; background:#F2F4F6; padding:4px 10px; border-radius:8px; white-space:nowrap;">—</span>
+      </div>`;
+
+    container.innerHTML = `
+      <div style="min-height:100%; display:flex; align-items:flex-start; justify-content:center; padding:32px 24px; box-sizing:border-box;">
+        <div style="width:100%; max-width:480px; display:flex; flex-direction:column; gap:16px;">
+
+          <!-- 헤더 -->
+          <div style="display:flex; align-items:center; gap:16px; padding:24px; background:white; border-radius:20px; box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+            <div style="width:50px; height:50px; border-radius:15px; background:${isOnline ? '#EEF3FF' : '#F2F4F6'}; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">🔌</div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:17px; font-weight:800; color:#191F28; letter-spacing:-0.4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${device.name}</div>
+              <div style="display:flex; align-items:center; gap:6px; margin-top:5px;">
+                <span style="width:6px; height:6px; border-radius:50%; background:${isOnline ? '#00C471' : '#C9CDD4'}; flex-shrink:0; ${isOnline ? 'box-shadow:0 0 0 3px rgba(0,196,113,0.18);' : ''}"></span>
+                <span style="font-size:12px; font-weight:700; color:${isOnline ? '#00C471' : '#8B95A1'};">${isOnline ? '온라인' : '오프라인'}</span>
+                <span style="font-size:11px; color:#D1D6DB;">·</span>
+                <span style="font-size:12px; font-weight:600; color:#8B95A1;">${device.slaveId === 0 ? 'ID 미할당' : 'ID ' + device.slaveId}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 버전 정보 카드 -->
+          <div style="background:white; border-radius:20px; padding:0 20px; box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 0 4px 0;">
+              <span style="font-size:11px; font-weight:700; color:#C9CDD4; letter-spacing:0.8px; text-transform:uppercase;">Device</span>
+              <button id="info-refresh-btn" onclick="window.dashboard.refreshDeviceInfo(${device.id})"
+                style="display:flex; align-items:center; gap:5px; padding:5px 11px; background:#F2F4F6; border:none; border-radius:9px; font-size:12px; font-weight:700; color:#4E5968; cursor:pointer; letter-spacing:-0.1px;"
+                onmouseover="this.style.background='#E5E8EB'" onmouseout="this.style.background='#F2F4F6'">
+                <span id="info-refresh-icon" style="font-size:13px; line-height:1; display:inline-block;">↻</span> 읽기
+              </button>
+            </div>
+            ${verRow('Serial Number', '0x2424', 'info-sn')}
+            <div style="height:1px; background:#F2F4F6; margin:4px 0;"></div>
+            <div style="font-size:11px; font-weight:700; color:#C9CDD4; letter-spacing:0.8px; text-transform:uppercase; padding:12px 0 4px 0;">Firmware</div>
+            ${verRow('MCU Boot', '0x27F0', 'info-main-boot')}
+            ${verRow('MCU FW', '0x27F1', 'info-main-fw')}
+            ${verRow('Inv Boot', '0x27F2', 'info-inv-boot')}
+            ${verRow('Inv FW', '0x27F3', 'info-inv-fw', true)}
+
+          </div>
+
+        </div>
+      </div>`;
+
+    if (this.writer || this.simulatorEnabled) {
+      this.refreshDeviceInfo(device.id);
+    }
+  }
+
+  async refreshDeviceInfo(deviceId) {
+    const device = this.devices.find(d => d.id === deviceId);
+    if (!device || device.slaveId === 0) return;
+
+    const btn = document.getElementById('info-refresh-btn');
+    const icon = document.getElementById('info-refresh-icon');
+    if (btn) btn.disabled = true;
+    if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+
+    const versionRegs = [
+      { id: 'info-main-boot', index: 0x27F0 },
+      { id: 'info-main-fw',   index: 0x27F1 },
+      { id: 'info-inv-boot',  index: 0x27F2 },
+      { id: 'info-inv-fw',    index: 0x27F3 },
+    ];
+
+    for (const { id, index } of versionRegs) {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = '…'; el.style.color = '#C9CDD4'; el.style.background = '#F2F4F6'; }
+      try {
+        const r = await this.readCANopenObject(device.slaveId, index, 0x00, 16);
+        if (el) {
+          if (r && !r.error && r.rawBytes) {
+            const ascii = r.rawBytes
+              .filter(b => b !== 0x00)
+              .map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : '.')
+              .join('');
+            el.textContent = ascii || '—';
+            el.style.color = '#3182F6';
+            el.style.background = '#EEF3FF';
+          } else {
+            el.textContent = '실패';
+            el.style.color = '#F04452';
+            el.style.background = '#FFF2F3';
+          }
+        }
+      } catch {
+        if (el) { el.textContent = '실패'; el.style.color = '#F04452'; el.style.background = '#FFF2F3'; }
+      }
+    }
+
+    // Serial Number (0x2424)
+    const snEl = document.getElementById('info-sn');
+    if (snEl) { snEl.textContent = '…'; snEl.style.color = '#C9CDD4'; snEl.style.background = '#F2F4F6'; }
+    try {
+      const snr = await this.readCANopenObject(device.slaveId, 0x2424, 0x00, 16);
+      if (snEl) {
+        if (snr && !snr.error && snr.rawBytes) {
+          if (snr.rawBytes.every(b => b === 0xFF)) {
+            snEl.textContent = '미부여';
+            snEl.style.color = '#FF9500';
+            snEl.style.background = '#FFF5E6';
+          } else {
+            const sn = snr.rawBytes
+              .filter(b => b !== 0x00)
+              .map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : '.')
+              .join('').trim();
+            snEl.textContent = sn || '—';
+            snEl.style.color = '#3182F6';
+            snEl.style.background = '#EEF3FF';
+          }
+        } else {
+          snEl.textContent = '실패';
+          snEl.style.color = '#F04452';
+          snEl.style.background = '#FFF2F3';
+        }
+      }
+    } catch {
+      if (snEl) { snEl.textContent = '실패'; snEl.style.color = '#F04452'; snEl.style.background = '#FFF2F3'; }
+    }
+
+    if (btn) btn.disabled = false;
+    if (icon) icon.style.animation = '';
   }
 
   renderDeviceSetupConfig(device, {autoRead = false} = {}) {
@@ -19927,6 +20289,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Auto-read parameters from device if connected
         if (db.selectedParamDeviceId && (db.writer || db.simulatorEnabled)) {
           db.readAllParameters();
+        }
+      } else if (targetTab === 'information') {
+        document.getElementById('deviceSetupInfoTab').style.display = 'block';
+        if (db.currentSetupDeviceId) {
+          db.renderDeviceInfoTab(db.currentSetupDeviceId);
         }
       } else if (targetTab === 'update') {
         document.getElementById('deviceSetupUpdateTab').style.display = 'block';
