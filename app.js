@@ -314,7 +314,7 @@ class ChartManager {
       const relX = (x - this.chartMargins.left - this.pan.x) / (chartWidth * this.zoom.x);
       const timeAtCursor = this.viewMinTime + relX * this.timeScale;
       const factor = e.deltaY > 0 ? 1.1 : 0.9;
-      this.timeScale = Math.max(500, Math.min(600000, this.timeScale * factor));
+      this.timeScale = Math.max(0.1, Math.min(600000, this.timeScale * factor));
       this.viewMinTime = timeAtCursor - relX * this.timeScale;
       const latestTime = this.getLatestTime();
       const maxMinTime = Math.max(0, latestTime - this.timeScale);
@@ -3908,6 +3908,12 @@ class ModbusDashboard {
     // FC 0x65: Trigger Streaming 응답 — responseBuffer에서 별도 처리, 여기서는
     // 무시
     if (this.receiveBuffer[1] === 0x65) return;
+
+    // FC 0x23: Fast Firmware Download 응답 — responseBuffer에서 별도 처리.
+    // FC 0x23 success: OpCode 기반 가변 길이.
+    // FC 0xA3 (= 0x23 | 0x80): 표준 Modbus exception (5 bytes).
+    if (this.receiveBuffer[1] === 0x23 || this.receiveBuffer[1] === 0xA3)
+      return;
 
     // 버스 floating 노이즈 바이트 즉시 폐기:
     // RS-485 DE→RE 전환 시 버스가 floating → 0xFF, 0xBF 등 무작위 바이트 수신됨
@@ -13915,8 +13921,10 @@ class ModbusDashboard {
       return;
     }
     const slaveId = selectedDevice.slaveId;
-    const packetSize =
-        parseInt(document.getElementById('fwPacketSize')?.value) || 60;
+    // 펌웨어 데이터는 4-byte 정렬되어야 함 (Flash 32-bit word 쓰기 호환)
+    let packetSize =
+        parseInt(document.getElementById('fwPacketSize')?.value) || 240;
+    packetSize = Math.max(4, Math.floor(packetSize / 4) * 4);  // 4의 배수로 라운드
     const responseTimeout =
         parseInt(document.getElementById('fwResponseTimeout')?.value) || 1000;
 
@@ -13943,9 +13951,48 @@ class ModbusDashboard {
     this.firmwareUpdateInProgress = true;
     this.firmwareUpdateCancelled = false;
 
+    // 펌웨어 데이터를 4-byte 경계로 패딩 (Flash 32-bit word 쓰기 정렬).
+    // 0xFF 패딩 — Flash erase 값과 동일하므로 추가 쓰기 부담 없음.
+    if (this.firmwareData.length % 4 !== 0) {
+      const origLen = this.firmwareData.length;
+      const paddedLen = Math.ceil(origLen / 4) * 4;
+      const padded = new Uint8Array(paddedLen);
+      padded.set(this.firmwareData);
+      padded.fill(0xFF, origLen);
+      this.firmwareData = padded;
+      this.addFirmwareLog(
+          `파일 크기 ${origLen} bytes → 4-byte 정렬을 위해 ${
+              paddedLen} bytes로 0xFF 패딩`,
+          'warning');
+    }
+
     const totalSize = this.firmwareData.length;
 
     try {
+      // ===== Try FC 0x23 (Fast Firmware Download) first =====
+      this.addFirmwareLog(
+          `[0x23] Fast Firmware Download 시도 - Slave ID: ${slaveId}`);
+
+      const fastResult = await this._runFastFirmwareDownload(
+          slaveId, packetSize, responseTimeout,
+          {progressBar, progressPercent, progressStatus});
+
+      if (fastResult.ok) {
+        this.addFirmwareLog('펌웨어 다운로드 성공! (FC 0x23)', 'success');
+        this.showToast('펌웨어 다운로드가 완료되었습니다 (Fast)', 'success');
+        return;  // finally 블록은 그대로 실행됨
+      }
+
+      if (!fastResult.fallback) {
+        // 0x23 진행 중 실패 — 0x66로 되돌리지 않고 사용자에게 보고
+        throw new Error(fastResult.error || 'Fast firmware download failed');
+      }
+
+      // ===== Fallback to FC 0x66 (legacy) =====
+      this.addFirmwareLog(
+          '=== FC 0x66 (legacy) 프로토콜로 fallback ===', 'warning');
+      this.resetFirmwareSteps();
+
       // ===== Step 1: Initialize (OpCode 0x90) =====
       this.setFirmwareStepStatus('0x90', 'active');
       this.addFirmwareLog(`[0x90] 초기화 시작 - Slave ID: ${
@@ -14146,6 +14193,416 @@ class ModbusDashboard {
   }
 
   /**
+   * FC 0x23 가변 길이 RX 헬퍼.
+   * OpCode + ACK/NACK 구분자로 길이 동적 결정 (modbus.getFastFwResponseLength).
+   * @param {Uint8Array} frame
+   * @param {number} timeout ms
+   * @returns {Promise<Uint8Array | null>} CRC 검증된 응답 프레임. timeout 시 null.
+   */
+  async _sendReceiveFastFw(frame, timeout = 1000) {
+    // 시뮬레이터는 0x23 미구현 → null 반환하여 fallback 유도
+    if (this.simulatorEnabled) return null;
+    if (!this.writer) return null;
+
+    // 잔류 데이터 flush
+    this.responseBuffer = null;
+    this.expectedResponseLength = 0;
+    this.receiveIndex = 0;
+
+    await this.sendRawData(frame);
+    this.addMonitorEntry('tx', frame);
+
+    // 수신 누적 시작
+    this.responseBuffer = [];
+
+    const startTime = Date.now();
+    const slaveId = frame[0];
+
+    while (Date.now() - startTime < timeout) {
+      const buf = this.responseBuffer;
+
+      if (buf.length >= 2 && buf[0] === slaveId) {
+        const fc = buf[1];
+
+        // FC 0xA3 = 0x23 | 0x80 → 표준 Modbus exception, 5 bytes
+        if (fc === 0xA3) {
+          if (buf.length >= 5) {
+            const respFrame = new Uint8Array(buf.slice(0, 5));
+            if (this.modbus.verifyCRC(respFrame)) {
+              this.addMonitorEntry('rx', respFrame);
+              return respFrame;
+            }
+            this.addMonitorEntry(
+                'error', respFrame, null, 'CRC mismatch (FC 0xA3)');
+            return null;
+          }
+        } else if (fc === 0x23) {
+          const expected =
+              this.modbus.getFastFwResponseLength(new Uint8Array(buf));
+          if (expected !== null && buf.length >= expected) {
+            const respFrame = new Uint8Array(buf.slice(0, expected));
+            if (this.modbus.verifyCRC(respFrame)) {
+              this.addMonitorEntry('rx', respFrame);
+              return respFrame;
+            }
+            this.addMonitorEntry(
+                'error', respFrame, null, 'CRC mismatch (FC 0x23)');
+            return null;
+          }
+        }
+      }
+      await this.delay(5);
+    }
+    return null;
+  }
+
+  /** FC 0x23 Abort (best-effort, 실패해도 무시) */
+  async _fastFwAbort(slaveId, timeout) {
+    try {
+      const abortFrame = this.modbus.buildFastFwAbort(slaveId);
+      this.addFirmwareLog(`[0x23/0xFF] Abort 송신`, 'warning');
+      await this._sendReceiveFastFw(abortFrame, timeout);
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  /**
+   * FC 0x23 펌웨어 다운로드 메인 플로우.
+   * @returns {Promise<{ok: boolean, fallback: boolean, error?: string}>}
+   *   - ok=true : 성공
+   *   - ok=false, fallback=true : Init 단계에서 미지원 감지 → 0x66 fallback 가능
+   *   - ok=false, fallback=false : 0x23 진행 중 실패 → 사용자에게 에러
+   */
+  async _runFastFirmwareDownload(
+      slaveId, packetSize, responseTimeout, progressUI) {
+    const totalSize = this.firmwareData.length;
+    const firmwareCRC32 = this.modbus.calculateCRC32(this.firmwareData);
+
+    // ===== Step 1: Init (0x90) =====
+    this.setFirmwareStepStatus('0x90', 'active');
+    this.addFirmwareLog(`[0x23/0x90] Init - 파일 크기: ${totalSize} bytes`);
+
+    const initFrame =
+        this.modbus.buildFastFwInit(slaveId, 0x01, 0x00, totalSize);
+    this.addFirmwareLog(`TX: ${this.modbus.bufferToHex(initFrame)}`, 'tx');
+
+    const initResponse =
+        await this._sendReceiveFastFw(initFrame, responseTimeout);
+
+    if (!initResponse) {
+      // 응답 없음 → slave가 0x23 모름 또는 simulator
+      this.addFirmwareLog('[0x23] Init 응답 없음 → 0x66 fallback', 'warning');
+      this.setFirmwareStepStatus('0x90', '');
+      return {ok: false, fallback: true};
+    }
+
+    this.addFirmwareLog(
+        `RX: ${this.modbus.bufferToHex(initResponse)}`, 'rx');
+
+    const initResult = this.modbus.parseFastFwResponse(initResponse);
+
+    if (initResult.isException) {
+      this.addFirmwareLog(
+          `[0x23] Modbus Exception 0x${
+              initResult.exceptionCode.toString(16).padStart(2, '0')} → 0x66 fallback`,
+          'warning');
+      this.setFirmwareStepStatus('0x90', '');
+      return {ok: false, fallback: true};
+    }
+
+    if (!initResult.success) {
+      this.setFirmwareStepStatus('0x90', 'error');
+      return {
+        ok: false,
+        fallback: false,
+        error: `Init 실패: ${initResult.error || 'unknown'}`
+      };
+    }
+
+    const {protocolVersion, status, lastOffset} = initResult.data;
+    this.addFirmwareLog(
+        `[0x23/0x90] Protocol v${protocolVersion}, Status=0x${
+            status.toString(16).padStart(2, '0')}, LastOffset=${lastOffset}`,
+        'success');
+    this.setFirmwareStepStatus('0x90', 'completed');
+
+    if (this.firmwareUpdateCancelled) {
+      await this._fastFwAbort(slaveId, responseTimeout);
+      throw new Error('사용자에 의해 취소됨');
+    }
+
+    // ===== Step 2: Erase Poll (0x91) — Status=0x00 일 때만 =====
+    let resumeFromOffset = 0;
+    if (status === 0x00) {
+      this.setFirmwareStepStatus('0x91', 'active');
+      this.addFirmwareLog('[0x23/0x91] Flash Erase 폴링 (500ms 주기)...');
+
+      const eraseStartTime = Date.now();
+      const eraseTimeout = 30000;
+      let eraseDone = false;
+
+      while (Date.now() - eraseStartTime < eraseTimeout) {
+        if (this.firmwareUpdateCancelled) {
+          await this._fastFwAbort(slaveId, responseTimeout);
+          throw new Error('사용자에 의해 취소됨');
+        }
+
+        await this.delay(500);
+
+        const pollFrame = this.modbus.buildFastFwErasePoll(slaveId);
+        const pollResponse =
+            await this._sendReceiveFastFw(pollFrame, responseTimeout);
+        if (!pollResponse) {
+          this.setFirmwareStepStatus('0x91', 'error');
+          return {
+            ok: false,
+            fallback: false,
+            error: 'Erase Poll 응답 없음'
+          };
+        }
+
+        const pollResult = this.modbus.parseFastFwResponse(pollResponse);
+        const eraseStatus = pollResult.data?.eraseStatus;
+
+        if (eraseStatus === 0x01) {
+          eraseDone = true;
+          break;
+        }
+        if (eraseStatus === 0x02) {
+          this.setFirmwareStepStatus('0x91', 'error');
+          return {
+            ok: false,
+            fallback: false,
+            error: 'Flash Erase 오류'
+          };
+        }
+        // 0x00 진행중 → 계속 폴링
+      }
+
+      if (!eraseDone) {
+        this.setFirmwareStepStatus('0x91', 'error');
+        await this._fastFwAbort(slaveId, responseTimeout);
+        return {
+          ok: false,
+          fallback: false,
+          error: 'Erase 타임아웃 (30초)'
+        };
+      }
+
+      this.setFirmwareStepStatus('0x91', 'completed');
+      this.addFirmwareLog('[0x23/0x91] Flash Erase 완료', 'success');
+    } else if (status === 0x01) {
+      resumeFromOffset = lastOffset;
+      this.setFirmwareStepStatus('0x91', 'completed');
+      this.addFirmwareLog(
+          `[0x23] Resume 모드: offset ${lastOffset}부터 재개`, 'success');
+    }
+
+    if (this.firmwareUpdateCancelled) {
+      await this._fastFwAbort(slaveId, responseTimeout);
+      throw new Error('사용자에 의해 취소됨');
+    }
+
+    // ===== Step 3: Data Transfer (0x03) =====
+    this.setFirmwareStepStatus('0x03', 'active');
+
+    let currentDataLen = packetSize;
+    let transferred = resumeFromOffset;
+    let seqNum = packetSize > 0 ? Math.floor(resumeFromOffset / packetSize) : 0;
+    let packetCount = 0;
+    const totalPackets = Math.ceil(totalSize / Math.max(1, currentDataLen));
+    const transferStartTime = Date.now();
+    const maxRetries = 3;
+
+    this.addFirmwareLog(
+        `[0x23/0x03] 데이터 전송 시작 (DataLen=${currentDataLen}, ~${
+            totalPackets} 패킷)`);
+
+    while (transferred < totalSize) {
+      if (this.firmwareUpdateCancelled) {
+        await this._fastFwAbort(slaveId, responseTimeout);
+        throw new Error('사용자에 의해 취소됨');
+      }
+
+      const remaining = totalSize - transferred;
+      const chunkSize = Math.min(currentDataLen, remaining);
+      const chunk =
+          this.firmwareData.slice(transferred, transferred + chunkSize);
+
+      let acked = false;
+      let bufferOverflow = false;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        const dataFrame =
+            this.modbus.buildFastFwData(slaveId, seqNum, transferred, chunk);
+
+        if (packetCount % 10 === 0 || chunkSize < currentDataLen) {
+          this.addFirmwareLog(
+              `TX[seq=${seqNum}, off=${transferred}, len=${chunkSize}]`,
+              'tx');
+        }
+
+        const dataResponse =
+            await this._sendReceiveFastFw(dataFrame, responseTimeout);
+
+        if (!dataResponse) {
+          if (attempt < maxRetries) {
+            this.addFirmwareLog(
+                `[0x23/0x03] seq=${seqNum} 응답 없음 — 재시도 ${attempt + 1}/${
+                    maxRetries}`,
+                'warning');
+            continue;
+          }
+          this.setFirmwareStepStatus('0x03', 'error');
+          await this._fastFwAbort(slaveId, responseTimeout);
+          return {
+            ok: false,
+            fallback: false,
+            error: `Data 응답 없음 (seq=${seqNum})`
+          };
+        }
+
+        const dataResult = this.modbus.parseFastFwResponse(dataResponse);
+
+        if (dataResult.success && dataResult.data?.ackNack === 0x04) {
+          acked = true;
+          break;
+        }
+
+        // NACK
+        const errCode = dataResult.data?.errorCode;
+        const expOff = dataResult.data?.expectedOffset;
+        this.addFirmwareLog(
+            `[0x23/0x03] NACK seq=${seqNum} err=0x${
+                errCode?.toString(16).padStart(2, '0')} expOff=${
+                expOff} (재시도 ${attempt + 1}/${maxRetries})`,
+            'warning');
+
+        if (errCode === 0x05) {
+          // BUFFER_OVERFLOW → DataLen 절반(4의 배수 유지)으로 축소 후 재포장
+          const halved = Math.floor(currentDataLen / 2);
+          currentDataLen = Math.max(16, halved - (halved % 4));
+          this.addFirmwareLog(
+              `[0x23/0x03] DataLen을 ${currentDataLen}로 축소`, 'warning');
+          bufferOverflow = true;
+          break;
+        }
+        if (errCode === 0x02 || errCode === 0x03) {
+          // OFFSET/SEQ MISMATCH → ExpectedOffset에 동기 후 재시도
+          if (typeof expOff === 'number' && expOff <= totalSize) {
+            transferred = expOff;
+            seqNum = currentDataLen > 0 ?
+                Math.floor(expOff / currentDataLen) :
+                seqNum;
+            bufferOverflow = true;  // outer loop에서 재포장
+            break;
+          }
+        }
+        // CRC_ERROR / FLASH_WRITE_FAIL / NOT_INITIALIZED / ERASE_NOT_DONE
+        // 동일 패킷 재전송 (다음 attempt)
+      }
+
+      if (!acked && !bufferOverflow) {
+        this.setFirmwareStepStatus('0x03', 'error');
+        await this._fastFwAbort(slaveId, responseTimeout);
+        return {
+          ok: false,
+          fallback: false,
+          error: `Data 전송 실패 (seq=${seqNum}, ${maxRetries}회 재시도 초과)`
+        };
+      }
+
+      if (acked) {
+        transferred += chunkSize;
+        seqNum++;
+        packetCount++;
+
+        // 진행률 / ETA
+        const elapsedTime = Date.now() - transferStartTime;
+        const avgTimePerPacket = elapsedTime / packetCount;
+        const remainingBytes = totalSize - transferred;
+        const remainingPackets =
+            Math.ceil(remainingBytes / Math.max(1, currentDataLen));
+        const estimatedTimeMs =
+            Math.round(remainingPackets * avgTimePerPacket);
+
+        const percent = Math.round((transferred / totalSize) * 100);
+        if (progressUI?.progressBar)
+          progressUI.progressBar.style.width = percent + '%';
+        if (progressUI?.progressPercent)
+          progressUI.progressPercent.textContent = percent + '%';
+        if (progressUI?.progressStatus) {
+          progressUI.progressStatus.textContent = `${
+              this.formatFileSize(transferred)} / ${
+              this.formatFileSize(totalSize)}`;
+        }
+
+        this.updateFirmwareDataProgress(
+            transferred, totalSize, packetCount,
+            packetCount + remainingPackets, estimatedTimeMs);
+      }
+      // bufferOverflow=true && !acked: outer loop에서 같은 transferred로 재시도
+    }
+
+    this.setFirmwareStepStatus('0x03', 'completed');
+    this.updateFirmwareDataProgress(
+        totalSize, totalSize, packetCount, packetCount, 0);
+    this.addFirmwareLog(
+        `[0x23/0x03] 데이터 전송 완료 (${packetCount} 패킷)`, 'success');
+
+    if (this.firmwareUpdateCancelled) {
+      await this._fastFwAbort(slaveId, responseTimeout);
+      throw new Error('사용자에 의해 취소됨');
+    }
+
+    // ===== Step 4: Complete (0x99) — 이미지 CRC-32 검증 =====
+    this.setFirmwareStepStatus('0x99', 'active');
+    this.addFirmwareLog(
+        `[0x23/0x99] 이미지 검증 (CRC32=0x${
+            firmwareCRC32.toString(16).padStart(8, '0')})`);
+
+    const completeFrame = this.modbus.buildFastFwComplete(
+        slaveId, firmwareCRC32, totalSize);
+    this.addFirmwareLog(
+        `TX: ${this.modbus.bufferToHex(completeFrame)}`, 'tx');
+
+    const completeResponse =
+        await this._sendReceiveFastFw(completeFrame, responseTimeout);
+    if (!completeResponse) {
+      this.setFirmwareStepStatus('0x99', 'error');
+      return {
+        ok: false,
+        fallback: false,
+        error: 'Complete 응답 없음'
+      };
+    }
+    this.addFirmwareLog(
+        `RX: ${this.modbus.bufferToHex(completeResponse)}`, 'rx');
+
+    const completeResult = this.modbus.parseFastFwResponse(completeResponse);
+    if (!completeResult.success) {
+      this.setFirmwareStepStatus('0x99', 'error');
+      const vr = completeResult.data?.verifyResult;
+      const dCRC = completeResult.data?.deviceCRC32;
+      return {
+        ok: false,
+        fallback: false,
+        error: `이미지 검증 실패 (VerifyResult=0x${
+            vr?.toString(16).padStart(2, '0')}, deviceCRC32=0x${
+            dCRC?.toString(16).padStart(8, '0')})`
+      };
+    }
+
+    this.setFirmwareStepStatus('0x99', 'completed');
+    this.addFirmwareLog(
+        '[0x23/0x99] 이미지 검증 성공 — 다음 부팅 시 Flash Copy 예약',
+        'success');
+
+    return {ok: true, fallback: false};
+  }
+
+  /**
    * Reset firmware step indicators
    */
   resetFirmwareSteps() {
@@ -14172,7 +14629,8 @@ class ModbusDashboard {
     const step = document.getElementById(`fwStep${stepCode}`);
     if (step) {
       step.classList.remove('active', 'completed', 'error');
-      step.classList.add(status);
+      // 빈 문자열은 reset 의미 — classList.add('')는 DOMException을 던지므로 skip
+      if (status) step.classList.add(status);
     }
   }
 
@@ -14773,8 +15231,29 @@ class ModbusDashboard {
 
     // X-Axis: Mode (Continuous / Trigger) — 기존 chartMode 로직 연결
     const timeModeEl = document.getElementById('chartTimeBaseMode');
+
+    // Continuous 모드는 최소 20ms (period=160) 까지만 허용. Trigger 모드는 sub-ms 포함 전체 허용.
+    const CONTINUOUS_MIN_PERIOD = 160;
+    const applySampleRateConstraints = () => {
+      if (!sampleRateEl || !timeModeEl) return;
+      const isContinuous = timeModeEl.value === 'continuous';
+      let needReselect = false;
+      Array.from(sampleRateEl.options).forEach(opt => {
+        const tooFast = isContinuous && parseInt(opt.value) < CONTINUOUS_MIN_PERIOD;
+        opt.disabled = tooFast;
+        opt.hidden = tooFast;
+        if (tooFast && opt.selected) needReselect = true;
+      });
+      if (needReselect) {
+        sampleRateEl.value = String(CONTINUOUS_MIN_PERIOD);
+        updateTimeScale();
+      }
+    };
+    applySampleRateConstraints();
+
     if (timeModeEl) {
       timeModeEl.addEventListener('change', () => {
+        applySampleRateConstraints();
         this.chartManager.setMode(timeModeEl.value);
       });
     }

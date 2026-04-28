@@ -502,9 +502,10 @@
                                             <div class="form-group">
                                                 <label for="fwPacketSize">패킷 크기 (bytes)</label>
                                                 <select id="fwPacketSize">
-                                                    <option value="32">32 bytes</option>
-                                                    <option value="60" selected>60 bytes (권장)</option>
-                                                    <option value="64">64 bytes</option>
+                                                    <option value="60">60 bytes</option>
+                                                    <option value="120">120 bytes</option>
+                                                    <option value="180">180 bytes</option>
+                                                    <option value="240" selected>240 bytes (권장)</option>
                                                 </select>
                                             </div>
                                             <div class="form-group">
@@ -2713,6 +2714,9 @@
                                                     <td class="chart-settings-lbl">Sampling Time</td>
                                                     <td>
                                                         <select id="chartSampleRate">
+                                                            <option value="1">0.125 ms</option>
+                                                            <option value="2">0.250 ms</option>
+                                                            <option value="4">0.500 ms</option>
                                                             <option value="8">1.000 ms</option>
                                                             <option value="16">2.000 ms</option>
                                                             <option value="40">5.000 ms</option>

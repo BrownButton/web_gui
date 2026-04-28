@@ -47,6 +47,24 @@ class ModbusRTU {
     }
 
     /**
+     * Calculate CRC-32/ISO-HDLC (FC 0x23 firmware image verification)
+     * Polynomial 0x04C11DB7, Init 0xFFFFFFFF, RefIn=true, RefOut=true, XorOut 0xFFFFFFFF
+     * Test vector: ASCII "123456789" → 0xCBF43926
+     * @param {Uint8Array} buffer
+     * @returns {number} unsigned 32-bit CRC
+     */
+    calculateCRC32(buffer) {
+        let crc = 0xFFFFFFFF;
+        for (let i = 0; i < buffer.length; i++) {
+            crc ^= buffer[i];
+            for (let j = 0; j < 8; j++) {
+                crc = (crc >>> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+            }
+        }
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    /**
      * Build Modbus RTU frame
      * @param {number} slaveId - Slave address (1-247)
      * @param {number} functionCode - Modbus function code
@@ -710,6 +728,215 @@ class ModbusRTU {
 
             case 0x05: // Done (0x99) ACK (성공)
                 result.success = true;
+                break;
+
+            default:
+                result.success = false;
+                result.error = `Unknown OpCode: 0x${opCode.toString(16)}`;
+        }
+
+        return result;
+    }
+
+    // ===== Fast Firmware Update Protocol (Function Code 0x23) =====
+    // 참고: docs/protocol/FC23_FastFirmwareDownload_프로토콜_정의.md
+    //
+    // 모든 0x23 프레임에 CRC-16 포함. Multi-byte 필드는 Big-Endian.
+    //
+    // OpCode별 응답 길이 (NodeID + FC + payload + CRC 포함):
+    //   0x90 Init       : 11 B
+    //   0x91 Erase Poll : 6  B
+    //   0x03 Data ACK   : 12 B  (response[3]=0x04)
+    //   0x03 Data NACK  : 13 B  (response[3]=0x05)
+    //   0x99 Complete   : 10 B
+    //   0x9A Verify     : 10 B
+    //   0xFF Abort      : 6  B
+    //   Exception       : 5  B  (FC byte = 0x23 | 0x80 = 0xA3)
+
+    /**
+     * Build 0x90 Init request — Flash Unlock & Erase
+     * @param {number} slaveId
+     * @param {number} targetType  0x01=MAIN_MCU, 0x02=INVERTER_MCU, 0x03=CORE0, 0x04=CORE1, 0x05=FPGA
+     * @param {number} targetIndex 0x00=첫번째/유일
+     * @param {number} fileSize    전체 펌웨어 크기 bytes
+     */
+    buildFastFwInit(slaveId, targetType, targetIndex, fileSize) {
+        const data = new Uint8Array(7);
+        data[0] = 0x90;
+        data[1] = targetType & 0xFF;
+        data[2] = targetIndex & 0xFF;
+        data[3] = (fileSize >>> 24) & 0xFF;
+        data[4] = (fileSize >>> 16) & 0xFF;
+        data[5] = (fileSize >>> 8)  & 0xFF;
+        data[6] = fileSize & 0xFF;
+        return this.buildFrame(slaveId, 0x23, data);
+    }
+
+    /** 0x91 Erase Poll — payload 없음 */
+    buildFastFwErasePoll(slaveId) {
+        return this.buildFrame(slaveId, 0x23, new Uint8Array([0x91]));
+    }
+
+    /**
+     * 0x03 Data Transfer
+     * @param {number} slaveId
+     * @param {number} seqNum       16-bit 패킷 순번 (재전송 시 동일 유지)
+     * @param {number} flashOffset  32-bit Flash 상대 주소
+     * @param {Uint8Array} chunk    펌웨어 데이터 (최대 244 B)
+     */
+    buildFastFwData(slaveId, seqNum, flashOffset, chunk) {
+        const data = new Uint8Array(8 + chunk.length);
+        data[0] = 0x03;
+        data[1] = (seqNum >>> 8) & 0xFF;
+        data[2] = seqNum & 0xFF;
+        data[3] = (flashOffset >>> 24) & 0xFF;
+        data[4] = (flashOffset >>> 16) & 0xFF;
+        data[5] = (flashOffset >>> 8)  & 0xFF;
+        data[6] = flashOffset & 0xFF;
+        data[7] = chunk.length & 0xFF;
+        data.set(chunk, 8);
+        return this.buildFrame(slaveId, 0x23, data);
+    }
+
+    /** 0x99 Complete — FirmwareCRC32 + TotalSize */
+    buildFastFwComplete(slaveId, firmwareCRC32, totalSize) {
+        const data = new Uint8Array(9);
+        data[0] = 0x99;
+        data[1] = (firmwareCRC32 >>> 24) & 0xFF;
+        data[2] = (firmwareCRC32 >>> 16) & 0xFF;
+        data[3] = (firmwareCRC32 >>> 8)  & 0xFF;
+        data[4] = firmwareCRC32 & 0xFF;
+        data[5] = (totalSize >>> 24) & 0xFF;
+        data[6] = (totalSize >>> 16) & 0xFF;
+        data[7] = (totalSize >>> 8)  & 0xFF;
+        data[8] = totalSize & 0xFF;
+        return this.buildFrame(slaveId, 0x23, data);
+    }
+
+    /** 0x9A Verify — ExpectedCRC32 + ExpectedSize */
+    buildFastFwVerify(slaveId, expectedCRC32, expectedSize) {
+        const data = new Uint8Array(9);
+        data[0] = 0x9A;
+        data[1] = (expectedCRC32 >>> 24) & 0xFF;
+        data[2] = (expectedCRC32 >>> 16) & 0xFF;
+        data[3] = (expectedCRC32 >>> 8)  & 0xFF;
+        data[4] = expectedCRC32 & 0xFF;
+        data[5] = (expectedSize >>> 24) & 0xFF;
+        data[6] = (expectedSize >>> 16) & 0xFF;
+        data[7] = (expectedSize >>> 8)  & 0xFF;
+        data[8] = expectedSize & 0xFF;
+        return this.buildFrame(slaveId, 0x23, data);
+    }
+
+    /** 0xFF Abort — payload 없음 */
+    buildFastFwAbort(slaveId) {
+        return this.buildFrame(slaveId, 0x23, new Uint8Array([0xFF]));
+    }
+
+    /**
+     * 누적 RX 버퍼에서 0x23 응답의 예상 길이 결정.
+     * OpCode (그리고 0x03의 ACK/NACK 구분자) 기반.
+     * @param {Uint8Array | number[]} bytes  현재까지 수신된 바이트
+     * @returns {number | null}  예상 총 길이 (CRC 포함). 결정 불가 시 null.
+     */
+    getFastFwResponseLength(bytes) {
+        if (bytes.length < 3) return null;
+        const opCode = bytes[2];
+        switch (opCode) {
+            case 0x90: return 11;
+            case 0x91: return 6;
+            case 0x99: return 10;
+            case 0x9A: return 10;
+            case 0xFF: return 6;
+            case 0x03:
+                if (bytes.length < 4) return null;
+                return bytes[3] === 0x05 ? 13 : 12;  // NACK 13, ACK 12
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 0x23 응답 파싱 (CRC-16 검증 포함).
+     * @param {Uint8Array} response
+     * @returns {Object}
+     */
+    parseFastFwResponse(response) {
+        if (response.length < 5) {
+            return { success: false, error: 'Response too short' };
+        }
+        if (!this.verifyCRC(response)) {
+            return { success: false, error: 'CRC mismatch' };
+        }
+
+        const fc = response[1];
+
+        // Modbus exception: 슬레이브가 0x23 미지원 등으로 FC | 0x80 = 0xA3 응답
+        if (fc === 0xA3) {
+            const exceptionCode = response[2];
+            return {
+                success: false,
+                isException: true,
+                exceptionCode,
+                error: `Modbus Exception 0x${exceptionCode.toString(16)}: ${this.getExceptionMessage(exceptionCode)}`
+            };
+        }
+
+        if (fc !== 0x23) {
+            return { success: false, error: `Unexpected FC: 0x${fc.toString(16)}` };
+        }
+
+        const opCode = response[2];
+        const result = { success: true, slaveId: response[0], opCode, data: {} };
+
+        switch (opCode) {
+            case 0x90:
+                result.data.protocolVersion = response[3];
+                result.data.status = response[4];
+                result.data.lastOffset = ((response[5] << 24) | (response[6] << 16) | (response[7] << 8) | response[8]) >>> 0;
+                // Status 0x00=OK, 0x01=RESUME 둘 다 진행 가능
+                result.success = (result.data.status === 0x00 || result.data.status === 0x01);
+                if (!result.success) {
+                    result.error = `Init Status 0x${result.data.status.toString(16).padStart(2,'0')}`;
+                }
+                break;
+
+            case 0x91:
+                result.data.eraseStatus = response[3];
+                result.success = (result.data.eraseStatus !== 0x02);
+                break;
+
+            case 0x03: {
+                const ackNack = response[3];
+                result.data.ackNack = ackNack;
+                result.data.seqNum = (response[4] << 8) | response[5];
+                if (ackNack === 0x04) {
+                    result.data.totalReceived = ((response[6] << 24) | (response[7] << 16) | (response[8] << 8) | response[9]) >>> 0;
+                    result.success = true;
+                } else if (ackNack === 0x05) {
+                    result.data.errorCode = response[6];
+                    result.data.expectedOffset = ((response[7] << 24) | (response[8] << 16) | (response[9] << 8) | response[10]) >>> 0;
+                    result.success = false;
+                } else {
+                    result.success = false;
+                    result.error = `Unknown ACK/NACK: 0x${ackNack.toString(16)}`;
+                }
+                break;
+            }
+
+            case 0x99:
+            case 0x9A:
+                result.data.verifyResult = response[3];
+                result.data.deviceCRC32 = ((response[4] << 24) | (response[5] << 16) | (response[6] << 8) | response[7]) >>> 0;
+                result.success = (result.data.verifyResult === 0x00);
+                if (!result.success) {
+                    result.error = `VerifyResult 0x${result.data.verifyResult.toString(16).padStart(2,'0')}`;
+                }
+                break;
+
+            case 0xFF:
+                result.data.status = response[3];
+                result.success = (result.data.status === 0x00);
                 break;
 
             default:
