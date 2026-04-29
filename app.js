@@ -2148,6 +2148,10 @@ class ModbusDashboard {
     this.offsetAlarmPollingRunning = false;
     this.offsetStatus2617PollingRunning = false;
 
+    // Temp 0x2702 탭 폴링 상태
+    this.temp2702Polling = false;
+    this.temp2702Stats = {cycles: 0, errors: 0};
+
     // Device Setup auto-apply debounce timers
     this.applyDebounceTimers = {};
 
@@ -2283,6 +2287,12 @@ class ModbusDashboard {
         'click', () => this.sendModbusRequest());
     document.getElementById('clearBtn')
         .addEventListener('click', () => this.clearMonitor());
+
+    // Temp 0x2702 탭 버튼
+    const t2702Start = document.getElementById('temp2702StartBtn');
+    const t2702Stop = document.getElementById('temp2702StopBtn');
+    if (t2702Start) t2702Start.addEventListener('click', () => this.startTemp2702Polling());
+    if (t2702Stop) t2702Stop.addEventListener('click', () => this.stopTemp2702Polling());
 
     // Real-time value conversion for Modbus input fields
     const modbusInputs = [
@@ -2687,6 +2697,7 @@ class ModbusDashboard {
           } else {
             sessionStorage.setItem('developerMode', 'true');
             this.enableDeveloperMode();
+            this.refreshConfigForDevModeChange();
             this.showToast('🔧 개발자 모드가 활성화되었습니다', 'success');
           }
           clickCount = 0;
@@ -2720,6 +2731,7 @@ class ModbusDashboard {
           navbarStats.style.display = 'none';
         }
 
+        this.refreshConfigForDevModeChange();
         this.showToast('🔧 개발자 모드가 비활성화되었습니다', 'error');
         // Switch to dashboard if currently on manufacture page
         if (this.currentPage === 'manufacture') {
@@ -2744,6 +2756,30 @@ class ModbusDashboard {
 
       // Update menu item active state immediately
       this._setMenuActive(pageToShow);
+    }
+  }
+
+  /**
+   * 현재 세션이 개발자 모드인지 여부
+   */
+  isDeveloperMode() {
+    return sessionStorage.getItem('developerMode') === 'true';
+  }
+
+  /**
+   * Configuration 탭이 보이고 있을 때 디바이스를 다시 렌더링.
+   * 개발자 모드 토글 시 dev-only 탭/파라미터 표시 갱신용.
+   */
+  refreshConfigForDevModeChange() {
+    const device = this.devices &&
+        this.devices.find(d => d.id === this.currentSetupDeviceId);
+    if (!device) return;
+    const devOnly = new Set(['motorInfo', 'sensor', 'servoTuning', 'alarm']);
+    if (!this.isDeveloperMode() && devOnly.has(this.activeConfigCategory)) {
+      this.activeConfigCategory = 'motor';
+    }
+    if (document.getElementById('deviceSetupConfig')) {
+      this.renderDeviceSetupConfig(device);
     }
   }
 
@@ -2811,6 +2847,11 @@ class ModbusDashboard {
     this.stopOffsetStatus2617Polling();
     this.stopMiniChart('offsetHall');
 
+    // Temp 0x2702 탭 폴링도 페이지 전환 시 중지
+    if (pageName !== 'temp2702') {
+      this.stopTemp2702Polling();
+    }
+
     // Start/stop polling based on page
     if (pageName === 'dashboard') {
       // Start polling when on Dashboard
@@ -2831,6 +2872,11 @@ class ModbusDashboard {
     // Update device setup list when switching to device-setup page
     if (pageName === 'device-setup') {
       this.renderDeviceSetupList();
+    }
+
+    // Temp 0x2702 탭: 진입 시 슬레이브 드롭다운/테이블 렌더
+    if (pageName === 'temp2702') {
+      this._renderTemp2702Tab();
     }
 
     // Resize chart canvas when switching to chart page
@@ -3474,9 +3520,16 @@ class ModbusDashboard {
       this.isConnected = true;
       this.updateConnectionStatus(true);
 
-      // HW Overview 탭이 열려있으면 폴링 시작
-      const hwOverviewEl = document.getElementById('manufactureHwOverview');
-      if (hwOverviewEl && hwOverviewEl.style.display !== 'none') {
+      // HW Overview 탭이 실제로 활성 상태일 때만 폴링 시작
+      // (manufactureHwOverview는 초기 inline style이 display:flex이므로
+      //  자체 style만 보면 안 됨 — 페이지/탭/서브탭을 모두 확인)
+      const onManufactureTab =
+          sessionStorage.getItem('deviceSetupTab') === 'manufacture';
+      const onHwOverview =
+          (sessionStorage.getItem('manufactureSubtab') || 'hw-overview') ===
+          'hw-overview';
+      if (this.currentPage === 'device-setup' && onManufactureTab &&
+          onHwOverview) {
         this.initMiniCharts();
         this.startOvPolling();
       }
@@ -3484,8 +3537,14 @@ class ModbusDashboard {
       // Configuration 탭이 열려있으면 현재 카테고리 파라미터 자동 읽기
       if (this.currentSetupDeviceId) {
         const cat = this.activeConfigCategory || 'motorInfo';
-        setTimeout(
-            () => this.readConfigCategory(cat, this.currentSetupDeviceId), 800);
+        setTimeout(() => {
+          if (cat === 'alarm') {
+            // 알람 카테고리는 자체 Read All 사용 (FC 0x2B SDO)
+            this.alarmEnableReadAll();
+          } else {
+            this.readConfigCategory(cat, this.currentSetupDeviceId);
+          }
+        }, 800);
       }
 
       // Save settings to localStorage
@@ -16613,6 +16672,210 @@ class ModbusDashboard {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  //  Temp 0x2702 탭 — sub 0x00..0x0F 폴링 (uint16, hex 표시)
+  //  TX 는 readCANopenObject() 경유 → 폴링/FC64/OV 등으로 버스가 점유 중이면
+  //  자동으로 commandQueue 에 등록되어 안전하게 처리된다.
+  //  이 탭이 버스 소유자(다른 폴링 비활성)인 경우 readCANopenObject 가 직접
+  //  sendCANopenAndWaitResponse 로 전송한다.
+  // ─────────────────────────────────────────────────────────────────────────
+  _renderTemp2702Tab() {
+    // tbody 는 sub0(count) 결과를 받은 뒤 동적으로 행을 그린다.
+    // 진입 시점에는 안내 placeholder 만 표시.
+    const tbody = document.getElementById('temp2702Tbody');
+    if (tbody && tbody.children.length === 0) {
+      tbody.innerHTML =
+          `<tr><td colspan="3" style="padding: 16px 12px; color: #8B95A1; text-align: center; font-style: italic;">Start 를 누르면 sub 0(count) 을 먼저 읽어 동적으로 행을 구성합니다</td></tr>`;
+    }
+
+    // Slave 드롭다운 갱신 (현재 등록된 디바이스 기준)
+    const sel = document.getElementById('temp2702SlaveSelect');
+    if (sel) {
+      const prev = sel.value;
+      const valid = (this.devices || []).filter(d => d && d.slaveId);
+      sel.innerHTML = '<option value="">— 선택 —</option>' +
+          valid
+              .map(
+                  d => `<option value="${d.slaveId}">Slave ${d.slaveId}${
+                      d.name ? ' (' + d.name + ')' : ''}</option>`)
+              .join('');
+      if (prev && valid.some(d => String(d.slaveId) === prev)) {
+        sel.value = prev;
+      } else if (valid.length > 0) {
+        sel.value = String(valid[0].slaveId);
+      }
+    }
+
+    this._updateTemp2702Status();
+  }
+
+  _renderTemp2702Rows(count) {
+    const tbody = document.getElementById('temp2702Tbody');
+    if (!tbody) return;
+    // 행 구성: sub 0 (count, uint8) + sub 1..count (uint16)
+    let html = `<tr>
+        <td style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #6c757d;">0x00</td>
+        <td id="temp2702-val-0" style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #1a1a1a;">—</td>
+        <td id="temp2702-dec-0" style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #6c757d;">—</td>
+      </tr>`;
+    for (let sub = 1; sub <= count; sub++) {
+      const subHex = '0x' + sub.toString(16).toUpperCase().padStart(2, '0');
+      html += `<tr>
+          <td style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #6c757d;">${subHex}</td>
+          <td id="temp2702-val-${sub}" style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #1a1a1a;">—</td>
+          <td id="temp2702-dec-${sub}" style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #6c757d;">—</td>
+        </tr>`;
+    }
+    tbody.innerHTML = html;
+  }
+
+  _updateTemp2702Status() {
+    const stateEl = document.getElementById('temp2702State');
+    const cyclesEl = document.getElementById('temp2702Cycles');
+    const errorsEl = document.getElementById('temp2702Errors');
+    const countEl = document.getElementById('temp2702Count');
+    const startBtn = document.getElementById('temp2702StartBtn');
+    const stopBtn = document.getElementById('temp2702StopBtn');
+    if (stateEl) stateEl.textContent = this.temp2702Polling ? 'running' : 'idle';
+    if (cyclesEl) cyclesEl.textContent = this.temp2702Stats.cycles;
+    if (errorsEl) errorsEl.textContent = this.temp2702Stats.errors;
+    if (countEl)
+      countEl.textContent =
+          this._temp2702SubCount != null ? this._temp2702SubCount : '—';
+    if (startBtn) startBtn.disabled = !!this.temp2702Polling;
+    if (stopBtn) stopBtn.disabled = !this.temp2702Polling;
+  }
+
+  startTemp2702Polling() {
+    if (this.temp2702Polling) return;
+    const sel = document.getElementById('temp2702SlaveSelect');
+    const slaveId = sel ? parseInt(sel.value, 10) : NaN;
+    if (!Number.isFinite(slaveId) || slaveId <= 0) {
+      this.showToast && this.showToast('Slave 를 선택하세요', 'error');
+      return;
+    }
+    if (!this.writer && !this.simulatorEnabled) {
+      this.showToast && this.showToast('연결되지 않았습니다', 'error');
+      return;
+    }
+    this.temp2702Polling = true;
+    this.temp2702Stats = {cycles: 0, errors: 0};
+    this._temp2702SubCount = null;
+    this._temp2702RenderedCount = -1;
+    this._updateTemp2702Status();
+    this._temp2702Loop(slaveId);
+  }
+
+  stopTemp2702Polling() {
+    if (!this.temp2702Polling) return;
+    this.temp2702Polling = false;
+    this._updateTemp2702Status();
+  }
+
+  // sub 0 결과(uint8 count)를 추출. 펌웨어가 numData=1 로 응답하면 r.value 는
+  // null 이 되므로 rawBytes 에서 직접 꺼낸다.
+  _extractTemp2702Count(r) {
+    if (!r || r.error) return null;
+    if (Array.isArray(r.rawBytes) && r.rawBytes.length > 0) {
+      return r.rawBytes[0] & 0xFF;
+    }
+    if (r.value != null) {
+      // 1바이트가 16-bit BE 단어에 패딩돼 들어온 경우 (high=count, low=0)
+      const u16 = r.value & 0xFFFF;
+      return (u16 >> 8) ? ((u16 >> 8) & 0xFF) : (u16 & 0xFF);
+    }
+    return null;
+  }
+
+  async _temp2702Loop(slaveId) {
+    const intervalEl = document.getElementById('temp2702Interval');
+    const MAX_SUB = 0xFF;  // uint8 상한 가드
+
+    while (this.temp2702Polling) {
+      // 1) sub 0 (uint8 count) 읽기 — queue-safe
+      let count = null;
+      try {
+        const r0 = await this.readCANopenObject(slaveId, 0x2702, 0, 1);
+        count = this._extractTemp2702Count(r0);
+        // sub 0 자체도 표시 (행이 그려진 뒤)
+        this._temp2702PendingSub0 = {r: r0, count};
+      } catch (e) {
+        this.temp2702Stats.errors++;
+      }
+
+      if (!this.temp2702Polling) return;
+
+      if (count == null) {
+        // sub 0 실패 — 행 비어있으면 placeholder 유지하고 잠깐 대기 후 재시도
+        this.temp2702Stats.errors++;
+        this._updateTemp2702Status();
+        await this.delay(200);
+        continue;
+      }
+
+      const safeCount = Math.min(count, MAX_SUB);
+      this._temp2702SubCount = safeCount;
+
+      // 2) count 가 바뀌었으면 행 재구성
+      if (this._temp2702RenderedCount !== safeCount) {
+        this._renderTemp2702Rows(safeCount);
+        this._temp2702RenderedCount = safeCount;
+      }
+
+      // 3) sub 0 셀 갱신 (uint8 → hex 2자리 + 십진)
+      const val0El = document.getElementById('temp2702-val-0');
+      const dec0El = document.getElementById('temp2702-dec-0');
+      if (val0El) {
+        val0El.textContent =
+            '0x' + (safeCount & 0xFF).toString(16).toUpperCase().padStart(2, '0');
+        val0El.style.color = '#1a1a1a';
+      }
+      if (dec0El) dec0El.textContent = safeCount;
+
+      // 4) sub 1..count (uint16) 순차 읽기 — 모두 queue-safe
+      for (let sub = 1; sub <= safeCount; sub++) {
+        if (!this.temp2702Polling) return;
+        try {
+          const r = await this.readCANopenObject(slaveId, 0x2702, sub, 2);
+          const valEl = document.getElementById(`temp2702-val-${sub}`);
+          const decEl = document.getElementById(`temp2702-dec-${sub}`);
+          if (r && !r.error && r.value != null) {
+            const u16 = r.value & 0xFFFF;
+            if (valEl) {
+              valEl.textContent =
+                  '0x' + u16.toString(16).toUpperCase().padStart(4, '0');
+              valEl.style.color = '#1a1a1a';
+            }
+            if (decEl) decEl.textContent = u16;
+          } else {
+            this.temp2702Stats.errors++;
+            if (valEl) {
+              valEl.textContent = r && r.error ?
+                  `err 0x${(r.abortCode || 0).toString(16)}` :
+                  'timeout';
+              valEl.style.color = '#dc3545';
+            }
+            if (decEl) decEl.textContent = '—';
+          }
+        } catch (e) {
+          this.temp2702Stats.errors++;
+        }
+      }
+
+      this.temp2702Stats.cycles++;
+      const lastEl = document.getElementById('temp2702Last');
+      if (lastEl) lastEl.textContent = new Date().toLocaleTimeString();
+      this._updateTemp2702Status();
+
+      const interval =
+          Math.max(50, parseInt(intervalEl && intervalEl.value, 10) || 500);
+      const deadline = Date.now() + interval;
+      while (this.temp2702Polling && Date.now() < deadline) {
+        await this.delay(20);
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   //  Offset 탭 알람코드 폴링 — 100ms 주기로 0x603F:00 읽기
   //  버스 충돌 방지: autoPollingTimer / ovPollingRunning / _isFc64Active 활성
   //  시 readCANopenObject()를 통해 commandQueue 경유, 아니면 직접 전송 후 큐
@@ -17459,7 +17722,10 @@ class ModbusDashboard {
 
     const paramMap = this.getConfigParamMap(deviceId);
     const keys =
-        Object.keys(paramMap).filter(k => paramMap[k].category === category);
+        Object.keys(paramMap)
+            .filter(k => paramMap[k].category === category)
+            // 비-dev 모드에서 숨겨진 row 는 input 요소가 없으므로 읽기 스킵
+            .filter(k => document.getElementById(`${k}_${deviceId}`));
     if (keys.length === 0) return;
 
     // 모든 항목을 동시에 ↻ 표시
@@ -17595,6 +17861,568 @@ class ModbusDashboard {
 
     const category = this.activeConfigCategory || 'motorInfo';
     await this.readConfigCategory(category, deviceId);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  //  Alarm Enable — 16개 uint16_t × 16비트 = 256 알람 enable 플래그
+  //  - 코드 0xN → register idx = N>>4, bit = N&0x0F
+  //  - 그룹 0x0x 는 현재 미사용 (UI 비표시)
+  //  - 통신은 FC 0x2B 사용 예정 (시작 주소 미정 — 결정 후 _alarmEnableReadAll/_alarmEnableWriteAll 에 연결)
+  // ─────────────────────────────────────────────────────────
+
+  // UI 에 표시할 알람 코드 화이트리스트.
+  // 정의되어 있어도 이 집합에 없으면 숨김. 추후 추가/제거만 하면 됨.
+  ALARM_VISIBLE_CODES = new Set([
+    0x10, 0x11, 0x14, 0x15, 0x17,        // Group 1 — Current
+    0x22, 0x24, 0x25, 0x2A,              // Group 2 — Overload
+    0x36, 0x37, 0x39, 0x3A,              // Group 3 — Encoder & Motor
+    0x40, 0x41, 0x42, 0x45,              // Group 4 — Voltage
+    0x50, 0x53, 0x58,                    // Group 5 — Control Functions
+  ]);
+
+  // 비활성화 불가 알람 코드 (always-on lock).
+  // 현재 정책: Encoder 관련(Group 3)만 사용자 조작 가능, 나머지는 모두 잠금.
+  ALARM_LOCKED_CODES = new Set([
+    0x10, 0x11, 0x14, 0x15, 0x17,        // Group 1 — Current
+    0x22, 0x24, 0x25, 0x2A,              // Group 2 — Overload
+    // Group 3 (Encoder) — toggleable, 잠금 안 함
+    0x40, 0x41, 0x42, 0x45,              // Group 4 — Voltage
+    0x50, 0x53, 0x58,                    // Group 5 — Control Functions
+  ]);
+
+  // CANopen Object Index for Alarm Enable parameter.
+  //   sub-index 0  (uint8_t)  : 16 — number of sub-indices
+  //   sub-index 1..16 (uint16_t) : enable bits for codes 0x00..0xF0 그룹
+  //                               (sub i → register idx (i-1) → 코드 (i-1)<<4 ~ ((i-1)<<4)|0x0F)
+  ALARM_ENABLE_INDEX = 0x2708;
+
+  ALARM_GROUP_TITLES = {
+    1: 'Current',
+    2: 'Overload',
+    3: 'Encoder & Motor',
+    4: 'Voltage',
+    5: 'Control Functions',
+    6: 'Communication / Data',
+    7: 'System Configuration',
+    8: 'External Encoder (Enc2)',
+  };
+
+  // ALARM_VISIBLE_CODES 화이트리스트의 알람만 그룹별로 묶어 반환.
+  _getAlarmGroups() {
+    if (this._alarmGroupsCache) return this._alarmGroupsCache;
+    const groups = new Map();
+    const codes = Array.from(this.ALARM_VISIBLE_CODES).sort((a, b) => a - b);
+    for (const code of codes) {
+      const labeled = this.getAlarmCodeName(code);
+      if (labeled.includes('(Unknown)')) continue;
+      const groupIdx = (code >> 4) & 0x0F;
+      if (!groups.has(groupIdx)) groups.set(groupIdx, []);
+      const name = labeled.replace(/^0x[0-9A-F]+\s+/, '');
+      groups.get(groupIdx).push({ code, name });
+    }
+    this._alarmGroupsCache = groups;
+    return groups;
+  }
+
+  _initAlarmEnableState(deviceId) {
+    if (!this._alarmEnableState) this._alarmEnableState = {};
+    if (!this._alarmEnableState[deviceId]) {
+      const pending = new Uint16Array(16);
+      // 잠금 비트는 항상 ON 으로 시작
+      for (const code of this.ALARM_LOCKED_CODES) {
+        const reg = (code >> 4) & 0x0F;
+        const bit = code & 0x0F;
+        pending[reg] |= (1 << bit);
+      }
+      this._alarmEnableState[deviceId] = {
+        device: new Uint16Array(16),  // Read All 결과
+        pending,                       // UI 토글 상태
+        hasRead: false,
+      };
+    }
+    return this._alarmEnableState[deviceId];
+  }
+
+  _countAlarmEnableDiff(deviceId) {
+    const s = this._alarmEnableState && this._alarmEnableState[deviceId];
+    if (!s || !s.hasRead) return 0;
+    let n = 0;
+    for (let i = 0; i < 16; i++) {
+      let x = (s.device[i] ^ s.pending[i]) & 0xFFFF;
+      while (x) { n += x & 1; x >>>= 1; }
+    }
+    return n;
+  }
+
+  renderAlarmEnableTab(deviceId) {
+    const device = this.devices.find(d => d.id === deviceId);
+    const container = document.getElementById('deviceSetupAlarm');
+    if (!device || !container) return;
+
+    const state = this._initAlarmEnableState(deviceId);
+    const groups = this._getAlarmGroups();
+    const isOnline = device.online || this.simulatorEnabled;
+    if (!this._alarmCardCollapsed) this._alarmCardCollapsed = {};
+
+    const groupCards = Array.from(groups.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([gIdx, codes]) => this._renderAlarmGroupCard(gIdx, codes, state))
+      .join('');
+
+    const diffCount = this._countAlarmEnableDiff(deviceId);
+    // 사용자가 Read/Write 동작을 신경쓰지 않게 함 — 자동 Read + 토글 즉시 Write 흐름.
+    // 배지는 단순히 동기화 상태만 표시.
+    const badgeText = !state.hasRead
+      ? '⏳ 자동 동기화 중…'
+      : (diffCount === 0 ? '✓ 디바이스와 동일' : `⏳ ${diffCount} 항목 동기화 중…`);
+    const badgeBg = !state.hasRead ? '#F2F4F6' : (diffCount === 0 ? '#E6F9F1' : '#FFF7E6');
+    const badgeColor = !state.hasRead ? '#8B95A1' : (diffCount === 0 ? '#00875A' : '#B45309');
+
+    container.innerHTML = `
+      <div style="max-width:1100px; margin:0 auto; padding:24px 32px; box-sizing:border-box;">
+
+        <!-- Header / Toolbar -->
+        <div style="background:white; border-radius:16px; padding:20px 24px; box-shadow:0 1px 4px rgba(0,0,0,0.04); margin-bottom:16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+            <div>
+              <div style="font-size:17px; font-weight:700; color:#191F28; letter-spacing:-0.02em;">🚨 Alarm Enable</div>
+              <div style="font-size:12px; color:#8B95A1; margin-top:4px;">${device.name} · Slave ID ${device.slaveId} · ${isOnline ? '🟢 온라인' : '⚪ 오프라인'}</div>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <button onclick="window.dashboard.alarmEnableSetAll(true)"
+                style="padding:7px 12px; border:1px solid #E8EAED; background:white; color:#4E5968; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;"
+                onmouseover="this.style.background='#F4F6F9'" onmouseout="this.style.background='white'">✓ Enable All</button>
+              <button onclick="window.dashboard.alarmEnableSetAll(false)"
+                style="padding:7px 12px; border:1px solid #E8EAED; background:white; color:#4E5968; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer;"
+                onmouseover="this.style.background='#F4F6F9'" onmouseout="this.style.background='white'">✕ Disable All</button>
+              <span style="width:1px; height:20px; background:#E5E8EB; margin:0 4px;"></span>
+              <button id="alarmEnReadBtn" title="디바이스에서 다시 읽기" onclick="window.dashboard.alarmEnableReadAll()"
+                style="padding:7px 10px; border:1px solid #E8EAED; background:white; color:#4E5968; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"
+                onmouseover="if(!this.disabled)this.style.background='#F4F6F9'" onmouseout="if(!this.disabled)this.style.background='white'">↻</button>
+              <!-- Write All 버튼 제거: 토글 즉시 자동 write 됨. 수동 일괄 쓰기는 더 이상 필요 없음. -->
+              <button id="alarmEnWriteBtn" style="display:none;"></button>
+            </div>
+          </div>
+          <div style="margin-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <input type="text" id="alarmEnSearch" placeholder="🔍 이름 또는 hex 코드 검색 (예: encoder, 0x32)"
+              oninput="window.dashboard.alarmEnableFilter(this.value)"
+              style="flex:1; min-width:240px; padding:8px 14px; border:1px solid #E8EAED; border-radius:20px; font-size:13px; outline:none;"
+              onfocus="this.style.borderColor='#0064FF';this.style.boxShadow='0 0 0 3px rgba(0,100,255,0.10)'"
+              onblur="this.style.borderColor='#E8EAED';this.style.boxShadow='none'">
+            <span id="alarmEnPendingBadge" style="font-size:12px; font-weight:600; color:${badgeColor}; padding:5px 12px; border-radius:12px; background:${badgeBg};">${badgeText}</span>
+          </div>
+        </div>
+
+        <!-- Group cards -->
+        <div id="alarmEnGroups" style="display:flex; flex-direction:column; gap:12px;">
+          ${groupCards}
+        </div>
+
+      </div>`;
+
+    // ─────────────────────────────────────────────────────────
+    // 자동 Read — 처음 진입 시 1회 (state.hasRead === false)
+    //   사용자가 Read All 버튼을 누르지 않아도 디바이스 상태가 자동 동기화됨.
+    //   이미 읽었거나, 다른 ops(state.busy) 진행 중이면 skip.
+    //   render 는 write 완료 시점에도 호출되지만 그 시점엔 hasRead=true 라 재호출 안 됨.
+    // ─────────────────────────────────────────────────────────
+    if (!state.hasRead && !state.busy && device.slaveId !== 0 &&
+        (this.writer || this.simulatorEnabled)) {
+      setTimeout(() => {
+        const s = this._alarmEnableState && this._alarmEnableState[deviceId];
+        if (this.currentSetupDeviceId === deviceId &&
+            this.activeConfigCategory === 'alarm' &&
+            s && !s.hasRead && !s.busy) {
+          this.alarmEnableReadAll();
+        }
+      }, 200);
+    }
+  }
+
+  _renderAlarmGroupCard(groupIdx, codes, state) {
+    const title = this.ALARM_GROUP_TITLES[groupIdx] || `Group ${groupIdx}`;
+    const collapsed = !!this._alarmCardCollapsed[groupIdx];
+    const hexNibble = groupIdx.toString(16).toUpperCase();
+    const groupRange = `0x${hexNibble}0 ~ 0x${hexNibble}F`;
+
+    const enabledCount = codes.filter(({ code }) => {
+      const bit = code & 0x0F;
+      return (state.pending[groupIdx] >> bit) & 1;
+    }).length;
+    // ★ "Set All" 버튼은 비-잠금 비트만 토글하므로, 버튼의 ON/OFF 라벨도
+    //   비-잠금 비트 기준으로 계산. 잠금 전용 그룹(unlockedCodes.length === 0)
+    //   은 버튼 자체를 숨겨 클릭조차 못 하게 막는다.
+    //   (alarmEnableSetGroup 의 잠금 비트 정책과 함께 이중 안전)
+    const unlockedCodes = codes.filter(({ code }) => !this.ALARM_LOCKED_CODES.has(code));
+    const unlockedOnCount = unlockedCodes.filter(({ code }) => {
+      const bit = code & 0x0F;
+      return (state.pending[groupIdx] >> bit) & 1;
+    }).length;
+    const allUnlockedOn = unlockedCodes.length > 0 && unlockedOnCount === unlockedCodes.length;
+    const canBulk = unlockedCodes.length > 0;
+
+    const items = codes.map(({ code, name }) => {
+      const bit = code & 0x0F;
+      const enabled = !!((state.pending[groupIdx] >> bit) & 1);
+      const deviceVal = !!((state.device[groupIdx] >> bit) & 1);
+      const dirty = state.hasRead && (enabled !== deviceVal);
+      const locked = this.ALARM_LOCKED_CODES.has(code);
+      const hex = '0x' + code.toString(16).toUpperCase().padStart(2, '0');
+      const bg = dirty ? '#FFF7E6' : 'transparent';
+      const hoverBg = dirty ? '#FFEFD1' : '#F4F6F9';
+
+      return `
+        <label class="alarm-en-item" data-code="${code}" data-name="${name.toLowerCase()}"
+          style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:${locked ? 'not-allowed' : 'pointer'}; background:${bg}; transition:background 0.1s;"
+          onmouseover="if(!this.querySelector('input').disabled) this.style.background='${hoverBg}'"
+          onmouseout="this.style.background='${bg}'">
+          <input type="checkbox" ${enabled ? 'checked' : ''} ${locked ? 'disabled' : ''}
+            onchange="window.dashboard.alarmEnableToggle(${groupIdx}, ${bit}, this.checked)"
+            style="width:16px; height:16px; cursor:${locked ? 'not-allowed' : 'pointer'}; accent-color:#0064FF;">
+          <span style="font-family:'Consolas',monospace; font-size:11px; color:#8B95A1; min-width:38px;">${hex}</span>
+          <span style="font-size:13px; color:#191F28; flex:1; ${locked ? 'opacity:0.7;' : ''}">${name}${locked ? ' <span title="비활성화 불가" style="font-size:11px;">🔒</span>' : ''}</span>
+          ${dirty ? '<span title="변경됨 (미저장)" style="font-size:10px; font-weight:700; color:#F59E0B;">●</span>' : ''}
+        </label>`;
+    }).join('');
+
+    return `
+      <div class="alarm-en-card" data-group="${groupIdx}" style="background:white; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.04); overflow:hidden;">
+        <div class="alarm-en-card-header" onclick="window.dashboard.alarmEnableToggleCard(${groupIdx})"
+          style="display:flex; align-items:center; gap:10px; padding:14px 18px; cursor:pointer; border-bottom:${collapsed ? 'none' : '1px solid #F2F4F6'}; user-select:none;">
+          <span class="alarm-en-arrow" style="font-size:11px; transition:transform 0.15s; transform:${collapsed ? 'rotate(-90deg)' : 'rotate(0deg)'}; display:inline-block; color:#8B95A1; width:12px;">▼</span>
+          <span style="font-size:14px; font-weight:700; color:#191F28;">Group ${groupIdx} — ${title}</span>
+          <span style="font-family:'Consolas',monospace; font-size:11px; color:#C9CDD4;">${groupRange}</span>
+          <span style="margin-left:auto; display:flex; align-items:center; gap:10px;" onclick="event.stopPropagation()">
+            <span style="font-size:12px; font-weight:600; color:#4E5968;">${enabledCount}/${codes.length}</span>
+            ${canBulk ? `<button onclick="window.dashboard.alarmEnableSetGroup(${groupIdx}, ${!allUnlockedOn})"
+              style="padding:5px 10px; border:1px solid ${allUnlockedOn ? '#D4E5FF' : '#E8EAED'}; background:${allUnlockedOn ? '#EBF1FF' : 'white'}; color:${allUnlockedOn ? '#0064FF' : '#4E5968'}; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;">
+              ${allUnlockedOn ? '✓ All' : 'Set All'}
+            </button>` : ''}
+          </span>
+        </div>
+        <div class="alarm-en-card-body" style="padding:${collapsed ? '0' : '8px 12px 12px'}; display:${collapsed ? 'none' : 'grid'}; grid-template-columns:1fr 1fr; gap:2px 8px;">
+          ${items}
+        </div>
+      </div>`;
+  }
+
+  alarmEnableToggle(groupIdx, bit, enabled) {
+    const id = this.currentSetupDeviceId;
+    if (id == null) return;
+    const state = this._initAlarmEnableState(id);
+    // Read All / Write All 진행 중에는 개별 토글 차단 + 시각 복원
+    if (state.busy) {
+      this.renderAlarmEnableTab(id);
+      return;
+    }
+    const code = (groupIdx << 4) | bit;
+    if (this.ALARM_LOCKED_CODES.has(code) && !enabled) return;  // 잠금: disable 차단
+    if (enabled) state.pending[groupIdx] |= (1 << bit);
+    else state.pending[groupIdx] &= ~(1 << bit);
+    this.renderAlarmEnableTab(id);
+    // 즉시 해당 sub-index 만 디바이스에 송신 (async, commandQueue 경유)
+    this._alarmEnableWriteOne(id, groupIdx);
+  }
+
+  // 한 group(=sub-index) 만 즉시 쓰기 — 개별 체크박스 토글 시 사용.
+  // commandQueue 가 자동 직렬화하므로 빠른 연속 토글에도 충돌 없음.
+  async _alarmEnableWriteOne(deviceId, groupIdx) {
+    const device = this.devices.find(d => d.id === deviceId);
+    if (!device) return;
+    if (!this.writer && !this.simulatorEnabled) {
+      this.showToast('연결되지 않아 즉시 적용 불가 (변경 사항은 pending 유지)', 'warning');
+      return;
+    }
+    if (device.slaveId === 0) return;
+
+    const state = this._initAlarmEnableState(deviceId);
+    const value = state.pending[groupIdx] & 0xFFFF;
+    const subIndex = groupIdx + 1;
+
+    try {
+      const r = await this.writeCANopenObject(
+        device.slaveId, this.ALARM_ENABLE_INDEX, subIndex, value, 2);
+      if (r && !r.error) {
+        state.device[groupIdx] = value;
+        state.hasRead = true;  // 디바이스 상태 추적 시작 (배지가 ✓/diff 로 전환)
+        // 같은 디바이스 알람 화면이 여전히 보일 때만 갱신
+        if (this.currentSetupDeviceId === deviceId &&
+            document.getElementById('alarmEnPendingBadge')) {
+          this.renderAlarmEnableTab(deviceId);
+        }
+      } else {
+        this.showToast(`알람 비트 쓰기 실패 — sub-index ${subIndex}`, 'warning');
+      }
+    } catch (e) {
+      this.showToast(`알람 비트 쓰기 오류: ${e.message || e}`, 'error');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Bulk 동작 시 잠금 비트 처리 정책 (★ 절대 건드리지 말 것 ★)
+  //
+  //   잠금(ALARM_LOCKED_CODES) 비트는 "사용자가 UI 로 어떤 경로로든 변경할 수 없음"
+  //   을 의미. 따라서 Set All / Enable All / Disable All 등 bulk 동작은
+  //   잠금 비트를 절대 토글하지 않고 현재 상태 그대로 유지해야 함.
+  //
+  //   과거 버그: enabled=true 일 때 잠금 비트를 강제 ON 시키면, 디바이스에서
+  //   0 으로 읽어온 잠금 비트가 "Set All" 한 번 클릭으로 1 이 되어 사용자가
+  //   조작 불가능하다고 알린 그룹에서도 write 명령이 발사됨. 잠금 의미 자체와 모순.
+  //
+  //   규칙:
+  //     - 잠금 비트: 무조건 currentlyOn 그대로 유지 (enabled 인자 무시)
+  //     - 일반 비트: enabled 인자에 따라 ON/OFF
+  //
+  //   이 결과 잠금 전용 그룹(모든 비트가 잠금)은 bulk 동작 시 항상 변경량 0 →
+  //   write 도 발사되지 않음. UI 레벨에서도 _renderAlarmGroupCard 가 Set All
+  //   버튼 자체를 숨겨서 클릭조차 못 하게 막음 (이중 안전).
+  //
+  //   변경된 group(=sub-index) 만 즉시 디바이스에 송신 (commandQueue 직렬화).
+  // ─────────────────────────────────────────────────────────────────────
+  alarmEnableSetGroup(groupIdx, enabled) {
+    const id = this.currentSetupDeviceId;
+    if (id == null) return;
+    const state = this._initAlarmEnableState(id);
+    if (state.busy) {
+      this.renderAlarmEnableTab(id);
+      return;
+    }
+    const codes = this._getAlarmGroups().get(groupIdx) || [];
+    let val = 0;
+    for (const { code } of codes) {
+      const bit = code & 0x0F;
+      const isLocked = this.ALARM_LOCKED_CODES.has(code);
+      const currentlyOn = (state.pending[groupIdx] >> bit) & 1;
+      if (isLocked) {
+        // 잠금 비트는 enabled 인자와 무관하게 현재 상태 유지 (★ 위 정책 참고)
+        if (currentlyOn) val |= (1 << bit);
+      } else {
+        if (enabled) val |= (1 << bit);
+      }
+    }
+    if (state.pending[groupIdx] === val) return;  // 변경 없음 → skip (write 발사 안 함)
+    state.pending[groupIdx] = val;
+    this.renderAlarmEnableTab(id);
+    this._alarmEnableWriteOne(id, groupIdx);
+  }
+
+  alarmEnableSetAll(enabled) {
+    const id = this.currentSetupDeviceId;
+    if (id == null) return;
+    const state = this._initAlarmEnableState(id);
+    if (state.busy) {
+      this.renderAlarmEnableTab(id);
+      return;
+    }
+    const groups = this._getAlarmGroups();
+    const changedGroups = [];
+    for (const [gIdx, codes] of groups.entries()) {
+      let val = 0;
+      for (const { code } of codes) {
+        const bit = code & 0x0F;
+        const isLocked = this.ALARM_LOCKED_CODES.has(code);
+        const currentlyOn = (state.pending[gIdx] >> bit) & 1;
+        if (isLocked) {
+          // 잠금 비트는 enabled 와 무관하게 현재 상태 유지 (★ 위 정책 참고)
+          if (currentlyOn) val |= (1 << bit);
+        } else {
+          if (enabled) val |= (1 << bit);
+        }
+      }
+      if (state.pending[gIdx] !== val) {
+        state.pending[gIdx] = val;
+        changedGroups.push(gIdx);
+      }
+    }
+    if (changedGroups.length === 0) return;  // 모든 그룹이 잠금 → write 발사 안 함
+    this.renderAlarmEnableTab(id);
+    // 변경된 group 만 fire-and-forget — _bus lock + commandQueue 가 직렬화 책임
+    for (const gIdx of changedGroups) {
+      this._alarmEnableWriteOne(id, gIdx);
+    }
+  }
+
+  alarmEnableToggleCard(groupIdx) {
+    if (!this._alarmCardCollapsed) this._alarmCardCollapsed = {};
+    this._alarmCardCollapsed[groupIdx] = !this._alarmCardCollapsed[groupIdx];
+    const collapsed = this._alarmCardCollapsed[groupIdx];
+    const card = document.querySelector(`.alarm-en-card[data-group="${groupIdx}"]`);
+    if (!card) return;
+    const body = card.querySelector('.alarm-en-card-body');
+    const arrow = card.querySelector('.alarm-en-arrow');
+    const header = card.querySelector('.alarm-en-card-header');
+    if (body) {
+      body.style.display = collapsed ? 'none' : 'grid';
+      body.style.padding = collapsed ? '0' : '8px 12px 12px';
+    }
+    if (arrow) arrow.style.transform = collapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+    if (header) header.style.borderBottom = collapsed ? 'none' : '1px solid #F2F4F6';
+  }
+
+  alarmEnableFilter(query) {
+    const q = (query || '').trim().toLowerCase();
+    document.querySelectorAll('.alarm-en-card').forEach(card => {
+      let any = false;
+      card.querySelectorAll('.alarm-en-item').forEach(item => {
+        if (!q) {
+          item.style.display = 'flex';
+          any = true;
+          return;
+        }
+        const code = parseInt(item.dataset.code, 10);
+        const hex = '0x' + code.toString(16).toUpperCase().padStart(2, '0');
+        const name = item.dataset.name || '';
+        const match = hex.toLowerCase().includes(q) || name.includes(q);
+        item.style.display = match ? 'flex' : 'none';
+        if (match) any = true;
+      });
+      card.style.display = any ? '' : 'none';
+    });
+  }
+
+  // 진행 중에 배지/버튼 상태를 직접 조작 (전체 re-render 회피)
+  _setAlarmBadge(text, bg, color) {
+    const el = document.getElementById('alarmEnPendingBadge');
+    if (el) {
+      el.textContent = text;
+      el.style.background = bg;
+      el.style.color = color;
+    }
+  }
+  _setAlarmBusy(busy) {
+    const r = document.getElementById('alarmEnReadBtn');
+    const w = document.getElementById('alarmEnWriteBtn');
+    if (r) {
+      r.disabled = busy;
+      r.style.opacity = busy ? '0.5' : '1';
+      r.style.cursor = busy ? 'wait' : 'pointer';
+    }
+    if (w) {
+      w.disabled = busy;
+      w.style.opacity = busy ? '0.5' : '1';
+      w.style.cursor = busy ? 'wait' : 'pointer';
+    }
+  }
+
+  async alarmEnableReadAll() {
+    const id = this.currentSetupDeviceId;
+    if (id == null) return;
+    const device = this.devices.find(d => d.id === id);
+    if (!device) return;
+
+    if (!this.writer && !this.simulatorEnabled) {
+      this.showToast('연결되지 않은 상태에서는 읽을 수 없습니다', 'warning');
+      return;
+    }
+    if (device.slaveId === 0) {
+      this.showToast('Slave ID가 할당되지 않았습니다', 'warning');
+      return;
+    }
+
+    const state = this._initAlarmEnableState(id);
+    if (state.busy) return;
+    state.busy = 'reading';
+    this._setAlarmBusy(true);
+    this._setAlarmBadge('📖 Reading 0/16…', '#FFF7E6', '#B45309');
+
+    // sub-index 0 (uint8_t) sanity check — 16 이어야 함
+    try {
+      const meta = await this.readCANopenObject(device.slaveId, this.ALARM_ENABLE_INDEX, 0x00, 1);
+      if (meta && !meta.error) {
+        const count = (meta.rawBytes && meta.rawBytes.length > 0) ? meta.rawBytes[0] : meta.value;
+        if (count !== 16) {
+          console.warn('[AlarmEnable] 0x%s:00 expected 16, got', this.ALARM_ENABLE_INDEX.toString(16), count);
+        }
+      }
+    } catch (e) {
+      console.warn('[AlarmEnable] sub-index 0 sanity check failed:', e);
+    }
+
+    // sub-index 1..16 → register idx 0..15
+    let ok = 0, fail = 0;
+    for (let regIdx = 0; regIdx < 16; regIdx++) {
+      const subIndex = regIdx + 1;
+      try {
+        const r = await this.readCANopenObject(device.slaveId, this.ALARM_ENABLE_INDEX, subIndex, 2);
+        if (r && !r.error && typeof r.value === 'number') {
+          state.device[regIdx] = r.value & 0xFFFF;
+          ok++;
+        } else {
+          fail++;
+        }
+      } catch (e) {
+        fail++;
+      }
+      this._setAlarmBadge(`📖 Reading ${regIdx + 1}/16…`, '#FFF7E6', '#B45309');
+    }
+
+    // pending = device 복사 (사용자 미저장 변경은 덮어씀).
+    // 잠금 비트도 강제 ON 하지 않음 — 디바이스 실제 상태를 그대로 반영.
+    // (lock 은 사용자 토글 차단의 의미. 디바이스가 0 이면 체크박스도 해제 표시.)
+    state.pending.set(state.device);
+    state.hasRead = true;
+    state.busy = false;
+
+    this.showToast(
+      fail === 0
+        ? `📖 Alarm Read All 완료 (${ok}/16)`
+        : `📖 Alarm Read All — ${ok}개 성공, ${fail}개 실패`,
+      fail === 0 ? 'success' : 'warning'
+    );
+    this.renderAlarmEnableTab(id);
+  }
+
+  async alarmEnableWriteAll() {
+    const id = this.currentSetupDeviceId;
+    if (id == null) return;
+    const device = this.devices.find(d => d.id === id);
+    if (!device) return;
+
+    if (!this.writer && !this.simulatorEnabled) {
+      this.showToast('연결되지 않은 상태에서는 쓸 수 없습니다', 'warning');
+      return;
+    }
+    if (device.slaveId === 0) {
+      this.showToast('Slave ID가 할당되지 않았습니다', 'warning');
+      return;
+    }
+
+    const state = this._initAlarmEnableState(id);
+    if (state.busy) return;
+    // 잠금 비트도 강제 ON 하지 않음 — pending(=디바이스에서 읽었거나 사용자 토글한 값) 그대로 송신.
+
+    state.busy = 'writing';
+    this._setAlarmBusy(true);
+    this._setAlarmBadge('💾 Writing 0/16…', '#EBF1FF', '#0050CC');
+
+    let ok = 0, fail = 0;
+    for (let regIdx = 0; regIdx < 16; regIdx++) {
+      const subIndex = regIdx + 1;
+      const value = state.pending[regIdx] & 0xFFFF;
+      try {
+        const r = await this.writeCANopenObject(device.slaveId, this.ALARM_ENABLE_INDEX, subIndex, value, 2);
+        if (r && !r.error) {
+          state.device[regIdx] = value;  // 성공한 sub-index 만 device 상태 갱신
+          ok++;
+        } else {
+          fail++;
+        }
+      } catch (e) {
+        fail++;
+      }
+      this._setAlarmBadge(`💾 Writing ${regIdx + 1}/16…`, '#EBF1FF', '#0050CC');
+    }
+
+    state.hasRead = true;  // 부분 성공이라도 device 상태 추적 시작
+    state.busy = false;
+
+    this.showToast(
+      fail === 0
+        ? `💾 Alarm Write All 완료 (${ok}/16)`
+        : `💾 Alarm Write All — ${ok}개 성공, ${fail}개 실패`,
+      fail === 0 ? 'success' : 'warning'
+    );
+    this.renderAlarmEnableTab(id);
   }
 
   renderDeviceInfoTab(deviceId) {
@@ -17745,9 +18573,15 @@ class ModbusDashboard {
     // 'ramp' category was merged into 'motor'
     if (this.activeConfigCategory === 'ramp')
       this.activeConfigCategory = 'motor';
-    const activeCategory =
-        this.activeConfigCategory || 'motorInfo';  // 기본값: 모터 탭
-    const categories = [
+    // 개발자 모드에서만 노출되는 카테고리.
+    // motorInfo: 유일한 항목인 '모터 타입'이 dev-only 라 탭 자체를 숨김.
+    const devOnlyCategories = new Set(['motorInfo', 'sensor', 'servoTuning', 'alarm']);
+    const isDevMode = this.isDeveloperMode();
+    // 비-dev 모드에서 dev-only 탭에 머물러 있으면 기본 탭으로 되돌림
+    if (!isDevMode && devOnlyCategories.has(this.activeConfigCategory)) {
+      this.activeConfigCategory = 'motor';
+    }
+    const allCategories = [
       {id: 'motorInfo', label: '모터'},
       {id: 'motor', label: '모터 제어'},
       {id: 'sensor', label: '센서 입력'},
@@ -17755,12 +18589,18 @@ class ModbusDashboard {
       {id: 'communication', label: '통신 설정'},
       {id: 'servoTuning', label: '서보 튜닝'},
       {id: 'system', label: '시스템'},
+      {id: 'alarm', label: '🚨 알람'},
     ];
+    const categories =
+        isDevMode ? allCategories :
+                    allCategories.filter(c => !devOnlyCategories.has(c.id));
+    const activeCategory = this.activeConfigCategory ||
+        (isDevMode ? 'motorInfo' : 'motor');  // 기본값
 
     configContainer.innerHTML = `
-            <div style="display: block; position: relative;">
+            <div style="display: flex; flex-direction: column; flex: 1; min-height: 0; position: relative;">
                 <!-- Device Header — Toss style -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-height: 52px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; min-height: 52px; flex-shrink: 0;">
                     <div style="display: flex; flex-direction: column; gap: 6px;">
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <span class="device-name"
@@ -17792,7 +18632,7 @@ class ModbusDashboard {
                 </div>
 
                 <!-- Category Layout — Toss style -->
-                <div style="display: flex; gap: 16px; height: 440px; align-items: stretch;">
+                <div style="display: flex; gap: 16px; flex: 1; min-height: 0; align-items: stretch;">
                     <!-- Category Sidebar -->
                     <div style="width: 136px; flex-shrink: 0; background: #F9FAFB; border-radius: 12px; padding: 8px 4px; display: flex; flex-direction: column; gap: 2px;">
                         ${categories.map(cat => `
@@ -17805,7 +18645,7 @@ class ModbusDashboard {
                     </div>
 
                     <!-- Category Content -->
-                    <div id="configContent" style="flex: 1; background: white; border: 1px solid #F2F4F8; border-radius: 12px; padding: 4px 0; overflow-y: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+                    <div id="configContent" style="flex: 1; min-height: 0; background: white; border: 1px solid #F2F4F8; border-radius: 12px; padding: 4px 0; overflow-y: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
                         ${this.getConfigCategoryHTML(device, activeCategory)}
                     </div>
                 </div>
@@ -17820,9 +18660,14 @@ class ModbusDashboard {
       });
     }
 
+    // Alarm 카테고리는 별도 렌더
+    if (activeCategory === 'alarm') {
+      this.renderAlarmEnableTab(device.id);
+    }
+
     // 디바이스 선택·탭 최초 진입 시에만 자동 읽기 (apply 후 재렌더링 시에는
-    // 스킵)
-    if (autoRead) {
+    // 스킵). Alarm 은 자동 읽기 없음.
+    if (autoRead && activeCategory !== 'alarm') {
       setTimeout(() => this.readConfigCategory(activeCategory, device.id), 100);
     }
   }
@@ -17869,6 +18714,8 @@ class ModbusDashboard {
 
     switch (category) {
       case 'motorInfo':
+        // '모터 타입' 은 dev-only — 비-dev 모드에서는 빈 카드 반환
+        if (!this.isDeveloperMode()) return `<div style="margin-top: 0;"></div>`;
         return `<div style="margin-top: 0;">
                     ${
             row('motorType', '모터 타입',
@@ -17982,7 +18829,8 @@ class ModbusDashboard {
                             onclick="event.stopPropagation()">`)}
                 </div>`;
 
-      case 'protection':
+      case 'protection': {
+        const showDevRows = this.isDeveloperMode();
         return `<div style="margin-top: 0;">
                     ${
             row('maxCurrent', '최대 코일 전류 (A)',
@@ -17996,30 +18844,35 @@ class ModbusDashboard {
                     id})"
                             onclick="event.stopPropagation()">`)}
                     ${
-            row('tempDeratingStart', '온도 디레이팅 시작점 (°C)',
-                '모듈 온도 파워 디레이팅이 시작되는 온도 (0xD137)',
-                `
+            showDevRows ?
+                row('tempDeratingStart', '온도 디레이팅 시작점 (°C)',
+                    '모듈 온도 파워 디레이팅이 시작되는 온도 (0xD137)',
+                    `
                         <input type="number" id="tempDeratingStart_${id}"
                             value="${device.tempDeratingStart ?? ''}"
                             min="0" max="200"
                             placeholder="0–200"
                             style="${iStyle}"
                             onchange="window.dashboard.debouncedApply('tempDeratingStart', ${
-                    id})"
-                            onclick="event.stopPropagation()">`)}
+                        id})"
+                            onclick="event.stopPropagation()">`) :
+                ''}
                     ${
-            row('tempDerating', '온도 디레이팅 종료점 (°C)',
-                '모듈 온도 파워 디레이팅이 완료되는 온도 (0xD138)',
-                `
+            showDevRows ?
+                row('tempDerating', '온도 디레이팅 종료점 (°C)',
+                    '모듈 온도 파워 디레이팅이 완료되는 온도 (0xD138)',
+                    `
                         <input type="number" id="tempDerating_${id}"
                             value="${device.tempDerating ?? ''}"
                             min="0" max="200"
                             placeholder="0–200"
                             style="${iStyle}"
                             onchange="window.dashboard.debouncedApply('tempDerating', ${
-                    id})"
-                            onclick="event.stopPropagation()">`)}
+                        id})"
+                            onclick="event.stopPropagation()">`) :
+                ''}
                 </div>`;
+      }
 
       case 'communication':
         return `<div style="margin-top: 0;">
@@ -18318,16 +19171,12 @@ class ModbusDashboard {
                         <button class="btn btn-warning btn-sm"
                             onclick="event.stopPropagation(); window.dashboard.performSoftwareReset(${
                     id})">Reset</button>`)}
-                    ${
-            actionRow(
-                'errorReset', '오류 리셋',
-                '모든 오류 상태와 플래그를 초기화합니다 (0xD000)',
-                `
-                        <button class="btn btn-warning btn-sm"
-                            onclick="event.stopPropagation(); window.dashboard.resetDevice(${
-                    id}, 'error')">Reset</button>`)}
-
                 </div>`;
+
+      case 'alarm':
+        // Alarm 패널은 renderAlarmEnableTab() 가 별도로 채움 (switchConfigCategory에서 호출).
+        // height 미지정 → 콘텐츠 크기로 늘어남 → 부모(#configContent) overflow-y:auto 가 스크롤 처리
+        return '<div id="deviceSetupAlarm"></div>';
 
       default:
         return '';
@@ -18356,6 +19205,12 @@ class ModbusDashboard {
     const contentArea = document.getElementById('configContent');
     if (contentArea) {
       contentArea.innerHTML = this.getConfigCategoryHTML(device, categoryName);
+    }
+
+    // Alarm 카테고리는 별도 렌더 + 자동 읽기 안 함 (전용 Read All 버튼 사용)
+    if (categoryName === 'alarm') {
+      this.renderAlarmEnableTab(device.id);
+      return;
     }
 
     // 탭 진입 시 해당 카테고리의 파라미터 자동 읽기
@@ -20758,7 +21613,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Show selected tab content
       const db = window.dashboard;
       if (targetTab === 'configuration') {
-        document.getElementById('deviceSetupConfigTab').style.display = 'block';
+        document.getElementById('deviceSetupConfigTab').style.display = 'flex';
         // Auto-read config values from device if connected
         if (db.currentSetupDeviceId && (db.writer || db.simulatorEnabled)) {
           db.refreshDevice(db.currentSetupDeviceId);
