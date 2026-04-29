@@ -135,7 +135,7 @@ class ChartManager {
     this.chartMargins = {top: 20, right: 20, bottom: 40, left: 60};
 
     // Y-axis drag state
-    this.yAxisDrag = null; // { channelIdx, startY, startOffset }
+    this.yAxisDrag = null;  // { channelIdx, startY, startOffset }
 
     // Animation frame
     this.animationId = null;
@@ -208,7 +208,7 @@ class ChartManager {
       const ch = this.channels[this.yAxisDrag.channelIdx];
       const dy = y - this.yAxisDrag.startY;
       const chartHeight = this.yAxisDrag.chartHeight;
-      const { visMin, visMax } = this.getChVisRange(ch);
+      const {visMin, visMax} = this.getChVisRange(ch);
       const range = (visMax - visMin) || 1;
       ch.yPan = this.yAxisDrag.startPan - dy / chartHeight * range;
       if (!this.isRunning) this.render();
@@ -235,7 +235,9 @@ class ChartManager {
       this.showCursor = this.isInChartArea(x, y);
       // Y축 위에 있으면 커서 변경
       const overAxis = this.getYAxisChannelAt(x, y);
-      this.canvas.style.cursor = overAxis >= 0 ? 'ns-resize' : (this.showCursor ? 'crosshair' : 'default');
+      this.canvas.style.cursor = overAxis >= 0 ?
+          'ns-resize' :
+          (this.showCursor ? 'crosshair' : 'default');
       this.updateCursorInfo();
     }
   }
@@ -250,9 +252,12 @@ class ChartManager {
       let chartHeight;
       if (this.splitView) {
         const info = this.getSplitPanelAt(y);
-        chartHeight = info ? info.chartHeight : this.height - this.chartMargins.top - this.chartMargins.bottom;
+        chartHeight = info ?
+            info.chartHeight :
+            this.height - this.chartMargins.top - this.chartMargins.bottom;
       } else {
-        chartHeight = this.height - this.chartMargins.top - this.chartMargins.bottom;
+        chartHeight =
+            this.height - this.chartMargins.top - this.chartMargins.bottom;
       }
       this.yAxisDrag = {
         channelIdx: yAxisCh,
@@ -310,8 +315,10 @@ class ChartManager {
 
     if (e.shiftKey) {
       // X-axis zoom: adjust visible time range, centered on cursor
-      const chartWidth = this.width - this.chartMargins.left - this.chartMargins.right;
-      const relX = (x - this.chartMargins.left - this.pan.x) / (chartWidth * this.zoom.x);
+      const chartWidth =
+          this.width - this.chartMargins.left - this.chartMargins.right;
+      const relX = (x - this.chartMargins.left - this.pan.x) /
+          (chartWidth * this.zoom.x);
       const timeAtCursor = this.viewMinTime + relX * this.timeScale;
       const factor = e.deltaY > 0 ? 1.1 : 0.9;
       this.timeScale = Math.max(0.1, Math.min(600000, this.timeScale * factor));
@@ -385,7 +392,8 @@ class ChartManager {
 
   // split view에서 y픽셀이 속한 패널 정보 반환
   getSplitPanelAt(y) {
-    const enabledChs = this.channels.map((ch, i) => ({ch, i})).filter(({ch}) => ch.enabled);
+    const enabledChs =
+        this.channels.map((ch, i) => ({ch, i})).filter(({ch}) => ch.enabled);
     const n = enabledChs.length;
     if (n === 0) return null;
     const panelGap = 3;
@@ -394,7 +402,7 @@ class ChartManager {
       const panelTop = pIdx * (panelH + panelGap);
       const panelBottom = panelTop + panelH;
       if (y >= panelTop && y <= panelBottom) {
-        return { channelIdx: enabledChs[pIdx].i, chartHeight: panelH - 14 };
+        return {channelIdx: enabledChs[pIdx].i, chartHeight: panelH - 14};
       }
     }
     return null;
@@ -407,7 +415,7 @@ class ChartManager {
     const center = (rawMin + rawMax) / 2;
     const halfRange = (rawMax - rawMin) / 2 / (ch.yZoom ?? 1);
     const pan = ch.yPan ?? 0;
-    return { visMin: center - halfRange - pan, visMax: center + halfRange - pan };
+    return {visMin: center - halfRange - pan, visMax: center + halfRange - pan};
   }
 
   // (x,y)가 어느 채널의 Y축 위인지 반환 (-1이면 없음)
@@ -419,14 +427,14 @@ class ChartManager {
       return info ? info.channelIdx : -1;
     }
     if (this.yAxisMode !== 'independent') return -1;
-    // non-split: chartMargins.left는 채널 수에 따라 render()에서 동적으로 조정됨
+    // non-split: chartMargins.left는 채널 수에 따라 render()에서 동적으로
+    // 조정됨
     const left = this.chartMargins.left;
     const top = this.chartMargins.top;
     const bottom = this.height - this.chartMargins.bottom;
     if (y < top - 12 || y > bottom) return -1;
-    const activeChannels = this.channels
-        .map((ch, i) => ({ch, i}))
-        .filter(({ch}) => ch.enabled);
+    const activeChannels =
+        this.channels.map((ch, i) => ({ch, i})).filter(({ch}) => ch.enabled);
     for (let activeIdx = 0; activeIdx < activeChannels.length; activeIdx++) {
       const axisX = left - 50 * activeIdx;
       if (x >= axisX - 48 && x <= axisX + 6) {
@@ -825,13 +833,20 @@ class ChartManager {
     if (dot) {
       dot.className = 'status-dot';
       const s = status.toLowerCase();
-      if (s === 'running') dot.classList.add('running');
-      else if (s === 'armed') dot.classList.add('armed');
-      else if (s === 'paused') dot.classList.add('paused');
-      else if (s === 'error') dot.classList.add('error');
-      else if (s.startsWith('download')) dot.classList.add('running');
-      else if (s === 'done') dot.classList.add('done');
-      else dot.classList.add('stopped');
+      if (s === 'running')
+        dot.classList.add('running');
+      else if (s === 'armed')
+        dot.classList.add('armed');
+      else if (s === 'paused')
+        dot.classList.add('paused');
+      else if (s === 'error')
+        dot.classList.add('error');
+      else if (s.startsWith('download'))
+        dot.classList.add('running');
+      else if (s === 'done')
+        dot.classList.add('done');
+      else
+        dot.classList.add('stopped');
     }
   }
 
@@ -1198,7 +1213,7 @@ class ChartManager {
       ctx.textBaseline = 'middle';
       activeChannels.forEach(({ch}, activeIdx) => {
         const axisX = left - 50 * activeIdx;
-        const { visMin: yMin, visMax: yMax } = this.getChVisRange(ch);
+        const {visMin: yMin, visMax: yMax} = this.getChVisRange(ch);
 
         // Axis line
         ctx.strokeStyle = ch.color;
@@ -1306,7 +1321,7 @@ class ChartManager {
         const x = this.chartToScreenX(point.t);
         let y;
         if (this.yAxisMode === 'independent') {
-          const { visMin, visMax } = this.getChVisRange(ch);
+          const {visMin, visMax} = this.getChVisRange(ch);
           y = this.valueToScreenY(point.v, visMin, visMax);
         } else if (this.yAxisMode === 'normalize') {
           const range = (ch.chYMax ?? 1) - (ch.chYMin ?? 0);
@@ -2291,8 +2306,18 @@ class ModbusDashboard {
     // Temp 0x2702 탭 버튼
     const t2702Start = document.getElementById('temp2702StartBtn');
     const t2702Stop = document.getElementById('temp2702StopBtn');
-    if (t2702Start) t2702Start.addEventListener('click', () => this.startTemp2702Polling());
-    if (t2702Stop) t2702Stop.addEventListener('click', () => this.stopTemp2702Polling());
+    if (t2702Start)
+      t2702Start.addEventListener('click', () => this.startTemp2702Polling());
+    if (t2702Stop)
+      t2702Stop.addEventListener('click', () => this.stopTemp2702Polling());
+
+    // 0x2703 write 버튼: Clear(1) / Read(2)
+    const t2703Clear = document.getElementById('temp2703ClearBtn');
+    const t2703Read = document.getElementById('temp2703ReadBtn');
+    if (t2703Clear)
+      t2703Clear.addEventListener('click', () => this._writeTemp2703(1));
+    if (t2703Read)
+      t2703Read.addEventListener('click', () => this._writeTemp2703(2));
 
     // Real-time value conversion for Modbus input fields
     const modbusInputs = [
@@ -2426,15 +2451,18 @@ class ModbusDashboard {
 
         if (addParamModal && addParamModal.style.display === 'flex') {
           this.hideAddParameterModal();
-        } else if (settingsModal && settingsModal.classList.contains('active')) {
+        } else if (
+            settingsModal && settingsModal.classList.contains('active')) {
           this.closeSettingsModal();
-        } else if (deviceEditModal && deviceEditModal.style.display === 'flex') {
+        } else if (
+            deviceEditModal && deviceEditModal.style.display === 'flex') {
           const closeBtn = document.getElementById('closeDeviceEditBtn');
           if (closeBtn) closeBtn.click();
         } else if (confirmModal && confirmModal.style.display === 'flex') {
           const cancelBtn = document.getElementById('confirmCancelBtn');
           if (cancelBtn) cancelBtn.click();
-        } else if (addDeviceModal && addDeviceModal.classList.contains('active')) {
+        } else if (
+            addDeviceModal && addDeviceModal.classList.contains('active')) {
           this.hideAddDeviceModal();
         }
       }
@@ -2718,6 +2746,12 @@ class ModbusDashboard {
           manufactureMenuItem.style.display = 'none';
         }
 
+        // Hide Temp 0x2702 menu (dev-only)
+        const temp2702MenuItem = document.getElementById('temp2702MenuItem');
+        if (temp2702MenuItem) {
+          temp2702MenuItem.style.display = 'none';
+        }
+
         // Hide manufacture tab in Device page
         const deviceManufactureTab =
             document.querySelector('.device-setup-tab[data-tab="manufacture"]');
@@ -2733,8 +2767,9 @@ class ModbusDashboard {
 
         this.refreshConfigForDevModeChange();
         this.showToast('🔧 개발자 모드가 비활성화되었습니다', 'error');
-        // Switch to dashboard if currently on manufacture page
-        if (this.currentPage === 'manufacture') {
+        // Switch to dashboard if currently on a dev-only page
+        if (this.currentPage === 'manufacture' ||
+            this.currentPage === 'temp2702') {
           this.switchPage('dashboard');
           this._setMenuActive('dashboard');
         }
@@ -2774,7 +2809,8 @@ class ModbusDashboard {
     const device = this.devices &&
         this.devices.find(d => d.id === this.currentSetupDeviceId);
     if (!device) return;
-    const devOnly = new Set(['motorInfo', 'sensor', 'servoTuning', 'alarm']);
+    const devOnly = new Set(
+        ['motorInfo', 'sensor', 'servoTuning', 'alarm', 'productSetting']);
     if (!this.isDeveloperMode() && devOnly.has(this.activeConfigCategory)) {
       this.activeConfigCategory = 'motor';
     }
@@ -2790,6 +2826,11 @@ class ModbusDashboard {
     const manufactureMenuItem = document.getElementById('manufactureMenuItem');
     if (manufactureMenuItem) {
       manufactureMenuItem.style.display = 'flex';
+    }
+
+    const temp2702MenuItem = document.getElementById('temp2702MenuItem');
+    if (temp2702MenuItem) {
+      temp2702MenuItem.style.display = 'flex';
     }
 
     // Also show manufacture tab in Device page
@@ -3525,9 +3566,8 @@ class ModbusDashboard {
       //  자체 style만 보면 안 됨 — 페이지/탭/서브탭을 모두 확인)
       const onManufactureTab =
           sessionStorage.getItem('deviceSetupTab') === 'manufacture';
-      const onHwOverview =
-          (sessionStorage.getItem('manufactureSubtab') || 'hw-overview') ===
-          'hw-overview';
+      const onHwOverview = (sessionStorage.getItem('manufactureSubtab') ||
+                            'hw-overview') === 'hw-overview';
       if (this.currentPage === 'device-setup' && onManufactureTab &&
           onHwOverview) {
         this.initMiniCharts();
@@ -9780,29 +9820,7 @@ class ModbusDashboard {
                     <span class="input-unit">${modeText}</span>
                 </div>
                 <div class="device-quick-btns">
-                    ${
-        device.operationMode === 0 ?
-            `
-                    <button class="quick-btn" data-value="0">0</button>
-                    <button class="quick-btn" data-value="${
-                Math.round((device.maxSpeed || 1600) * 0.25)}">${
-                Math.round((device.maxSpeed || 1600) * 0.25)}</button>
-                    <button class="quick-btn" data-value="${
-                Math.round((device.maxSpeed || 1600) * 0.5)}">${
-                Math.round((device.maxSpeed || 1600) * 0.5)}</button>
-                    <button class="quick-btn" data-value="${
-                Math.round((device.maxSpeed || 1600) * 0.75)}">${
-                Math.round((device.maxSpeed || 1600) * 0.75)}</button>
-                    <button class="quick-btn" data-value="${
-                device.maxSpeed || 1600}">${device.maxSpeed || 1600}</button>
-                    ` :
-            `
-                    <button class="quick-btn" data-value="0">0%</button>
-                    <button class="quick-btn" data-value="25">25%</button>
-                    <button class="quick-btn" data-value="50">50%</button>
-                    <button class="quick-btn" data-value="75">75%</button>
-                    <button class="quick-btn" data-value="100">100%</button>
-                    `}
+                    ${this._quickBtnsHTML(device)}
                 </div>
             </div>
             <div class="device-monitoring-section">
@@ -9923,15 +9941,22 @@ class ModbusDashboard {
       });
     });
 
-    // Quick setpoint buttons for device card
+    // Quick setpoint buttons for device card.
+    // 가운데 3개 (data-mid-idx 0,1,2 = 25%/50%/75% 자리) 는 우클릭으로 값 조정.
     card.querySelectorAll('.device-quick-btns .quick-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const value = parseInt(btn.dataset.value);
         const input = card.querySelector('.device-controls input');
         if (input) input.value = value;
-        // 바로 setpoint 적용
         this.applyDeviceSetpoint(device.id, value);
       });
+      const midIdx = btn.dataset.midIdx;
+      if (midIdx != null) {
+        btn.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          this.editQuickBtnValue(device.id, parseInt(midIdx));
+        });
+      }
     });
 
     // Drag and drop event listeners
@@ -10222,6 +10247,98 @@ class ModbusDashboard {
       // Open-loop Control: raw → %
       return Math.round(raw * 100 / 65535);
     }
+  }
+
+  /**
+   * Dashboard 카드의 quick-btns 5개 HTML 생성.
+   * - 양 끝 (0, max) 은 항상 자동 계산
+   * - 가운데 3개 (25/50/75% 기본) 는 device.quickBtnsRpm / quickBtnsPct 에 저장된
+   *   override 가 있으면 우선 사용. data-mid-idx 0/1/2 로 우클릭 식별.
+   */
+  _quickBtnsHTML(device) {
+    const isRpm = device.operationMode === 0;
+    const max = isRpm ? (device.maxSpeed || 1600) : 100;
+    const defaults = [
+      Math.round(max * 0.25),
+      Math.round(max * 0.5),
+      Math.round(max * 0.75),
+    ];
+    const overrides = isRpm ? device.quickBtnsRpm : device.quickBtnsPct;
+    const mid = [0, 1, 2].map(
+        i => (overrides && overrides[i] != null) ? overrides[i] : defaults[i]);
+    const suffix = isRpm ? '' : '%';
+    const cap = isRpm ? max : 100;
+    const capLabel = isRpm ? `${max}` : `100%`;
+    return `
+                    <button class="quick-btn" data-value="0">0${suffix}</button>
+                    <button class="quick-btn" data-mid-idx="0" data-value="${
+        mid[0]}" title="우클릭하여 값 변경">${mid[0]}${suffix}</button>
+                    <button class="quick-btn" data-mid-idx="1" data-value="${
+        mid[1]}" title="우클릭하여 값 변경">${mid[1]}${suffix}</button>
+                    <button class="quick-btn" data-mid-idx="2" data-value="${
+        mid[2]}" title="우클릭하여 값 변경">${mid[2]}${suffix}</button>
+                    <button class="quick-btn" data-value="${
+        cap}">${capLabel}</button>`;
+  }
+
+  /**
+   * 우클릭으로 가운데 3개 quick-btn 값 조정.
+   * - 모드(RPM/%) 별 device.quickBtnsRpm / quickBtnsPct 배열에 저장
+   * - 유효 범위: RPM = 0..maxSpeed, % = 0..100
+   * - 변경 시 해당 카드의 quick-btns 영역만 갱신 (전체 재렌더 회피)
+   */
+  editQuickBtnValue(deviceId, midIdx) {
+    const device = this.devices.find(d => d.id === deviceId);
+    if (!device) return;
+    const isRpm = device.operationMode === 0;
+    const max = isRpm ? (device.maxSpeed || 1600) : 100;
+    const unit = isRpm ? 'RPM' : '%';
+
+    const overrides = isRpm ? device.quickBtnsRpm : device.quickBtnsPct;
+    const defaults =
+        [Math.round(max * 0.25), Math.round(max * 0.5), Math.round(max * 0.75)];
+    const cur = (overrides && overrides[midIdx] != null) ? overrides[midIdx] :
+                                                           defaults[midIdx];
+
+    const input =
+        prompt(`퀵 버튼 값 (${unit}, 0–${max})`, String(cur));
+    if (input == null) return;  // 취소
+    const val = parseInt(input.trim(), 10);
+    if (isNaN(val) || val < 0 || val > max) {
+      this.showToast(`유효하지 않은 값입니다 (0–${max})`, 'warning');
+      return;
+    }
+
+    const arr = (isRpm ? device.quickBtnsRpm : device.quickBtnsPct) || [];
+    arr[midIdx] = val;
+    if (isRpm)
+      device.quickBtnsRpm = arr;
+    else
+      device.quickBtnsPct = arr;
+    this.saveDevices();
+
+    // 카드의 quick-btns 영역만 다시 그리고 click/contextmenu 리스너 재바인딩.
+    const card = document.querySelector(`.device-card[data-device-id="${
+        deviceId}"]`);
+    if (!card) return;
+    const wrap = card.querySelector('.device-quick-btns');
+    if (!wrap) return;
+    wrap.innerHTML = this._quickBtnsHTML(device);
+    wrap.querySelectorAll('.quick-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const value = parseInt(btn.dataset.value);
+        const ip = card.querySelector('.device-controls input');
+        if (ip) ip.value = value;
+        this.applyDeviceSetpoint(device.id, value);
+      });
+      const mi = btn.dataset.midIdx;
+      if (mi != null) {
+        btn.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          this.editQuickBtnValue(device.id, parseInt(mi));
+        });
+      }
+    });
   }
 
   /**
@@ -13983,7 +14100,8 @@ class ModbusDashboard {
     // 펌웨어 데이터는 4-byte 정렬되어야 함 (Flash 32-bit word 쓰기 호환)
     let packetSize =
         parseInt(document.getElementById('fwPacketSize')?.value) || 240;
-    packetSize = Math.max(4, Math.floor(packetSize / 4) * 4);  // 4의 배수로 라운드
+    packetSize =
+        Math.max(4, Math.floor(packetSize / 4) * 4);  // 4의 배수로 라운드
     const responseTimeout =
         parseInt(document.getElementById('fwResponseTimeout')?.value) || 1000;
 
@@ -14256,7 +14374,8 @@ class ModbusDashboard {
    * OpCode + ACK/NACK 구분자로 길이 동적 결정 (modbus.getFastFwResponseLength).
    * @param {Uint8Array} frame
    * @param {number} timeout ms
-   * @returns {Promise<Uint8Array | null>} CRC 검증된 응답 프레임. timeout 시 null.
+   * @returns {Promise<Uint8Array | null>} CRC 검증된 응답 프레임. timeout 시
+   *     null.
    */
   async _sendReceiveFastFw(frame, timeout = 1000) {
     // 시뮬레이터는 0x23 미구현 → null 반환하여 fallback 유도
@@ -14330,7 +14449,8 @@ class ModbusDashboard {
    * FC 0x23 펌웨어 다운로드 메인 플로우.
    * @returns {Promise<{ok: boolean, fallback: boolean, error?: string}>}
    *   - ok=true : 성공
-   *   - ok=false, fallback=true : Init 단계에서 미지원 감지 → 0x66 fallback 가능
+   *   - ok=false, fallback=true : Init 단계에서 미지원 감지 → 0x66 fallback
+   * 가능
    *   - ok=false, fallback=false : 0x23 진행 중 실패 → 사용자에게 에러
    */
   async _runFastFirmwareDownload(
@@ -14356,15 +14476,15 @@ class ModbusDashboard {
       return {ok: false, fallback: true};
     }
 
-    this.addFirmwareLog(
-        `RX: ${this.modbus.bufferToHex(initResponse)}`, 'rx');
+    this.addFirmwareLog(`RX: ${this.modbus.bufferToHex(initResponse)}`, 'rx');
 
     const initResult = this.modbus.parseFastFwResponse(initResponse);
 
     if (initResult.isException) {
       this.addFirmwareLog(
           `[0x23] Modbus Exception 0x${
-              initResult.exceptionCode.toString(16).padStart(2, '0')} → 0x66 fallback`,
+              initResult.exceptionCode.toString(16).padStart(
+                  2, '0')} → 0x66 fallback`,
           'warning');
       this.setFirmwareStepStatus('0x90', '');
       return {ok: false, fallback: true};
@@ -14414,11 +14534,7 @@ class ModbusDashboard {
             await this._sendReceiveFastFw(pollFrame, responseTimeout);
         if (!pollResponse) {
           this.setFirmwareStepStatus('0x91', 'error');
-          return {
-            ok: false,
-            fallback: false,
-            error: 'Erase Poll 응답 없음'
-          };
+          return {ok: false, fallback: false, error: 'Erase Poll 응답 없음'};
         }
 
         const pollResult = this.modbus.parseFastFwResponse(pollResponse);
@@ -14430,11 +14546,7 @@ class ModbusDashboard {
         }
         if (eraseStatus === 0x02) {
           this.setFirmwareStepStatus('0x91', 'error');
-          return {
-            ok: false,
-            fallback: false,
-            error: 'Flash Erase 오류'
-          };
+          return {ok: false, fallback: false, error: 'Flash Erase 오류'};
         }
         // 0x00 진행중 → 계속 폴링
       }
@@ -14442,11 +14554,7 @@ class ModbusDashboard {
       if (!eraseDone) {
         this.setFirmwareStepStatus('0x91', 'error');
         await this._fastFwAbort(slaveId, responseTimeout);
-        return {
-          ok: false,
-          fallback: false,
-          error: 'Erase 타임아웃 (30초)'
-        };
+        return {ok: false, fallback: false, error: 'Erase 타임아웃 (30초)'};
       }
 
       this.setFirmwareStepStatus('0x91', 'completed');
@@ -14474,9 +14582,8 @@ class ModbusDashboard {
     const transferStartTime = Date.now();
     const maxRetries = 3;
 
-    this.addFirmwareLog(
-        `[0x23/0x03] 데이터 전송 시작 (DataLen=${currentDataLen}, ~${
-            totalPackets} 패킷)`);
+    this.addFirmwareLog(`[0x23/0x03] 데이터 전송 시작 (DataLen=${
+        currentDataLen}, ~${totalPackets} 패킷)`);
 
     while (transferred < totalSize) {
       if (this.firmwareUpdateCancelled) {
@@ -14498,8 +14605,7 @@ class ModbusDashboard {
 
         if (packetCount % 10 === 0 || chunkSize < currentDataLen) {
           this.addFirmwareLog(
-              `TX[seq=${seqNum}, off=${transferred}, len=${chunkSize}]`,
-              'tx');
+              `TX[seq=${seqNum}, off=${transferred}, len=${chunkSize}]`, 'tx');
         }
 
         const dataResponse =
@@ -14551,9 +14657,8 @@ class ModbusDashboard {
           // OFFSET/SEQ MISMATCH → ExpectedOffset에 동기 후 재시도
           if (typeof expOff === 'number' && expOff <= totalSize) {
             transferred = expOff;
-            seqNum = currentDataLen > 0 ?
-                Math.floor(expOff / currentDataLen) :
-                seqNum;
+            seqNum = currentDataLen > 0 ? Math.floor(expOff / currentDataLen) :
+                                          seqNum;
             bufferOverflow = true;  // outer loop에서 재포장
             break;
           }
@@ -14583,8 +14688,7 @@ class ModbusDashboard {
         const remainingBytes = totalSize - transferred;
         const remainingPackets =
             Math.ceil(remainingBytes / Math.max(1, currentDataLen));
-        const estimatedTimeMs =
-            Math.round(remainingPackets * avgTimePerPacket);
+        const estimatedTimeMs = Math.round(remainingPackets * avgTimePerPacket);
 
         const percent = Math.round((transferred / totalSize) * 100);
         if (progressUI?.progressBar)
@@ -14592,14 +14696,14 @@ class ModbusDashboard {
         if (progressUI?.progressPercent)
           progressUI.progressPercent.textContent = percent + '%';
         if (progressUI?.progressStatus) {
-          progressUI.progressStatus.textContent = `${
-              this.formatFileSize(transferred)} / ${
-              this.formatFileSize(totalSize)}`;
+          progressUI.progressStatus.textContent =
+              `${this.formatFileSize(transferred)} / ${
+                  this.formatFileSize(totalSize)}`;
         }
 
         this.updateFirmwareDataProgress(
-            transferred, totalSize, packetCount,
-            packetCount + remainingPackets, estimatedTimeMs);
+            transferred, totalSize, packetCount, packetCount + remainingPackets,
+            estimatedTimeMs);
       }
       // bufferOverflow=true && !acked: outer loop에서 같은 transferred로 재시도
     }
@@ -14617,24 +14721,18 @@ class ModbusDashboard {
 
     // ===== Step 4: Complete (0x99) — 이미지 CRC-32 검증 =====
     this.setFirmwareStepStatus('0x99', 'active');
-    this.addFirmwareLog(
-        `[0x23/0x99] 이미지 검증 (CRC32=0x${
-            firmwareCRC32.toString(16).padStart(8, '0')})`);
+    this.addFirmwareLog(`[0x23/0x99] 이미지 검증 (CRC32=0x${
+        firmwareCRC32.toString(16).padStart(8, '0')})`);
 
-    const completeFrame = this.modbus.buildFastFwComplete(
-        slaveId, firmwareCRC32, totalSize);
-    this.addFirmwareLog(
-        `TX: ${this.modbus.bufferToHex(completeFrame)}`, 'tx');
+    const completeFrame =
+        this.modbus.buildFastFwComplete(slaveId, firmwareCRC32, totalSize);
+    this.addFirmwareLog(`TX: ${this.modbus.bufferToHex(completeFrame)}`, 'tx');
 
     const completeResponse =
         await this._sendReceiveFastFw(completeFrame, responseTimeout);
     if (!completeResponse) {
       this.setFirmwareStepStatus('0x99', 'error');
-      return {
-        ok: false,
-        fallback: false,
-        error: 'Complete 응답 없음'
-      };
+      return {ok: false, fallback: false, error: 'Complete 응답 없음'};
     }
     this.addFirmwareLog(
         `RX: ${this.modbus.bufferToHex(completeResponse)}`, 'rx');
@@ -14648,8 +14746,8 @@ class ModbusDashboard {
         ok: false,
         fallback: false,
         error: `이미지 검증 실패 (VerifyResult=0x${
-            vr?.toString(16).padStart(2, '0')}, deviceCRC32=0x${
-            dCRC?.toString(16).padStart(8, '0')})`
+            vr?.toString(16).padStart(
+                2, '0')}, deviceCRC32=0x${dCRC?.toString(16).padStart(8, '0')})`
       };
     }
 
@@ -14688,7 +14786,8 @@ class ModbusDashboard {
     const step = document.getElementById(`fwStep${stepCode}`);
     if (step) {
       step.classList.remove('active', 'completed', 'error');
-      // 빈 문자열은 reset 의미 — classList.add('')는 DOMException을 던지므로 skip
+      // 빈 문자열은 reset 의미 — classList.add('')는 DOMException을 던지므로
+      // skip
       if (status) step.classList.add(status);
     }
   }
@@ -15241,12 +15340,16 @@ class ModbusDashboard {
     // 탭 전환
     document.querySelectorAll('.chart-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.chart-tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.chart-tab-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.chart-tab-btn')
+            .forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.chart-tab-pane')
+            .forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         const tabId = {
           yaxis: 'chartTabYAxis',
-          trigger: 'chartTabTrigger', cursor: 'chartTabCursor', freq: 'chartTabFreq'
+          trigger: 'chartTabTrigger',
+          cursor: 'chartTabCursor',
+          freq: 'chartTabFreq'
         }[btn.dataset.tab];
         const pane = document.getElementById(tabId);
         if (pane) pane.classList.add('active');
@@ -15255,7 +15358,7 @@ class ModbusDashboard {
 
     // 패널 접기/펼치기
     const collapseBtn = document.getElementById('chartPanelCollapseBtn');
-    const panelBody   = document.querySelector('.chart-panel-body');
+    const panelBody = document.querySelector('.chart-panel-body');
     if (collapseBtn && panelBody) {
       collapseBtn.addEventListener('click', () => {
         const isNowCollapsed = panelBody.classList.toggle('collapsed');
@@ -15263,42 +15366,56 @@ class ModbusDashboard {
       });
     }
 
-    // X-Axis: Sampling Time + Time Span Multiplier → chartManager.setTimeScale()
-    const sampleRateEl  = document.getElementById('chartSampleRate');
+    // X-Axis: Sampling Time + Time Span Multiplier →
+    // chartManager.setTimeScale()
+    const sampleRateEl = document.getElementById('chartSampleRate');
     const timeSpanMultEl = document.getElementById('chartTimeSpanMult');
-    const timeSpanSecEl  = document.getElementById('chartTimeSpanSeconds');
+    const timeSpanSecEl = document.getElementById('chartTimeSpanSeconds');
     const timeSpanDecBtn = document.getElementById('chartTimeSpanDec');
     const timeSpanIncBtn = document.getElementById('chartTimeSpanInc');
 
     const updateTimeScale = () => {
       const ticks = parseInt(sampleRateEl?.value ?? 160);
-      const mult  = parseInt(timeSpanMultEl?.value ?? 250);
-      const ms    = (ticks / 8) * mult;
+      const mult = parseInt(timeSpanMultEl?.value ?? 250);
+      const ms = (ticks / 8) * mult;
       if (timeSpanSecEl) timeSpanSecEl.textContent = (ms / 1000).toFixed(3);
       this.chartManager.setTimeScale(ms);
     };
 
-    if (sampleRateEl)   sampleRateEl.addEventListener('change', updateTimeScale);
-    if (timeSpanMultEl) timeSpanMultEl.addEventListener('input', updateTimeScale);
-    if (timeSpanDecBtn) timeSpanDecBtn.addEventListener('click', () => {
-      if (timeSpanMultEl) { timeSpanMultEl.value = Math.max(10, parseInt(timeSpanMultEl.value) - 10); updateTimeScale(); }
-    });
-    if (timeSpanIncBtn) timeSpanIncBtn.addEventListener('click', () => {
-      if (timeSpanMultEl) { timeSpanMultEl.value = Math.min(10000, parseInt(timeSpanMultEl.value) + 10); updateTimeScale(); }
-    });
+    if (sampleRateEl) sampleRateEl.addEventListener('change', updateTimeScale);
+    if (timeSpanMultEl)
+      timeSpanMultEl.addEventListener('input', updateTimeScale);
+    if (timeSpanDecBtn)
+      timeSpanDecBtn.addEventListener('click', () => {
+        if (timeSpanMultEl) {
+          timeSpanMultEl.value =
+              Math.max(10, parseInt(timeSpanMultEl.value) - 10);
+          updateTimeScale();
+        }
+      });
+    if (timeSpanIncBtn)
+      timeSpanIncBtn.addEventListener('click', () => {
+        if (timeSpanMultEl) {
+          timeSpanMultEl.value =
+              Math.min(10000, parseInt(timeSpanMultEl.value) + 10);
+          updateTimeScale();
+        }
+      });
     updateTimeScale();
 
     // X-Axis: Mode (Continuous / Trigger) — 기존 chartMode 로직 연결
     const timeModeEl = document.getElementById('chartTimeBaseMode');
 
-    // Continuous 모드는 최소 20ms (period=160) 까지만 허용. Trigger 모드는 sub-ms 포함 전체 허용.
+    // Continuous 모드는 최소 20ms (period=160) 까지만 허용. Trigger 모드는
+    // sub-ms 포함 전체 허용.
     const CONTINUOUS_MIN_PERIOD = 160;
     const applySampleRateConstraints = () => {
       if (!sampleRateEl || !timeModeEl) return;
       const isContinuous = timeModeEl.value === 'continuous';
       let needReselect = false;
       Array.from(sampleRateEl.options).forEach(opt => {
-        const tooFast = isContinuous && parseInt(opt.value) < CONTINUOUS_MIN_PERIOD;
+        const tooFast =
+            isContinuous && parseInt(opt.value) < CONTINUOUS_MIN_PERIOD;
         opt.disabled = tooFast;
         opt.hidden = tooFast;
         if (tooFast && opt.selected) needReselect = true;
@@ -15320,8 +15437,8 @@ class ModbusDashboard {
     // Y-Axis: Auto 체크박스 + Min/Max 입력 → fixedYRange
     for (let i = 0; i < 4; i++) {
       const autoEl = document.getElementById(`chartCh${i + 1}Auto`);
-      const minEl  = document.getElementById(`chartCh${i + 1}Min`);
-      const maxEl  = document.getElementById(`chartCh${i + 1}Max`);
+      const minEl = document.getElementById(`chartCh${i + 1}Min`);
+      const maxEl = document.getElementById(`chartCh${i + 1}Max`);
       if (!autoEl || !minEl || !maxEl) continue;
 
       const applyRange = () => {
@@ -15333,7 +15450,8 @@ class ModbusDashboard {
           minEl.disabled = false;
           maxEl.disabled = false;
           this.chartManager.setChannelYRange(
-              i, parseFloat(minEl.value) || -100, parseFloat(maxEl.value) || 100);
+              i, parseFloat(minEl.value) || -100,
+              parseFloat(maxEl.value) || 100);
         }
       };
 
@@ -15693,7 +15811,8 @@ class ModbusDashboard {
         samples.push(...parsed.data);
         startAddr += parsed.length;
 
-        const pct = Math.min(99, Math.round((chI * numOfData + startAddr) / totalWork * 100));
+        const pct = Math.min(
+            99, Math.round((chI * numOfData + startAddr) / totalWork * 100));
         this.chartManager.updateStatus(`Download ${pct}%`);
 
         if (parsed.length < 14) break;  // 마지막 패킷 (end-of-data)
@@ -16720,9 +16839,12 @@ class ModbusDashboard {
     for (let sub = 1; sub <= count; sub++) {
       const subHex = '0x' + sub.toString(16).toUpperCase().padStart(2, '0');
       html += `<tr>
-          <td style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #6c757d;">${subHex}</td>
-          <td id="temp2702-val-${sub}" style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #1a1a1a;">—</td>
-          <td id="temp2702-dec-${sub}" style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #6c757d;">—</td>
+          <td style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #6c757d;">${
+          subHex}</td>
+          <td id="temp2702-val-${
+          sub}" style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #1a1a1a;">—</td>
+          <td id="temp2702-dec-${
+          sub}" style="padding: 6px 12px; border-bottom: 1px solid #f1f3f5; color: #6c757d;">—</td>
         </tr>`;
     }
     tbody.innerHTML = html;
@@ -16735,7 +16857,8 @@ class ModbusDashboard {
     const countEl = document.getElementById('temp2702Count');
     const startBtn = document.getElementById('temp2702StartBtn');
     const stopBtn = document.getElementById('temp2702StopBtn');
-    if (stateEl) stateEl.textContent = this.temp2702Polling ? 'running' : 'idle';
+    if (stateEl)
+      stateEl.textContent = this.temp2702Polling ? 'running' : 'idle';
     if (cyclesEl) cyclesEl.textContent = this.temp2702Stats.cycles;
     if (errorsEl) errorsEl.textContent = this.temp2702Stats.errors;
     if (countEl)
@@ -16825,8 +16948,8 @@ class ModbusDashboard {
       const val0El = document.getElementById('temp2702-val-0');
       const dec0El = document.getElementById('temp2702-dec-0');
       if (val0El) {
-        val0El.textContent =
-            '0x' + (safeCount & 0xFF).toString(16).toUpperCase().padStart(2, '0');
+        val0El.textContent = '0x' +
+            (safeCount & 0xFF).toString(16).toUpperCase().padStart(2, '0');
         val0El.style.color = '#1a1a1a';
       }
       if (dec0El) dec0El.textContent = safeCount;
@@ -16872,6 +16995,37 @@ class ModbusDashboard {
       while (this.temp2702Polling && Date.now() < deadline) {
         await this.delay(20);
       }
+    }
+  }
+
+  /**
+   * 0x2703:00 (uint16) write — Clear(1) / Read(2) 트리거.
+   * writeCANopenObject 내부에서 commandQueue / 직접 전송이 자동 분기되며,
+   * temp2702 폴링 루프와의 동시 접근은 _acquireBus 뮤텍스가 직렬화한다.
+   */
+  async _writeTemp2703(value) {
+    const sel = document.getElementById('temp2702SlaveSelect');
+    const slaveId = sel ? parseInt(sel.value, 10) : NaN;
+    if (!slaveId || isNaN(slaveId)) {
+      this.showToast('Slave 를 먼저 선택하세요', 'warning');
+      return;
+    }
+    if (!this.writer) {
+      this.showToast('연결되지 않은 상태에서는 쓸 수 없습니다', 'warning');
+      return;
+    }
+    const label = value === 1 ? 'Clear' : value === 2 ? 'Read' : `value=${value}`;
+    try {
+      const r = await this.writeCANopenObject(slaveId, 0x2703, 0x00, value, 2);
+      if (r && !r.error) {
+        this.showToast(`0x2703 ← ${value} (${label}) 완료`, 'success');
+      } else {
+        const code = r && r.abortCode ?
+            ` (abort 0x${r.abortCode.toString(16)})` : '';
+        this.showToast(`0x2703 write 실패${code}`, 'error');
+      }
+    } catch (e) {
+      this.showToast(`0x2703 write 오류: ${e.message || e}`, 'error');
     }
   }
 
@@ -17353,6 +17507,59 @@ class ModbusDashboard {
   }
 
   /**
+   * 전압 클래스(0:200V, 1:400V)에 따라 선택 가능한 하드웨어 리비전 목록.
+   * - 200V → Rev.A 만 (value=0)
+   * - 400V → Rev.B (1) / Rev.C (2)
+   * 현재 미사용인 Rev.D 는 제외. 향후 추가될 경우 이 함수만 갱신하면 됨.
+   */
+  _hardwareRevisionOptions(voltageClass) {
+    return voltageClass === 1 ?
+        [{v: 1, l: 'Rev.B'}, {v: 2, l: 'Rev.C'}] :
+        [{v: 0, l: 'Rev.A'}];
+  }
+
+  /**
+   * 하드웨어 리비전 select 의 <option> HTML 생성.
+   */
+  _hardwareRevisionOptionsHTML(voltageClass, current) {
+    return this._hardwareRevisionOptions(voltageClass)
+        .map(
+            o => `<option value="${o.v}"${
+                current === o.v ? ' selected' : ''}>${o.l}</option>`)
+        .join('');
+  }
+
+  /**
+   * 현재 전압 클래스 select 값을 기준으로 하드웨어 리비전 select 옵션을 재구성.
+   *
+   * @param deviceId
+   * @param autoCorrect  true 인 경우, 현재 리비전이 새 전압 클래스에서 유효하지
+   *     않으면 첫 valid 옵션으로 select 값을 강제 변경하고 debounced write 도 예약.
+   *     - 전압 클래스 onchange 경로 → true (사용자 의도)
+   *     - read apply 경로 → false (디바이스에서 읽은 값일 뿐, stale 일 수 있어
+   *       자동 write 금지)
+   */
+  _refreshHardwareRevisionOptions(deviceId, autoCorrect = false) {
+    const vSel = document.getElementById(`productVoltageClass_${deviceId}`);
+    const hSel = document.getElementById(`hardwareRevision_${deviceId}`);
+    if (!vSel || !hSel) return;
+    const vClass = parseInt(vSel.value);
+    const device = this.devices.find(d => d.id === parseInt(deviceId));
+    const cur = device ? device.hardwareRevision : null;
+    const allowed = this._hardwareRevisionOptions(vClass);
+    hSel.innerHTML = this._hardwareRevisionOptionsHTML(vClass, cur);
+
+    // 현재 device 값이 새 전압 클래스에서 유효하지 않을 때만 auto-correct.
+    // 옵션이 재구성되면 select 표시값은 첫 옵션으로 fallback 되지만 device 내부
+    // 값과 어긋나므로, 첫 옵션 값으로 명시적으로 set 하고 write 도 예약해서
+    // 디바이스/UI/저장값을 일관되게 맞춤.
+    if (autoCorrect && !allowed.some(o => o.v === cur)) {
+      hSel.value = String(allowed[0].v);
+      this.debouncedApply('hardwareRevision', deviceId);
+    }
+  }
+
+  /**
    * Configuration 파라미터 정의 — category·address·reader·apply를 하나의 맵으로
    * 관리. 새 파라미터 추가 시 이 맵에만 항목을 추가하면 읽기·Refresh 모두
    * 자동으로 포함됨.
@@ -17708,6 +17915,36 @@ class ModbusDashboard {
           this.saveDevices();
         }
       },
+      // ── 제품설정 (LSM FC 0x2B) ────────────────────────────────
+      // 전압 클래스를 먼저 읽어야 리비전 select 의 옵션이 올바르게 세팅됨
+      productVoltageClass: {
+        category: 'productSetting',
+        reader: async () => {
+          const r = await this.readCANopenObject(device.slaveId, 0x270A, 0x00);
+          return (r && !r.error && r.value != null) ? r.value : null;
+        },
+        apply: (raw) => {
+          device.productVoltageClass = raw;
+          const el = document.getElementById(`productVoltageClass_${deviceId}`);
+          if (el) el.value = String(raw);
+          // 전압 클래스 변경 시 리비전 select 옵션 재구성
+          this._refreshHardwareRevisionOptions(deviceId);
+          this.saveDevices();
+        }
+      },
+      hardwareRevision: {
+        category: 'productSetting',
+        reader: async () => {
+          const r = await this.readCANopenObject(device.slaveId, 0x2709, 0x00);
+          return (r && !r.error && r.value != null) ? r.value : null;
+        },
+        apply: (raw) => {
+          device.hardwareRevision = raw;
+          const el = document.getElementById(`hardwareRevision_${deviceId}`);
+          if (el) el.value = String(raw);
+          this.saveDevices();
+        }
+      },
     };
   }
 
@@ -17867,33 +18104,35 @@ class ModbusDashboard {
   //  Alarm Enable — 16개 uint16_t × 16비트 = 256 알람 enable 플래그
   //  - 코드 0xN → register idx = N>>4, bit = N&0x0F
   //  - 그룹 0x0x 는 현재 미사용 (UI 비표시)
-  //  - 통신은 FC 0x2B 사용 예정 (시작 주소 미정 — 결정 후 _alarmEnableReadAll/_alarmEnableWriteAll 에 연결)
+  //  - 통신은 FC 0x2B 사용 예정 (시작 주소 미정 — 결정 후
+  //  _alarmEnableReadAll/_alarmEnableWriteAll 에 연결)
   // ─────────────────────────────────────────────────────────
 
   // UI 에 표시할 알람 코드 화이트리스트.
   // 정의되어 있어도 이 집합에 없으면 숨김. 추후 추가/제거만 하면 됨.
   ALARM_VISIBLE_CODES = new Set([
-    0x10, 0x11, 0x14, 0x15, 0x17,        // Group 1 — Current
-    0x22, 0x24, 0x25, 0x2A,              // Group 2 — Overload
-    0x36, 0x37, 0x39, 0x3A,              // Group 3 — Encoder & Motor
-    0x40, 0x41, 0x42, 0x45,              // Group 4 — Voltage
-    0x50, 0x53, 0x58,                    // Group 5 — Control Functions
+    0x10, 0x11, 0x14, 0x15, 0x17,  // Group 1 — Current
+    0x22, 0x24, 0x25, 0x2A,        // Group 2 — Overload
+    0x36, 0x37, 0x39, 0x3A,        // Group 3 — Encoder & Motor
+    0x40, 0x41, 0x42, 0x45,        // Group 4 — Voltage
+    0x50, 0x53, 0x58,              // Group 5 — Control Functions
   ]);
 
   // 비활성화 불가 알람 코드 (always-on lock).
   // 현재 정책: Encoder 관련(Group 3)만 사용자 조작 가능, 나머지는 모두 잠금.
   ALARM_LOCKED_CODES = new Set([
-    0x10, 0x11, 0x14, 0x15, 0x17,        // Group 1 — Current
-    0x22, 0x24, 0x25, 0x2A,              // Group 2 — Overload
+    0x10, 0x11, 0x14, 0x15, 0x17,  // Group 1 — Current
+    0x22, 0x24, 0x25, 0x2A,        // Group 2 — Overload
     // Group 3 (Encoder) — toggleable, 잠금 안 함
-    0x40, 0x41, 0x42, 0x45,              // Group 4 — Voltage
-    0x50, 0x53, 0x58,                    // Group 5 — Control Functions
+    0x40, 0x41, 0x42, 0x45,  // Group 4 — Voltage
+    0x50, 0x53, 0x58,        // Group 5 — Control Functions
   ]);
 
   // CANopen Object Index for Alarm Enable parameter.
   //   sub-index 0  (uint8_t)  : 16 — number of sub-indices
   //   sub-index 1..16 (uint16_t) : enable bits for codes 0x00..0xF0 그룹
-  //                               (sub i → register idx (i-1) → 코드 (i-1)<<4 ~ ((i-1)<<4)|0x0F)
+  //                               (sub i → register idx (i-1) → 코드 (i-1)<<4 ~
+  //                               ((i-1)<<4)|0x0F)
   ALARM_ENABLE_INDEX = 0x2708;
 
   ALARM_GROUP_TITLES = {
@@ -17918,7 +18157,7 @@ class ModbusDashboard {
       const groupIdx = (code >> 4) & 0x0F;
       if (!groups.has(groupIdx)) groups.set(groupIdx, []);
       const name = labeled.replace(/^0x[0-9A-F]+\s+/, '');
-      groups.get(groupIdx).push({ code, name });
+      groups.get(groupIdx).push({code, name});
     }
     this._alarmGroupsCache = groups;
     return groups;
@@ -17936,7 +18175,7 @@ class ModbusDashboard {
       }
       this._alarmEnableState[deviceId] = {
         device: new Uint16Array(16),  // Read All 결과
-        pending,                       // UI 토글 상태
+        pending,                      // UI 토글 상태
         hasRead: false,
       };
     }
@@ -17949,7 +18188,10 @@ class ModbusDashboard {
     let n = 0;
     for (let i = 0; i < 16; i++) {
       let x = (s.device[i] ^ s.pending[i]) & 0xFFFF;
-      while (x) { n += x & 1; x >>>= 1; }
+      while (x) {
+        n += x & 1;
+        x >>>= 1;
+      }
     }
     return n;
   }
@@ -17964,19 +18206,24 @@ class ModbusDashboard {
     const isOnline = device.online || this.simulatorEnabled;
     if (!this._alarmCardCollapsed) this._alarmCardCollapsed = {};
 
-    const groupCards = Array.from(groups.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([gIdx, codes]) => this._renderAlarmGroupCard(gIdx, codes, state))
-      .join('');
+    const groupCards =
+        Array.from(groups.entries())
+            .sort((a, b) => a[0] - b[0])
+            .map(([gIdx,
+                   codes]) => this._renderAlarmGroupCard(gIdx, codes, state))
+            .join('');
 
     const diffCount = this._countAlarmEnableDiff(deviceId);
-    // 사용자가 Read/Write 동작을 신경쓰지 않게 함 — 자동 Read + 토글 즉시 Write 흐름.
-    // 배지는 단순히 동기화 상태만 표시.
-    const badgeText = !state.hasRead
-      ? '⏳ 자동 동기화 중…'
-      : (diffCount === 0 ? '✓ 디바이스와 동일' : `⏳ ${diffCount} 항목 동기화 중…`);
-    const badgeBg = !state.hasRead ? '#F2F4F6' : (diffCount === 0 ? '#E6F9F1' : '#FFF7E6');
-    const badgeColor = !state.hasRead ? '#8B95A1' : (diffCount === 0 ? '#00875A' : '#B45309');
+    // 사용자가 Read/Write 동작을 신경쓰지 않게 함 — 자동 Read + 토글 즉시 Write
+    // 흐름. 배지는 단순히 동기화 상태만 표시.
+    const badgeText = !state.hasRead ?
+        '⏳ 자동 동기화 중…' :
+        (diffCount === 0 ? '✓ 디바이스와 동일' :
+                           `⏳ ${diffCount} 항목 동기화 중…`);
+    const badgeBg =
+        !state.hasRead ? '#F2F4F6' : (diffCount === 0 ? '#E6F9F1' : '#FFF7E6');
+    const badgeColor =
+        !state.hasRead ? '#8B95A1' : (diffCount === 0 ? '#00875A' : '#B45309');
 
     container.innerHTML = `
       <div style="max-width:1100px; margin:0 auto; padding:24px 32px; box-sizing:border-box;">
@@ -17986,7 +18233,9 @@ class ModbusDashboard {
           <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
             <div>
               <div style="font-size:17px; font-weight:700; color:#191F28; letter-spacing:-0.02em;">🚨 Alarm Enable</div>
-              <div style="font-size:12px; color:#8B95A1; margin-top:4px;">${device.name} · Slave ID ${device.slaveId} · ${isOnline ? '🟢 온라인' : '⚪ 오프라인'}</div>
+              <div style="font-size:12px; color:#8B95A1; margin-top:4px;">${
+        device.name} · Slave ID ${device.slaveId} · ${
+        isOnline ? '🟢 온라인' : '⚪ 오프라인'}</div>
             </div>
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
               <button onclick="window.dashboard.alarmEnableSetAll(true)"
@@ -18009,7 +18258,9 @@ class ModbusDashboard {
               style="flex:1; min-width:240px; padding:8px 14px; border:1px solid #E8EAED; border-radius:20px; font-size:13px; outline:none;"
               onfocus="this.style.borderColor='#0064FF';this.style.boxShadow='0 0 0 3px rgba(0,100,255,0.10)'"
               onblur="this.style.borderColor='#E8EAED';this.style.boxShadow='none'">
-            <span id="alarmEnPendingBadge" style="font-size:12px; font-weight:600; color:${badgeColor}; padding:5px 12px; border-radius:12px; background:${badgeBg};">${badgeText}</span>
+            <span id="alarmEnPendingBadge" style="font-size:12px; font-weight:600; color:${
+        badgeColor}; padding:5px 12px; border-radius:12px; background:${
+        badgeBg};">${badgeText}</span>
           </div>
         </div>
 
@@ -18024,15 +18275,16 @@ class ModbusDashboard {
     // 자동 Read — 처음 진입 시 1회 (state.hasRead === false)
     //   사용자가 Read All 버튼을 누르지 않아도 디바이스 상태가 자동 동기화됨.
     //   이미 읽었거나, 다른 ops(state.busy) 진행 중이면 skip.
-    //   render 는 write 완료 시점에도 호출되지만 그 시점엔 hasRead=true 라 재호출 안 됨.
+    //   render 는 write 완료 시점에도 호출되지만 그 시점엔 hasRead=true 라
+    //   재호출 안 됨.
     // ─────────────────────────────────────────────────────────
     if (!state.hasRead && !state.busy && device.slaveId !== 0 &&
         (this.writer || this.simulatorEnabled)) {
       setTimeout(() => {
         const s = this._alarmEnableState && this._alarmEnableState[deviceId];
         if (this.currentSetupDeviceId === deviceId &&
-            this.activeConfigCategory === 'alarm' &&
-            s && !s.hasRead && !s.busy) {
+            this.activeConfigCategory === 'alarm' && s && !s.hasRead &&
+            !s.busy) {
           this.alarmEnableReadAll();
         }
       }, 200);
@@ -18045,62 +18297,108 @@ class ModbusDashboard {
     const hexNibble = groupIdx.toString(16).toUpperCase();
     const groupRange = `0x${hexNibble}0 ~ 0x${hexNibble}F`;
 
-    const enabledCount = codes.filter(({ code }) => {
-      const bit = code & 0x0F;
-      return (state.pending[groupIdx] >> bit) & 1;
-    }).length;
+    const enabledCount = codes
+                             .filter(({code}) => {
+                               const bit = code & 0x0F;
+                               return (state.pending[groupIdx] >> bit) & 1;
+                             })
+                             .length;
     // ★ "Set All" 버튼은 비-잠금 비트만 토글하므로, 버튼의 ON/OFF 라벨도
     //   비-잠금 비트 기준으로 계산. 잠금 전용 그룹(unlockedCodes.length === 0)
     //   은 버튼 자체를 숨겨 클릭조차 못 하게 막는다.
     //   (alarmEnableSetGroup 의 잠금 비트 정책과 함께 이중 안전)
-    const unlockedCodes = codes.filter(({ code }) => !this.ALARM_LOCKED_CODES.has(code));
-    const unlockedOnCount = unlockedCodes.filter(({ code }) => {
-      const bit = code & 0x0F;
-      return (state.pending[groupIdx] >> bit) & 1;
-    }).length;
-    const allUnlockedOn = unlockedCodes.length > 0 && unlockedOnCount === unlockedCodes.length;
+    const unlockedCodes =
+        codes.filter(({code}) => !this.ALARM_LOCKED_CODES.has(code));
+    const unlockedOnCount = unlockedCodes
+                                .filter(({code}) => {
+                                  const bit = code & 0x0F;
+                                  return (state.pending[groupIdx] >> bit) & 1;
+                                })
+                                .length;
+    const allUnlockedOn =
+        unlockedCodes.length > 0 && unlockedOnCount === unlockedCodes.length;
     const canBulk = unlockedCodes.length > 0;
 
-    const items = codes.map(({ code, name }) => {
-      const bit = code & 0x0F;
-      const enabled = !!((state.pending[groupIdx] >> bit) & 1);
-      const deviceVal = !!((state.device[groupIdx] >> bit) & 1);
-      const dirty = state.hasRead && (enabled !== deviceVal);
-      const locked = this.ALARM_LOCKED_CODES.has(code);
-      const hex = '0x' + code.toString(16).toUpperCase().padStart(2, '0');
-      const bg = dirty ? '#FFF7E6' : 'transparent';
-      const hoverBg = dirty ? '#FFEFD1' : '#F4F6F9';
+    const items =
+        codes
+            .map(({code, name}) => {
+              const bit = code & 0x0F;
+              const enabled = !!((state.pending[groupIdx] >> bit) & 1);
+              const deviceVal = !!((state.device[groupIdx] >> bit) & 1);
+              const dirty = state.hasRead && (enabled !== deviceVal);
+              const locked = this.ALARM_LOCKED_CODES.has(code);
+              const hex =
+                  '0x' + code.toString(16).toUpperCase().padStart(2, '0');
+              const bg = dirty ? '#FFF7E6' : 'transparent';
+              const hoverBg = dirty ? '#FFEFD1' : '#F4F6F9';
 
-      return `
-        <label class="alarm-en-item" data-code="${code}" data-name="${name.toLowerCase()}"
-          style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:${locked ? 'not-allowed' : 'pointer'}; background:${bg}; transition:background 0.1s;"
-          onmouseover="if(!this.querySelector('input').disabled) this.style.background='${hoverBg}'"
+              return `
+        <label class="alarm-en-item" data-code="${code}" data-name="${
+                  name.toLowerCase()}"
+          style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; cursor:${
+                  locked ? 'not-allowed' : 'pointer'}; background:${
+                  bg}; transition:background 0.1s;"
+          onmouseover="if(!this.querySelector('input').disabled) this.style.background='${
+                  hoverBg}'"
           onmouseout="this.style.background='${bg}'">
-          <input type="checkbox" ${enabled ? 'checked' : ''} ${locked ? 'disabled' : ''}
-            onchange="window.dashboard.alarmEnableToggle(${groupIdx}, ${bit}, this.checked)"
-            style="width:16px; height:16px; cursor:${locked ? 'not-allowed' : 'pointer'}; accent-color:#0064FF;">
-          <span style="font-family:'Consolas',monospace; font-size:11px; color:#8B95A1; min-width:38px;">${hex}</span>
-          <span style="font-size:13px; color:#191F28; flex:1; ${locked ? 'opacity:0.7;' : ''}">${name}${locked ? ' <span title="비활성화 불가" style="font-size:11px;">🔒</span>' : ''}</span>
-          ${dirty ? '<span title="변경됨 (미저장)" style="font-size:10px; font-weight:700; color:#F59E0B;">●</span>' : ''}
+          <input type="checkbox" ${enabled ? 'checked' : ''} ${
+                  locked ? 'disabled' : ''}
+            onchange="window.dashboard.alarmEnableToggle(${groupIdx}, ${
+                  bit}, this.checked)"
+            style="width:16px; height:16px; cursor:${
+                  locked ? 'not-allowed' : 'pointer'}; accent-color:#0064FF;">
+          <span style="font-family:'Consolas',monospace; font-size:11px; color:#8B95A1; min-width:38px;">${
+                  hex}</span>
+          <span style="font-size:13px; color:#191F28; flex:1; ${
+                  locked ? 'opacity:0.7;' : ''}">${name}${
+                  locked ?
+                      ' <span title="비활성화 불가" style="font-size:11px;">🔒</span>' :
+                      ''}</span>
+          ${
+                  dirty ?
+                      '<span title="변경됨 (미저장)" style="font-size:10px; font-weight:700; color:#F59E0B;">●</span>' :
+                      ''}
         </label>`;
-    }).join('');
+            })
+            .join('');
 
     return `
-      <div class="alarm-en-card" data-group="${groupIdx}" style="background:white; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.04); overflow:hidden;">
-        <div class="alarm-en-card-header" onclick="window.dashboard.alarmEnableToggleCard(${groupIdx})"
-          style="display:flex; align-items:center; gap:10px; padding:14px 18px; cursor:pointer; border-bottom:${collapsed ? 'none' : '1px solid #F2F4F6'}; user-select:none;">
-          <span class="alarm-en-arrow" style="font-size:11px; transition:transform 0.15s; transform:${collapsed ? 'rotate(-90deg)' : 'rotate(0deg)'}; display:inline-block; color:#8B95A1; width:12px;">▼</span>
-          <span style="font-size:14px; font-weight:700; color:#191F28;">Group ${groupIdx} — ${title}</span>
-          <span style="font-family:'Consolas',monospace; font-size:11px; color:#C9CDD4;">${groupRange}</span>
+      <div class="alarm-en-card" data-group="${
+        groupIdx}" style="background:white; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.04); overflow:hidden;">
+        <div class="alarm-en-card-header" onclick="window.dashboard.alarmEnableToggleCard(${
+        groupIdx})"
+          style="display:flex; align-items:center; gap:10px; padding:14px 18px; cursor:pointer; border-bottom:${
+        collapsed ? 'none' : '1px solid #F2F4F6'}; user-select:none;">
+          <span class="alarm-en-arrow" style="font-size:11px; transition:transform 0.15s; transform:${
+        collapsed ?
+            'rotate(-90deg)' :
+            'rotate(0deg)'}; display:inline-block; color:#8B95A1; width:12px;">▼</span>
+          <span style="font-size:14px; font-weight:700; color:#191F28;">Group ${
+        groupIdx} — ${title}</span>
+          <span style="font-family:'Consolas',monospace; font-size:11px; color:#C9CDD4;">${
+        groupRange}</span>
           <span style="margin-left:auto; display:flex; align-items:center; gap:10px;" onclick="event.stopPropagation()">
-            <span style="font-size:12px; font-weight:600; color:#4E5968;">${enabledCount}/${codes.length}</span>
-            ${canBulk ? `<button onclick="window.dashboard.alarmEnableSetGroup(${groupIdx}, ${!allUnlockedOn})"
-              style="padding:5px 10px; border:1px solid ${allUnlockedOn ? '#D4E5FF' : '#E8EAED'}; background:${allUnlockedOn ? '#EBF1FF' : 'white'}; color:${allUnlockedOn ? '#0064FF' : '#4E5968'}; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;">
+            <span style="font-size:12px; font-weight:600; color:#4E5968;">${
+        enabledCount}/${codes.length}</span>
+            ${
+        canBulk ?
+            `<button onclick="window.dashboard.alarmEnableSetGroup(${
+                groupIdx}, ${!allUnlockedOn})"
+              style="padding:5px 10px; border:1px solid ${
+                allUnlockedOn ? '#D4E5FF' : '#E8EAED'}; background:${
+                allUnlockedOn ? '#EBF1FF' : 'white'}; color:${
+                allUnlockedOn ?
+                    '#0064FF' :
+                    '#4E5968'}; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;">
               ${allUnlockedOn ? '✓ All' : 'Set All'}
-            </button>` : ''}
+            </button>` :
+            ''}
           </span>
         </div>
-        <div class="alarm-en-card-body" style="padding:${collapsed ? '0' : '8px 12px 12px'}; display:${collapsed ? 'none' : 'grid'}; grid-template-columns:1fr 1fr; gap:2px 8px;">
+        <div class="alarm-en-card-body" style="padding:${
+        collapsed ? '0' : '8px 12px 12px'}; display:${
+        collapsed ? 'none' :
+                    'grid'}; grid-template-columns:1fr 1fr; gap:2px 8px;">
           ${items}
         </div>
       </div>`;
@@ -18116,9 +18414,12 @@ class ModbusDashboard {
       return;
     }
     const code = (groupIdx << 4) | bit;
-    if (this.ALARM_LOCKED_CODES.has(code) && !enabled) return;  // 잠금: disable 차단
-    if (enabled) state.pending[groupIdx] |= (1 << bit);
-    else state.pending[groupIdx] &= ~(1 << bit);
+    if (this.ALARM_LOCKED_CODES.has(code) && !enabled)
+      return;  // 잠금: disable 차단
+    if (enabled)
+      state.pending[groupIdx] |= (1 << bit);
+    else
+      state.pending[groupIdx] &= ~(1 << bit);
     this.renderAlarmEnableTab(id);
     // 즉시 해당 sub-index 만 디바이스에 송신 (async, commandQueue 경유)
     this._alarmEnableWriteOne(id, groupIdx);
@@ -18130,7 +18431,8 @@ class ModbusDashboard {
     const device = this.devices.find(d => d.id === deviceId);
     if (!device) return;
     if (!this.writer && !this.simulatorEnabled) {
-      this.showToast('연결되지 않아 즉시 적용 불가 (변경 사항은 pending 유지)', 'warning');
+      this.showToast(
+          '연결되지 않아 즉시 적용 불가 (변경 사항은 pending 유지)', 'warning');
       return;
     }
     if (device.slaveId === 0) return;
@@ -18141,17 +18443,19 @@ class ModbusDashboard {
 
     try {
       const r = await this.writeCANopenObject(
-        device.slaveId, this.ALARM_ENABLE_INDEX, subIndex, value, 2);
+          device.slaveId, this.ALARM_ENABLE_INDEX, subIndex, value, 2);
       if (r && !r.error) {
         state.device[groupIdx] = value;
-        state.hasRead = true;  // 디바이스 상태 추적 시작 (배지가 ✓/diff 로 전환)
+        state.hasRead =
+            true;  // 디바이스 상태 추적 시작 (배지가 ✓/diff 로 전환)
         // 같은 디바이스 알람 화면이 여전히 보일 때만 갱신
         if (this.currentSetupDeviceId === deviceId &&
             document.getElementById('alarmEnPendingBadge')) {
           this.renderAlarmEnableTab(deviceId);
         }
       } else {
-        this.showToast(`알람 비트 쓰기 실패 — sub-index ${subIndex}`, 'warning');
+        this.showToast(
+            `알람 비트 쓰기 실패 — sub-index ${subIndex}`, 'warning');
       }
     } catch (e) {
       this.showToast(`알람 비트 쓰기 오류: ${e.message || e}`, 'error');
@@ -18161,13 +18465,14 @@ class ModbusDashboard {
   // ─────────────────────────────────────────────────────────────────────
   // Bulk 동작 시 잠금 비트 처리 정책 (★ 절대 건드리지 말 것 ★)
   //
-  //   잠금(ALARM_LOCKED_CODES) 비트는 "사용자가 UI 로 어떤 경로로든 변경할 수 없음"
-  //   을 의미. 따라서 Set All / Enable All / Disable All 등 bulk 동작은
+  //   잠금(ALARM_LOCKED_CODES) 비트는 "사용자가 UI 로 어떤 경로로든 변경할 수
+  //   없음" 을 의미. 따라서 Set All / Enable All / Disable All 등 bulk 동작은
   //   잠금 비트를 절대 토글하지 않고 현재 상태 그대로 유지해야 함.
   //
   //   과거 버그: enabled=true 일 때 잠금 비트를 강제 ON 시키면, 디바이스에서
   //   0 으로 읽어온 잠금 비트가 "Set All" 한 번 클릭으로 1 이 되어 사용자가
-  //   조작 불가능하다고 알린 그룹에서도 write 명령이 발사됨. 잠금 의미 자체와 모순.
+  //   조작 불가능하다고 알린 그룹에서도 write 명령이 발사됨. 잠금 의미 자체와
+  //   모순.
   //
   //   규칙:
   //     - 잠금 비트: 무조건 currentlyOn 그대로 유지 (enabled 인자 무시)
@@ -18189,7 +18494,7 @@ class ModbusDashboard {
     }
     const codes = this._getAlarmGroups().get(groupIdx) || [];
     let val = 0;
-    for (const { code } of codes) {
+    for (const {code} of codes) {
       const bit = code & 0x0F;
       const isLocked = this.ALARM_LOCKED_CODES.has(code);
       const currentlyOn = (state.pending[groupIdx] >> bit) & 1;
@@ -18200,7 +18505,8 @@ class ModbusDashboard {
         if (enabled) val |= (1 << bit);
       }
     }
-    if (state.pending[groupIdx] === val) return;  // 변경 없음 → skip (write 발사 안 함)
+    if (state.pending[groupIdx] === val)
+      return;  // 변경 없음 → skip (write 발사 안 함)
     state.pending[groupIdx] = val;
     this.renderAlarmEnableTab(id);
     this._alarmEnableWriteOne(id, groupIdx);
@@ -18218,7 +18524,7 @@ class ModbusDashboard {
     const changedGroups = [];
     for (const [gIdx, codes] of groups.entries()) {
       let val = 0;
-      for (const { code } of codes) {
+      for (const {code} of codes) {
         const bit = code & 0x0F;
         const isLocked = this.ALARM_LOCKED_CODES.has(code);
         const currentlyOn = (state.pending[gIdx] >> bit) & 1;
@@ -18234,7 +18540,8 @@ class ModbusDashboard {
         changedGroups.push(gIdx);
       }
     }
-    if (changedGroups.length === 0) return;  // 모든 그룹이 잠금 → write 발사 안 함
+    if (changedGroups.length === 0)
+      return;  // 모든 그룹이 잠금 → write 발사 안 함
     this.renderAlarmEnableTab(id);
     // 변경된 group 만 fire-and-forget — _bus lock + commandQueue 가 직렬화 책임
     for (const gIdx of changedGroups) {
@@ -18246,7 +18553,8 @@ class ModbusDashboard {
     if (!this._alarmCardCollapsed) this._alarmCardCollapsed = {};
     this._alarmCardCollapsed[groupIdx] = !this._alarmCardCollapsed[groupIdx];
     const collapsed = this._alarmCardCollapsed[groupIdx];
-    const card = document.querySelector(`.alarm-en-card[data-group="${groupIdx}"]`);
+    const card =
+        document.querySelector(`.alarm-en-card[data-group="${groupIdx}"]`);
     if (!card) return;
     const body = card.querySelector('.alarm-en-card-body');
     const arrow = card.querySelector('.alarm-en-arrow');
@@ -18255,8 +18563,10 @@ class ModbusDashboard {
       body.style.display = collapsed ? 'none' : 'grid';
       body.style.padding = collapsed ? '0' : '8px 12px 12px';
     }
-    if (arrow) arrow.style.transform = collapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-    if (header) header.style.borderBottom = collapsed ? 'none' : '1px solid #F2F4F6';
+    if (arrow)
+      arrow.style.transform = collapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+    if (header)
+      header.style.borderBottom = collapsed ? 'none' : '1px solid #F2F4F6';
   }
 
   alarmEnableFilter(query) {
@@ -18327,11 +18637,16 @@ class ModbusDashboard {
 
     // sub-index 0 (uint8_t) sanity check — 16 이어야 함
     try {
-      const meta = await this.readCANopenObject(device.slaveId, this.ALARM_ENABLE_INDEX, 0x00, 1);
+      const meta = await this.readCANopenObject(
+          device.slaveId, this.ALARM_ENABLE_INDEX, 0x00, 1);
       if (meta && !meta.error) {
-        const count = (meta.rawBytes && meta.rawBytes.length > 0) ? meta.rawBytes[0] : meta.value;
+        const count = (meta.rawBytes && meta.rawBytes.length > 0) ?
+            meta.rawBytes[0] :
+            meta.value;
         if (count !== 16) {
-          console.warn('[AlarmEnable] 0x%s:00 expected 16, got', this.ALARM_ENABLE_INDEX.toString(16), count);
+          console.warn(
+              '[AlarmEnable] 0x%s:00 expected 16, got',
+              this.ALARM_ENABLE_INDEX.toString(16), count);
         }
       }
     } catch (e) {
@@ -18343,7 +18658,8 @@ class ModbusDashboard {
     for (let regIdx = 0; regIdx < 16; regIdx++) {
       const subIndex = regIdx + 1;
       try {
-        const r = await this.readCANopenObject(device.slaveId, this.ALARM_ENABLE_INDEX, subIndex, 2);
+        const r = await this.readCANopenObject(
+            device.slaveId, this.ALARM_ENABLE_INDEX, subIndex, 2);
         if (r && !r.error && typeof r.value === 'number') {
           state.device[regIdx] = r.value & 0xFFFF;
           ok++;
@@ -18358,17 +18674,16 @@ class ModbusDashboard {
 
     // pending = device 복사 (사용자 미저장 변경은 덮어씀).
     // 잠금 비트도 강제 ON 하지 않음 — 디바이스 실제 상태를 그대로 반영.
-    // (lock 은 사용자 토글 차단의 의미. 디바이스가 0 이면 체크박스도 해제 표시.)
+    // (lock 은 사용자 토글 차단의 의미. 디바이스가 0 이면 체크박스도 해제
+    // 표시.)
     state.pending.set(state.device);
     state.hasRead = true;
     state.busy = false;
 
     this.showToast(
-      fail === 0
-        ? `📖 Alarm Read All 완료 (${ok}/16)`
-        : `📖 Alarm Read All — ${ok}개 성공, ${fail}개 실패`,
-      fail === 0 ? 'success' : 'warning'
-    );
+        fail === 0 ? `📖 Alarm Read All 완료 (${ok}/16)` :
+                     `📖 Alarm Read All — ${ok}개 성공, ${fail}개 실패`,
+        fail === 0 ? 'success' : 'warning');
     this.renderAlarmEnableTab(id);
   }
 
@@ -18389,7 +18704,8 @@ class ModbusDashboard {
 
     const state = this._initAlarmEnableState(id);
     if (state.busy) return;
-    // 잠금 비트도 강제 ON 하지 않음 — pending(=디바이스에서 읽었거나 사용자 토글한 값) 그대로 송신.
+    // 잠금 비트도 강제 ON 하지 않음 — pending(=디바이스에서 읽었거나 사용자
+    // 토글한 값) 그대로 송신.
 
     state.busy = 'writing';
     this._setAlarmBusy(true);
@@ -18400,7 +18716,8 @@ class ModbusDashboard {
       const subIndex = regIdx + 1;
       const value = state.pending[regIdx] & 0xFFFF;
       try {
-        const r = await this.writeCANopenObject(device.slaveId, this.ALARM_ENABLE_INDEX, subIndex, value, 2);
+        const r = await this.writeCANopenObject(
+            device.slaveId, this.ALARM_ENABLE_INDEX, subIndex, value, 2);
         if (r && !r.error) {
           state.device[regIdx] = value;  // 성공한 sub-index 만 device 상태 갱신
           ok++;
@@ -18417,11 +18734,9 @@ class ModbusDashboard {
     state.busy = false;
 
     this.showToast(
-      fail === 0
-        ? `💾 Alarm Write All 완료 (${ok}/16)`
-        : `💾 Alarm Write All — ${ok}개 성공, ${fail}개 실패`,
-      fail === 0 ? 'success' : 'warning'
-    );
+        fail === 0 ? `💾 Alarm Write All 완료 (${ok}/16)` :
+                     `💾 Alarm Write All — ${ok}개 성공, ${fail}개 실패`,
+        fail === 0 ? 'success' : 'warning');
     this.renderAlarmEnableTab(id);
   }
 
@@ -18433,12 +18748,16 @@ class ModbusDashboard {
     const isOnline = device.online || this.simulatorEnabled;
 
     const verRow = (label, addr, valueId, last = false) => `
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; ${last ? '' : 'border-bottom:1px solid #F2F4F6;'}">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 0; ${
+        last ? '' : 'border-bottom:1px solid #F2F4F6;'}">
         <div>
-          <div style="font-size:13px; color:#4E5968; font-weight:700; letter-spacing:-0.2px;">${label}</div>
-          <div style="font-size:11px; color:#C9CDD4; font-weight:500; margin-top:2px; font-family:'Consolas',monospace;">${addr}</div>
+          <div style="font-size:13px; color:#4E5968; font-weight:700; letter-spacing:-0.2px;">${
+        label}</div>
+          <div style="font-size:11px; color:#C9CDD4; font-weight:500; margin-top:2px; font-family:'Consolas',monospace;">${
+        addr}</div>
         </div>
-        <span id="${valueId}" style="font-size:12px; font-weight:700; font-family:'Consolas',monospace; color:#8B95A1; background:#F2F4F6; padding:4px 10px; border-radius:8px; white-space:nowrap;">—</span>
+        <span id="${
+        valueId}" style="font-size:12px; font-weight:700; font-family:'Consolas',monospace; color:#8B95A1; background:#F2F4F6; padding:4px 10px; border-radius:8px; white-space:nowrap;">—</span>
       </div>`;
 
     container.innerHTML = `
@@ -18447,14 +18766,23 @@ class ModbusDashboard {
 
           <!-- 헤더 -->
           <div style="display:flex; align-items:center; gap:16px; padding:24px; background:white; border-radius:20px; box-shadow:0 2px 12px rgba(0,0,0,0.06);">
-            <div style="width:50px; height:50px; border-radius:15px; background:${isOnline ? '#EEF3FF' : '#F2F4F6'}; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">🔌</div>
+            <div style="width:50px; height:50px; border-radius:15px; background:${
+        isOnline ?
+            '#EEF3FF' :
+            '#F2F4F6'}; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0;">🔌</div>
             <div style="flex:1; min-width:0;">
-              <div style="font-size:17px; font-weight:800; color:#191F28; letter-spacing:-0.4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${device.name}</div>
+              <div style="font-size:17px; font-weight:800; color:#191F28; letter-spacing:-0.4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${
+        device.name}</div>
               <div style="display:flex; align-items:center; gap:6px; margin-top:5px;">
-                <span style="width:6px; height:6px; border-radius:50%; background:${isOnline ? '#00C471' : '#C9CDD4'}; flex-shrink:0; ${isOnline ? 'box-shadow:0 0 0 3px rgba(0,196,113,0.18);' : ''}"></span>
-                <span style="font-size:12px; font-weight:700; color:${isOnline ? '#00C471' : '#8B95A1'};">${isOnline ? '온라인' : '오프라인'}</span>
+                <span style="width:6px; height:6px; border-radius:50%; background:${
+        isOnline ? '#00C471' : '#C9CDD4'}; flex-shrink:0; ${
+        isOnline ? 'box-shadow:0 0 0 3px rgba(0,196,113,0.18);' : ''}"></span>
+                <span style="font-size:12px; font-weight:700; color:${
+        isOnline ? '#00C471' :
+                   '#8B95A1'};">${isOnline ? '온라인' : '오프라인'}</span>
                 <span style="font-size:11px; color:#D1D6DB;">·</span>
-                <span style="font-size:12px; font-weight:600; color:#8B95A1;">${device.slaveId === 0 ? 'ID 미할당' : 'ID ' + device.slaveId}</span>
+                <span style="font-size:12px; font-weight:600; color:#8B95A1;">${
+        device.slaveId === 0 ? 'ID 미할당' : 'ID ' + device.slaveId}</span>
               </div>
             </div>
           </div>
@@ -18464,7 +18792,8 @@ class ModbusDashboard {
 
             <div style="display:flex; justify-content:space-between; align-items:center; padding:18px 0 4px 0;">
               <span style="font-size:11px; font-weight:700; color:#C9CDD4; letter-spacing:0.8px; text-transform:uppercase;">Device</span>
-              <button id="info-refresh-btn" onclick="window.dashboard.refreshDeviceInfo(${device.id})"
+              <button id="info-refresh-btn" onclick="window.dashboard.refreshDeviceInfo(${
+        device.id})"
                 style="display:flex; align-items:center; gap:5px; padding:5px 11px; background:#F2F4F6; border:none; border-radius:9px; font-size:12px; font-weight:700; color:#4E5968; cursor:pointer; letter-spacing:-0.1px;"
                 onmouseover="this.style.background='#E5E8EB'" onmouseout="this.style.background='#F2F4F6'">
                 <span id="info-refresh-icon" style="font-size:13px; line-height:1; display:inline-block;">↻</span> 읽기
@@ -18498,23 +18827,29 @@ class ModbusDashboard {
     if (icon) icon.style.animation = 'spin 0.8s linear infinite';
 
     const versionRegs = [
-      { id: 'info-main-boot', index: 0x27F0 },
-      { id: 'info-main-fw',   index: 0x27F1 },
-      { id: 'info-inv-boot',  index: 0x27F2 },
-      { id: 'info-inv-fw',    index: 0x27F3 },
+      {id: 'info-main-boot', index: 0x27F0},
+      {id: 'info-main-fw', index: 0x27F1},
+      {id: 'info-inv-boot', index: 0x27F2},
+      {id: 'info-inv-fw', index: 0x27F3},
     ];
 
-    for (const { id, index } of versionRegs) {
+    for (const {id, index} of versionRegs) {
       const el = document.getElementById(id);
-      if (el) { el.textContent = '…'; el.style.color = '#C9CDD4'; el.style.background = '#F2F4F6'; }
+      if (el) {
+        el.textContent = '…';
+        el.style.color = '#C9CDD4';
+        el.style.background = '#F2F4F6';
+      }
       try {
         const r = await this.readCANopenObject(device.slaveId, index, 0x00, 16);
         if (el) {
           if (r && !r.error && r.rawBytes) {
-            const ascii = r.rawBytes
-              .filter(b => b !== 0x00)
-              .map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : '.')
-              .join('');
+            const ascii =
+                r.rawBytes.filter(b => b !== 0x00)
+                    .map(
+                        b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) :
+                                                       '.')
+                    .join('');
             el.textContent = ascii || '—';
             el.style.color = '#3182F6';
             el.style.background = '#EEF3FF';
@@ -18525,15 +18860,24 @@ class ModbusDashboard {
           }
         }
       } catch {
-        if (el) { el.textContent = '실패'; el.style.color = '#F04452'; el.style.background = '#FFF2F3'; }
+        if (el) {
+          el.textContent = '실패';
+          el.style.color = '#F04452';
+          el.style.background = '#FFF2F3';
+        }
       }
     }
 
     // Serial Number (0x2424)
     const snEl = document.getElementById('info-sn');
-    if (snEl) { snEl.textContent = '…'; snEl.style.color = '#C9CDD4'; snEl.style.background = '#F2F4F6'; }
+    if (snEl) {
+      snEl.textContent = '…';
+      snEl.style.color = '#C9CDD4';
+      snEl.style.background = '#F2F4F6';
+    }
     try {
-      const snr = await this.readCANopenObject(device.slaveId, 0x2424, 0x00, 16);
+      const snr =
+          await this.readCANopenObject(device.slaveId, 0x2424, 0x00, 16);
       if (snEl) {
         if (snr && !snr.error && snr.rawBytes) {
           if (snr.rawBytes.every(b => b === 0xFF)) {
@@ -18541,10 +18885,13 @@ class ModbusDashboard {
             snEl.style.color = '#FF9500';
             snEl.style.background = '#FFF5E6';
           } else {
-            const sn = snr.rawBytes
-              .filter(b => b !== 0x00)
-              .map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : '.')
-              .join('').trim();
+            const sn =
+                snr.rawBytes.filter(b => b !== 0x00)
+                    .map(
+                        b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) :
+                                                       '.')
+                    .join('')
+                    .trim();
             snEl.textContent = sn || '—';
             snEl.style.color = '#3182F6';
             snEl.style.background = '#EEF3FF';
@@ -18556,7 +18903,11 @@ class ModbusDashboard {
         }
       }
     } catch {
-      if (snEl) { snEl.textContent = '실패'; snEl.style.color = '#F04452'; snEl.style.background = '#FFF2F3'; }
+      if (snEl) {
+        snEl.textContent = '실패';
+        snEl.style.color = '#F04452';
+        snEl.style.background = '#FFF2F3';
+      }
     }
 
     if (btn) btn.disabled = false;
@@ -18575,7 +18926,8 @@ class ModbusDashboard {
       this.activeConfigCategory = 'motor';
     // 개발자 모드에서만 노출되는 카테고리.
     // motorInfo: 유일한 항목인 '모터 타입'이 dev-only 라 탭 자체를 숨김.
-    const devOnlyCategories = new Set(['motorInfo', 'sensor', 'servoTuning', 'alarm']);
+    const devOnlyCategories = new Set(
+        ['motorInfo', 'sensor', 'servoTuning', 'alarm', 'productSetting']);
     const isDevMode = this.isDeveloperMode();
     // 비-dev 모드에서 dev-only 탭에 머물러 있으면 기본 탭으로 되돌림
     if (!isDevMode && devOnlyCategories.has(this.activeConfigCategory)) {
@@ -18589,11 +18941,12 @@ class ModbusDashboard {
       {id: 'communication', label: '통신 설정'},
       {id: 'servoTuning', label: '서보 튜닝'},
       {id: 'system', label: '시스템'},
-      {id: 'alarm', label: '🚨 알람'},
+      {id: 'productSetting', label: '제품설정'},
+      {id: 'alarm', label: '알람 설정'},
     ];
-    const categories =
-        isDevMode ? allCategories :
-                    allCategories.filter(c => !devOnlyCategories.has(c.id));
+    const categories = isDevMode ?
+        allCategories :
+        allCategories.filter(c => !devOnlyCategories.has(c.id));
     const activeCategory = this.activeConfigCategory ||
         (isDevMode ? 'motorInfo' : 'motor');  // 기본값
 
@@ -18608,21 +18961,33 @@ class ModbusDashboard {
                                   title="클릭하여 이름 편집"
                                   style="font-size: 17px; font-weight: 700; color: #191F28; cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: background 0.15s; letter-spacing: -0.02em;"
                                   onmouseover="this.style.background='#F2F4F8'"
-                                  onmouseout="this.style.background='transparent'">${device.name}</span>
-                            <span class="device-id-badge ${device.slaveId === 0 ? 'unassigned' : ''}" style="font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: ${device.slaveId === 0 ? '#FFF0F0' : '#EBF1FF'}; color: ${device.slaveId === 0 ? '#E53E3E' : '#0064FF'}; border: none;">
-                                ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
+                                  onmouseout="this.style.background='transparent'">${
+        device.name}</span>
+                            <span class="device-id-badge ${
+        device.slaveId === 0 ?
+            'unassigned' :
+            ''}" style="font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; background: ${
+        device.slaveId === 0 ? '#FFF0F0' : '#EBF1FF'}; color: ${
+        device.slaveId === 0 ? '#E53E3E' : '#0064FF'}; border: none;">
+                                ${
+        device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
                             </span>
                         </div>
-                        <span class="device-serial" data-serial-for="${device.id}" style="font-size: 12px; color: #8B95A1; letter-spacing: 0;">${device.serialNumber ? 'S/N: ' + device.serialNumber : ''}</span>
+                        <span class="device-serial" data-serial-for="${
+        device
+            .id}" style="font-size: 12px; color: #8B95A1; letter-spacing: 0;">${
+        device.serialNumber ? 'S/N: ' + device.serialNumber : ''}</span>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <button onclick="window.dashboard.refreshDevice(${device.id})"
+                        <button onclick="window.dashboard.refreshDevice(${
+        device.id})"
                             style="padding: 8px 14px; border: 1px solid #E8EAED; border-radius: 8px; background: white; color: #4E5968; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s; letter-spacing: -0.01em;"
                             onmouseover="this.style.background='#F4F6F9';this.style.borderColor='#D1D9E0'"
                             onmouseout="this.style.background='white';this.style.borderColor='#E8EAED'">
                             <span style="font-size: 14px;">↻</span> Refresh
                         </button>
-                        <button onclick="window.dashboard.deleteDevice(${device.id})"
+                        <button onclick="window.dashboard.deleteDevice(${
+        device.id})"
                             style="padding: 8px 14px; border: 1px solid #FFD6D6; border-radius: 8px; background: white; color: #E53E3E; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s; letter-spacing: -0.01em;"
                             onmouseover="this.style.background='#FFF5F5';this.style.borderColor='#FFA0A0'"
                             onmouseout="this.style.background='white';this.style.borderColor='#FFD6D6'">
@@ -18635,13 +19000,20 @@ class ModbusDashboard {
                 <div style="display: flex; gap: 16px; flex: 1; min-height: 0; align-items: stretch;">
                     <!-- Category Sidebar -->
                     <div style="width: 136px; flex-shrink: 0; background: #F9FAFB; border-radius: 12px; padding: 8px 4px; display: flex; flex-direction: column; gap: 2px;">
-                        ${categories.map(cat => `
-                            <div class="config-category-item ${activeCategory === cat.id ? 'config-category-active' : ''}"
+                        ${
+        categories
+            .map(
+                cat => `
+                            <div class="config-category-item ${
+                    activeCategory === cat.id ? 'config-category-active' : ''}"
                                  data-category="${cat.id}"
-                                 onclick="window.dashboard.switchConfigCategory('${cat.id}')">
-                                ${cat.label}
+                                 onclick="window.dashboard.switchConfigCategory('${
+                    cat.id}')">
+                                ${
+                    devOnlyCategories.has(cat.id) ? '🔧 ' : ''}${cat.label}
                             </div>
-                        `).join('')}
+                        `)
+            .join('')}
                     </div>
 
                     <!-- Category Content -->
@@ -18681,30 +19053,41 @@ class ModbusDashboard {
         'width: 180px; padding: 7px 11px; border: 1px solid #E8EAED; border-radius: 8px; font-size: 13px; background: white; color: #191F28; outline: none; transition: border-color 0.15s; font-family: inherit;';
 
     const row = (key, label, desc, inputHTML) => `
-            <div class="config-item" data-config="${key}" onclick="window.dashboard.selectConfigItem(this, event)"
+            <div class="config-item" data-config="${
+        key}" onclick="window.dashboard.selectConfigItem(this, event)"
                 style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid #F2F4F8; position: relative; cursor: pointer; transition: background 0.15s; margin: 0;">
                 <div class="config-item-icon" style="width: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 10px; opacity: 0; transition: opacity 0.15s; pointer-events: none;">
-                    <span onclick="window.dashboard.showConfigMenu(event, '${key}', '${id}')" style="cursor: pointer; font-size: 15px; color: #8B95A1;">⚙</span>
+                    <span onclick="window.dashboard.showConfigMenu(event, '${
+        key}', '${
+        id}')" style="cursor: pointer; font-size: 15px; color: #8B95A1;">⚙</span>
                 </div>
                 <div style="flex: 1; padding-right: 16px; min-width: 0;">
-                    <div style="font-size: 14px; font-weight: 500; color: #191F28; margin-bottom: 2px; letter-spacing: -0.01em;">${label}</div>
-                    <div style="font-size: 12px; color: #8B95A1; letter-spacing: 0;">${desc}</div>
+                    <div style="font-size: 14px; font-weight: 500; color: #191F28; margin-bottom: 2px; letter-spacing: -0.01em;">${
+        label}</div>
+                    <div style="font-size: 12px; color: #8B95A1; letter-spacing: 0;">${
+        desc}</div>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                     ${inputHTML}
-                    <span id="${key}_${id}_status" style="width: 20px; font-size: 13px; color: #8B95A1; text-align: center; flex-shrink: 0;"></span>
+                    <span id="${key}_${
+        id}_status" style="width: 20px; font-size: 13px; color: #8B95A1; text-align: center; flex-shrink: 0;"></span>
                 </div>
             </div>`;
 
     const actionRow = (key, label, desc, btnHTML) => `
-            <div class="config-item" data-config="${key}" onclick="window.dashboard.selectConfigItem(this, event)"
+            <div class="config-item" data-config="${
+        key}" onclick="window.dashboard.selectConfigItem(this, event)"
                 style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid #F2F4F8; position: relative; cursor: pointer; transition: background 0.15s; margin: 0;">
                 <div class="config-item-icon" style="width: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; margin-right: 10px; opacity: 0; transition: opacity 0.15s; pointer-events: none;">
-                    <span onclick="window.dashboard.showConfigMenu(event, '${key}', '${id}')" style="cursor: pointer; font-size: 15px; color: #8B95A1;">⚙</span>
+                    <span onclick="window.dashboard.showConfigMenu(event, '${
+        key}', '${
+        id}')" style="cursor: pointer; font-size: 15px; color: #8B95A1;">⚙</span>
                 </div>
                 <div style="flex: 1; padding-right: 16px; min-width: 0;">
-                    <div style="font-size: 14px; font-weight: 500; color: #191F28; margin-bottom: 2px; letter-spacing: -0.01em;">${label}</div>
-                    <div style="font-size: 12px; color: #8B95A1; letter-spacing: 0;">${desc}</div>
+                    <div style="font-size: 14px; font-weight: 500; color: #191F28; margin-bottom: 2px; letter-spacing: -0.01em;">${
+        label}</div>
+                    <div style="font-size: 12px; color: #8B95A1; letter-spacing: 0;">${
+        desc}</div>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                     ${btnHTML}
@@ -18715,7 +19098,8 @@ class ModbusDashboard {
     switch (category) {
       case 'motorInfo':
         // '모터 타입' 은 dev-only — 비-dev 모드에서는 빈 카드 반환
-        if (!this.isDeveloperMode()) return `<div style="margin-top: 0;"></div>`;
+        if (!this.isDeveloperMode())
+          return `<div style="margin-top: 0;"></div>`;
         return `<div style="margin-top: 0;">
                     ${
             row('motorType', '모터 타입',
@@ -19173,9 +19557,47 @@ class ModbusDashboard {
                     id})">Reset</button>`)}
                 </div>`;
 
+      case 'productSetting':
+        // 제품설정 — 개발자 모드 전용 (FC 0x2B SDO)
+        // 하드웨어 리비전은 전압 클래스에 따라 선택 가능 항목이 달라짐:
+        //   200V → Rev.A 만, 400V → Rev.B / Rev.C
+        return `<div style="margin-top: 0;">
+                    ${
+            row('productVoltageClass', '제품 전압 클래스',
+                '제품 정격 전압 클래스 (FC 0x2B, 0x270A)',
+                `
+                        <select id="productVoltageClass_${id}" style="${iStyle}"
+                            onchange="window.dashboard._refreshHardwareRevisionOptions(${
+                    id}, true); window.dashboard.debouncedApply('productVoltageClass', ${
+                    id})"
+                            onclick="event.stopPropagation()">
+                            <option value="0" ${
+                    device.productVoltageClass === 0 ?
+                        'selected' :
+                        ''}>200V</option>
+                            <option value="1" ${
+                    device.productVoltageClass === 1 ?
+                        'selected' :
+                        ''}>400V</option>
+                        </select>`)}
+                    ${
+            row('hardwareRevision', '하드웨어 리비전',
+                '제품 하드웨어 리비전 (FC 0x2B, 0x2709)',
+                `
+                        <select id="hardwareRevision_${id}" style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('hardwareRevision', ${
+                    id})"
+                            onclick="event.stopPropagation()">
+                            ${
+                    this._hardwareRevisionOptionsHTML(
+                        device.productVoltageClass, device.hardwareRevision)}
+                        </select>`)}
+                </div>`;
+
       case 'alarm':
-        // Alarm 패널은 renderAlarmEnableTab() 가 별도로 채움 (switchConfigCategory에서 호출).
-        // height 미지정 → 콘텐츠 크기로 늘어남 → 부모(#configContent) overflow-y:auto 가 스크롤 처리
+        // Alarm 패널은 renderAlarmEnableTab() 가 별도로 채움
+        // (switchConfigCategory에서 호출). height 미지정 → 콘텐츠 크기로 늘어남
+        // → 부모(#configContent) overflow-y:auto 가 스크롤 처리
         return '<div id="deviceSetupAlarm"></div>';
 
       default:
@@ -19664,6 +20086,17 @@ class ModbusDashboard {
           case 'driveCtrlInput2':
             await this.applyGenericLSM(
                 deviceId, 'driveCtrlInput2', 0x2120, 'driveCtrlInput2');
+            success = true;
+            break;
+          // ── 제품설정 (LSM) ───────────────────────────────────
+          case 'hardwareRevision':
+            await this.applyGenericLSM(
+                deviceId, 'hardwareRevision', 0x2709, 'hardwareRevision');
+            success = true;
+            break;
+          case 'productVoltageClass':
+            await this.applyGenericLSM(
+                deviceId, 'productVoltageClass', 0x270A, 'productVoltageClass');
             success = true;
             break;
         }
