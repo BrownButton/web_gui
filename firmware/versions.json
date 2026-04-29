@@ -2,16 +2,16 @@
   "versions": [
     {
       "version": "v1.0.0",
-      "date": "2026-03-07",
-      "size": 114,
-      "filename": "test1.bin",
+      "date": "2026-04-29",
+      "size": 112,
+      "filename": "INV_STM32G491CCT3.bin",
       "changelog": "초기 릴리즈"
     },
     {
-      "version": "v1.0.1",
-      "date": "2026-03-09",
-      "size": 123,
-      "filename": "test2.bin",
+      "version": "v1.0.0",
+      "date": "2026-04-29",
+      "size": 57,
+      "filename": "ECFAN-Main.bin",
       "changelog": "초기 릴리즈"
     }
   ]
