@@ -1,17 +1,17 @@
 {
   "versions": [
     {
-      "version": "v1.0.0",
+      "version": "Inverter v1.0.0",
       "date": "2026-04-29",
       "size": 112,
-      "filename": "INV_STM32G491CCT3.bin",
+      "filename": "Inverter v1.0.0.bin",
       "changelog": "초기 릴리즈"
     },
     {
-      "version": "v1.0.0",
+      "version": "Main v1.0.0",
       "date": "2026-04-29",
       "size": 57,
-      "filename": "ECFAN-Main.bin",
+      "filename": "Main v1.0.0.bin",
       "changelog": "초기 릴리즈"
     }
   ]

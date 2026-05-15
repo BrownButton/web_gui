@@ -385,7 +385,6 @@
                                 <div class="firmware-container">
                                     <div class="firmware-header">
                                         <h2>Firmware Download</h2>
-                                        <p class="firmware-subtitle">Modbus Function Code 0x66을 사용하여 장치에 펌웨어를 업로드합니다</p>
                                     </div>
 
                                     <!-- Firmware Source Selector -->
@@ -437,7 +436,6 @@
                                         <div class="fw-online-disabled" id="fwOnlineDisabled" style="display: none;">
                                             <div class="fw-online-disabled-icon">🔒</div>
                                             <p class="fw-online-disabled-msg">로컬 환경에서는 온라인 펌웨어 기능을 사용할 수 없습니다</p>
-                                            <p class="fw-online-disabled-sub">GitHub Pages 배포 환경에서 이 기능을 사용하세요.</p>
                                         </div>
 
                                         <!-- 온라인 콘텐츠 (http/https 시 표시) -->
@@ -503,6 +501,14 @@
                                     <div class="firmware-settings-section">
                                         <h3>프로토콜 설정</h3>
                                         <div class="firmware-settings-grid">
+                                            <div class="form-group">
+                                                <label for="fwProtocol">프로토콜</label>
+                                                <select id="fwProtocol">
+                                                    <option value="auto" selected>자동 (0x23 우선, 실패 시 0x66)</option>
+                                                    <option value="0x23">0x23 (Fast Download)</option>
+                                                    <option value="0x66">0x66 (Legacy)</option>
+                                                </select>
+                                            </div>
                                             <div class="form-group">
                                                 <label for="fwPacketSize">패킷 크기 (bytes)</label>
                                                 <select id="fwPacketSize">

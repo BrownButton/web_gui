@@ -13644,6 +13644,28 @@ class ModbusDashboard {
       });
     }
 
+    // Protocol selector: 0x66은 패킷 크기 60바이트 고정
+    const protocolSelect = document.getElementById('fwProtocol');
+    const packetSizeSelect = document.getElementById('fwPacketSize');
+    if (protocolSelect && packetSizeSelect) {
+      const syncPacketSize = () => {
+        if (protocolSelect.value === '0x66') {
+          // 0x66 legacy 프로토콜은 60바이트 패킷 고정
+          this._fwPrevPacketSize = packetSizeSelect.value;
+          packetSizeSelect.value = '60';
+          packetSizeSelect.disabled = true;
+        } else {
+          packetSizeSelect.disabled = false;
+          if (this._fwPrevPacketSize) {
+            packetSizeSelect.value = this._fwPrevPacketSize;
+            this._fwPrevPacketSize = null;
+          }
+        }
+      };
+      protocolSelect.addEventListener('change', syncPacketSize);
+      syncPacketSize();  // 초기 상태 반영
+    }
+
     // Initialize firmware state - online source additions
     this.firmwareSource = 'local';
     this._fwVersionsLoaded = false;
@@ -14104,6 +14126,13 @@ class ModbusDashboard {
         Math.max(4, Math.floor(packetSize / 4) * 4);  // 4의 배수로 라운드
     const responseTimeout =
         parseInt(document.getElementById('fwResponseTimeout')?.value) || 1000;
+    // 프로토콜 선택: 'auto'(0x23 우선, 실패 시 0x66) | '0x23'(고정) | '0x66'(고정)
+    const fwProtocol =
+        document.getElementById('fwProtocol')?.value || 'auto';
+    // 0x66 legacy 프로토콜은 패킷 크기 60바이트 고정
+    if (fwProtocol === '0x66') {
+      packetSize = 60;
+    }
 
     // UI elements
     const progressSection = document.getElementById('firmwareProgressSection');
@@ -14146,29 +14175,45 @@ class ModbusDashboard {
     const totalSize = this.firmwareData.length;
 
     try {
-      // ===== Try FC 0x23 (Fast Firmware Download) first =====
-      this.addFirmwareLog(
-          `[0x23] Fast Firmware Download 시도 - Slave ID: ${slaveId}`);
+      if (fwProtocol === '0x66') {
+        // 사용자가 0x66 고정 선택 → 0x23 시도 없이 바로 legacy 프로토콜로 진행
+        this.addFirmwareLog(
+            '=== FC 0x66 (legacy) 프로토콜로 다운로드 (사용자 선택) ===',
+            'warning');
+      } else {
+        // ===== Try FC 0x23 (Fast Firmware Download) first =====
+        this.addFirmwareLog(
+            `[0x23] Fast Firmware Download 시도 - Slave ID: ${slaveId}`);
 
-      const fastResult = await this._runFastFirmwareDownload(
-          slaveId, packetSize, responseTimeout,
-          {progressBar, progressPercent, progressStatus});
+        const fastResult = await this._runFastFirmwareDownload(
+            slaveId, packetSize, responseTimeout,
+            {progressBar, progressPercent, progressStatus});
 
-      if (fastResult.ok) {
-        this.addFirmwareLog('펌웨어 다운로드 성공! (FC 0x23)', 'success');
-        this.showToast('펌웨어 다운로드가 완료되었습니다 (Fast)', 'success');
-        return;  // finally 블록은 그대로 실행됨
+        if (fastResult.ok) {
+          this.addFirmwareLog('펌웨어 다운로드 성공! (FC 0x23)', 'success');
+          this.showToast('펌웨어 다운로드가 완료되었습니다 (Fast)', 'success');
+          return;  // finally 블록은 그대로 실행됨
+        }
+
+        if (fwProtocol === '0x23') {
+          // 사용자가 0x23 고정 선택 → 실패해도 0x66로 fallback하지 않음
+          throw new Error(
+              fastResult.error ||
+              'Fast firmware download failed (0x23 고정 모드)');
+        }
+
+        if (!fastResult.fallback) {
+          // 0x23 진행 중 실패 — 0x66로 되돌리지 않고 사용자에게 보고
+          throw new Error(fastResult.error || 'Fast firmware download failed');
+        }
+
+        // ===== Fallback to FC 0x66 (legacy) =====
+        this.addFirmwareLog(
+            '=== FC 0x66 (legacy) 프로토콜로 fallback ===', 'warning');
+        // 0x66 legacy 프로토콜은 패킷 크기 60바이트 고정
+        packetSize = 60;
+        this.resetFirmwareSteps();
       }
-
-      if (!fastResult.fallback) {
-        // 0x23 진행 중 실패 — 0x66로 되돌리지 않고 사용자에게 보고
-        throw new Error(fastResult.error || 'Fast firmware download failed');
-      }
-
-      // ===== Fallback to FC 0x66 (legacy) =====
-      this.addFirmwareLog(
-          '=== FC 0x66 (legacy) 프로토콜로 fallback ===', 'warning');
-      this.resetFirmwareSteps();
 
       // ===== Step 1: Initialize (OpCode 0x90) =====
       this.setFirmwareStepStatus('0x90', 'active');
@@ -14491,12 +14536,14 @@ class ModbusDashboard {
     }
 
     if (!initResult.success) {
-      this.setFirmwareStepStatus('0x90', 'error');
-      return {
-        ok: false,
-        fallback: false,
-        error: `Init 실패: ${initResult.error || 'unknown'}`
-      };
+      // Init 단계 실패 = 아직 flash에 아무것도 안 쓴 상태 → 0x66 fallback 안전.
+      // 디바이스가 0x23 미구현을 0x23/0x90 응답 내 비정상 status로 알리는
+      // 경우(표준 0xA3 exception이 아닌 경우)를 여기서 흡수한다.
+      this.addFirmwareLog(
+          `[0x23] Init 실패 (${initResult.error || 'unknown'}) → 0x66 fallback`,
+          'warning');
+      this.setFirmwareStepStatus('0x90', '');
+      return {ok: false, fallback: true};
     }
 
     const {protocolVersion, status, lastOffset} = initResult.data;
