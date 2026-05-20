@@ -10448,6 +10448,41 @@ class ModbusDashboard {
   }
 
   /**
+   * Perform Factory Reset (FC2B: Object 0x1011, Sub-Index 1, data "load")
+   */
+  async performFactoryReset(deviceId) {
+    const device = this.devices.find(d => d.id === deviceId);
+    if (!device) return;
+
+    if (device.slaveId === 0) {
+      this.showToast('Slave ID가 설정되지 않은 장치입니다', 'warning');
+      return;
+    }
+
+    const confirmed = await this.showConfirm(
+        `${device.name}을(를) 공장 초기화 하시겠습니까?\n모든 설정이 공장 초기값으로 되돌아갑니다.`,
+        '🏭 공장 초기화', '⚠️');
+
+    if (!confirmed) return;
+
+    try {
+      // FC2B Write: Object 0x1011, Sub-Index 0x01, data = "load" (0x6C6F6164)
+      await this.writeCANopenObject(device.slaveId, 0x1011, 0x01, [0x6C6F, 0x6164]);
+      this.showToast(`${device.name}: 공장 초기화가 완료되었습니다`, 'success');
+
+      device.online = false;
+      this.renderDeviceGrid();
+
+      setTimeout(() => {
+        this.showToast(`${device.name}: 재연결 시도 중...`, 'info');
+        this.readDeviceStatus(deviceId);
+      }, 3000);
+    } catch (error) {
+      this.showToast(`${device.name}: 공장 초기화에 실패했습니다`, 'error');
+    }
+  }
+
+  /**
    * Read device status
    */
   async readDeviceStatus(deviceId) {
@@ -16352,6 +16387,16 @@ class ModbusDashboard {
     await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x1000);
   }
 
+  async setFctMode(mode) {
+    if (!this.writer) {
+      this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
+      return;
+    }
+    const slaveId = this._getMiniChartSlaveId();
+    await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x3000);
+    await this.writeCANopenObject(slaveId, 0x2701, 0x00, mode);
+  }
+
   // ─────────────────────────────────────────────────────────
   //  HW Overview — 개별 카드 테스트 실행
   // ─────────────────────────────────────────────────────────
@@ -19602,6 +19647,14 @@ class ModbusDashboard {
                         <button class="btn btn-warning btn-sm"
                             onclick="event.stopPropagation(); window.dashboard.performSoftwareReset(${
                     id})">Reset</button>`)}
+                    ${
+            actionRow(
+                'factoryReset', '공장 초기화',
+                '모든 설정을 공장 초기값으로 되돌립니다 (FC2B, 0x1011:01 "load")',
+                `
+                        <button class="btn btn-danger btn-sm"
+                            onclick="event.stopPropagation(); window.dashboard.performFactoryReset(${
+                    id})">Factory Reset</button>`)}
                 </div>`;
 
       case 'productSetting':

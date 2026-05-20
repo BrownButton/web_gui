@@ -1,17 +1,31 @@
 {
   "versions": [
     {
+      "version": "Inverter v1.0.3",
+      "date": "2026-05-19",
+      "size": 112,
+      "filename": "ECFAN Inverter v1.0.3 App.bin",
+      "changelog": "[신규 기능] 모터 종류별 Hall 센서 알람 레벨 독립 설정 기능 추가\n- Sirocco 팬 / Axial 팬 각각에 대해 Hall 센서 알람 레벨을 개별 설정하는 분기 로직 추가\n- 모터 형상에 따른 샤프트 이동 방향 차이로 발생하던 오알람 문제 해소"
+    },
+    {
+      "version": "Main v1.0.3",
+      "date": "2026-05-19",
+      "size": 57,
+      "filename": "ECFAN Main v1.0.3 App.bin",
+      "changelog": "[버그 수정] PWM 입력 극값 예외처리 범위 확대\n- PWM 100% 판정 기준: 99% 이상 → 95% 이상, 0% 판정 기준: 1% 미만 → 5% 미만으로 변경\n- MCU PWM 입력 포트의 노이즈 필터 영향으로 극값(0%, 100%) 부근에서 오인식이 발생하던 문제 개선\n\n[신규 기능] Factory Reset 기능 추가\n- EEPROM에 저장된 파라미터를 공장 출하 초기값으로 복원하는 기능 구현\n\n[신규 기능] FCT 검사용 테스트 Procedure 추가\n- Analog Voltage 입력 / Analog Current 입력 / PWM Input / FG 항목별 독립 검사 Procedure 추가\n\n[설정 변경] Board Revision 기본값 변경 (Rev.B → Rev.C)\n- 최신 양산 기준 PCB Rev.C에 맞춰 Board Revision 기본값 업데이트"
+    },
+    {
       "version": "Inverter v1.0.0",
       "date": "2026-04-29",
       "size": 112,
-      "filename": "Inverter v1.0.0.bin",
+      "filename": "ECFAN Inverter v1.0.0 App.bin",
       "changelog": "초기 릴리즈"
     },
     {
       "version": "Main v1.0.0",
       "date": "2026-04-29",
       "size": 57,
-      "filename": "Main v1.0.0.bin",
+      "filename": "ECFAN Main v1.0.0 App.bin",
       "changelog": "초기 릴리즈"
     }
   ]

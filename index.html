@@ -1808,6 +1808,21 @@
                                                 </div>
                                             </div>
 
+                                            <!-- Row 6: FCT Input Select -->
+                                            <div style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;">
+                                                <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                    <span style="font-size: 11px; font-weight: 700; background: #F0F4FF; color: #6366F1; padding: 3px 9px; border-radius: 20px;">FCT</span>
+                                                    <span style="font-size: 14px; font-weight: 600; color: #191F28;">Frequency Generator Input Select</span>
+                                                    <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">0x2700 / 0x2701</span>
+                                                </div>
+                                                <div style="padding: 16px 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                                    <button style="font-size: 13px; font-weight: 600; padding: 8px 20px; background: #F04452; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="app.setFctMode(0x0000)">■ Stop</button>
+                                                    <button style="font-size: 13px; font-weight: 600; padding: 8px 20px; background: #3182F6; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="app.setFctMode(0x0001)">Analog V Input</button>
+                                                    <button style="font-size: 13px; font-weight: 600; padding: 8px 20px; background: #3182F6; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="app.setFctMode(0x0002)">Analog I Input</button>
+                                                    <button style="font-size: 13px; font-weight: 600; padding: 8px 20px; background: #3182F6; color: white; border: none; border-radius: 8px; cursor: pointer;" onclick="app.setFctMode(0x0003)">PWM Input</button>
+                                                </div>
+                                            </div>
+
                                         </div><!-- /inner flex column -->
                                         </div><!-- /outer scroll container -->
                                     </div><!-- /manufactureHwOverview -->
