@@ -13822,10 +13822,17 @@ class ModbusDashboard {
     const tbody = document.getElementById('fwVersionTableBody');
     if (!tbody) return;
 
+    const latestByType = {};
+    versions.forEach((v, idx) => {
+      const type = v.version.split(' ')[0];
+      if (!(type in latestByType)) latestByType[type] = idx;
+    });
+
     tbody.innerHTML =
         versions
             .map((v, idx) => {
-              const isLatest = idx === 0;
+              const type = v.version.split(' ')[0];
+              const isLatest = latestByType[type] === idx;
               const latestBadge = isLatest ?
                   '<span class="fw-version-badge-latest">최신</span>' :
                   '';
