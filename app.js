@@ -2107,8 +2107,10 @@ class ModbusDashboard {
         3;  // Number of consecutive failures before marking offline
     this.paramPollingDelay = 20;  // ms between monitoring parameters
     this.backgroundPollingEnabled =
-        false;  // Use Web Worker timer to avoid browser throttling
+        true;  // Use Web Worker timer to avoid browser throttling
     this.pollingWorker = null;  // Web Worker for background polling
+    this._noThrottleAudioCtx =
+        null;  // Silent AudioContext to prevent browser timer throttling
 
     // Offset Calibration state
     this.offsetCalibState = {
@@ -3900,7 +3902,7 @@ class ModbusDashboard {
 
         this.addMonitorEntry(
             'received', `자동 재연결 성공 (시도 ${attempt}회)`);
-        this.showToast('버스 충돌 후 자동 재연결 성공', 'success');
+        // this.showToast('버스 충돌 후 자동 재연결 성공', 'success');
 
         // 대시보드 페이지라면 폴링 재개
         if (this.currentPage === 'dashboard' &&
@@ -10252,8 +10254,8 @@ class ModbusDashboard {
   /**
    * Dashboard 카드의 quick-btns 5개 HTML 생성.
    * - 양 끝 (0, max) 은 항상 자동 계산
-   * - 가운데 3개 (25/50/75% 기본) 는 device.quickBtnsRpm / quickBtnsPct 에 저장된
-   *   override 가 있으면 우선 사용. data-mid-idx 0/1/2 로 우클릭 식별.
+   * - 가운데 3개 (25/50/75% 기본) 는 device.quickBtnsRpm / quickBtnsPct 에
+   * 저장된 override 가 있으면 우선 사용. data-mid-idx 0/1/2 로 우클릭 식별.
    */
   _quickBtnsHTML(device) {
     const isRpm = device.operationMode === 0;
@@ -10270,15 +10272,16 @@ class ModbusDashboard {
     const cap = isRpm ? max : 100;
     const capLabel = isRpm ? `${max}` : `100%`;
     return `
-                    <button class="quick-btn" data-value="0">0${suffix}</button>
+                    <button class="quick-btn" data-value="0">0${
+        suffix}</button>
                     <button class="quick-btn" data-mid-idx="0" data-value="${
         mid[0]}" title="우클릭하여 값 변경">${mid[0]}${suffix}</button>
                     <button class="quick-btn" data-mid-idx="1" data-value="${
         mid[1]}" title="우클릭하여 값 변경">${mid[1]}${suffix}</button>
                     <button class="quick-btn" data-mid-idx="2" data-value="${
         mid[2]}" title="우클릭하여 값 변경">${mid[2]}${suffix}</button>
-                    <button class="quick-btn" data-value="${
-        cap}">${capLabel}</button>`;
+                    <button class="quick-btn" data-value="${cap}">${
+        capLabel}</button>`;
   }
 
   /**
@@ -10300,8 +10303,7 @@ class ModbusDashboard {
     const cur = (overrides && overrides[midIdx] != null) ? overrides[midIdx] :
                                                            defaults[midIdx];
 
-    const input =
-        prompt(`퀵 버튼 값 (${unit}, 0–${max})`, String(cur));
+    const input = prompt(`퀵 버튼 값 (${unit}, 0–${max})`, String(cur));
     if (input == null) return;  // 취소
     const val = parseInt(input.trim(), 10);
     if (isNaN(val) || val < 0 || val > max) {
@@ -10318,8 +10320,8 @@ class ModbusDashboard {
     this.saveDevices();
 
     // 카드의 quick-btns 영역만 다시 그리고 click/contextmenu 리스너 재바인딩.
-    const card = document.querySelector(`.device-card[data-device-id="${
-        deviceId}"]`);
+    const card =
+        document.querySelector(`.device-card[data-device-id="${deviceId}"]`);
     if (!card) return;
     const wrap = card.querySelector('.device-quick-btns');
     if (!wrap) return;
@@ -10460,14 +10462,17 @@ class ModbusDashboard {
     }
 
     const confirmed = await this.showConfirm(
-        `${device.name}을(를) 공장 초기화 하시겠습니까?\n모든 설정이 공장 초기값으로 되돌아갑니다.`,
+        `${
+            device
+                .name}을(를) 공장 초기화 하시겠습니까?\n모든 설정이 공장 초기값으로 되돌아갑니다.`,
         '🏭 공장 초기화', '⚠️');
 
     if (!confirmed) return;
 
     try {
       // FC2B Write: Object 0x1011, Sub-Index 0x01, data = "load" (0x6C6F6164)
-      await this.writeCANopenObject(device.slaveId, 0x1011, 0x01, [0x6C6F, 0x6164]);
+      await this.writeCANopenObject(
+          device.slaveId, 0x1011, 0x01, [0x6C6F, 0x6164]);
       this.showToast(`${device.name}: 공장 초기화가 완료되었습니다`, 'success');
 
       device.online = false;
@@ -10766,6 +10771,9 @@ class ModbusDashboard {
     this.currentPollingIndex = 0;
     this.isPolling = false;
 
+    // Prevent browser from throttling timers when tab goes to background
+    this._startNoThrottleAudio();
+
     // Create Web Worker timer if background polling is enabled
     if (this.backgroundPollingEnabled) {
       this.createPollingWorker();
@@ -10810,6 +10818,7 @@ class ModbusDashboard {
     }
 
     this.destroyPollingWorker();
+    this._stopNoThrottleAudio();
     this.updateLiveWatchToggleBtn();
   }
 
@@ -10859,6 +10868,44 @@ class ModbusDashboard {
     this.showToast(
         `${device.name} Live Watch ${state}`,
         device.liveWatch !== false ? 'success' : 'error');
+  }
+
+  /**
+   * Start a nearly-silent AudioContext to prevent Chrome from throttling
+   * setTimeout/setInterval when the tab is hidden or minimized.
+   * Chrome does not throttle tabs with active audio output.
+   */
+  _startNoThrottleAudio() {
+    if (this._noThrottleAudioCtx) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value =
+          0.00001;  // inaudible but non-zero keeps Chrome from skipping
+      osc.frequency.value = 20;  // sub-bass, inaudible
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      this._noThrottleAudioCtx = {ctx, osc, gain};
+    } catch (e) {
+      // AudioContext blocked (e.g. no user gesture yet) — silently ignore
+    }
+  }
+
+  _stopNoThrottleAudio() {
+    if (!this._noThrottleAudioCtx) return;
+    // Only stop when neither polling nor any chart/trigger stream is active
+    if (this.autoPollingTimer || this.chartRunning || this.triggerRunning ||
+        Object.values(this.miniChartRunning || {}).some(v => v)) {
+      return;
+    }
+    try {
+      this._noThrottleAudioCtx.osc.stop();
+      this._noThrottleAudioCtx.ctx.close();
+    } catch (e) {
+    }
+    this._noThrottleAudioCtx = null;
   }
 
   /**
@@ -11949,6 +11996,10 @@ class ModbusDashboard {
       // FFT
       {name: 'FFT Input', chNum: 0x36, group: 'FFT'},
       {name: 'FFT Output', chNum: 0x37, group: 'FFT'},
+      // Electrical
+      {name: 'Id Current', chNum: 0x38, group: 'Electrical'},
+      {name: 'Iq Current', chNum: 0x39, group: 'Electrical'},
+      {name: 'Imag Current', chNum: 0x3A, group: 'Electrical'},
       // Digital Input
       {name: 'POT', chNum: 0x64, group: 'Digital Input'},
       {name: 'NOT', chNum: 0x65, group: 'Digital Input'},
@@ -13797,6 +13848,22 @@ class ModbusDashboard {
         throw new Error('버전 목록이 비어있습니다');
       }
 
+      // 파일별 HEAD 요청으로 실제 크기 취득 (병렬)
+      const uniqueFiles = [...new Set(json.versions.map(v => v.filename))];
+      const sizeMap = {};
+      await Promise.all(uniqueFiles.map(async filename => {
+        try {
+          const hr = await fetch(
+              `./firmware/${filename}`, {method: 'HEAD', cache: 'no-cache'});
+          const cl = hr.headers.get('Content-Length');
+          if (cl) sizeMap[filename] = parseInt(cl, 10);
+        } catch (_) {
+        }
+      }));
+      json.versions.forEach(v => {
+        if (sizeMap[v.filename] !== undefined) v.size = sizeMap[v.filename];
+      });
+
       this._fwVersionsLoaded = true;
       this._fwVersionList = json.versions;
       this._renderVersionTable(json.versions);
@@ -13836,7 +13903,7 @@ class ModbusDashboard {
               const latestBadge = isLatest ?
                   '<span class="fw-version-badge-latest">최신</span>' :
                   '';
-              const sizeStr = v.size > 0 ? this.formatFileSize(v.size) : '-';
+              const sizeStr = v.size > 0 ? v.size.toLocaleString() + ' B' : '-';
               const changelog = v.changelog || '변경사항 없음';
 
               return `
@@ -13930,7 +13997,7 @@ class ModbusDashboard {
     if (selectedName) selectedName.textContent = version.filename;
     if (selectedSize)
       selectedSize.textContent =
-          version.size > 0 ? this.formatFileSize(version.size) : '-';
+          version.size > 0 ? version.size.toLocaleString() + ' B' : '-';
     if (dlStatus) dlStatus.textContent = '';
     if (fetchProgress) fetchProgress.style.display = 'flex';
     if (fetchFill) fetchFill.style.width = '0%';
@@ -14168,9 +14235,9 @@ class ModbusDashboard {
         Math.max(4, Math.floor(packetSize / 4) * 4);  // 4의 배수로 라운드
     const responseTimeout =
         parseInt(document.getElementById('fwResponseTimeout')?.value) || 1000;
-    // 프로토콜 선택: 'auto'(0x23 우선, 실패 시 0x66) | '0x23'(고정) | '0x66'(고정)
-    const fwProtocol =
-        document.getElementById('fwProtocol')?.value || 'auto';
+    // 프로토콜 선택: 'auto'(0x23 우선, 실패 시 0x66) | '0x23'(고정) |
+    // '0x66'(고정)
+    const fwProtocol = document.getElementById('fwProtocol')?.value || 'auto';
     // 0x66 legacy 프로토콜은 패킷 크기 60바이트 고정
     if (fwProtocol === '0x66') {
       packetSize = 60;
@@ -14908,7 +14975,7 @@ class ModbusDashboard {
     if (progressPackets) {
       const remainingPackets = totalPackets - currentPacket;
       progressPackets.textContent = `패킷: ${currentPacket} / ${
-          totalPackets} (남은: ${remainingPackets})`;
+          totalPackets} (남은패킷: ${remainingPackets})`;
     }
     if (progressTime) {
       if (remainingTimeMs > 0) {
@@ -15604,6 +15671,7 @@ class ModbusDashboard {
     this.chartConfiguredChannels = configuredChannels;
     this.chartPeriodMs = period * 0.125;  // 1 unit = 125μs
     this.chartRunning = true;
+    this._startNoThrottleAudio();
     this.chartManager.clearData();
     this.chartManager.startCapture();
 
@@ -15736,6 +15804,7 @@ class ModbusDashboard {
     }
 
     this.chartManager.stopCapture();
+    this._stopNoThrottleAudio();
 
     // 현재값 표시 리셋
     for (let i = 0; i < 4; i++) {
@@ -15814,6 +15883,7 @@ class ModbusDashboard {
     });
 
     this.triggerRunning = true;
+    this._startNoThrottleAudio();
     this.chartSlaveId = slaveId;
     this.chartManager.clearData();
 
@@ -15915,6 +15985,7 @@ class ModbusDashboard {
     await this.sendAndReceiveFC65(finalStop, 0x00, 300);
 
     this.triggerRunning = false;
+    this._stopNoThrottleAudio();
 
     // ── 6. 차트 렌더링 ───────────────────────────────────────
     this.chartManager.loadTriggerData(
@@ -15939,6 +16010,7 @@ class ModbusDashboard {
     }
 
     this.chartManager.stopCapture();
+    this._stopNoThrottleAudio();
     this.chartManager.updateTriggerStatus('Waiting');
 
     for (let i = 0; i < 4; i++) {
@@ -17113,14 +17185,16 @@ class ModbusDashboard {
       this.showToast('연결되지 않은 상태에서는 쓸 수 없습니다', 'warning');
       return;
     }
-    const label = value === 1 ? 'Clear' : value === 2 ? 'Read' : `value=${value}`;
+    const label = value === 1 ? 'Clear' :
+        value === 2           ? 'Read' :
+                                `value=${value}`;
     try {
       const r = await this.writeCANopenObject(slaveId, 0x2703, 0x00, value, 2);
       if (r && !r.error) {
         this.showToast(`0x2703 ← ${value} (${label}) 완료`, 'success');
       } else {
-        const code = r && r.abortCode ?
-            ` (abort 0x${r.abortCode.toString(16)})` : '';
+        const code =
+            r && r.abortCode ? ` (abort 0x${r.abortCode.toString(16)})` : '';
         this.showToast(`0x2703 write 실패${code}`, 'error');
       }
     } catch (e) {
@@ -17612,9 +17686,8 @@ class ModbusDashboard {
    * 현재 미사용인 Rev.D 는 제외. 향후 추가될 경우 이 함수만 갱신하면 됨.
    */
   _hardwareRevisionOptions(voltageClass) {
-    return voltageClass === 1 ?
-        [{v: 1, l: 'Rev.B'}, {v: 2, l: 'Rev.C'}] :
-        [{v: 0, l: 'Rev.A'}];
+    return voltageClass === 1 ? [{v: 1, l: 'Rev.B'}, {v: 2, l: 'Rev.C'}] :
+                                [{v: 0, l: 'Rev.A'}];
   }
 
   /**
@@ -17623,8 +17696,8 @@ class ModbusDashboard {
   _hardwareRevisionOptionsHTML(voltageClass, current) {
     return this._hardwareRevisionOptions(voltageClass)
         .map(
-            o => `<option value="${o.v}"${
-                current === o.v ? ' selected' : ''}>${o.l}</option>`)
+            o => `<option value="${o.v}"${current === o.v ? ' selected' : ''}>${
+                o.l}</option>`)
         .join('');
   }
 
@@ -17633,7 +17706,8 @@ class ModbusDashboard {
    *
    * @param deviceId
    * @param autoCorrect  true 인 경우, 현재 리비전이 새 전압 클래스에서 유효하지
-   *     않으면 첫 valid 옵션으로 select 값을 강제 변경하고 debounced write 도 예약.
+   *     않으면 첫 valid 옵션으로 select 값을 강제 변경하고 debounced write 도
+   * 예약.
    *     - 전압 클래스 onchange 경로 → true (사용자 의도)
    *     - read apply 경로 → false (디바이스에서 읽은 값일 뿐, stale 일 수 있어
    *       자동 write 금지)
@@ -19108,8 +19182,8 @@ class ModbusDashboard {
                                  data-category="${cat.id}"
                                  onclick="window.dashboard.switchConfigCategory('${
                     cat.id}')">
-                                ${
-                    devOnlyCategories.has(cat.id) ? '🔧 ' : ''}${cat.label}
+                                ${devOnlyCategories.has(cat.id) ? '🔧 ' : ''}${
+                    cat.label}
                             </div>
                         `)
             .join('')}
@@ -19673,19 +19747,18 @@ class ModbusDashboard {
             row('productVoltageClass', '제품 전압 클래스',
                 '제품 정격 전압 클래스 (FC 0x2B, 0x270A)',
                 `
-                        <select id="productVoltageClass_${id}" style="${iStyle}"
+                        <select id="productVoltageClass_${id}" style="${
+                    iStyle}"
                             onchange="window.dashboard._refreshHardwareRevisionOptions(${
                     id}, true); window.dashboard.debouncedApply('productVoltageClass', ${
                     id})"
                             onclick="event.stopPropagation()">
                             <option value="0" ${
-                    device.productVoltageClass === 0 ?
-                        'selected' :
-                        ''}>200V</option>
+                    device.productVoltageClass === 0 ? 'selected' :
+                                                       ''}>200V</option>
                             <option value="1" ${
-                    device.productVoltageClass === 1 ?
-                        'selected' :
-                        ''}>400V</option>
+                    device.productVoltageClass === 1 ? 'selected' :
+                                                       ''}>400V</option>
                         </select>`)}
                     ${
             row('hardwareRevision', '하드웨어 리비전',
