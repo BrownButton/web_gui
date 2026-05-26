@@ -1540,71 +1540,83 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Row 2: MCU 2열 -->
-                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch;">
+                                            <!-- Row 2: MCU 3열 -->
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; align-items: stretch;">
                                                 <!-- OS 버전 확인 -->
-                                                <div id="ovCard-mcu-os-version" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;">
+                                                <div id="ovCard-mcu-os-version" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; min-width: 0;">
                                                     <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
                                                         <span style="font-size: 11px; font-weight: 700; background: #EBF2FF; color: #3182F6; padding: 3px 9px; border-radius: 20px;">MCU</span>
                                                         <span style="font-size: 14px; font-weight: 600; color: #191F28;">OS 버전 확인</span>
                                                     </div>
                                                     <div style="padding: 14px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">MCU Boot</span>
-                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4;">0x27F0</span>
+                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px; min-width: 0; overflow: hidden;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 4px;">
+                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1; white-space: nowrap;">MCU Boot</span>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; white-space: nowrap;">0x27F0</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 6px; align-items: baseline;">
-                                                                <span id="ov-mcu-boot-ascii" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-mcu-boot" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">-</span>
-                                                            </div>
-                                                        </div>
-                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">MCU FW</span>
-                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4;">0x27F1</span>
-                                                            </div>
-                                                            <div style="display: flex; gap: 6px; align-items: baseline;">
-                                                                <span id="ov-mcu-fw-ascii" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-mcu-fw" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">-</span>
+                                                            <div style="display: flex; gap: 6px; align-items: baseline; min-width: 0;">
+                                                                <span id="ov-mcu-boot-ascii" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-mcu-boot" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">-</span>
                                                             </div>
                                                         </div>
-                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">Inv Boot</span>
-                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4;">0x27F2</span>
+                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px; min-width: 0; overflow: hidden;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 4px;">
+                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1; white-space: nowrap;">MCU FW</span>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; white-space: nowrap;">0x27F1</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 6px; align-items: baseline;">
-                                                                <span id="ov-inv-boot-ascii" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-inv-boot" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">-</span>
+                                                            <div style="display: flex; gap: 6px; align-items: baseline; min-width: 0;">
+                                                                <span id="ov-mcu-fw-ascii" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-mcu-fw" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">-</span>
                                                             </div>
                                                         </div>
-                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px;">
-                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">Inv FW</span>
-                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4;">0x27F3</span>
+                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px; min-width: 0; overflow: hidden;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 4px;">
+                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1; white-space: nowrap;">Inv Boot</span>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; white-space: nowrap;">0x27F2</span>
                                                             </div>
-                                                            <div style="display: flex; gap: 6px; align-items: baseline;">
-                                                                <span id="ov-inv-fw-ascii" style="font-size: 14px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
-                                                                <span id="ov-inv-fw" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap;">-</span>
+                                                            <div style="display: flex; gap: 6px; align-items: baseline; min-width: 0;">
+                                                                <span id="ov-inv-boot-ascii" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-inv-boot" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">-</span>
+                                                            </div>
+                                                        </div>
+                                                        <div style="padding: 10px 12px; background: #F5F6F8; border-radius: 10px; min-width: 0; overflow: hidden;">
+                                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; gap: 4px;">
+                                                                <span style="font-size: 11px; font-weight: 600; color: #8B95A1; white-space: nowrap;">Inv FW</span>
+                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; white-space: nowrap;">0x27F3</span>
+                                                            </div>
+                                                            <div style="display: flex; gap: 6px; align-items: baseline; min-width: 0;">
+                                                                <span id="ov-inv-fw-ascii" style="font-size: 13px; font-weight: 700; font-family: monospace; color: #191F28; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</span>
+                                                                <span id="ov-inv-fw" style="font-size: 10px; font-family: monospace; color: #8B95A1; background: #EAECEF; padding: 2px 5px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; max-width: 60px; overflow: hidden; text-overflow: ellipsis;">-</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <!-- 모터 ID 설정 확인 -->
-                                                <div id="ovCard-mcu-motor-id-set" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;">
+                                                <div id="ovCard-mcu-motor-id-set" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; min-width: 0;">
                                                     <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
                                                         <span style="font-size: 11px; font-weight: 700; background: #EBF2FF; color: #3182F6; padding: 3px 9px; border-radius: 20px;">MCU</span>
                                                         <span style="font-size: 14px; font-weight: 600; color: #191F28;">모터 ID 설정 확인</span>
                                                     </div>
                                                     <div style="padding: 14px 20px;">
-                                                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                                                            <div>
-                                                                <div style="font-size: 11px; font-weight: 600; color: #8B95A1; margin-bottom: 4px;">MOTOR ID</div>
-                                                                <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">0x2000</span>
-                                                            </div>
-                                                            <span id="ov-motor-id" style="font-size: 32px; font-weight: 700; font-family: monospace; color: #191F28;">-</span>
+                                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                                            <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">MOTOR ID</span>
+                                                            <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">0x2000</span>
                                                         </div>
+                                                        <span id="ov-motor-id" style="font-size: 16px; font-weight: 700; font-family: monospace; color: #191F28; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</span>
+                                                    </div>
+                                                </div>
+                                                <!-- 시리얼 번호 -->
+                                                <div id="ovCard-mcu-serial-number" style="background: white; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; min-width: 0;">
+                                                    <div style="padding: 16px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #F5F6F8;">
+                                                        <span style="font-size: 11px; font-weight: 700; background: #F3EEFF; color: #7C3AED; padding: 3px 9px; border-radius: 20px;">DEV</span>
+                                                        <span style="font-size: 14px; font-weight: 600; color: #191F28;">시리얼 번호</span>
+                                                    </div>
+                                                    <div style="padding: 14px 20px;">
+                                                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                                            <span style="font-size: 11px; font-weight: 600; color: #8B95A1;">SERIAL NO</span>
+                                                            <span style="font-size: 10px; font-family: monospace; color: #C5CBD4; background: #F5F6F8; padding: 2px 6px; border-radius: 5px;">0x2424</span>
+                                                        </div>
+                                                        <span id="ov-serial-number" style="font-size: 20px; font-weight: 700; font-family: monospace; color: #191F28; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">—</span>
                                                     </div>
                                                 </div>
                                             </div>

@@ -16835,6 +16835,7 @@ class ModbusDashboard {
       'ov-inv-boot',
       'ov-inv-fw-ascii',
       'ov-inv-fw',
+      'ov-serial-number',
     ];
     clearIds.forEach(id => {
       const el = document.getElementById(id);
@@ -16861,27 +16862,20 @@ class ModbusDashboard {
     }
     if (!this.ovPollingRunning) return;
 
-    // ── 최초 1회 검사 (OS버전) ────────────────────────────────
-    if (!this.ovOnceExecuted) {
-      this.ovOnceExecuted = true;
-      await this.runOvOsVersion();
-      if (!this.ovPollingRunning) return;
-    }
-
     // ── OV 루프 전용 버스 읽기 헬퍼 ────────────────────────────
     // readCANopenObject / readInputRegisterWithTimeout 는 ovPollingRunning=true
     // 이면 큐에 등록하므로 OV 루프 자신은 직접 전송 경로를 사용해야 한다.
     // dashboard 폴링(autoPollingTimer) 또는 FC64(_isFc64Active) 가 버스를 점유
     // 중이면 해당 루프의 큐를 통해 전송하고, 그렇지 않으면 직접 전송 후 쌓인
     // 큐를 소진한다.
-    const ovCanopen = async (sid, idx, sub) => {
+    const ovCanopen = async (sid, idx, sub, numData = 2) => {
       if (this.autoPollingTimer || this._isFc64Active) {
         // 다른 루프가 버스를 점유 중 — 큐 경유
         // (pollNextDeviceSequential/_drainCommandQueue 가 처리)
-        return this.readCANopenObject(sid, idx, sub);
+        return this.readCANopenObject(sid, idx, sub, numData);
       }
       // OV 루프가 버스 소유자 — 직접 전송
-      const frame = this.modbus.buildCANopenUpload(sid, idx, sub, 0, 2);
+      const frame = this.modbus.buildCANopenUpload(sid, idx, sub, 0, numData);
       const result = await this.sendCANopenAndWaitResponse(frame, sid);
       // 외부 코드(예: readAllParameters)가 큐에 넣은 항목을 읽기 사이에 소진
       if (this.commandQueue.length > 0) await this._drainCommandQueue();
@@ -16920,6 +16914,10 @@ class ModbusDashboard {
             `0x${motorR.value.toString(16).toUpperCase().padStart(4, '0')}`;
         const name = MOTOR_ID_MAP[motorR.value] ?? '알 수 없음';
         motorEl.textContent = `${name}  ${hexVal}`;
+        motorEl.style.color = '';
+      } else if (motorEl) {
+        motorEl.textContent = '읽기 실패';
+        motorEl.style.color = '#dc3545';
       }
 
       if (!this.ovPollingRunning) break;
@@ -16927,24 +16925,39 @@ class ModbusDashboard {
       // 2) DClink 전압 — FC04 Input Register 0xD013
       const dcRaw = await ovInput(slaveId, 0xD013);
       const dcEl = document.getElementById('ov-dclink-v');
-      if (dcRaw !== null && dcRaw !== undefined && dcEl)
+      if (dcRaw !== null && dcRaw !== undefined && dcEl) {
         dcEl.textContent = dcRaw;
+        dcEl.style.color = '';
+      } else if (dcEl) {
+        dcEl.textContent = '읽기 실패';
+        dcEl.style.color = '#dc3545';
+      }
 
       if (!this.ovPollingRunning) break;
 
       // 3) IGBT 온도 — CANopen 0x260B:00
       const igbtR = await ovCanopen(slaveId, 0x260B, 0x00);
       const igbtEl = document.getElementById('ov-igbt-motor-id');
-      if (igbtR && !igbtR.error && igbtR.value != null && igbtEl)
+      if (igbtR && !igbtR.error && igbtR.value != null && igbtEl) {
         igbtEl.textContent = toInt16(igbtR.value) + ' ℃';
+        igbtEl.style.color = '';
+      } else if (igbtEl) {
+        igbtEl.textContent = '읽기 실패';
+        igbtEl.style.color = '#dc3545';
+      }
 
       if (!this.ovPollingRunning) break;
 
       // 4) 결상(Alarm Code) — FC 0x2B CANopen SDO 0x603F:00
       const alarmR = await ovCanopen(slaveId, 0x603F, 0x00);
       const alarmEl = document.getElementById('ov-alarm-code');
-      if (alarmR && !alarmR.error && alarmR.value != null && alarmEl)
+      if (alarmR && !alarmR.error && alarmR.value != null && alarmEl) {
         alarmEl.textContent = this.getAlarmCodeName(alarmR.value);
+        alarmEl.style.color = '';
+      } else if (alarmEl) {
+        alarmEl.textContent = '읽기 실패';
+        alarmEl.style.color = '#dc3545';
+      }
 
       if (!this.ovPollingRunning) break;
 
@@ -16955,6 +16968,58 @@ class ModbusDashboard {
         const pha = (d011Raw & 0x0001) !== 0;
         phaEl.textContent = pha ? 'Phase Fail' : 'OK';
         phaEl.style.color = pha ? '#dc3545' : '#28a745';
+      } else if (phaEl) {
+        phaEl.textContent = '읽기 실패';
+        phaEl.style.color = '#dc3545';
+      }
+
+      if (!this.ovPollingRunning) break;
+
+      // 6~9) OS 버전 — CANopen 0x27F0-0x27F3 (16바이트 ASCII)
+      let osAllPass = true;
+      for (const e of [
+        {index: 0x27F0, asciiId: 'ov-mcu-boot-ascii', hexId: 'ov-mcu-boot'},
+        {index: 0x27F1, asciiId: 'ov-mcu-fw-ascii',  hexId: 'ov-mcu-fw'},
+        {index: 0x27F2, asciiId: 'ov-inv-boot-ascii', hexId: 'ov-inv-boot'},
+        {index: 0x27F3, asciiId: 'ov-inv-fw-ascii',  hexId: 'ov-inv-fw'},
+      ]) {
+        if (!this.ovPollingRunning) break;
+        const r = await ovCanopen(slaveId, e.index, 0x00, 16);
+        const asciiEl = document.getElementById(e.asciiId);
+        const hexEl   = document.getElementById(e.hexId);
+        if (!r || r.error) {
+          if (asciiEl) { asciiEl.textContent = '읽기 실패'; asciiEl.style.color = '#dc3545'; }
+          if (hexEl)   hexEl.textContent = '-';
+          osAllPass = false;
+        } else {
+          const ascii = (r.rawBytes ?? [])
+              .filter(b => b !== 0x00)
+              .map(b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) : '.')
+              .join('');
+          const rawHex = (r.rawBytes ?? [])
+              .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+              .join(' ');
+          if (asciiEl) { asciiEl.textContent = ascii || '-'; asciiEl.style.color = ''; }
+          if (hexEl)   hexEl.textContent = rawHex;
+        }
+      }
+      this._setOvBadge('mcu-os-version', osAllPass ? 'pass' : 'fail');
+
+      if (!this.ovPollingRunning) break;
+
+      // 10) 시리얼 번호 — CANopen 0x2424:00 (16바이트 ASCII)
+      const snR  = await ovCanopen(slaveId, 0x2424, 0x00, 16);
+      const snEl = document.getElementById('ov-serial-number');
+      if (!snR || snR.error) {
+        if (snEl) { snEl.textContent = '읽기 실패'; snEl.style.color = '#dc3545'; }
+      } else {
+        const serial = (snR.rawBytes ?? [])
+            .filter(b => b !== 0)
+            .map(b => String.fromCharCode(b))
+            .join('')
+            .trim()
+            .toUpperCase();
+        if (snEl) { snEl.textContent = serial || '(비어있음)'; snEl.style.color = ''; }
       }
 
       if (this.ovPollingRunning) await this.delay(1000);
@@ -17451,6 +17516,38 @@ class ModbusDashboard {
       }
     }
     this._setOvBadge('mcu-os-version', allPass ? 'pass' : 'fail');
+
+    // Serial Number — CANopen 0x2424:00 (1회 읽기, OS 버전 뱃지와 무관)
+    if (!this.ovPollingRunning) return;
+    const snEl = document.getElementById('ov-serial-number');
+    if (snEl) {
+      const snFrame =
+          this.modbus.buildCANopenUpload(slaveId, 0x2424, 0x00, 0, 16);
+      let snResult;
+      if (this.autoPollingTimer || this._isFc64Active) {
+        snResult = await new Promise((resolve, reject) => {
+          this.commandQueue.push(
+              {type: 'canopen_read', frame: snFrame, slaveId, resolve, reject});
+        });
+      } else {
+        snResult = await this.sendCANopenAndWaitResponse(snFrame, slaveId);
+        if (this.commandQueue.length > 0) await this._drainCommandQueue();
+      }
+
+      if (!snResult || snResult.error) {
+        snEl.textContent = '읽기 실패';
+        snEl.style.color = '#dc3545';
+      } else {
+        const serial = (snResult.rawBytes ?? [])
+                           .filter(b => b !== 0)
+                           .map(b => String.fromCharCode(b))
+                           .join('')
+                           .trim()
+                           .toUpperCase();
+        snEl.textContent = serial || '(비어있음)';
+        snEl.style.color = '';
+      }
+    }
   }
 
   /**
@@ -22254,7 +22351,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeSubtab === 'hw-overview' &&
             (db.writer || db.simulatorEnabled)) {
           db.initMiniCharts();
-          db.startOvPolling();
+          db.refreshHwOverview();
         }
       }
     });
@@ -22333,7 +22430,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (targetSubtab === 'hw-overview') {
         document.getElementById('manufactureHwOverview').style.display = 'flex';
         window.dashboard.initMiniCharts();
-        window.dashboard.startOvPolling();
+        window.dashboard.refreshHwOverview();
       }
     });
   });
