@@ -16472,8 +16472,8 @@ class ModbusDashboard {
       return;
     }
     const slaveId = this._getMiniChartSlaveId();
-    await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x3000);
     await this.writeCANopenObject(slaveId, 0x2701, 0x00, mode);
+    await this.writeCANopenObject(slaveId, 0x2700, 0x00, 0x3000);
   }
 
   // ─────────────────────────────────────────────────────────
