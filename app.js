@@ -19394,7 +19394,8 @@ class ModbusDashboard {
                         </select>`)}
                 </div>`;
 
-      case 'motor':
+      case 'motor': {
+        const showDevRows = this.isDeveloperMode();
         return `<div style="margin-top: 0;">
                     ${
             row('operatingMode', '동작 모드', '모터 제어 방식 설정 (0xD106)',
@@ -19432,20 +19433,22 @@ class ModbusDashboard {
                                                          ''}>PWM</option>
                         </select>`)}
                     ${
-            row('runningDirection', '회전 방향', '팬 구동 방향 설정 (0xD102)',
-                `
+            showDevRows ?
+                row('runningDirection', '회전 방향', '팬 구동 방향 설정 (0xD102)',
+                    `
                         <select id="runningDirection_${id}" style="${iStyle}"
                             onchange="window.dashboard.applyRunningDirection(${
-                    id})"
+                        id})"
                             onclick="event.stopPropagation()">
                             <option value="0" ${
-                    device.runningDirection === 0 ?
-                        'selected' :
-                        ''}>CCW (반시계)</option>
+                        device.runningDirection === 0 ?
+                            'selected' :
+                            ''}>CCW (반시계)</option>
                             <option value="1" ${
-                    device.runningDirection === 1 ? 'selected' :
-                                                    ''}>CW (시계)</option>
-                        </select>`)}
+                        device.runningDirection === 1 ? 'selected' :
+                                                        ''}>CW (시계)</option>
+                        </select>`) :
+                ''}
                     ${
             row('maxSpeed', '최대 속도 (RPM)',
                 '속도 제어 모드에서의 상한 속도 (0xD119)',
@@ -19482,6 +19485,7 @@ class ModbusDashboard {
                     id})"
                             onclick="event.stopPropagation()">`)}
                 </div>`;
+      }
 
       case 'protection': {
         const showDevRows = this.isDeveloperMode();
