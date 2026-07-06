@@ -3930,13 +3930,11 @@ class ModbusDashboard {
    * Handle received data from serial port
    */
   handleReceivedData(data) {
-    for (let i = 0;
-         i < data.length && this.receiveIndex < this.receiveBuffer.length;
-         i++) {
-      this.receiveBuffer[this.receiveIndex++] = data[i];
-    }
-
-    // sendAndReceive에서 사용하는 responseBuffer에도 데이터 추가
+    // FC64/65/0x23/0x66 교환 중(responseBuffer 활성)에는 수신 바이트 전부가
+    // 해당 교환의 응답이므로 responseBuffer로만 라우팅한다.
+    // receiveBuffer에도 복사하면 tryParseFrame이 FC 0x64 등에서 조기 return
+    // 하면서 잔여 바이트가 버퍼 선두에 영구 잔류 → 이후 도착하는 표준 응답
+    // (write 에코 등)이 영원히 파싱되지 않음
     if (this.responseBuffer) {
       for (let i = 0; i < data.length; i++) {
         this.responseBuffer.push(data[i]);
@@ -3947,6 +3945,13 @@ class ModbusDashboard {
         this._serialDataCb = null;
         fn();
       }
+      return;
+    }
+
+    for (let i = 0;
+         i < data.length && this.receiveIndex < this.receiveBuffer.length;
+         i++) {
+      this.receiveBuffer[this.receiveIndex++] = data[i];
     }
 
     this.tryParseFrame();
@@ -3998,23 +4003,18 @@ class ModbusDashboard {
   tryParseFrame() {
     if (this.receiveIndex < 2) return;
 
-    // FC 0x66: 펌웨어 업데이트 응답 — responseBuffer에서 별도 처리, 여기서는
-    // 무시
-    if (this.receiveBuffer[1] === 0x66) return;
-
-    // FC 0x64: Chart Continuous 응답 — responseBuffer에서 별도 처리, 여기서는
-    // 무시
-    if (this.receiveBuffer[1] === 0x64) return;
-
-    // FC 0x65: Trigger Streaming 응답 — responseBuffer에서 별도 처리, 여기서는
-    // 무시
-    if (this.receiveBuffer[1] === 0x65) return;
-
-    // FC 0x23: Fast Firmware Download 응답 — responseBuffer에서 별도 처리.
-    // FC 0x23 success: OpCode 기반 가변 길이.
-    // FC 0xA3 (= 0x23 | 0x80): 표준 Modbus exception (5 bytes).
-    if (this.receiveBuffer[1] === 0x23 || this.receiveBuffer[1] === 0xA3)
-      return;
+    // FC 0x66/0x64/0x65/0x23(/0xA3): responseBuffer 전용 프로토콜의 잔여
+    // 바이트가 receiveBuffer에 남은 경우 (예: timeout으로 잘린 FC64 응답의
+    // 늦은 tail). 그냥 return하면 이 바이트들이 버퍼 선두에 영원히 남아 이후
+    // 모든 표준 프레임 파싱을 막으므로 폐기한다.
+    {
+      const fc = this.receiveBuffer[1];
+      if (fc === 0x66 || fc === 0x64 || fc === 0x65 || fc === 0x23 ||
+          fc === 0xA3) {
+        this.receiveIndex = 0;
+        return;
+      }
+    }
 
     // 버스 floating 노이즈 바이트 즉시 폐기:
     // RS-485 DE→RE 전환 시 버스가 floating → 0xFF, 0xBF 등 무작위 바이트 수신됨
@@ -4265,114 +4265,6 @@ class ModbusDashboard {
     this.updateConvertedValueEl(
         document.getElementById(inputId),
         document.getElementById(`${inputId}-converted`), min, max);
-  }
-
-  /**
-   * Send Modbus request
-   */
-  async sendModbusRequest() {
-    if (!this.writer) {
-      this.addMonitorEntry('error', 'Not connected to serial port');
-      return;
-    }
-
-    try {
-      const slaveId = this.parseModbusValue(
-          document.getElementById('slaveId').value, 0, 255);
-      const functionCode =
-          parseInt(document.getElementById('functionCode').value);
-
-      // FC 0x2B CANopen SDO — 별도 처리 (readCANopenObject/writeCANopenObject)
-      if (functionCode === 43) {
-        const index = parseInt(document.getElementById('fc2bIndex').value, 16);
-        const subIndex =
-            parseInt(document.getElementById('fc2bSubIndex').value, 16);
-        const op = document.getElementById('fc2bOperation').value;
-        if (op === 'read') {
-          const numData =
-              parseInt(document.getElementById('fc2bNumData').value) || 2;
-          await this.readCANopenObject(slaveId, index, subIndex, numData);
-        } else {
-          const val = parseInt(
-              document.getElementById('fc2bWriteValue').value || '0', 16);
-          await this.writeCANopenObject(slaveId, index, subIndex, val);
-        }
-        return;  // stats는 sendCANopenAndWaitResponse에서 처리됨
-      }
-
-      const startAddress = this.parseModbusValue(
-          document.getElementById('startAddress').value, 0, 65535);
-      const quantity = this.parseModbusValue(
-          document.getElementById('quantity').value, 1, 125);
-      const writeValue = this.parseModbusValue(
-          document.getElementById('writeValue').value || '0', 0, 65535);
-
-      let frame;
-
-      switch (functionCode) {
-        case 1:
-          frame = this.modbus.buildReadCoils(slaveId, startAddress, quantity);
-          break;
-        case 2:
-          frame = this.modbus.buildReadDiscreteInputs(
-              slaveId, startAddress, quantity);
-          break;
-        case 3:
-          frame = this.modbus.buildReadHoldingRegisters(
-              slaveId, startAddress, quantity);
-          break;
-        case 4:
-          frame = this.modbus.buildReadInputRegisters(
-              slaveId, startAddress, quantity);
-          break;
-        case 5:
-          frame = this.modbus.buildWriteSingleCoil(
-              slaveId, startAddress, writeValue !== 0);
-          break;
-        case 6:
-          frame = this.modbus.buildWriteSingleRegister(
-              slaveId, startAddress, writeValue);
-          break;
-        case 15:
-          const coilValues = Array(quantity).fill(writeValue !== 0);
-          frame = this.modbus.buildWriteMultipleCoils(
-              slaveId, startAddress, coilValues);
-          break;
-        case 16:
-          const registerValues = Array(quantity).fill(writeValue);
-          frame = this.modbus.buildWriteMultipleRegisters(
-              slaveId, startAddress, registerValues);
-          break;
-        default:
-          this.addMonitorEntry('error', 'Invalid function code');
-          return;
-      }
-
-      if (this.autoPollingTimer || this._isFc64Active) {
-        // 폴링 중 — 큐에 등록해서 폴링 사이클 사이에 전송
-        const isRead = [1, 2, 3, 4].includes(functionCode);
-        return new Promise((resolve, reject) => {
-          this.commandQueue.push({
-            type: isRead ? 'read' : undefined,
-            frame,
-            slaveId,
-            address: startAddress,
-            resolve,
-            reject,
-            tabSeq: this._tabSeq
-          });
-        });
-      }
-      await this.writer.write(frame);
-      this.addMonitorEntry(
-          'sent', frame, {functionCode, startAddress, quantity});
-      this.stats.requests++;
-      this.updateStatsDisplay();
-
-    } catch (error) {
-      this.addMonitorEntry('error', `Send error: ${error.message}`);
-      this.updateStats(false);
-    }
   }
 
   /**
@@ -8122,23 +8014,15 @@ class ModbusDashboard {
       let value;
       // busyBus: polling 루프 또는 FC64 차트가 버스를 점유 중 → 큐에 등록해야
       // 충돌 방지
-      const busyBus = this.autoPollingTimer || this._isFc64Active;
+      const busyBus = this._busOwnerActive;
       if (isLsm) {
         // FC 0x2B (CANopen MEI Transport): 큐 또는 직접 전송
         let parsed;
         if (busyBus) {
           // 버스 점유 중 — 큐에 canopen_read 등록,
           // pollNextDeviceSequential/_drainCommandQueue에서 처리
-          parsed = await new Promise((resolve, reject) => {
-            this.commandQueue.push({
-              type: 'canopen_read',
-              frame,
-              slaveId,
-              address,
-              resolve,
-              reject
-            });
-          });
+          parsed = await this._enqueueCommand(
+              {type: 'canopen_read', frame, slaveId, address});
         } else {
           // 버스 유휴 — 직접 전송
           parsed = await this.sendCANopenAndWaitResponse(frame, slaveId);
@@ -8146,10 +8030,8 @@ class ModbusDashboard {
         value = parsed ? parsed.value : null;
       } else if (busyBus) {
         // FC 0x03/04: 버스 점유 중 — 큐에 등록
-        value = await new Promise((resolve, reject) => {
-          this.commandQueue.push(
-              {type: 'read', frame, slaveId, address, resolve, reject});
-        });
+        value = await this._enqueueCommand(
+            {type: 'read', frame, slaveId, address});
       } else {
         // FC 0x03/04: 버스 유휴 — 직접 전송
         value = await this.sendAndWaitResponse(frame, slaveId);
@@ -8170,108 +8052,6 @@ class ModbusDashboard {
       }
     }
     return false;
-  }
-
-  /**
-   * Read parameter value
-   */
-  async readParameter(param) {
-    if (!this.writer) {
-      alert('Please connect to serial port first');
-      return;
-    }
-
-    // Check if device is selected on Parameters page
-    if (!this.selectedParamDeviceId) {
-      this.showToast('디바이스를 먼저 선택하세요', 'warning');
-      return;
-    }
-
-    // Use selected device ID from Parameters page
-    const slaveId = this.selectedParamDeviceId;
-    let frame;
-
-    switch (param.functionCode) {
-      case 1:
-        frame = this.modbus.buildReadCoils(slaveId, param.address, 1);
-        break;
-      case 2:
-        frame = this.modbus.buildReadDiscreteInputs(slaveId, param.address, 1);
-        break;
-      case 3:
-        frame =
-            this.modbus.buildReadHoldingRegisters(slaveId, param.address, 1);
-        break;
-      case 4:
-        frame = this.modbus.buildReadInputRegisters(slaveId, param.address, 1);
-        break;
-    }
-
-    if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
-      return new Promise((resolve, reject) => {
-        this.commandQueue.push({
-          type: 'read',
-          frame,
-          slaveId,
-          address: param.address,
-          resolve,
-          reject,
-          tabSeq: this._tabSeq
-        });
-      });
-    }
-    await this.writer.write(frame);
-    this.addMonitorEntry('sent', frame, {
-      functionCode: param.functionCode,
-      startAddress: param.address,
-      quantity: 1
-    });
-    this.stats.requests++;
-    this.updateStatsDisplay();
-  }
-
-  /**
-   * Write parameter value
-   */
-  async writeParameter(param, value) {
-    if (!this.writer) {
-      alert('Please connect to serial port first');
-      return;
-    }
-
-    if (isNaN(value)) {
-      alert('Please enter a valid value');
-      return;
-    }
-
-    // Check if device is selected on Parameters page
-    if (!this.selectedParamDeviceId) {
-      this.showToast('디바이스를 먼저 선택하세요', 'warning');
-      return;
-    }
-
-    // Use selected device ID from Parameters page
-    const slaveId = this.selectedParamDeviceId;
-    const frame =
-        this.modbus.buildWriteSingleRegister(slaveId, param.address, value);
-
-    if (this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning) {
-      return new Promise((resolve, reject) => {
-        this.commandQueue.push({
-          frame,
-          slaveId,
-          address: param.address,
-          resolve,
-          reject,
-          tabSeq: this._tabSeq
-        });
-      });
-    }
-    await this.writer.write(frame);
-    this.addMonitorEntry(
-        'sent', frame, {functionCode: 6, startAddress: param.address});
-    this.stats.requests++;
-    this.updateStatsDisplay();
   }
 
   /**
@@ -8451,6 +8231,12 @@ class ModbusDashboard {
       return;
     }
 
+    // 펌웨어 업데이트(0x23/0x66)는 큐/뮤텍스 밖에서 버스를 독점 — 전송 금지
+    if (this.firmwareUpdateInProgress) {
+      this.showToast('펌웨어 업데이트 중에는 전송할 수 없습니다', 'warning');
+      return;
+    }
+
     try {
       const slaveId = this.parseModbusValue(
           document.getElementById('slaveId').value, 0, 255);
@@ -8523,22 +8309,25 @@ class ModbusDashboard {
           return;
       }
 
-      if (this.autoPollingTimer || this._isFc64Active) {
-        // 폴링 중 — 큐에 등록해서 폴링 사이클 사이에 전송
+      if (this._busOwnerActive) {
+        // 버스 소유 루프 활성 중 — 큐에 등록해서 폴링 사이클 사이에 전송
         const isRead = [1, 2, 3, 4].includes(functionCode);
-        return new Promise((resolve, reject) => {
-          this.commandQueue.push({
-            type: isRead ? 'read' : undefined,
-            frame,
-            slaveId,
-            address: startAddress,
-            resolve,
-            reject,
-            tabSeq: this._tabSeq
-          });
+        return this._enqueueCommand({
+          type: isRead ? 'read' : undefined,
+          frame,
+          slaveId,
+          address: startAddress,
+          tabSeq: this._tabSeq
         });
       }
-      await this.writer.write(frame);
+      // 응답을 기다리지 않는 수동 전송 — 진행 중인 TX/RX 쌍(Read All 등
+      // 뮤텍스 보유 교환)과 겹치지 않도록 bus mutex를 확보한 뒤 전송
+      await this._acquireBus();
+      try {
+        await this.writer.write(frame);
+      } finally {
+        this._releaseBus();
+      }
       this.addMonitorEntry(
           'sent', frame, {functionCode, startAddress, quantity});
       this.stats.requests++;
@@ -10973,6 +10762,39 @@ class ModbusDashboard {
   }
 
   /**
+   * commandQueue를 소진해 주는 버스 소유 루프가 하나라도 활성인지 여부.
+   * 새 기능의 read/write 래퍼는 이 getter로 큐 등록/직접 전송을 분기할 것.
+   * temp2702 폴링은 자체적으로 큐를 소진하지 않으므로 제외 — 해당 루프와의
+   * 동시 접근은 _acquireBus 뮤텍스가 직렬화한다.
+   */
+  get _busOwnerActive() {
+    return !!(
+        this.autoPollingTimer || this._isFc64Active || this.ovPollingRunning ||
+        this.offsetAlarmPollingRunning || this.offsetStatus2617PollingRunning);
+  }
+
+  /**
+   * commandQueue 등록 공통 경로.
+   * 등록 사실을 monitor에 SYSTEM 엔트리로 남겨, 버튼 클릭이 큐까지 도달했는지
+   * → 실제 TX로 이어졌는지를 Communication Monitor에서 추적할 수 있게 한다.
+   * @returns {Promise<*>} 명령 처리 완료 시 resolve되는 promise
+   */
+  _enqueueCommand(fields) {
+    return new Promise((resolve, reject) => {
+      this.commandQueue.push({...fields, resolve, reject});
+      const fc = fields.frame && fields.frame.length >= 2 ? fields.frame[1] : 0;
+      const addrStr = fields.address !== undefined ?
+          `, addr 0x${fields.address.toString(16).toUpperCase()}` :
+          '';
+      this.addMonitorEntry(
+          'queued',
+          `Queued: Slave ${fields.slaveId}, FC 0x${
+              fc.toString(16).toUpperCase().padStart(2, '0')}${addrStr} (대기 ${
+              this.commandQueue.length}건)`);
+    });
+  }
+
+  /**
    * commandQueue에 쌓인 명령을 모두 순차 실행.
    * FC 0x64 차트 루프가 폴링 루프 대신 이 함수를 호출해 버스 충돌 없이 큐를
    * 소진한다.
@@ -10995,8 +10817,10 @@ class ModbusDashboard {
     while (this.commandQueue.length > 0) {
       const cmd = this.commandQueue.shift();
 
-      // Stale 체크: 큐에 등록된 시점의 탭과 현재 탭이 다르면 조용히 폐기
+      // Stale 체크: 큐에 등록된 시점의 탭과 현재 탭이 다르면 폐기
       if (cmd.tabSeq !== undefined && cmd.tabSeq !== this._tabSeq) {
+        this.addMonitorEntry(
+            'queued', `Dropped (stale tab): Slave ${cmd.slaveId}`);
         cmd.resolve(null);
         continue;
       }
@@ -11021,6 +10845,112 @@ class ModbusDashboard {
     }
   }
 
+  /**
+   * 큐 명령 1건 실행 (resolve/reject는 호출자 책임).
+   * responded=false 는 디바이스 무응답(timeout)을 의미하며, 스트리밍 중
+   * pause-and-inject 재시도 판단에 사용된다.
+   * @returns {Promise<{responded: boolean, value: *}>}
+   */
+  async _execQueuedCommand(cmd) {
+    if (cmd.type === 'read') {
+      const value = await this.sendAndWaitResponse(cmd.frame, cmd.slaveId);
+      return {responded: value !== null, value};
+    }
+    if (cmd.type === 'canopen_read' || cmd.type === 'canopen_write') {
+      const value =
+          await this.sendCANopenAndWaitResponse(cmd.frame, cmd.slaveId);
+      return {responded: value !== null, value};
+    }
+    const ok = await this.sendWriteAndWaitResponse(
+        cmd.frame, cmd.slaveId, cmd.address);
+    return {responded: ok === true, value: undefined};
+  }
+
+  /**
+   * FC64/FC65 스트리밍 중 큐 소진 (차트/미니차트/트리거 루프 전용).
+   * 1차: 스트림 요청 사이에 그대로 전송 — 디바이스가 스트리밍 중에도 표준
+   *      Modbus에 응답하는 펌웨어면 그대로 성공.
+   * 무응답(timeout)이면: stopStream으로 스트림을 일시정지한 뒤 재시도하고,
+   *      남은 큐를 정지 상태에서 모두 처리한 후 resumeStream으로 재개
+   *      (pause-and-inject 폴백).
+   * stopStream 미제공(FC65 armed 등 정지하면 안 되는 스트림) 시 1차 실패를
+   * 그대로 확정 — 어떤 경우에도 promise가 영원히 pending되지는 않음.
+   * 주의: 재시도는 프레임 재전송이므로, 첫 전송이 실제로는 적용되고 응답만
+   * 유실된 경우 같은 값이 한 번 더 쓰인다 (레지스터 쓰기는 멱등이라 무해).
+   */
+  async _drainQueueDuringStream({stopStream = null, resumeStream = null} = {}) {
+    if (this.commandQueue.length === 0) return;
+    let paused = false;
+    try {
+      while (this.commandQueue.length > 0) {
+        const cmd = this.commandQueue.shift();
+
+        // Stale 체크: 큐에 등록된 시점의 탭과 현재 탭이 다르면 폐기
+        if (cmd.tabSeq !== undefined && cmd.tabSeq !== this._tabSeq) {
+          this.addMonitorEntry(
+              'queued', `Dropped (stale tab): Slave ${cmd.slaveId}`);
+          cmd.resolve(null);
+          continue;
+        }
+
+        try {
+          let {responded, value} = await this._execQueuedCommand(cmd);
+          if (!responded && !paused && stopStream) {
+            // 스트리밍 중 무응답 — 디바이스가 Modbus RTU 모드가 아닌 것으로
+            // 판단하고 스트림을 잠시 멈춘 뒤 재시도
+            this.addMonitorEntry(
+                'queued',
+                '스트리밍 중 무응답 — 스트림 일시정지 후 재시도 (pause-and-inject)');
+            await stopStream();
+            paused = true;
+            ({responded, value} = await this._execQueuedCommand(cmd));
+          }
+          if (!responded && cmd.type === undefined) {
+            // 쓰기는 호출자가 실패를 알 수 없으므로 여기서 직접 알림
+            this.showToast(
+                `Slave ${cmd.slaveId}: 쓰기 응답 없음 (차트 실행 중)`,
+                'warning');
+          }
+          cmd.resolve(cmd.type === undefined ? undefined : value);
+        } catch (err) {
+          cmd.reject(err);
+        }
+      }
+    } finally {
+      if (paused && resumeStream) await resumeStream();
+    }
+  }
+
+  /**
+   * 버스 소유 루프가 모두 종료된 직후 잔여 큐 소진.
+   * 스트림 종료 직전에 등록된 명령이 드레인 기회를 놓치고 영원히 pending되는
+   * 것을 방지한다 (다른 소유 루프가 있으면 그쪽이 소진하므로 skip).
+   */
+  async _flushQueueIfIdle() {
+    if (!this._busOwnerActive && this.commandQueue.length > 0) {
+      await this._drainCommandQueue();
+    }
+  }
+
+  /** FC64 스트림 일시정지 — Stop 전송 후 디바이스 Modbus RTU 모드 복귀 대기 */
+  async _pauseFc64Stream(slaveId) {
+    await this.sendAndReceiveFC64(
+        this.modbus.buildContinuousStop(slaveId), 0x00, 300);
+    await this.delay(400);  // 디바이스 Modbus RTU 모드 복귀 대기 (실측값)
+  }
+
+  /**
+   * FC64 스트림 재개 — Configure 재전송 (1회 재시도).
+   * @returns {Promise<boolean>} 재개 성공 여부
+   */
+  async _resumeFc64Stream(slaveId, configFrame) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const resp = await this.sendAndReceiveFC64(configFrame, 0x02, 1000);
+      if (resp) return true;
+    }
+    return false;
+  }
+
   async pollNextDeviceSequential() {
     // Check if polling should continue
     if (!this.autoPollingTimer) {
@@ -11033,10 +10963,19 @@ class ModbusDashboard {
       return;
     }
 
-    // FC 0x64 스트림(미니차트/차트)이 버스를 점유 중이면 폴링 대기
-    if (this.chartRunning ||
-        Object.values(this.miniChartRunning).some(v => v)) {
+    // FC64 전환 구간(stop/configure, _fc64Busy)에만 폴링 대기.
+    // 연속 스트리밍(chartRunning/miniChartRunning)과 FC65 트리거 캡처 중에는
+    // 모든 FC64/65 교환이 bus mutex로 직렬화되므로 폴링을 그대로 진행 —
+    // 폴링 read가 스트림 요청 사이에 인터리브된다 (디바이스는 스트리밍
+    // 중에도 표준 Modbus에 응답함을 실측 확인).
+    if (this._fc64Busy) {
       setTimeout(() => this.pollNextDeviceSequential(), 100);
+      return;
+    }
+
+    // 펌웨어 업데이트 중 — 버스 독점이 필요하므로 완료까지 폴링 대기
+    if (this.firmwareUpdateInProgress) {
+      setTimeout(() => this.pollNextDeviceSequential(), 500);
       return;
     }
 
@@ -11055,8 +10994,10 @@ class ModbusDashboard {
     if (this.commandQueue.length > 0) {
       const cmd = this.commandQueue.shift();
 
-      // Stale 체크: 큐에 등록된 시점의 탭과 현재 탭이 다르면 조용히 폐기
+      // Stale 체크: 큐에 등록된 시점의 탭과 현재 탭이 다르면 폐기
       if (cmd.tabSeq !== undefined && cmd.tabSeq !== this._tabSeq) {
+        this.addMonitorEntry(
+            'queued', `Dropped (stale tab): Slave ${cmd.slaveId}`);
         cmd.resolve(null);
         this.isPolling = false;
         this.scheduleNextPoll();
@@ -11219,21 +11160,11 @@ class ModbusDashboard {
         return null;
       }
     } else if (this.writer) {
-      if (this.autoPollingTimer || this._isFc64Active ||
-          this.ovPollingRunning) {
-        // polling 루프 / FC64 차트 / OV 폴링 중 하나라도 버스를 점유 중이면
+      if (this._busOwnerActive) {
+        // 버스 소유 루프(폴링/FC64 차트/OV·Offset 폴링)가 점유 중이면
         // 큐에 등록
-        return new Promise((resolve, reject) => {
-          this.commandQueue.push({
-            type: 'read',
-            frame,
-            slaveId,
-            address,
-            resolve,
-            reject,
-            tabSeq: this._tabSeq
-          });
-        });
+        return this._enqueueCommand(
+            {type: 'read', frame, slaveId, address, tabSeq: this._tabSeq});
       }
       // 버스 유휴 — 직접 전송
       return await this.sendAndWaitResponse(frame, slaveId);
@@ -11259,18 +11190,9 @@ class ModbusDashboard {
     }
     if (!this.writer) return null;
 
-    if (this.autoPollingTimer || this._isFc64Active) {
-      return new Promise((resolve, reject) => {
-        this.commandQueue.push({
-          type: 'read',
-          frame,
-          slaveId,
-          address: 0,
-          resolve,
-          reject,
-          tabSeq: this._tabSeq
-        });
-      });
+    if (this._busOwnerActive) {
+      return this._enqueueCommand(
+          {type: 'read', frame, slaveId, address: 0, tabSeq: this._tabSeq});
     }
     return await this.sendAndWaitResponse(frame, slaveId);
   }
@@ -11559,12 +11481,10 @@ class ModbusDashboard {
         this.updateStats(true);
       }
     } else if (this.writer) {
-      if (this.autoPollingTimer || this._isFc64Active) {
-        // Polling 중이거나 FC64 차트가 버스를 점유 중이면 큐에 등록
-        return new Promise((resolve, reject) => {
-          this.commandQueue.push(
-              {frame, slaveId, address, resolve, reject, tabSeq: this._tabSeq});
-        });
+      if (this._busOwnerActive) {
+        // 버스 소유 루프(폴링/FC64 차트/OV·Offset 폴링)가 점유 중이면 큐에 등록
+        return this._enqueueCommand(
+            {frame, slaveId, address, tabSeq: this._tabSeq});
       } else {
         await this.sendWriteAndWaitResponse(frame, slaveId, address);
       }
@@ -11575,6 +11495,8 @@ class ModbusDashboard {
 
   /**
    * Send write command and wait for response with timeout
+   * @returns {Promise<boolean>} true=정상 응답 수신, false=timeout/에러 응답
+   *     (기존 호출부와의 호환을 위해 실패해도 reject하지 않고 resolve함)
    */
   async sendWriteAndWaitResponse(frame, slaveId, address) {
     // Simulator mode - bypass real serial port
@@ -11587,12 +11509,14 @@ class ModbusDashboard {
 
         const originalSlaveId = this.simulator.slaveId;
         this.simulator.slaveId = slaveId;
+        let ok = false;
         try {
           const response = await this.simulator.processRequest(frame);
           if (response) {
             this.addMonitorEntry('received', response);
             this.stats.success++;
             this.updateStatsDisplay();
+            ok = true;
           } else {
             this.stats.errors++;
             this.updateStatsDisplay();
@@ -11600,13 +11524,17 @@ class ModbusDashboard {
         } finally {
           this.simulator.slaveId = originalSlaveId;
         }
-        resolve();
+        resolve(ok);
       });
     }
 
     await this._acquireBus();
     try {
-      await new Promise(async (resolve, reject) => {
+      return await new Promise(async (resolve, reject) => {
+        // Clear receive buffer — 이전 교환(FC64 등)의 잔여 바이트가 남아 있으면
+        // 에코 프레임이 그 뒤에 붙어 파싱되지 않음 (sendAndWaitResponse와 동일)
+        this.receiveIndex = 0;
+
         // Set up response handler
         const responsePromise = new Promise(res => {
           this.pendingResponse = {slaveId: slaveId, resolve: res};
@@ -11634,11 +11562,11 @@ class ModbusDashboard {
               (response[1] & 0x80) === 0) {
             this.stats.success++;
             this.updateStatsDisplay();
-            resolve();
+            resolve(true);
           } else {
             this.stats.errors++;
             this.updateStatsDisplay();
-            resolve();  // Still resolve to continue execution
+            resolve(false);  // Still resolve to continue execution
           }
         } catch (error) {
           // Timeout occurred
@@ -11649,7 +11577,7 @@ class ModbusDashboard {
               'error',
               `Slave ${slaveId}: Write response timeout (${
                   this.commandTimeout}ms)`);
-          resolve();  // Still resolve to continue execution
+          resolve(false);  // Still resolve to continue execution
         }
       });
     } finally {
@@ -11743,21 +11671,10 @@ class ModbusDashboard {
         this.modbus.buildCANopenUpload(slaveId, index, subIndex, 0, numData);
 
     if (this.writer) {
-      if (this.autoPollingTimer || this._isFc64Active ||
-          this.ovPollingRunning || this.offsetAlarmPollingRunning ||
-          this.offsetStatus2617PollingRunning) {
-        // polling 루프 / FC64 차트 / OV 폴링 / Offset 탭 폴링 중 버스 점유 중 →
-        // 큐에 등록
-        return new Promise((resolve, reject) => {
-          this.commandQueue.push({
-            type: 'canopen_read',
-            frame,
-            slaveId,
-            resolve,
-            reject,
-            tabSeq: this._tabSeq
-          });
-        });
+      if (this._busOwnerActive) {
+        // 버스 소유 루프(폴링/FC64 차트/OV·Offset 폴링)가 점유 중 → 큐에 등록
+        return this._enqueueCommand(
+            {type: 'canopen_read', frame, slaveId, tabSeq: this._tabSeq});
       }
       return await this.sendCANopenAndWaitResponse(frame, slaveId);
     }
@@ -11779,21 +11696,11 @@ class ModbusDashboard {
         this.modbus.buildCANopenDownload(slaveId, index, subIndex, value, 0);
 
     if (this.writer) {
-      if (this.autoPollingTimer || this._isFc64Active ||
-          this.ovPollingRunning || this.offsetAlarmPollingRunning ||
-          this.offsetStatus2617PollingRunning) {
+      if (this._busOwnerActive) {
         // Offset 탭 폴링이 버스 소유자일 때도 큐 경유 — 폴링 루프가
         // _drainCommandQueue로 처리
-        return new Promise((resolve, reject) => {
-          this.commandQueue.push({
-            type: 'canopen_write',
-            frame,
-            slaveId,
-            resolve,
-            reject,
-            tabSeq: this._tabSeq
-          });
-        });
+        return this._enqueueCommand(
+            {type: 'canopen_write', frame, slaveId, tabSeq: this._tabSeq});
       }
       return await this.sendCANopenAndWaitResponse(frame, slaveId);
     }
@@ -12886,20 +12793,10 @@ class ModbusDashboard {
         return null;
       }
     } else if (this.writer) {
-      if (this.autoPollingTimer || this._isFc64Active ||
-          this.ovPollingRunning) {
-        // Polling 중이거나 FC64 차트 / OV 폴링이 버스를 점유 중이면 큐에 등록
-        return new Promise((resolve, reject) => {
-          this.commandQueue.push({
-            type: 'read',
-            frame,
-            slaveId,
-            address,
-            resolve,
-            reject,
-            tabSeq: this._tabSeq
-          });
-        });
+      if (this._busOwnerActive) {
+        // 버스 소유 루프(폴링/FC64 차트/OV·Offset 폴링)가 점유 중이면 큐에 등록
+        return this._enqueueCommand(
+            {type: 'read', frame, slaveId, address, tabSeq: this._tabSeq});
       }
       return await this.sendAndWaitResponse(frame, slaveId);
     }
@@ -13274,6 +13171,11 @@ class ModbusDashboard {
       return;
     }
 
+    if (this.firmwareUpdateInProgress) {
+      this.showToast('펌웨어 업데이트 중에는 탐색할 수 없습니다', 'warning');
+      return;
+    }
+
     if (!this.writer && !this.simulatorEnabled) {
       this.showToast('시리얼 포트에 연결되어 있지 않습니다', 'warning');
       return;
@@ -13546,37 +13448,44 @@ class ModbusDashboard {
       await new Promise(resolve => setTimeout(resolve, 5));
     }
 
-    return new Promise(async (resolve) => {
-      // Set up scan response callback
-      this.scanExpectedSlaveId = slaveId;
-      this.scanResolve = (responseValue) => {
-        clearTimeout(timeout);
-        this.scanResolve = null;
-        this.scanExpectedSlaveId = null;
-        resolve(responseValue);
-      };
+    // 스캔 TX/RX 쌍도 bus mutex로 직렬화 — 폴링이 꺼진 페이지에서 뮤텍스
+    // 경유 직접 전송(writeRegister 등)과 스캔 프레임이 겹치는 것을 방지
+    await this._acquireBus();
+    try {
+      return await new Promise(async (resolve) => {
+        // Set up scan response callback
+        this.scanExpectedSlaveId = slaveId;
+        this.scanResolve = (responseValue) => {
+          clearTimeout(timeout);
+          this.scanResolve = null;
+          this.scanExpectedSlaveId = null;
+          resolve(responseValue);
+        };
 
-      const timeout = setTimeout(() => {
-        this.scanResolve = null;
-        this.scanExpectedSlaveId = null;
-        resolve(null);
-      }, this.scanTimeout);
+        const timeout = setTimeout(() => {
+          this.scanResolve = null;
+          this.scanExpectedSlaveId = null;
+          resolve(null);
+        }, this.scanTimeout);
 
-      try {
-        await this.writer.write(frame);
-        this.addMonitorEntry(
-            'sent', frame,
-            {functionCode: 4, startAddress: this.scanRegister, quantity: 1});
-        this.stats.requests++;
-        this.updateStatsDisplay();
-        // Response will be handled by tryParseFrame which calls scanResolve
-      } catch (error) {
-        clearTimeout(timeout);
-        this.scanResolve = null;
-        this.scanExpectedSlaveId = null;
-        resolve(null);
-      }
-    });
+        try {
+          await this.writer.write(frame);
+          this.addMonitorEntry(
+              'sent', frame,
+              {functionCode: 4, startAddress: this.scanRegister, quantity: 1});
+          this.stats.requests++;
+          this.updateStatsDisplay();
+          // Response will be handled by tryParseFrame which calls scanResolve
+        } catch (error) {
+          clearTimeout(timeout);
+          this.scanResolve = null;
+          this.scanExpectedSlaveId = null;
+          resolve(null);
+        }
+      });
+    } finally {
+      this._releaseBus();
+    }
   }
 
   /**
@@ -14227,6 +14136,15 @@ class ModbusDashboard {
       this.showToast('왼쪽 목록에서 대상 장치를 선택하세요', 'error');
       return;
     }
+
+    // 펌웨어 프로토콜(0x23/0x66)은 큐/뮤텍스 밖에서 버스를 독점해야 함 —
+    // 버스 소유 루프(폴링/차트/OV·Offset 폴링)나 탐색이 활성이면 시작 거부
+    if (this._busOwnerActive || this.isScanning) {
+      this.showToast(
+          '폴링/차트/탐색이 동작 중입니다. 중지 후 다시 시도하세요', 'error');
+      return;
+    }
+
     const slaveId = selectedDevice.slaveId;
     // 펌웨어 데이터는 4-byte 정렬되어야 함 (Flash 32-bit word 쓰기 호환)
     let packetSize =
@@ -14282,6 +14200,11 @@ class ModbusDashboard {
     }
 
     const totalSize = this.firmwareData.length;
+
+    // 업데이트 전 구간 동안 bus mutex 점유 — 진행 중이던 마지막 TX/RX 쌍이
+    // 끝날 때까지 대기하고, 이후 뮤텍스 경유 TX(writeRegister 등)는 완료까지
+    // 블로킹되어 펌웨어 트래픽과 섞이지 않음 (아래 finally에서 해제)
+    await this._acquireBus();
 
     try {
       if (fwProtocol === '0x66') {
@@ -14506,6 +14429,7 @@ class ModbusDashboard {
       });
 
     } finally {
+      this._releaseBus();
       this.firmwareUpdateInProgress = false;
       if (downloadBtn) downloadBtn.style.display = 'inline-block';
       if (cancelBtn) cancelBtn.style.display = 'none';
@@ -15093,6 +15017,18 @@ class ModbusDashboard {
   async sendAndReceiveFC64(frame, control, timeout = 500) {
     if (!this.writer) return null;
 
+    // bus mutex로 표준 Modbus 교환(대시보드 폴링 등)과 직렬화 — 차트 실행
+    // 중에도 폴링/큐 명령이 FC64 요청 사이에 안전하게 인터리브된다
+    await this._acquireBus();
+    try {
+      return await this._sendAndReceiveFC64Inner(frame, control, timeout);
+    } finally {
+      this._releaseBus();
+    }
+  }
+
+  /** sendAndReceiveFC64 본체 — 반드시 bus mutex를 보유한 상태에서 호출 */
+  async _sendAndReceiveFC64Inner(frame, control, timeout) {
     // 이전 잔류 데이터 flush
     this._serialDataCb = null;
     this.responseBuffer = null;
@@ -15112,8 +15048,11 @@ class ModbusDashboard {
     return new Promise((resolve) => {
       const startTime = performance.now();
       let hardTimeoutId = null;
+      let finished = false;
 
       const done = (response) => {
+        if (finished) return;  // check/hardTimeout 중복 호출 가드
+        finished = true;
         this.updateStats(response !== null);
         resolve(response);
       };
@@ -15169,11 +15108,12 @@ class ModbusDashboard {
       };
 
       // 안전망: 디바이스 무응답 시 강제 종료
+      // 무조건 종료 — 조건부로 하면 다른 FC64/65 호출(예: 페이지 전환 시
+      // stopMiniChart의 Stop 전송)이 _serialDataCb/responseBuffer를 교체했을 때
+      // 아무것도 하지 않아 promise가 영원히 pending → 호출자 루프 영구 freeze
       hardTimeoutId = setTimeout(() => {
-        if (this._serialDataCb === check || this.responseBuffer === myBuffer) {
-          cleanup();
-          done(null);
-        }
+        cleanup();
+        done(null);
       }, timeout + 100);
 
       // 즉시 첫 확인
@@ -15198,6 +15138,17 @@ class ModbusDashboard {
   async sendAndReceiveFC65(frame, control, timeout = 500) {
     if (!this.writer) return null;
 
+    // bus mutex로 표준 Modbus 교환과 직렬화 (sendAndReceiveFC64와 동일)
+    await this._acquireBus();
+    try {
+      return await this._sendAndReceiveFC65Inner(frame, control, timeout);
+    } finally {
+      this._releaseBus();
+    }
+  }
+
+  /** sendAndReceiveFC65 본체 — 반드시 bus mutex를 보유한 상태에서 호출 */
+  async _sendAndReceiveFC65Inner(frame, control, timeout) {
     this._serialDataCb = null;
     this.responseBuffer = null;
     this.receiveIndex = 0;
@@ -15215,8 +15166,11 @@ class ModbusDashboard {
     return new Promise((resolve) => {
       const startTime = performance.now();
       let hardTimeoutId = null;
+      let finished = false;
 
       const done = (response) => {
+        if (finished) return;  // check/hardTimeout 중복 호출 가드
+        finished = true;
         this.updateStats(response !== null);
         resolve(response);
       };
@@ -15274,11 +15228,12 @@ class ModbusDashboard {
         this._serialDataCb = check;
       };
 
+      // 무조건 종료 — 조건부로 하면 다른 FC64/65 호출(예: 페이지 전환 시
+      // stopMiniChart의 Stop 전송)이 _serialDataCb/responseBuffer를 교체했을 때
+      // 아무것도 하지 않아 promise가 영원히 pending → 호출자 루프 영구 freeze
       hardTimeoutId = setTimeout(() => {
-        if (this._serialDataCb === check || this.responseBuffer === myBuffer) {
-          cleanup();
-          done(null);
-        }
+        cleanup();
+        done(null);
       }, timeout + 100);
 
       check();
@@ -15623,8 +15578,21 @@ class ModbusDashboard {
    */
   async startChartCapture() {
     if (!this.chartManager) return;
+    if (this.firmwareUpdateInProgress) {
+      this.showToast('펌웨어 업데이트 중에는 차트를 시작할 수 없습니다', 'error');
+      this._restoreChartButtons();
+      return;
+    }
     if (this.chartManager.mode === 'trigger') {
-      await this.startTriggerCapture();
+      try {
+        await this.startTriggerCapture();
+      } catch (e) {
+        // 예외로 triggerRunning=true가 남으면 모든 버튼 명령이 큐에 갇힘
+        console.error('startTriggerCapture crashed:', e);
+        this.showToast(`Trigger 캡처 오류로 중단: ${e.message}`, 'error');
+        this.triggerRunning = false;
+        this._restoreChartButtons();
+      }
       return;
     }
     if (!this.writer) {
@@ -15689,6 +15657,8 @@ class ModbusDashboard {
     });
     const configFrame =
         this.modbus.buildContinuousConfigure(slaveId, period, channelSlots);
+    // pause-and-inject 후 스트림 재개(_resumeFc64Stream)용으로 보관
+    this._chartConfigFrame = configFrame;
     const configResp = await this.sendAndReceiveFC64(configFrame, 0x02, 1000);
 
     if (!configResp) {
@@ -15706,7 +15676,14 @@ class ModbusDashboard {
     if (statusEl) statusEl.textContent = 'Running';
 
     // 데이터 루프 시작 (비동기, await 불필요)
-    this.chartDataLoop();
+    // 예외로 루프가 조용히 죽으면 chartRunning=true로 남아 모든 버튼 명령이
+    // 큐에 갇히므로, 반드시 crash를 표면화하고 상태를 정리한다
+    this.chartDataLoop().catch(e => {
+      console.error('chartDataLoop crashed:', e);
+      this.showToast(`차트 루프 오류로 중단: ${e.message}`, 'error');
+      this.chartRunning = false;
+      this._restoreChartButtons();
+    });
   }
 
   /**
@@ -15718,6 +15695,22 @@ class ModbusDashboard {
     let totalSamples = 0;
     let nextSampleTime =
         null;  // 누적 타임스탬프 카운터 (패킷 도착 시점과 무관)
+    let consecutiveTimeouts = 0;  // 연속 무응답 카운터 (자동 복구용)
+
+    // FC64 요청 사이 큐 소진 — 디바이스가 스트리밍 중 표준 Modbus에 무응답이면
+    // 스트림을 일시정지(pause-and-inject)하고 처리 후 재개
+    const drainQueue = () => this._drainQueueDuringStream({
+      stopStream: () => this._pauseFc64Stream(slaveId),
+      resumeStream: async () => {
+        if (!this.chartRunning || !this._chartConfigFrame) return;
+        const ok =
+            await this._resumeFc64Stream(slaveId, this._chartConfigFrame);
+        if (!ok) {
+          this.showToast('차트 스트림 재개 실패 — 차트를 중지합니다', 'error');
+          await this.stopChartCapture();
+        }
+      },
+    });
 
     while (this.chartRunning) {
       if (!this.writer) {
@@ -15731,12 +15724,25 @@ class ModbusDashboard {
       if (!this.chartRunning) break;
 
       if (!response) {
+        // 스트림이 불안정해도 큐가 쌓인 채 방치되지 않도록 여기서도 소진
+        await drainQueue();
+        // 연속 무응답 시 스트림 자동 복구 — 외부 요인(다른 FC64 Stop 전송 등)
+        // 으로 디바이스 스트림이 꺼진 경우 Configure 재전송으로 재개
+        if (++consecutiveTimeouts >= 10 && this.chartRunning &&
+            this._chartConfigFrame) {
+          consecutiveTimeouts = 0;
+          this.addMonitorEntry(
+              'queued', 'FC64 연속 무응답 — 차트 스트림 자동 재개 시도');
+          await this._resumeFc64Stream(slaveId, this._chartConfigFrame);
+        }
         await this.delay(20);
         continue;
       }
+      consecutiveTimeouts = 0;
 
       const parsed = this.modbus.parseContinuousDataResponse(response);
       if (!parsed) {
+        await drainQueue();
         await this.delay(20);
         continue;
       }
@@ -15776,11 +15782,13 @@ class ModbusDashboard {
       // Status=done이면 짧게 대기 후 재요청, stay이면 즉시 재요청
       if (parsed.status === 0x00) await this.delay(5);
 
-      // FC64 요청 사이에 대기 중인 큐 명령 소진 (버스 충돌 방지)
-      if (this.commandQueue.length > 0) await this._drainCommandQueue();
+      // FC64 요청 사이에 대기 중인 큐 명령 소진 (버스 충돌 방지,
+      // 무응답 시 pause-and-inject 폴백)
+      await drainQueue();
     }
 
     this.responseBuffer = null;
+    await this._flushQueueIfIdle();
   }
 
   /**
@@ -15925,6 +15933,12 @@ class ModbusDashboard {
           break;
         }
       }
+
+      // 트리거 대기 중에도 큐에 쌓인 명령을 시도 — armed 상태를 깨면 안 되므로
+      // 스트림 일시정지 없이 전송만 하고, 무응답이면 실패로 확정 (promise가
+      // 캡처 종료까지 pending되는 것을 방지)
+      if (this.commandQueue.length > 0) await this._drainQueueDuringStream({});
+
       await this.delay(200);  // 200ms 간격으로 폴링
     }
 
@@ -15933,6 +15947,7 @@ class ModbusDashboard {
       const abortFrame = this.modbus.buildTriggerStop(slaveId);
       await this.sendAndReceiveFC65(abortFrame, 0x00, 300);
       this.triggerRunning = false;
+      await this._flushQueueIfIdle();
       this.chartManager.updateStatus('Stopped');
       this.chartManager.updateTriggerStatus('Waiting');
       this._restoreChartButtons();
@@ -15974,6 +15989,10 @@ class ModbusDashboard {
             99, Math.round((chI * numOfData + startAddr) / totalWork * 100));
         this.chartManager.updateStatus(`Download ${pct}%`);
 
+        // 데이터 다운로드 중에도 큐에 쌓인 read/write를 청크 사이에 소진
+        // (캡처 상태를 깨지 않도록 스트림 일시정지 없이 전송만 시도)
+        if (this.commandQueue.length > 0) await this._drainQueueDuringStream({});
+
         if (parsed.length < 14) break;  // 마지막 패킷 (end-of-data)
       }
 
@@ -15985,6 +16004,7 @@ class ModbusDashboard {
     await this.sendAndReceiveFC65(finalStop, 0x00, 300);
 
     this.triggerRunning = false;
+    await this._flushQueueIfIdle();
     this._stopNoThrottleAudio();
 
     // ── 6. 차트 렌더링 ───────────────────────────────────────
@@ -16008,6 +16028,7 @@ class ModbusDashboard {
       const stopFrame = this.modbus.buildTriggerStop(this.chartSlaveId || 1);
       await this.sendAndReceiveFC65(stopFrame, 0x00, 300);
     }
+    await this._flushQueueIfIdle();
 
     this.chartManager.stopCapture();
     this._stopNoThrottleAudio();
@@ -16152,6 +16173,10 @@ class ModbusDashboard {
       this.showToast('시리얼 포트가 연결되지 않았습니다', 'error');
       return;
     }
+    if (this.firmwareUpdateInProgress) {
+      this.showToast('펌웨어 업데이트 중에는 차트를 시작할 수 없습니다', 'warning');
+      return;
+    }
     if (this.chartRunning) {
       this.showToast('Chart 탭이 실행 중입니다. 먼저 중지해주세요.', 'warning');
       return;
@@ -16215,6 +16240,9 @@ class ModbusDashboard {
     const period = 160;  // 20ms per sample
     const configFrame =
         this.modbus.buildContinuousConfigure(slaveId, period, channelSlots);
+    // pause-and-inject 후 스트림 재개(_resumeFc64Stream)용으로 보관
+    if (!this._miniChartConfigFrames) this._miniChartConfigFrames = {};
+    this._miniChartConfigFrames[type] = configFrame;
     const resp = await this.sendAndReceiveFC64(configFrame, 0x02, 1000);
     if (!resp) {
       this._fc64Busy = false;
@@ -16234,8 +16262,13 @@ class ModbusDashboard {
       });
     }
     this._updateMiniChartBtn(type, true);
-    this._miniChartDataLoop(
-        type, slaveId, chart.channels.length, period * 0.125);
+    this._miniChartDataLoop(type, slaveId, chart.channels.length, period * 0.125)
+        .catch(e => {
+          console.error('_miniChartDataLoop crashed:', e);
+          this.showToast(`Mini Chart 루프 오류로 중단: ${e.message}`, 'error');
+          this.miniChartRunning[type] = false;
+          this._updateMiniChartBtn(type, false);
+        });
   }
 
   async _miniChartDataLoop(type, slaveId, numCh, periodMs) {
@@ -16260,6 +16293,22 @@ class ModbusDashboard {
     const rmsIds =
         type === 'current' ? ['ov-iu-rms', 'ov-iv-rms', 'ov-iw-rms'] : null;
 
+    // FC64 요청 사이 큐 소진 — 무응답이면 스트림 일시정지(pause-and-inject)
+    const drainQueue = () => this._drainQueueDuringStream({
+      stopStream: () => this._pauseFc64Stream(slaveId),
+      resumeStream: async () => {
+        if (!this.miniChartRunning[type]) return;
+        const cfg = this._miniChartConfigFrames?.[type];
+        if (!cfg) return;
+        const ok = await this._resumeFc64Stream(slaveId, cfg);
+        if (!ok) {
+          this.showToast(
+              'Mini Chart 스트림 재개 실패 — 차트를 중지합니다', 'error');
+          await this.stopMiniChart(type);
+        }
+      },
+    });
+
     while (this.miniChartRunning[type]) {
       if (!this.writer) {
         await this.delay(50);
@@ -16270,12 +16319,15 @@ class ModbusDashboard {
       const response = await this.sendAndReceiveFC64(frame, 0x03, 300);
       if (!this.miniChartRunning[type]) break;
       if (!response) {
+        // 스트림이 불안정해도 큐가 쌓인 채 방치되지 않도록 여기서도 소진
+        await drainQueue();
         await Promise.resolve();
         continue;
       }
 
       const parsed = this.modbus.parseContinuousDataResponse(response);
       if (!parsed || parsed.data.length === 0) {
+        await drainQueue();
         await Promise.resolve();
         continue;
       }
@@ -16363,9 +16415,11 @@ class ModbusDashboard {
         }
       }
 
-      // FC64 요청 사이에 대기 중인 큐 명령 소진 (버스 충돌 방지)
-      if (this.commandQueue.length > 0) await this._drainCommandQueue();
+      // FC64 요청 사이에 대기 중인 큐 명령 소진 (버스 충돌 방지,
+      // 무응답 시 pause-and-inject 폴백)
+      await drainQueue();
     }
+    await this._flushQueueIfIdle();
   }
 
   copyInverterResults() {
@@ -16384,6 +16438,9 @@ class ModbusDashboard {
   }
 
   async stopMiniChart(type) {
+    // 실행 중이 아니면 no-op — 페이지 전환마다 무조건 Stop을 전송하면
+    // 메인 차트(FC64) 스트림을 죽이고 in-flight FC64 콜백을 클로버링함
+    if (!this.miniChartRunning[type]) return;
     // _fc64Busy를 먼저 세워 ovPolling 루프의 직접 TX를 큐로 전환
     this._fc64Busy = true;
     this.miniChartRunning[type] = false;
@@ -16749,6 +16806,7 @@ class ModbusDashboard {
       0x57: 'Over speed pulse-out',
       0x58: 'Motor Blocked',
       0x59: 'Motor Braking',
+      0x5A: 'Motor cable connection fault',
       // Group 6 — Communication / Data
       0x60: 'USB communication',
       0x61: 'RS-422 comm.',
@@ -16800,6 +16858,7 @@ class ModbusDashboard {
 
   startOvPolling() {
     if (this.ovPollingRunning) return;  // 이미 실행 중
+    if (this.firmwareUpdateInProgress) return;  // 펌웨어가 버스 독점 중
     this.ovPollingRunning = true;
     this._setOvBadge('ps-dclink', 'live');
     this._setOvBadge('ps-igbt-temp', 'live');
@@ -16858,6 +16917,11 @@ class ModbusDashboard {
     // writer·device 준비 대기
     while (this.ovPollingRunning) {
       if (this.writer && this._getManufactureDevice()) break;
+      // 이 루프가 버스 소유자(ovPollingRunning=true)인 동안 큐가 쌓이면
+      // 대기 중에도 소진 — 등록된 명령이 영원히 매달리는 것을 방지
+      if (this.writer && this.commandQueue.length > 0) {
+        await this._drainCommandQueue();
+      }
       await this.delay(500);
     }
     if (!this.ovPollingRunning) return;
@@ -16900,6 +16964,8 @@ class ModbusDashboard {
       }
       const device = this._getManufactureDevice();
       if (!device) {
+        // 버스 소유자로 대기하는 동안 큐가 쌓이면 소진
+        if (this.commandQueue.length > 0) await this._drainCommandQueue();
         await this.delay(500);
         continue;
       }
@@ -17106,6 +17172,10 @@ class ModbusDashboard {
 
   startTemp2702Polling() {
     if (this.temp2702Polling) return;
+    if (this.firmwareUpdateInProgress) {
+      this.showToast('펌웨어 업데이트 중에는 폴링을 시작할 수 없습니다', 'warning');
+      return;
+    }
     const sel = document.getElementById('temp2702SlaveSelect');
     const slaveId = sel ? parseInt(sel.value, 10) : NaN;
     if (!Number.isFinite(slaveId) || slaveId <= 0) {
@@ -17276,6 +17346,7 @@ class ModbusDashboard {
 
   startOffsetAlarmPolling() {
     if (this.offsetAlarmPollingRunning) return;
+    if (this.firmwareUpdateInProgress) return;  // 펌웨어가 버스 독점 중
     this.offsetAlarmPollingRunning = true;
     this._offsetAlarmPollingLoop();
   }
@@ -17289,6 +17360,10 @@ class ModbusDashboard {
   async _offsetAlarmPollingLoop() {
     while (this.offsetAlarmPollingRunning) {
       if (!this.writer || !this._getManufactureDevice()) {
+        // 버스 소유자로 대기하는 동안 큐가 쌓이면 소진
+        if (this.writer && this.commandQueue.length > 0) {
+          await this._drainCommandQueue();
+        }
         await this.delay(500);
         continue;
       }
@@ -17399,6 +17474,7 @@ class ModbusDashboard {
 
   startOffsetStatus2617Polling() {
     if (this.offsetStatus2617PollingRunning) return;
+    if (this.firmwareUpdateInProgress) return;  // 펌웨어가 버스 독점 중
     this.offsetStatus2617PollingRunning = true;
     this._offsetStatus2617PollingLoop();
   }
@@ -17412,6 +17488,10 @@ class ModbusDashboard {
   async _offsetStatus2617PollingLoop() {
     while (this.offsetStatus2617PollingRunning) {
       if (!this.writer || !this._getManufactureDevice()) {
+        // 버스 소유자로 대기하는 동안 큐가 쌓이면 소진
+        if (this.writer && this.commandQueue.length > 0) {
+          await this._drainCommandQueue();
+        }
         await this.delay(500);
         continue;
       }
@@ -17484,10 +17564,8 @@ class ModbusDashboard {
       if (this.autoPollingTimer || this._isFc64Active) {
         // Dashboard/FC64 가 버스 점유 중 — 직접 큐 push (readCANopenObject의
         // ovPollingRunning 체크 우회)
-        result = await new Promise((resolve, reject) => {
-          this.commandQueue.push(
-              {type: 'canopen_read', frame, slaveId, resolve, reject});
-        });
+        result = await this._enqueueCommand(
+            {type: 'canopen_read', frame, slaveId});
       } else {
         // OV 루프가 버스 소유자 — 직접 전송
         result = await this.sendCANopenAndWaitResponse(frame, slaveId);
@@ -17525,10 +17603,8 @@ class ModbusDashboard {
           this.modbus.buildCANopenUpload(slaveId, 0x2424, 0x00, 0, 16);
       let snResult;
       if (this.autoPollingTimer || this._isFc64Active) {
-        snResult = await new Promise((resolve, reject) => {
-          this.commandQueue.push(
-              {type: 'canopen_read', frame: snFrame, slaveId, resolve, reject});
-        });
+        snResult = await this._enqueueCommand(
+            {type: 'canopen_read', frame: snFrame, slaveId});
       } else {
         snResult = await this.sendCANopenAndWaitResponse(snFrame, slaveId);
         if (this.commandQueue.length > 0) await this._drainCommandQueue();
