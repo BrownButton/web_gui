@@ -9087,6 +9087,11 @@ class ModbusDashboard {
         device.online = false;
         device.lastUpdate = null;
         device.failCount = 0;
+        // 이전 버전에서 0xFF(미기록 EEPROM)를 그대로 문자 변환해
+        // 'ŸŸŸ...'로 저장해둔 캐시값 정리 → 재조회하도록 초기화
+        if (device.serialNumber && /^[Ÿÿ]+$/.test(device.serialNumber)) {
+          device.serialNumber = null;
+        }
       });
       this.renderDeviceGrid();
     }
@@ -10377,6 +10382,22 @@ class ModbusDashboard {
   }
 
   /**
+   * CANopen 0x2424 Serial Number 응답 바이트 → 문자열 디코드.
+   * EEPROM에 시리얼 넘버가 기록되지 않은 드라이브는 0xFF로 채워진 값을
+   * 반환하는데, 그대로 문자 변환하면 'ŸŸŸ...'처럼 깨져 보이므로 null로 처리.
+   */
+  decodeSerialBytes(rawBytes) {
+    if (!rawBytes || rawBytes.length === 0) return null;
+    if (rawBytes.every(b => b === 0xFF || b === 0x00)) return null;
+    const serial = rawBytes.filter(b => b !== 0)
+                       .map(b => String.fromCharCode(b))
+                       .join('')
+                       .trim()
+                       .toUpperCase();
+    return serial || null;
+  }
+
+  /**
    * Fetch and cache the drive serial number (0x2424) for a device.
    * Uses readCANopenObject which is already queue-safe — safe to call during
    * polling. Skips if already fetched or device has no valid slaveId.
@@ -10391,21 +10412,15 @@ class ModbusDashboard {
           await this.readCANopenObject(device.slaveId, 0x2424, 0x00, 16);
       if (!result || result.error) return;
 
-      const serial = result.rawBytes.filter(b => b !== 0)
-                         .map(b => String.fromCharCode(b))
-                         .join('')
-                         .trim()
-                         .toUpperCase();
+      const serial = this.decodeSerialBytes(result.rawBytes) || '미할당';
 
-      if (serial) {
-        device.serialNumber = serial;
-        this.saveDevices();
-        // Update all serial display spans in DOM without full re-render
-        document.querySelectorAll(`[data-serial-for="${device.id}"]`)
-            .forEach(el => {
-              el.textContent = 'S/N: ' + serial;
-            });
-      }
+      device.serialNumber = serial;
+      this.saveDevices();
+      // Update all serial display spans in DOM without full re-render
+      document.querySelectorAll(`[data-serial-for="${device.id}"]`)
+          .forEach(el => {
+            el.textContent = 'S/N: ' + serial;
+          });
     } catch (e) {
       // silently ignore — serial number is optional display info
     }
@@ -17079,13 +17094,11 @@ class ModbusDashboard {
       if (!snR || snR.error) {
         if (snEl) { snEl.textContent = '읽기 실패'; snEl.style.color = '#dc3545'; }
       } else {
-        const serial = (snR.rawBytes ?? [])
-            .filter(b => b !== 0)
-            .map(b => String.fromCharCode(b))
-            .join('')
-            .trim()
-            .toUpperCase();
-        if (snEl) { snEl.textContent = serial || '(비어있음)'; snEl.style.color = ''; }
+        const serial = this.decodeSerialBytes(snR.rawBytes ?? []);
+        if (snEl) {
+          snEl.textContent = serial || '시리얼 넘버 없음';
+          snEl.style.color = '';
+        }
       }
 
       if (this.ovPollingRunning) await this.delay(1000);
@@ -17614,13 +17627,8 @@ class ModbusDashboard {
         snEl.textContent = '읽기 실패';
         snEl.style.color = '#dc3545';
       } else {
-        const serial = (snResult.rawBytes ?? [])
-                           .filter(b => b !== 0)
-                           .map(b => String.fromCharCode(b))
-                           .join('')
-                           .trim()
-                           .toUpperCase();
-        snEl.textContent = serial || '(비어있음)';
+        const serial = this.decodeSerialBytes(snResult.rawBytes ?? []);
+        snEl.textContent = serial || '시리얼 넘버 없음';
         snEl.style.color = '';
       }
     }
@@ -21685,22 +21693,18 @@ class ModbusDashboard {
       if (!result || result.error)
         throw new Error(result?.error || '응답 없음');
 
-      // rawBytes(10바이트) → null 제거 후 ASCII 문자열 복원
-      const serial = result.rawBytes.filter(b => b !== 0)
-                         .map(b => String.fromCharCode(b))
-                         .join('')
-                         .trim()
-                         .toUpperCase();
+      // rawBytes(16바이트) → null 제거 후 ASCII 문자열 복원 (0xFF만 있으면 미기록)
+      const serial = this.decodeSerialBytes(result.rawBytes);
 
       if (outputEl) {
-        outputEl.textContent = serial || '(비어있음)';
+        outputEl.textContent = serial || '시리얼 넘버 없음';
         outputEl.style.color = serial ? '#00c471' : '#b0b8c1';
       }
       if (statusEl) {
         statusEl.textContent = `읽기 완료 (Slave ${device.slaveId})`;
       }
 
-      if (serial.length === 9) {
+      if (serial?.length === 9) {
         this._snRenderDecode(serial);
         if (decodeBox) decodeBox.style.display = 'block';
       }
