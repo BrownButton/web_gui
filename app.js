@@ -3609,6 +3609,10 @@ class ModbusDashboard {
         this.startAutoPolling();
       }
 
+      // 시리얼 넘버 전체 재조회 — 포트가 분리된 사이 디바이스가 교체됐을 수
+      // 있으므로 캐시 무시. (폴링 중이면 큐 경유, 아니면 버스 뮤텍스 직렬화)
+      this.refetchAllSerialNumbers();
+
       // 기존 등록 디바이스의 operationMode를 디바이스에서 다시 읽기
       // (앱 재시작 시 localStorage 값과 실제 디바이스 설정이 다를 수 있음)
       // auto-scan이 활성화된 경우: 스캔 완료 콜백(startDeviceScan 내부)에서
@@ -7510,6 +7514,14 @@ class ModbusDashboard {
       },
       {
         type: 'input',
+        group: 'Electrical',
+        address: '0xD052',
+        name: 'Motor current',
+        implemented: 'Y',
+        description: '모터 소비 전류 √(Id²+Iq²) RMS. 0.1A/LSB'
+      },
+      {
+        type: 'input',
         group: 'Speed',
         address: '0xD02D',
         name: 'Actual speed [RPM] (Absolute)',
@@ -10403,7 +10415,10 @@ class ModbusDashboard {
     if (!rawBytes || rawBytes.length === 0) return null;
     if (rawBytes.every(b => b === 0xFF || b === 0x00)) return null;
     const serial = rawBytes.filter(b => b !== 0)
-                       .map(b => String.fromCharCode(b))
+                       .map(
+                           b => (b >= 0x20 && b < 0x7F) ?
+                               String.fromCharCode(b) :
+                               '.')
                        .join('')
                        .trim()
                        .toUpperCase();
@@ -10413,12 +10428,22 @@ class ModbusDashboard {
   /**
    * Fetch and cache the drive serial number (0x2424) for a device.
    * Uses readCANopenObject which is already queue-safe — safe to call during
-   * polling. Skips if already fetched or device has no valid slaveId.
+   * polling (자동으로 commandQueue 경유). Skips if already fetched (unless
+   * force) or device has no valid slaveId.
+   * @param {boolean} force - true면 캐시를 무시하고 재조회. 읽기 실패 시
+   *     기존 캐시값은 유지 (교체 여부 불명확한 상태에서 표시가 사라지지 않게)
    */
-  async fetchDeviceSerialNumber(device) {
+  async fetchDeviceSerialNumber(device, force = false) {
     if (!device || device.slaveId === 0) return;
-    if (device.serialNumber) return;  // already cached
+    if (!force && device.serialNumber) return;  // already cached
     if (!this.writer && !this.simulatorEnabled) return;
+
+    // 중복 조회 방지: 연결 직후 전체 재조회와 폴링 offline→online 전환이
+    // 겹칠 수 있으므로 디바이스별 in-flight 가드 (devices 배열과 분리해
+    // localStorage에 저장되지 않도록 Set으로 관리)
+    if (!this._snFetchInFlight) this._snFetchInFlight = new Set();
+    if (this._snFetchInFlight.has(device.id)) return;
+    this._snFetchInFlight.add(device.id);
 
     try {
       const result =
@@ -10436,7 +10461,22 @@ class ModbusDashboard {
           });
     } catch (e) {
       // silently ignore — serial number is optional display info
+    } finally {
+      this._snFetchInFlight.delete(device.id);
     }
+  }
+
+  /**
+   * 등록된 모든 디바이스의 시리얼 넘버를 캐시 무시하고 재조회.
+   * 시리얼 포트 연결 성공 시 호출 — 포트가 분리된 사이 디바이스가
+   * 교체되었을 수 있으므로 캐시를 신뢰하지 않는다.
+   * readCANopenObject 경유이므로 폴링 중이면 큐, 유휴면 버스 뮤텍스로
+   * 직렬화되어 485 충돌 없음.
+   */
+  refetchAllSerialNumbers() {
+    this.devices.filter(d => d.slaveId !== 0).forEach(d => {
+      this.fetchDeviceSerialNumber(d, true);
+    });
   }
 
   /**
@@ -11086,11 +11126,20 @@ class ModbusDashboard {
       const status = await this.sendAndWaitResponse(motorFrame, device.slaveId);
 
       if (status !== null) {
+        const wasOffline = !device.online;
         device.motorStatus = status;
         device.lastUpdate = Date.now();
         device.online = true;
         device.failCount = 0;  // Reset fail count on success
         this.updateDeviceStats(device.slaveId, true);
+
+        // offline→online 복귀: 그 사이 전원 차단 후 디바이스가 교체됐을 수
+        // 있으므로 시리얼 재조회. await 금지 — readCANopenObject가 큐에
+        // 등록한 명령은 이 폴링 사이클이 끝난 뒤에야 처리되므로, 여기서
+        // await하면 사이클이 끝나지 않는 교착 상태가 된다.
+        if (wasOffline) {
+          this.fetchDeviceSerialNumber(device, true);
+        }
 
         // Inter-frame gap before next read (메시지 간격 설정 적용)
         if (this.paramPollingDelay > 0)
@@ -12922,6 +12971,7 @@ class ModbusDashboard {
       return mA.toFixed(3) + ' mA';
     }
     if (address === 0xD025) return ((raw / 65536) * 100).toFixed(2) + ' %';
+    if (address === 0xD052) return (raw / 10).toFixed(1) + ' A';
     return null;
   }
 
@@ -19320,29 +19370,31 @@ class ModbusDashboard {
     try {
       const snr =
           await this.readCANopenObject(device.slaveId, 0x2424, 0x00, 16);
-      if (snEl) {
-        if (snr && !snr.error && snr.rawBytes) {
-          if (snr.rawBytes.every(b => b === 0xFF)) {
-            snEl.textContent = '미부여';
-            snEl.style.color = '#FF9500';
-            snEl.style.background = '#FFF5E6';
-          } else {
-            const sn =
-                snr.rawBytes.filter(b => b !== 0x00)
-                    .map(
-                        b => (b >= 0x20 && b < 0x7F) ? String.fromCharCode(b) :
-                                                       '.')
-                    .join('')
-                    .trim();
-            snEl.textContent = sn || '—';
+      if (snr && !snr.error && snr.rawBytes) {
+        // 대시보드 카드와 동일한 공용 디코더 사용 → 두 화면 표시 일치
+        const sn = this.decodeSerialBytes(snr.rawBytes);
+        if (snEl) {
+          if (sn) {
+            snEl.textContent = sn;
             snEl.style.color = '#3182F6';
             snEl.style.background = '#EEF3FF';
+          } else {
+            snEl.textContent = '미할당';
+            snEl.style.color = '#FF9500';
+            snEl.style.background = '#FFF5E6';
           }
-        } else {
-          snEl.textContent = '실패';
-          snEl.style.color = '#F04452';
-          snEl.style.background = '#FFF2F3';
         }
+        // 여기서 읽은 최신 값을 대시보드 캐시에도 반영해 화면 간 불일치 방지
+        device.serialNumber = sn || '미할당';
+        this.saveDevices();
+        document.querySelectorAll(`[data-serial-for="${device.id}"]`)
+            .forEach(el => {
+              el.textContent = 'S/N: ' + device.serialNumber;
+            });
+      } else if (snEl) {
+        snEl.textContent = '실패';
+        snEl.style.color = '#F04452';
+        snEl.style.background = '#FFF2F3';
       }
     } catch {
       if (snEl) {
@@ -20218,6 +20270,12 @@ class ModbusDashboard {
         address: 0xD051,
         writable: false,
         description: '지령 토크'
+      },
+      {
+        name: 'Motor Current',
+        address: 0xD052,
+        writable: false,
+        description: '모터 소비 전류 (0.1A/LSB)'
       }
     ];
 
@@ -21743,6 +21801,11 @@ class ModbusDashboard {
         statusEl.textContent = '✔ 쓰기 완료';
         statusEl.style.color = '#00c471';
       }
+      // 새 시리얼이 기록됐으므로 캐시 무효화 후 재조회 → 대시보드 카드에
+      // 즉시 반영 (queue-safe 경로라 폴링과 충돌 없음)
+      device.serialNumber = null;
+      this.saveDevices();
+      this.fetchDeviceSerialNumber(device, true);
     } catch (e) {
       if (statusEl) {
         statusEl.textContent = '✘ 쓰기 실패: ' + e.message;
