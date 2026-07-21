@@ -4770,6 +4770,32 @@ select:focus {
     background: #F2F4F6;
 }
 
+.device-status-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.device-alarm-code {
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #FDECEE;
+    color: #F04452;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: -0.1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+    cursor: default;
+}
+
+.device-alarm-code.hidden {
+    display: none;
+}
+
 .status-indicator {
     width: 7px;
     height: 7px;
@@ -5830,6 +5856,21 @@ select:focus {
     align-items: center;
     justify-content: center;
     gap: 8px;
+}
+
+/* 리스트 뷰: 상태 + 알람코드 칩을 한 그리드 셀에 세로로 배치 */
+.device-list-item .device-status-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.device-list-item .device-alarm-code {
+    font-size: 10px;
+    padding: 2px 8px;
+    max-width: 110px;
 }
 
 .device-list-item .status-indicator {

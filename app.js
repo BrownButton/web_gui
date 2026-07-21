@@ -9343,9 +9343,12 @@ class ModbusDashboard {
         device.slaveId === 0 ? 'unassigned' : ''}">
                 ${device.slaveId === 0 ? 'ID 미할당' : 'ID: ' + device.slaveId}
             </span>
-            <div class="device-status" title="${statusInfo.tooltip}">
-                <span class="status-indicator ${statusInfo.class}"></span>
-                <span class="status-text">${statusInfo.text}</span>
+            <div class="device-status-wrap">
+                <div class="device-status" title="${statusInfo.tooltip}">
+                    <span class="status-indicator ${statusInfo.class}"></span>
+                    <span class="status-text">${statusInfo.text}</span>
+                </div>
+                <div class="device-alarm-code hidden" title="Alarm Code (0x603F)"></div>
             </div>
             <div class="device-value">
                 <div class="device-value-number setpoint-display-value">
@@ -9372,6 +9375,9 @@ class ModbusDashboard {
                 <button class="btn-delete-icon btn-delete" title="Delete device">×</button>
             </div>
         `;
+
+    // 초기 렌더 시 알람코드 칩 상태 반영
+    this._updateAlarmCodeChip(item, device, statusInfo);
 
     // Event listeners
     const checkbox = item.querySelector('.device-checkbox');
@@ -9580,10 +9586,14 @@ class ModbusDashboard {
             </div>
             <div class="device-card-body">
                 <div class="device-status-row">
-                    <div class="device-status" title="${statusInfo.tooltip}">
-                        <span class="status-indicator ${
+                    <div class="device-status-group">
+                        <div class="device-status" title="${
+        statusInfo.tooltip}">
+                            <span class="status-indicator ${
         statusInfo.class}"></span>
-                        <span class="status-text">${statusInfo.text}</span>
+                            <span class="status-text">${statusInfo.text}</span>
+                        </div>
+                        <div class="device-alarm-code hidden" title="Alarm Code (0x603F)"></div>
                     </div>
                     <div class="device-mode-btns">
                         <button class="mode-btn ${
@@ -9663,6 +9673,9 @@ class ModbusDashboard {
                 </div>
             </div>
         `;
+
+    // 초기 렌더 시 알람코드 칩 상태 반영
+    this._updateAlarmCodeChip(card, device, statusInfo);
 
     // Event listeners
     const checkbox = card.querySelector('.device-checkbox');
@@ -11353,6 +11366,9 @@ class ModbusDashboard {
       statusTextEl.textContent = 'Offline';
     }
 
+    const alarmChip = element.querySelector('.device-alarm-code');
+    if (alarmChip) alarmChip.classList.add('hidden');
+
     element.classList.add('offline');
   }
 
@@ -11392,6 +11408,9 @@ class ModbusDashboard {
       statusContainer.title = statusInfo.tooltip;
     }
 
+    // 알람 발생 시 0x603F 알람코드 칩 갱신 (버스 안전: 큐 경유 읽기)
+    this._updateAlarmCodeChip(element, device, statusInfo);
+
     // Update actual speed value in card view
     if (element.classList.contains('device-card')) {
       const actualSpeedEl = element.querySelector('.actual-speed-value');
@@ -11412,6 +11431,75 @@ class ModbusDashboard {
     const setpointInputEl = element.querySelector('.device-setpoint-input');
     if (setpointInputEl && document.activeElement !== setpointInputEl) {
       setpointInputEl.value = device.setpoint;
+    }
+  }
+
+  /**
+   * 대시보드 카드/리스트의 알람코드 칩(.device-alarm-code) 표시 갱신.
+   * 알람(hasError) 상태면 칩을 보이고 0x603F 읽기를 트리거, 아니면 숨김.
+   */
+  _updateAlarmCodeChip(element, device, statusInfo) {
+    const chip = element.querySelector('.device-alarm-code');
+    if (!chip) return;
+
+    const online = device.online || this.simulatorEnabled;
+    if (statusInfo.hasError && online) {
+      chip.classList.remove('hidden');
+      if (device.alarmCode != null) {
+        const label = this.getAlarmCodeName(device.alarmCode);
+        chip.textContent = label;
+        chip.title = `Alarm Code (0x603F): ${label}`;
+      } else {
+        chip.textContent = '· · ·';
+        chip.title = 'Alarm Code (0x603F) 읽는 중…';
+      }
+      this._refreshDeviceAlarmCode(device);
+    } else {
+      chip.classList.add('hidden');
+      if (!statusInfo.hasError) {
+        // 알람 해제 → 코드 초기화 (다음 알람 시 새로 읽음)
+        device.alarmCode = null;
+        device._alarmCodeLastRead = 0;
+      }
+    }
+  }
+
+  /**
+   * 0x603F(알람코드)를 CANopen SDO로 읽어 device.alarmCode에 저장.
+   * readCANopenObject()가 버스 소유 루프 활성 시 commandQueue 경유하므로
+   * 폴링과 충돌하지 않음. 알람 지속 중에는 3초 주기로만 재읽기.
+   */
+  async _refreshDeviceAlarmCode(device) {
+    if (this.simulatorEnabled || !this.writer) return;
+    if (!device.slaveId) return;  // ID 미할당
+    if (device._alarmCodeReading) return;
+    const now = Date.now();
+    if (device._alarmCodeLastRead && now - device._alarmCodeLastRead < 3000)
+      return;
+
+    device._alarmCodeReading = true;
+    try {
+      const result = await this.readCANopenObject(device.slaveId, 0x603F, 0x00);
+      if (result && !result.error && result.value != null) {
+        device.alarmCode = result.value;
+      }
+    } catch (e) {
+      // 읽기 실패 — 다음 주기에 재시도
+    } finally {
+      device._alarmCodeLastRead = Date.now();
+      device._alarmCodeReading = false;
+    }
+
+    // 읽은 값으로 칩 즉시 갱신
+    if (device.alarmCode == null) return;
+    const element = document.querySelector(`.device-card[data-device-id="${
+        device.id}"], .device-list-item[data-device-id="${device.id}"]`);
+    if (!element) return;
+    const chip = element.querySelector('.device-alarm-code');
+    if (chip && !chip.classList.contains('hidden')) {
+      const label = this.getAlarmCodeName(device.alarmCode);
+      chip.textContent = label;
+      chip.title = `Alarm Code (0x603F): ${label}`;
     }
   }
 
