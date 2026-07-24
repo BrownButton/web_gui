@@ -14584,6 +14584,10 @@ class ModbusDashboard {
     } finally {
       this._releaseBus();
       this.firmwareUpdateInProgress = false;
+      // 안전망: 잔류 responseBuffer가 남으면 handleReceivedData 배타
+      // 라우팅이 계속 활성화되어 이후 모든 표준 응답이 파싱되지 않음
+      this.responseBuffer = null;
+      this.receiveIndex = 0;
       if (downloadBtn) downloadBtn.style.display = 'inline-block';
       if (cancelBtn) cancelBtn.style.display = 'none';
       if (verifyBtn) verifyBtn.disabled = false;
@@ -14621,48 +14625,56 @@ class ModbusDashboard {
     await this.sendRawData(frame);
     this.addMonitorEntry('tx', frame);
 
-    // 수신 누적 시작
-    this.responseBuffer = [];
+    // 수신 누적 시작.
+    // responseBuffer가 truthy인 동안 handleReceivedData가 모든 수신을
+    // 여기로만 배타 라우팅하므로, 종료 시 반드시 null로 되돌려야 함
+    const myBuffer = [];
+    this.responseBuffer = myBuffer;
 
     const startTime = Date.now();
     const slaveId = frame[0];
 
-    while (Date.now() - startTime < timeout) {
-      const buf = this.responseBuffer;
+    try {
+      while (Date.now() - startTime < timeout) {
+        const buf = myBuffer;
 
-      if (buf.length >= 2 && buf[0] === slaveId) {
-        const fc = buf[1];
+        if (buf.length >= 2 && buf[0] === slaveId) {
+          const fc = buf[1];
 
-        // FC 0xA3 = 0x23 | 0x80 → 표준 Modbus exception, 5 bytes
-        if (fc === 0xA3) {
-          if (buf.length >= 5) {
-            const respFrame = new Uint8Array(buf.slice(0, 5));
-            if (this.modbus.verifyCRC(respFrame)) {
-              this.addMonitorEntry('rx', respFrame);
-              return respFrame;
+          // FC 0xA3 = 0x23 | 0x80 → 표준 Modbus exception, 5 bytes
+          if (fc === 0xA3) {
+            if (buf.length >= 5) {
+              const respFrame = new Uint8Array(buf.slice(0, 5));
+              if (this.modbus.verifyCRC(respFrame)) {
+                this.addMonitorEntry('rx', respFrame);
+                return respFrame;
+              }
+              this.addMonitorEntry(
+                  'error', respFrame, null, 'CRC mismatch (FC 0xA3)');
+              return null;
             }
-            this.addMonitorEntry(
-                'error', respFrame, null, 'CRC mismatch (FC 0xA3)');
-            return null;
-          }
-        } else if (fc === 0x23) {
-          const expected =
-              this.modbus.getFastFwResponseLength(new Uint8Array(buf));
-          if (expected !== null && buf.length >= expected) {
-            const respFrame = new Uint8Array(buf.slice(0, expected));
-            if (this.modbus.verifyCRC(respFrame)) {
-              this.addMonitorEntry('rx', respFrame);
-              return respFrame;
+          } else if (fc === 0x23) {
+            const expected =
+                this.modbus.getFastFwResponseLength(new Uint8Array(buf));
+            if (expected !== null && buf.length >= expected) {
+              const respFrame = new Uint8Array(buf.slice(0, expected));
+              if (this.modbus.verifyCRC(respFrame)) {
+                this.addMonitorEntry('rx', respFrame);
+                return respFrame;
+              }
+              this.addMonitorEntry(
+                  'error', respFrame, null, 'CRC mismatch (FC 0x23)');
+              return null;
             }
-            this.addMonitorEntry(
-                'error', respFrame, null, 'CRC mismatch (FC 0x23)');
-            return null;
           }
         }
+        await this.delay(5);
       }
-      await this.delay(5);
+      return null;
+    } finally {
+      // 다른 교환이 이미 responseBuffer를 교체한 경우에는 건드리지 않음
+      if (this.responseBuffer === myBuffer) this.responseBuffer = null;
     }
-    return null;
   }
 
   /** FC 0x23 Abort (best-effort, 실패해도 무시) */
@@ -15127,29 +15139,38 @@ class ModbusDashboard {
       await this.sendRawData(frame);
       this.addMonitorEntry('tx', frame);
 
-      // 프레임 전송 완료 후 새 버퍼 시작 - 이후 도착하는 데이터만 축적
-      this.responseBuffer = [];
+      // 프레임 전송 완료 후 새 버퍼 시작 - 이후 도착하는 데이터만 축적.
+      // responseBuffer가 truthy인 동안 handleReceivedData가 모든 수신을
+      // 여기로만 배타 라우팅하므로, 종료 시 반드시 null로 되돌려야 함
+      const myBuffer = [];
+      this.responseBuffer = myBuffer;
 
       // Wait for response with timeout
       const startTime = Date.now();
       const checkInterval = 10;
 
+      const finish = (result) => {
+        // 다른 교환이 이미 responseBuffer를 교체한 경우에는 건드리지 않음
+        if (this.responseBuffer === myBuffer) this.responseBuffer = null;
+        resolve(result);
+      };
+
       const checkResponse = () => {
-        if (this.responseBuffer.length >= minLength) {
-          const response = new Uint8Array(this.responseBuffer);
+        if (myBuffer.length >= minLength) {
+          const response = new Uint8Array(myBuffer);
           // Skip CRC check if requested, or verify CRC
           if (skipCRC || this.modbus.verifyCRC(response)) {
             // FC 0x66 등 tryParseFrame()이 무시하는 FC는 여기서 직접 기록
             if (response.length >= 2 && response[1] === 0x66) {
               this.addMonitorEntry('rx', response);
             }
-            resolve(response);
+            finish(response);
             return;
           }
         }
 
         if (Date.now() - startTime > timeout) {
-          resolve(null);  // Timeout
+          finish(null);  // Timeout
           return;
         }
 
