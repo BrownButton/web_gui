@@ -12981,12 +12981,14 @@ class ModbusDashboard {
    */
   getParamConvertedHTML(param) {
     if (param.type !== 'input') return '';
+    // 값이 아직 없어도 특수 레지스터 주소면 div를 미리 생성해야
+    // 이후 updateMonitoringParamValue()가 변환값을 채울 수 있음
+    if (this.convertParamRawToString(param.address, 0) === null) return '';
     const converted = param.value !== null ?
         this.convertParamRawToString(param.address, param.value) :
         null;
-    if (converted === null) return '';
     return `<div class="param-converted" id="param-converted-${param.id}">${
-        param.value !== null ? converted : '--'}</div>`;
+        converted !== null ? converted : '--'}</div>`;
   }
 
   /**

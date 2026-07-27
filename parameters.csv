@@ -127,6 +127,7 @@ input,0xD02D,Actual speed [RPM] (Absolute),Y,절대 속도 [RPM]
 input,0xD03D,Line Voltage,N,라인 전압
 input,0xD050,Command speed,Y,지령 속도
 input,0xD051,Command torque,Y,지령 토크
+input,0xD052,DC link current,Y,"DC 링크 전류 (절대치)"
 # ============================================================
 # LSM 타입 파라미터 (Function Code 0x2B - LSM 제조사 전용 프로토콜)
 # FC 0x2B = 43 (decimal). 일반 Modbus FC03(holding) / FC04(input)과 다른 접근 방식.
