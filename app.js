@@ -12971,6 +12971,7 @@ class ModbusDashboard {
       return mA.toFixed(3) + ' mA';
     }
     if (address === 0xD025) return ((raw / 65536) * 100).toFixed(2) + ' %';
+    if (address === 0xD026) return raw + ' Hz';
     if (address === 0xD052) return (raw / 10).toFixed(1) + ' A';
     return null;
   }
@@ -19315,6 +19316,9 @@ class ModbusDashboard {
               </button>
             </div>
             ${verRow('Serial Number', '0x2424', 'info-sn')}
+            ${verRow('Motor ID', '0x2000', 'info-motor-id')}
+            ${verRow('전압 클래스', '0x270A', 'info-voltage-class')}
+            ${verRow('HW 리비전', '0x2709', 'info-hw-rev')}
             <div style="height:1px; background:#F2F4F6; margin:4px 0;"></div>
             <div style="font-size:11px; font-weight:700; color:#C9CDD4; letter-spacing:0.8px; text-transform:uppercase; padding:12px 0 4px 0;">Firmware</div>
             ${verRow('MCU Boot', '0x27F0', 'info-main-boot')}
@@ -19425,6 +19429,79 @@ class ModbusDashboard {
         snEl.style.color = '#F04452';
         snEl.style.background = '#FFF2F3';
       }
+    }
+
+    // Hardware 정보 — Motor ID(0x2000), 전압 클래스(0x270A), HW 리비전(0x2709)
+    // 설정 가능 값 이외의 값이 읽히면 '잘못된 값'으로 표시 (필드 오설정 감지용)
+    const hwEls = {
+      motor: document.getElementById('info-motor-id'),
+      vclass: document.getElementById('info-voltage-class'),
+      rev: document.getElementById('info-hw-rev'),
+    };
+    const setInfo = (el, text, tone) => {
+      if (!el) return;
+      const tones = {
+        ok: ['#3182F6', '#EEF3FF'],
+        warn: ['#FF9500', '#FFF5E6'],
+        bad: ['#F04452', '#FFF2F3'],
+        dim: ['#C9CDD4', '#F2F4F6'],
+      };
+      const [color, bg] = tones[tone];
+      el.textContent = text;
+      el.style.color = color;
+      el.style.background = bg;
+    };
+    Object.values(hwEls).forEach(el => setInfo(el, '…', 'dim'));
+
+    const readObj = async (index) => {
+      try {
+        const r = await this.readCANopenObject(device.slaveId, index, 0x00);
+        return (r && !r.error && r.value != null) ? r.value : null;
+      } catch {
+        return null;
+      }
+    };
+    const hex4 = v => '0x' + v.toString(16).toUpperCase().padStart(4, '0');
+
+    const MOTOR_ID_MAP = {
+      0x1000: 'Sirocco FAN (550W)',
+      0x2000: 'Axial FAN (750W)',
+    };
+    const motorId = await readObj(0x2000);
+    if (motorId === null) {
+      setInfo(hwEls.motor, '실패', 'bad');
+    } else if (MOTOR_ID_MAP[motorId]) {
+      setInfo(hwEls.motor, `${MOTOR_ID_MAP[motorId]} · ${hex4(motorId)}`, 'ok');
+    } else {
+      setInfo(hwEls.motor, `⚠ 잘못된 값 (${hex4(motorId)})`, 'bad');
+    }
+
+    const V_CLASS_MAP = {0: '200V', 1: '400V'};
+    const vClass = await readObj(0x270A);
+    if (vClass === null) {
+      setInfo(hwEls.vclass, '실패', 'bad');
+    } else if (V_CLASS_MAP[vClass] !== undefined) {
+      setInfo(hwEls.vclass, V_CLASS_MAP[vClass], 'ok');
+    } else {
+      setInfo(hwEls.vclass, `⚠ 잘못된 값 (${vClass})`, 'bad');
+    }
+
+    const REV_MAP = {0: 'Rev.A', 1: 'Rev.B', 2: 'Rev.C'};
+    const hwRev = await readObj(0x2709);
+    if (hwRev === null) {
+      setInfo(hwEls.rev, '실패', 'bad');
+    } else if (REV_MAP[hwRev] === undefined) {
+      setInfo(hwEls.rev, `⚠ 잘못된 값 (${hwRev})`, 'bad');
+    } else if (
+        V_CLASS_MAP[vClass] !== undefined &&
+        !this._hardwareRevisionOptions(vClass).some(o => o.v === hwRev)) {
+      // 개별 값은 유효하지만 전압 클래스 조합 규칙(200V→Rev.A,
+      // 400V→Rev.B/C)에 어긋남
+      setInfo(
+          hwEls.rev, `⚠ ${REV_MAP[hwRev]} — ${V_CLASS_MAP[vClass]} 불일치`,
+          'warn');
+    } else {
+      setInfo(hwEls.rev, REV_MAP[hwRev], 'ok');
     }
 
     if (btn) btn.disabled = false;
