@@ -3,42 +3,42 @@
     {
       "version": "Inverter v1.0.8",
       "date": "2026-07-31",
-      "size": 112,
+      "size": 114688,
       "filename": "ECFAN Inverter v1.0.8 App.bin",
       "changelog": "[버그 수정] 펌웨어 다운로드 간헐적 실패 문제 수정\n- 펌웨어 이미지가 64바이트 경계로 정렬되지 않은 경우 다운로드가 실패하던 문제 해결\n\n[버그 수정] Motor Cable Open 진단 중 모터가 의도치 않게 움직이던 문제 수정\n- 진단 시퀀스 진입 시 초기 토크가 인가되던 문제를 수정하여 모터를 구동하지 않고 진단하도록 개선\n\n[신규 기능] 오배선 판별 알람 추가 및 속도 편차 알람 개선\n- U/V/W 상 결선 오류를 감지하는 전용 알람 신규 추가, 기존 속도 편차 알람과 판정 분리로 오판정 방지\n\n[신규 기능] DC Link Current(소모 전류) 모니터링 파라미터 추가 (0xD052)\n- 상위 제어기에서 인버터/모터의 실시간 소모 전류 조회 가능\n\n[기능 개선] AL-33(EEPROM 데이터 손상) 알람 방지\n- DC Link 전압이 저전압(190V 이하)일 때 EEPROM 쓰기를 차단하여 전원 소멸 시점의 데이터 손상 방지"
     },
     {
       "version": "Main v1.0.8",
       "date": "2026-07-31",
-      "size": 57,
+      "size": 58607,
       "filename": "ECFAN Main v1.0.8 App.bin",
       "changelog": "[버그 수정] PWM 입력 주파수 모니터링 값(0xD026) 부정확 문제 수정\n- Sensor actual value 4(0xD026)로 조회되는 PWM 입력 주파수(Hz)가 실제 값과 다르게 표시되던 문제 수정\n\n[신규 기능] DC Link Current(소모 전류) 모니터링 파라미터 추가 (0xD052)\n- 상위 제어기에서 시스템의 실시간 소모 전류 조회 가능\n\n[설정 변경] PWM 입력 유효 Duty 인식 구간 변경 (\"0% ~ 100%\" → \"10% ~ 90%\")\n- 무효 구간(5% 미만, 95% 초과) 입력 시 무효 지령 처리 (모터 출력 0%, 정지)\n\n[기능 개선] AL-33(EEPROM 데이터 손상) 알람 방지\n- 전원 소멸 시점의 데이터 손상 원인이던 알람 히스토리 저장 기능 삭제"
     },
     {
       "version": "Inverter v1.0.3",
       "date": "2026-05-19",
-      "size": 112,
+      "size": 114688,
       "filename": "ECFAN Inverter v1.0.3 App.bin",
       "changelog": "[신규 기능] 모터 종류별 Hall 센서 알람 레벨 독립 설정 기능 추가\n- Sirocco 팬 / Axial 팬 각각에 대해 Hall 센서 알람 레벨을 개별 설정하는 분기 로직 추가\n- 모터 형상에 따른 샤프트 이동 방향 차이로 발생하던 오알람 문제 해소"
     },
     {
       "version": "Main v1.0.3",
       "date": "2026-05-19",
-      "size": 57,
+      "size": 58744,
       "filename": "ECFAN Main v1.0.3 App.bin",
       "changelog": "[버그 수정] PWM 입력 극값 예외처리 범위 확대\n- PWM 100% 판정 기준: 99% 이상 → 95% 이상, 0% 판정 기준: 1% 미만 → 5% 미만으로 변경\n- MCU PWM 입력 포트의 노이즈 필터 영향으로 극값(0%, 100%) 부근에서 오인식이 발생하던 문제 개선\n\n[신규 기능] Factory Reset 기능 추가\n- EEPROM에 저장된 파라미터를 공장 출하 초기값으로 복원하는 기능 구현\n\n[신규 기능] FCT 검사용 테스트 Procedure 추가\n- Analog Voltage 입력 / Analog Current 입력 / PWM Input / FG 항목별 독립 검사 Procedure 추가\n\n[설정 변경] Board Revision 기본값 변경 (Rev.B → Rev.C)\n- 최신 양산 기준 PCB Rev.C에 맞춰 Board Revision 기본값 업데이트"
     },
     {
       "version": "Inverter v1.0.0",
       "date": "2026-04-29",
-      "size": 112,
+      "size": 114688,
       "filename": "ECFAN Inverter v1.0.0 App.bin",
       "changelog": "초기 릴리즈"
     },
     {
       "version": "Main v1.0.0",
       "date": "2026-04-29",
-      "size": 57,
+      "size": 58549,
       "filename": "ECFAN Main v1.0.0 App.bin",
       "changelog": "초기 릴리즈"
     }

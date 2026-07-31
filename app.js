@@ -13914,6 +13914,8 @@ class ModbusDashboard {
       }
 
       // 파일별 HEAD 요청으로 실제 크기 취득 (병렬)
+      // 서버가 압축 전송(gzip 등)하면 Content-Length가 압축 후 크기이므로
+      // Content-Encoding이 없을 때만 신뢰하고, 그 외에는 versions.json의 size 사용
       const uniqueFiles = [...new Set(json.versions.map(v => v.filename))];
       const sizeMap = {};
       await Promise.all(uniqueFiles.map(async filename => {
@@ -13921,7 +13923,8 @@ class ModbusDashboard {
           const hr = await fetch(
               `./firmware/${filename}`, {method: 'HEAD', cache: 'no-cache'});
           const cl = hr.headers.get('Content-Length');
-          if (cl) sizeMap[filename] = parseInt(cl, 10);
+          const enc = hr.headers.get('Content-Encoding');
+          if (cl && !enc) sizeMap[filename] = parseInt(cl, 10);
         } catch (_) {
         }
       }));
@@ -14076,11 +14079,16 @@ class ModbusDashboard {
 
       if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
 
+      // 압축 전송 시 Content-Length는 압축 후 크기이고 reader로 받는 바이트는
+      // 압축 해제된 크기 → 진행률 분모로 쓸 수 없으므로 versions.json size 사용
       const contentLength = resp.headers.get('Content-Length');
+      const contentEncoding = resp.headers.get('Content-Encoding');
+      const total = (contentLength && !contentEncoding) ?
+          parseInt(contentLength, 10) :
+          (version.size > 0 ? version.size : 0);
       let arrayBuffer;
 
-      if (contentLength && resp.body) {
-        const total = parseInt(contentLength);
+      if (total > 0 && resp.body) {
         let received = 0;
         const reader = resp.body.getReader();
         const chunks = [];
@@ -14090,7 +14098,7 @@ class ModbusDashboard {
           if (done) break;
           chunks.push(value);
           received += value.length;
-          const pct = Math.round(received / total * 100);
+          const pct = Math.min(100, Math.round(received / total * 100));
           if (fetchFill) fetchFill.style.width = pct + '%';
           if (fetchLabel) fetchLabel.textContent = `다운로드 중... ${pct}%`;
         }
