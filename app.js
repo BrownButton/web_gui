@@ -13987,6 +13987,8 @@ class ModbusDashboard {
                     <td class="fw-version-date">${v.date}</td>
                     <td class="fw-version-size">
                         <span>${sizeStr}</span>
+                        <span class="fw-download-btn" data-dl-idx="${
+                  idx}" title="파일 다운로드">⬇</span>
                         <span class="fw-changelog-arrow" data-idx="${
                   idx}">▼</span>
                     </td>
@@ -14046,6 +14048,41 @@ class ModbusDashboard {
         if (radio && !radio.checked) radio.click();
       });
     });
+
+    // 다운로드 버튼 — 행 클릭(버전 선택/변경사항 토글)과 분리
+    tbody.querySelectorAll('.fw-download-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.dlIdx);
+        this.downloadOnlineFirmware(this._fwVersionList[idx]);
+      });
+    });
+  }
+
+  /**
+   * 온라인 펌웨어 파일을 PC에 다운로드 (저장)
+   */
+  async downloadOnlineFirmware(version) {
+    try {
+      const resp =
+          await fetch(`./firmware/${version.filename}`, {cache: 'no-cache'});
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = version.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.showToast(
+          `${version.filename} 다운로드를 시작했습니다`, 'success');
+    } catch (err) {
+      this.showToast(`다운로드 실패: ${err.message}`, 'error');
+    }
   }
 
   /**

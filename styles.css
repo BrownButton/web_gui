@@ -7355,6 +7355,23 @@ select:focus {
     flex-shrink: 0;
 }
 
+.fw-download-btn {
+    font-size: 13px;
+    color: #adb5bd;
+    cursor: pointer;
+    transition: color 0.15s;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.fw-version-main-row:hover .fw-download-btn {
+    color: #6c757d;
+}
+
+.fw-download-btn:hover {
+    color: #007bff;
+}
+
 .fw-version-main-row:hover .fw-changelog-arrow {
     color: #6c757d;
 }
