@@ -14020,28 +14020,39 @@ class ModbusDashboard {
       });
     });
 
+    // 변경사항 토글 (다른 행은 닫음)
+    const toggleChangelog = idx => {
+      const detailRow = document.getElementById(`fwChangelogRow${idx}`);
+      const arrow = tbody.querySelector(`.fw-changelog-arrow[data-idx="${idx}"]`);
+      const isOpen = detailRow.style.display !== 'none';
+
+      tbody.querySelectorAll('.fw-changelog-row')
+          .forEach(r => r.style.display = 'none');
+      tbody.querySelectorAll('.fw-changelog-arrow').forEach(a => {
+        a.textContent = '▼';
+        a.classList.remove('fw-arrow-open');
+      });
+
+      if (!isOpen) {
+        detailRow.style.display = 'table-row';
+        arrow.textContent = '▲';
+        arrow.classList.add('fw-arrow-open');
+      }
+    };
+
+    // 폴드 화살표 클릭 — 변경사항 토글만 (버전 선택/로드 안 함)
+    tbody.querySelectorAll('.fw-changelog-arrow').forEach(arrow => {
+      arrow.addEventListener('click', e => {
+        e.stopPropagation();
+        toggleChangelog(parseInt(arrow.dataset.idx));
+      });
+    });
+
     // 행 클릭 시 변경사항 토글 + 라디오 선택
     tbody.querySelectorAll('.fw-version-main-row').forEach(tr => {
       tr.addEventListener('click', () => {
         const idx = parseInt(tr.dataset.versionIdx);
-        const detailRow = document.getElementById(`fwChangelogRow${idx}`);
-        const arrow = tr.querySelector('.fw-changelog-arrow');
-        const isOpen = detailRow.style.display !== 'none';
-
-        // 다른 행 변경사항 닫기
-        tbody.querySelectorAll('.fw-changelog-row')
-            .forEach(r => r.style.display = 'none');
-        tbody.querySelectorAll('.fw-changelog-arrow').forEach(a => {
-          a.textContent = '▼';
-          a.classList.remove('fw-arrow-open');
-        });
-
-        // 현재 행 토글
-        if (!isOpen) {
-          detailRow.style.display = 'table-row';
-          arrow.textContent = '▲';
-          arrow.classList.add('fw-arrow-open');
-        }
+        toggleChangelog(idx);
 
         // 라디오 선택
         const radio = tr.querySelector('.fw-version-radio');
