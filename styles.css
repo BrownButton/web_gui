@@ -7351,29 +7351,32 @@ select:focus {
     font-size: 10px;
     color: #adb5bd;
     cursor: pointer;
-    transition: color 0.15s;
+    transition: color 0.15s, background 0.15s;
     flex-shrink: 0;
+    padding: 4px 6px;
+    border-radius: 4px;
 }
 
 .fw-download-btn {
     font-size: 13px;
     color: #adb5bd;
     cursor: pointer;
-    transition: color 0.15s;
+    transition: color 0.15s, background 0.15s;
     flex-shrink: 0;
     margin-left: auto;
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
-.fw-version-main-row:hover .fw-download-btn {
-    color: #6c757d;
-}
-
-.fw-download-btn:hover {
-    color: #007bff;
-}
-
+.fw-version-main-row:hover .fw-download-btn,
 .fw-version-main-row:hover .fw-changelog-arrow {
     color: #6c757d;
+}
+
+.fw-download-btn:hover,
+.fw-changelog-arrow:hover {
+    color: #007bff;
+    background: rgba(0, 123, 255, 0.12);
 }
 
 .fw-changelog-arrow.fw-arrow-open {
