@@ -16106,8 +16106,14 @@ class ModbusDashboard {
         parseInt(document.getElementById('chartSlaveId')?.value) || 1;
     const period =
         parseInt(document.getElementById('chartSampleRate')?.value) || 3200;
-    const position =
-        parseInt(document.getElementById('triggerPosition')?.value ?? 25);
+    // Position: 0~99 (%) — 범위 밖 값은 디바이스 내부 post-trigger 계산이
+    // 음수가 되므로 클램프
+    const position = Math.min(
+        99,
+        Math.max(
+            0,
+            parseInt(document.getElementById('triggerPosition')?.value ?? 25) ||
+                0));
     const numOfData = Math.min(
         1024,
         Math.max(
@@ -16152,7 +16158,10 @@ class ModbusDashboard {
     if (!configResp) {
       this.showToast('Trigger Configure 실패: 디바이스 응답 없음', 'error');
       this.triggerRunning = false;
+      this._stopNoThrottleAudio();
+      await this._flushQueueIfIdle();
       this.chartManager.updateStatus('Stopped');
+      this.chartManager.updateTriggerStatus('Waiting');
       this._restoreChartButtons();
       return;
     }
@@ -16189,6 +16198,7 @@ class ModbusDashboard {
       const abortFrame = this.modbus.buildTriggerStop(slaveId);
       await this.sendAndReceiveFC65(abortFrame, 0x00, 300);
       this.triggerRunning = false;
+      this._stopNoThrottleAudio();
       await this._flushQueueIfIdle();
       this.chartManager.updateStatus('Stopped');
       this.chartManager.updateTriggerStatus('Waiting');

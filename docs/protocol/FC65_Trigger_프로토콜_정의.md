@@ -72,11 +72,15 @@ TX와 동일한 5 bytes 에코 응답.
 | 1 | Function Code | `0x65` |
 | 2 | Control | `0x01` |
 | 3 | **Status** | `0` = 트리거 미발생, `1` = 트리거 발생 |
-| 4–22 | (미사용) | 구조체 잔여 필드 (무시) |
-| 23–24 | CRC | — |
+| 4–21 | (미사용) | 구조체 잔여 필드 18 bytes (무시) |
+| 22–23 | CRC | — |
 
 **총 24 bytes**  
-*(FrameLength = 21 : USB-HID 레거시 수치, 의미 있는 필드는 Status(byte 3)만)*
+*(FrameLength = 21 = FC(1) + Control(1) + Status(1) + 미사용(18). NodeID(1) + 21 + CRC(2) = 24 bytes)*  
+*의미 있는 필드는 Status(byte 3)만. 미사용 영역에는 디바이스 내부 TMON 구조체 값(설정 에코 등)이 그대로 실려 오지만 마스터는 무시한다.*
+
+> 구현 참조: `app.js` `_sendAndReceiveFC65Inner()` — control 0x01 은 정확히 24 bytes 수신 후 CRC 검증, `modbus.js` `parseTriggerStatusResponse()` — `bytes[3]` 을 Status 로 사용.  
+> 모니터 툴팁에서 CRC 가 `Byte 22-23` 으로 표시되는 것이 정상이다.
 
 ---
 
@@ -100,7 +104,7 @@ TX와 동일한 5 bytes 에코 응답.
 | 8 | **CH_Sel[3]** | uint8 | 슬롯 3 채널 번호 (미사용: `0xFF`) |
 | 9 | **SourceSEL** | uint8 | 트리거 소스 채널 번호 (`Chart_Channel_Definitions` 기준). `0xFF` = Immediate |
 | 10 | **Edge** | uint8 | `0` = Rising ↑, `1` = Falling ↓ |
-| 11 | **Position** | uint8 | 트리거 시점 위치 `0~99` (%) |
+| 11 | **Position** | uint8 | 트리거 시점 위치 `0~99` (%). GUI 입력란은 `1~99` 로 제한 |
 | 12–15 | **Level** | float32 LE | 트리거 레벨 값 (ARM little-endian) |
 | 16–17 | **NumOfData** | uint16 BE | 총 샘플 수 `256~1024`. 범위 벗어나면 클램프 |
 | 18–19 | CRC | — | — |
@@ -161,12 +165,17 @@ TX 프레임을 그대로 에코 반환한다. (20 bytes)
 | 4 | **CH_Sel** | uint8 | 요청한 채널 슬롯 인덱스 에코 |
 | 5–6 | **StartAddress** | uint16 BE | 요청한 StartAddress 에코 |
 | 7 | **Len** | uint8 | 이번 응답의 float 데이터 개수 (최대 14) |
-| 8–(8+Len×4-1) | **Data[Len]** | float32[] LE | 실제 샘플 데이터 |
-| … | (패딩) | — | Len < 14 인 경우 잔여 바이트는 무의미 |
+| 8–63 | **Data[14]** | float32[] LE | 샘플 데이터 영역 (14 × 4 = 56 bytes 고정). 앞에서부터 Len 개만 유효, 나머지는 무의미 |
+| 64–65 | (패딩) | — | 항상 미사용 (FrameLength 65 를 맞추기 위한 구조체 잔여) |
 | 66–67 | CRC | — | — |
 
 **총 68 bytes 고정**  
-*(FrameLength = 65 : USB-HID 레거시 고정 크기. 유효 데이터는 Len 필드로 판단)*
+*(FrameLength = 65 = FC~Len(7) + Data(56) + 패딩(2). NodeID(1) + 65 + CRC(2) = 68 bytes)*  
+*Len 값과 무관하게 응답 길이는 항상 68 bytes 이며, 유효 데이터 개수는 Len 필드로만 판단한다.*
+
+> 구현 참조: `app.js` `_sendAndReceiveFC65Inner()` — control 0x03 은 정확히 68 bytes 수신 후 CRC 검증, `modbus.js` `parseTriggerDataResponse()` — `bytes[7]` 을 Len, `bytes[8..]` 을 float32 LE 로 파싱 (최대 14개).
+
+> **모니터 화면 확인 시 주의**: Monitor 탭 메인 라인의 바이트 영역은 `overflow: hidden` 이라 68 bytes 프레임이 화면 폭에 따라 중간(약 40~50 byte 부근)에서 잘려 보인다. 실제 수신 길이는 해당 엔트리를 클릭해 확장 뷰의 **Frame Length** / **Raw** 로 확인한다 (CRC 검증을 통과한 프레임만 RX 로 표시되므로, 표시된 프레임은 반드시 68 bytes 이다).
 
 #### 버퍼 순회 방법
 
@@ -180,7 +189,14 @@ while startAddress < numOfData:
         break  ← 마지막 패킷 (버퍼 끝 도달)
 ```
 
-채널은 슬롯 순서대로 (0 → 1 → 2 → 3) 개별 수집한다.
+종료 조건은 두 가지를 함께 사용한다.
+- `Len < 14` : 버퍼 끝 도달 (마지막 패킷)
+- `startAddress >= numOfData` : `numOfData` 가 14 의 배수인 경우 마지막 패킷도 `Len = 14` 로 오므로, 누적 개수로도 종료를 판단해야 한다
+- `Len = 0` 응답(범위 밖 StartAddress) 도 종료로 처리한다
+
+GUI 가 허용하는 Samples 값(256 / 512 / 768 / 1024) 은 모두 14 의 배수가 아니므로 마지막 패킷의 Len 은 각각 4 / 8 / 12 / 2 가 된다.
+
+채널은 슬롯 순서대로 (0 → 1 → 2 → 3) 개별 수집한다. (비활성 슬롯은 건너뛴다)
 
 ---
 
@@ -211,7 +227,7 @@ while startAddress < numOfData:
    │◄── Len=14, Data[14] ────────  │
    │           ...                 │
    │── 0x03 Req (CH=0, Addr=N) ──► │
-   │◄── Len=K (<14), Data[K] ────  │  마지막 패킷
+   │◄── Len=K (<14), Data[K] ────  │  마지막 패킷 (Addr+K = NumOfData)
    │                               │
    │ (CH=1, CH=2, CH=3 반복)        │
    │           ...                 │
@@ -251,4 +267,5 @@ sample[i].time = (i - preTriggerSamples) × periodMs
 | `0x03` Data | 65 | 68 | NodeID(1) + FrameLength(65) + CRC(2) |
 
 > FrameLength = FC 바이트부터 시작하는 페이로드 길이 (NodeID, CRC 제외).  
-> `0x03` Data의 FrameLength=65는 USB-HID 레거시 고정값. 실제 유효 데이터 길이는 `Len` 필드로 판단한다.
+> `0x03` Data의 FrameLength=65는 USB-HID 레거시 고정값. 실제 유효 데이터 길이는 `Len` 필드로 판단한다.  
+> 각 프레임의 CRC 위치(0-based) = 총 바이트 − 2 : Stop 3–4, Configure 18–19, Status 22–23, Data 66–67.
