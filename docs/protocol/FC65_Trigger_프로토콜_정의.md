@@ -93,7 +93,7 @@ TX와 동일한 5 bytes 에코 응답.
 | 0 | Node ID | uint8 | Slave 주소 |
 | 1 | Function Code | uint8 | `0x65` |
 | 2 | Control | uint8 | `0x02` |
-| 3–4 | **Period** | uint16 BE | 샘플링 주기. 1 unit = 125 μs. 예) 1600 → 200 ms |
+| 3–4 | **Period** | uint16 BE | 샘플링 주기. 1 unit = 62.5 μs (출하 펌웨어 실제 동작 기준, 원 설계 125 μs). 예) 3200 → 200 ms |
 | 5 | **CH_Sel[0]** | uint8 | 슬롯 0 채널 번호 (미사용: `0xFF`) |
 | 6 | **CH_Sel[1]** | uint8 | 슬롯 1 채널 번호 (미사용: `0xFF`) |
 | 7 | **CH_Sel[2]** | uint8 | 슬롯 2 채널 번호 (미사용: `0xFF`) |
@@ -227,7 +227,7 @@ while startAddress < numOfData:
 수집된 데이터의 타임스탬프는 다음과 같이 계산한다.
 
 ```
-periodMs = Period × 0.125         (ms 단위, 1 unit = 125 μs)
+periodMs = Period × 0.0625        (ms 단위, 1 unit = 62.5 μs)
 preTriggerSamples = numOfData × position / 100
 
 sample[i].time = (i - preTriggerSamples) × periodMs

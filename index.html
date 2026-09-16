@@ -2810,18 +2810,19 @@
                                                     <td class="chart-settings-lbl">Sampling Time</td>
                                                     <td>
                                                         <select id="chartSampleRate">
-                                                            <option value="1">0.125 ms</option>
-                                                            <option value="2">0.250 ms</option>
-                                                            <option value="4">0.500 ms</option>
-                                                            <option value="8">1.000 ms</option>
-                                                            <option value="16">2.000 ms</option>
-                                                            <option value="40">5.000 ms</option>
-                                                            <option value="80">10.000 ms</option>
-                                                            <option value="160" selected>20.000 ms</option>
-                                                            <option value="800">100.000 ms</option>
-                                                            <option value="1600">200.000 ms</option>
-                                                            <option value="4000">500.000 ms</option>
-                                                            <option value="8000">1000.000 ms</option>
+                                                            <!-- value = Period 틱 수 (1틱 = 62.5 μs, app.js CHART_TICK_MS) -->
+                                                            <option value="2">0.125 ms</option>
+                                                            <option value="4">0.250 ms</option>
+                                                            <option value="8">0.500 ms</option>
+                                                            <option value="16">1.000 ms</option>
+                                                            <option value="32">2.000 ms</option>
+                                                            <option value="80">5.000 ms</option>
+                                                            <option value="160">10.000 ms</option>
+                                                            <option value="320" selected>20.000 ms</option>
+                                                            <option value="1600">100.000 ms</option>
+                                                            <option value="3200">200.000 ms</option>
+                                                            <option value="8000">500.000 ms</option>
+                                                            <option value="16000">1000.000 ms</option>
                                                         </select>
                                                     </td>
                                                 </tr>

@@ -544,7 +544,7 @@ class ModbusRTU {
     //
     // TX Configure (0x02):
     //   [NodeID][0x64][0x02][Period_H][Period_L][Ch1]...[ChN][0xFF][CRC_L][CRC_H]
-    //   Period: uint16, 1 unit = 0.125 μs, min 160 (= 20 μs)
+    //   Period: uint16, 1 unit = 62.5 μs (펌웨어 실제 동작 기준), min 320 (= 20 ms)
     //   Channel list: 1~254, terminated by 0xFF
     //
     // TX Stop (0x00):

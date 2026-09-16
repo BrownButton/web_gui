@@ -60,12 +60,16 @@ TX: 01 64 00 XX XX
 | 0 | NodeID | 1 B | |
 | 1 | Function Code | 1 B | `0x64` |
 | 2 | Control | 1 B | `0x02` |
-| 3–4 | Period | 2 B | 샘플링 주기 (단위: 125 μs, 최솟값: 160 → 20 ms) |
+| 3–4 | Period | 2 B | 샘플링 주기 (단위: 62.5 μs, 최솟값: 320 → 20 ms) |
 | 5… | Channel List | N B | 채널 번호 배열 (범위: 1–254, 사용자 입력), `0xFF`로 종료 |
 | last–1 | CRC | 2 B | CRC-16 |
 
-> **Period 계산:** `period_ms = value × 0.125`
-> 예: `160 × 0.125 = 20 ms` (최고 속도)
+> **Period 계산:** `period_ms = value × 0.0625`
+> 예: `320 × 0.0625 = 20 ms` (최고 속도)
+>
+> ⚠️ 원래 설계는 1 unit = 125 μs 였으나, 출하된 펌웨어가 62.5 μs 인터럽트에서
+> Period 값을 그대로 카운트하므로 실제 1 unit = 62.5 μs 로 동작한다.
+> 펌웨어 변경 없이 FanCM(`app.js` `CHART_TICK_MS`)에서 이 값을 기준으로 맞춘다.
 
 > **Channel List:**
 > - 범위: `0x01 ~ 0xFE` (1–254), 사용자가 직접 입력

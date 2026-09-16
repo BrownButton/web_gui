@@ -4,6 +4,15 @@
  */
 
 /**
+ * FC64/FC65 Period 1틱의 실제 시간(ms).
+ * 프로토콜 문서는 1 unit = 125 μs 로 정의했으나, 출하된 펌웨어는 62.5 μs
+ * 인터럽트에서 Period 값을 그대로 카운트하므로 실제 1틱 = 62.5 μs 이다.
+ * 펌웨어를 바꿀 수 없어 FanCM 쪽에서 이 상수로 맞춘다.
+ * (Period 틱 ↔ ms 변환은 반드시 이 상수를 사용할 것)
+ */
+const CHART_TICK_MS = 0.0625;
+
+/**
  * ChartManager - Real-time 4-channel data visualization
  * Pure Canvas API implementation with zoom, pan, and cursor support
  */
@@ -15719,9 +15728,9 @@ class ModbusDashboard {
     const timeSpanIncBtn = document.getElementById('chartTimeSpanInc');
 
     const updateTimeScale = () => {
-      const ticks = parseInt(sampleRateEl?.value ?? 160);
+      const ticks = parseInt(sampleRateEl?.value ?? 320);
       const mult = parseInt(timeSpanMultEl?.value ?? 250);
-      const ms = (ticks / 8) * mult;
+      const ms = ticks * CHART_TICK_MS * mult;
       if (timeSpanSecEl) timeSpanSecEl.textContent = (ms / 1000).toFixed(3);
       this.chartManager.setTimeScale(ms);
     };
@@ -15750,9 +15759,9 @@ class ModbusDashboard {
     // X-Axis: Mode (Continuous / Trigger) — 기존 chartMode 로직 연결
     const timeModeEl = document.getElementById('chartTimeBaseMode');
 
-    // Continuous 모드는 최소 20ms (period=160) 까지만 허용. Trigger 모드는
-    // sub-ms 포함 전체 허용.
-    const CONTINUOUS_MIN_PERIOD = 160;
+    // Continuous 모드는 최소 20ms (period=320, 62.5μs 틱) 까지만 허용.
+    // Trigger 모드는 sub-ms 포함 전체 허용.
+    const CONTINUOUS_MIN_PERIOD = 320;
     const applySampleRateConstraints = () => {
       if (!sampleRateEl || !timeModeEl) return;
       const isContinuous = timeModeEl.value === 'continuous';
@@ -15866,11 +15875,11 @@ class ModbusDashboard {
     const slaveId =
         parseInt(document.getElementById('chartSlaveId')?.value) || 1;
     const period =
-        parseInt(document.getElementById('chartSampleRate')?.value) || 1600;
+        parseInt(document.getElementById('chartSampleRate')?.value) || 3200;
 
     this.chartSlaveId = slaveId;
     this.chartConfiguredChannels = configuredChannels;
-    this.chartPeriodMs = period * 0.125;  // 1 unit = 125μs
+    this.chartPeriodMs = period * CHART_TICK_MS;  // 1 unit = 62.5μs
     this.chartRunning = true;
     this._startNoThrottleAudio();
     this.chartManager.clearData();
@@ -16096,7 +16105,7 @@ class ModbusDashboard {
     const slaveId =
         parseInt(document.getElementById('chartSlaveId')?.value) || 1;
     const period =
-        parseInt(document.getElementById('chartSampleRate')?.value) || 1600;
+        parseInt(document.getElementById('chartSampleRate')?.value) || 3200;
     const position =
         parseInt(document.getElementById('triggerPosition')?.value ?? 25);
     const numOfData = Math.min(
@@ -16191,7 +16200,7 @@ class ModbusDashboard {
     this.chartManager.updateStatus('Download 0%');
 
     // ── 4. 데이터 수집 (채널별 순차) ────────────────────────
-    const periodMs = period * 0.125;
+    const periodMs = period * CHART_TICK_MS;
     const preTriggerSamples = Math.round(numOfData * position / 100);
     const channelData = {};  // chIdx → float[]
     const totalWork = configuredChannels.length * numOfData;
@@ -16470,7 +16479,7 @@ class ModbusDashboard {
     const stopFrame = this.modbus.buildContinuousStop(slaveId);
     await this.sendAndReceiveFC64(stopFrame, 0x00, 300);
 
-    const period = 160;  // 20ms per sample
+    const period = 320;  // 20ms per sample (62.5μs 틱)
     const configFrame =
         this.modbus.buildContinuousConfigure(slaveId, period, channelSlots);
     // pause-and-inject 후 스트림 재개(_resumeFc64Stream)용으로 보관
@@ -16495,7 +16504,8 @@ class ModbusDashboard {
       });
     }
     this._updateMiniChartBtn(type, true);
-    this._miniChartDataLoop(type, slaveId, chart.channels.length, period * 0.125)
+    this._miniChartDataLoop(
+            type, slaveId, chart.channels.length, period * CHART_TICK_MS)
         .catch(e => {
           console.error('_miniChartDataLoop crashed:', e);
           this.showToast(`Mini Chart 루프 오류로 중단: ${e.message}`, 'error');
