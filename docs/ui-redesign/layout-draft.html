@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FanCM — Layout(배치도) 재설계 초안</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* ===== tokens (dashboard-draft.html 과 동일) ===== */
+:root{
+  --bg:#f3f5f9;--surface:#ffffff;--surface-2:#f8fafc;--line:#e2e7ef;--line-strong:#cbd3df;
+  --text:#121826;--text-2:#475266;--text-3:#7a8699;
+  --brand:#1d5cf2;--brand-soft:#e8efff;--brand-text:#1a4fd0;
+  --ok:#15924a;--ok-soft:#e3f6ea;--warn:#c77700;--warn-soft:#fff3dc;--err:#d6283a;--err-soft:#ffe8ea;--off:#8b96a8;--off-soft:#eef1f5;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);--shadow-lg:0 12px 32px rgba(16,24,40,.14);
+  --r-sm:6px;--r:10px;--r-lg:14px;--rail-w:72px;--top-h:56px;
+  --font:'Pretendard Variable',Pretendard,-apple-system,'Segoe UI',Roboto,sans-serif;--mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+  /* floor */
+  --floor-a:#e9edf4;--floor-b:#dfe5ee;--floor-line:#c9d2df;--floor-hover:#d6e2ff;
+  --box-t:#f7f9fc;--box-l:#cfd7e3;--box-r:#b9c3d2;--guard:#2a3140;--blade:#9aa6b8;
+}
+:root[data-theme="dark"]{
+  --bg:#0b111d;--surface:#111a2b;--surface-2:#0e1626;--line:#1e2b45;--line-strong:#2a3a58;
+  --text:#e6edf7;--text-2:#aab6c9;--text-3:#7f8ca3;
+  --brand:#4f8df7;--brand-soft:#15284a;--brand-text:#8fb8ff;
+  --ok:#3ddc84;--ok-soft:#0f2a1c;--warn:#f5c862;--warn-soft:#2a2110;--err:#ff6b85;--err-soft:#2d1119;--off:#6d7a92;--off-soft:#161f30;
+  --shadow:0 1px 2px rgba(0,0,0,.4);--shadow-lg:0 16px 40px rgba(0,0,0,.55);
+  --floor-a:#121c2f;--floor-b:#0f1828;--floor-line:#1f2d47;--floor-hover:#1b2f55;
+  --box-t:#2a3650;--box-l:#1b2538;--box-r:#141c2c;--guard:#0a0f1a;--blade:#7d8aa3;
+}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer;background:none;border:0;padding:0}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.ic{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.ic.sm{width:13px;height:13px}
+.grow{flex:1}[hidden]{display:none!important}
+
+/* ===== shell ===== */
+.app{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);grid-template-rows:var(--top-h) minmax(0,1fr);height:100vh}
+.rail{grid-row:1/3;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:12px 0 10px;gap:2px}
+.rail-logo{width:44px;height:36px;border-radius:9px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;margin-bottom:10px}.rail-logo img{height:16px}
+.rail-item{width:58px;height:54px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--text-3);font-size:10.5px;font-weight:500;position:relative}
+.rail-item .ic{width:20px;height:20px;stroke-width:1.7}.rail-item:hover{background:var(--surface-2);color:var(--text-2)}
+.rail-item.active{background:var(--brand-soft);color:var(--brand-text)}.rail-item.active::before{content:"";position:absolute;left:-7px;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--brand)}
+.rail-sep{width:34px;height:1px;background:var(--line);margin:8px 0}
+.topbar{grid-column:2;display:flex;align-items:center;gap:10px;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar h1{font-size:15px;font-weight:650;margin:0}.topbar .sub{color:var(--text-3);font-size:12px}.topbar .sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+
+/* ===== primitives ===== */
+.chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:12px;font-weight:500;color:var(--text-2);white-space:nowrap}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.chip.ok{color:var(--ok);background:var(--ok-soft);border-color:transparent}.chip.warn{color:var(--warn);background:var(--warn-soft);border-color:transparent}.chip.err{color:var(--err);background:var(--err-soft);border-color:transparent}.chip.off{color:var(--off);background:var(--off-soft);border-color:transparent}.chip.ghost{background:transparent}.chip.sm{height:22px;padding:0 8px;font-size:11.5px}
+.badge{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge.id{background:var(--surface-2);border:1px solid var(--line);color:var(--text-2);font-family:var(--mono);font-weight:500}.badge.model{background:var(--brand-soft);color:var(--brand-text)}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);font-size:12.5px;font-weight:550;color:var(--text);white-space:nowrap}
+.btn:hover{background:var(--surface-2)}.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn.danger{background:var(--err-soft);border-color:transparent;color:var(--err)}.btn.ghost{border-color:transparent;background:transparent;color:var(--text-2)}.btn.ghost:hover{background:var(--surface-2);color:var(--text)}.btn.sm{height:28px;padding:0 10px;font-size:12px}.btn.icon{width:32px;padding:0;justify-content:center}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-text)}
+.input{height:32px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);outline:none;min-width:0}.input.num{text-align:right;font-family:var(--mono)}
+.seg{display:inline-flex;height:32px;border:1px solid var(--line-strong);border-radius:var(--r-sm);overflow:hidden;background:var(--surface)}.seg button{padding:0 11px;font-size:12px;font-weight:550;color:var(--text-3)}.seg button+button{border-left:1px solid var(--line)}.seg button.on{background:var(--brand-soft);color:var(--brand-text)}.seg.sm{height:26px}.seg.sm button{padding:0 8px;font-size:11px}
+.switch{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:12px;font-weight:550;color:var(--text-2)}
+.switch .track{width:30px;height:17px;border-radius:999px;background:var(--line-strong);position:relative}.switch .track::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:left .15s}
+.switch.on{color:var(--ok)}.switch.on .track{background:var(--ok)}.switch.on .track::after{left:15px}
+.spin{width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:rot .8s linear infinite;display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+.write{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:550}.write.queued{color:var(--text-3)}.write.writing{color:var(--brand-text)}.write.ok{color:var(--ok)}.write.fail{color:var(--err)}
+
+/* ===== stage ===== */
+.stage{grid-column:2;position:relative;overflow:hidden;background:
+  radial-gradient(1200px 600px at 40% 20%,color-mix(in srgb,var(--brand) 7%,transparent),transparent 60%),var(--bg)}
+.stage>svg#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage>svg#map.dragging{cursor:grabbing}
+.tile{fill:var(--floor-a);stroke:var(--floor-line);stroke-width:1;transition:fill .12s}
+.tile.alt{fill:var(--floor-b)}
+.tile.hover{fill:var(--floor-hover)}
+.tile.sel{fill:color-mix(in srgb,var(--brand) 22%,var(--floor-a));stroke:var(--brand);stroke-width:1.5}
+.tile.drop{stroke:var(--brand);stroke-dasharray:4 3;stroke-width:1.5}
+.edit .tile.empty{cursor:copy}
+.plus{fill:none;stroke:var(--text-3);stroke-width:1.6;opacity:0;pointer-events:none}
+.edit .plus{opacity:.45}
+
+.unit{cursor:pointer}
+.unit .shadow{fill:rgba(0,0,0,.28)}
+.unit .ft{fill:var(--box-t)}.unit .fl{fill:var(--box-l)}.unit .fr{fill:var(--box-r)}
+.unit .edge{fill:none;stroke:rgba(255,255,255,.08);stroke-width:1}
+.unit .guard{fill:var(--guard)}
+.unit .mesh{fill:none;stroke:rgba(255,255,255,.12);stroke-width:1}
+.unit .blade{fill:var(--blade)}
+.unit .hub{fill:#cfd6e3;stroke:#5c6678;stroke-width:1}
+.unit .ring{fill:none;stroke-width:2.5;stroke:var(--off)}
+.unit .glow{fill:none;stroke-width:9;opacity:0;stroke:var(--off)}
+.unit .blades{transform-box:fill-box;transform-origin:center;animation:rot var(--dur,0s) linear infinite}
+.unit.st-run .ring,.unit.st-run .glow{stroke:var(--ok)}.unit.st-run .glow{opacity:.18}
+.unit.st-alarm .ring,.unit.st-alarm .glow{stroke:var(--err)}.unit.st-alarm .glow{opacity:.3;animation:pulse 1.2s ease-in-out infinite}
+.unit.st-stop .ring{stroke:var(--text-3)}
+.unit.st-off{opacity:.5}.unit.st-off .ring{stroke-dasharray:5 4}.unit.st-off .blades{animation:none}
+.unit.st-stop .blades{animation:none}
+@keyframes pulse{0%,100%{opacity:.15}50%{opacity:.45}}
+.unit .lbl rect{fill:var(--surface);stroke:var(--line);rx:7}
+.unit .lbl .nm{font-size:11px;font-weight:650;fill:var(--text)}
+.unit .lbl .val{font-family:var(--mono);font-size:11px;font-weight:500;fill:var(--text-2)}
+.unit.sel .lbl rect{stroke:var(--brand);stroke-width:1.5}
+.unit:hover .ft{filter:brightness(1.08)}
+.unit .badge-a circle{fill:var(--err)}.unit .badge-a text{fill:#fff;font-size:11px;font-weight:800;text-anchor:middle}
+.unit .badge-w circle{fill:var(--brand)}.unit .badge-w text{fill:#fff;font-size:9px;font-weight:700;text-anchor:middle}
+.selring{fill:none;stroke:var(--brand);stroke-width:2;stroke-dasharray:6 4;animation:dash 1.2s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-20}}
+
+/* overlays on stage */
+.hud{position:absolute;display:flex;gap:8px;align-items:center;pointer-events:none}
+.hud>*{pointer-events:auto}
+.hud.tl{left:18px;top:16px}.hud.bl{left:18px;bottom:16px}.hud.br{right:18px;bottom:16px;flex-direction:column;align-items:flex-end}
+.hud .panel{background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:8px 10px;display:flex;align-items:center;gap:10px}
+.legend{font-size:11.5px;color:var(--text-2);display:flex;gap:12px}
+.legend span{display:inline-flex;align-items:center;gap:5px}.legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.zoom{display:flex;flex-direction:column;gap:4px}
+.zoom .btn{width:32px;padding:0;justify-content:center}
+.tray{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:14px;padding:8px 10px 8px 14px;box-shadow:var(--shadow-lg)}
+.tray .t{font-size:12px;font-weight:650;margin-right:4px}
+.tray .dev{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px dashed var(--line-strong);font-size:12px;cursor:grab}
+.tray .dev .badge{height:18px}
+.hint{font-size:11.5px;color:var(--text-3)}
+
+/* ===== side panel ===== */
+.side{position:absolute;top:16px;right:16px;bottom:16px;width:360px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;transform:translateX(calc(100% + 24px));transition:transform .22s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+.side.open{transform:none}
+.side .hd{padding:14px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.side .hd .nm{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.side .bd{padding:14px 16px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:14px}
+.sec{display:flex;flex-direction:column;gap:8px}
+.sec h5{margin:0;font-size:11px;font-weight:650;color:var(--text-3);letter-spacing:.05em;text-transform:uppercase}
+.big{display:flex;align-items:flex-end;gap:10px}
+.big b{font-size:40px;font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.big .u{color:var(--text-3);padding-bottom:5px}
+.big .sp{margin-left:auto;text-align:right;font-size:11.5px;color:var(--text-3)}.big .sp b{display:block;font-size:15px;font-weight:600;color:var(--text-2);letter-spacing:0}
+.bar{height:5px;border-radius:3px;background:var(--surface-2);position:relative;overflow:hidden}.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ok);border-radius:3px}.bar i.sp{background:transparent;border-right:2px solid var(--text-2);border-radius:0}
+.bar-cap{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-3);font-family:var(--mono)}
+input[type=range]{width:100%;accent-color:var(--brand);margin:2px 0}
+.presets{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.presets button{height:28px;border-radius:6px;border:1px solid var(--line-strong);font-family:var(--mono);font-size:12px;color:var(--text-2)}.presets button:hover{background:var(--surface-2)}
+.row{display:flex;align-items:center;gap:6px}
+.alarm{padding:10px 12px;border-radius:9px;background:var(--err-soft);color:var(--err);display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600}.alarm .code{font-family:var(--mono);font-weight:500;opacity:.8}.alarm .btn{margin-left:auto;background:var(--surface);border-color:transparent;color:var(--err)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:12.5px}.kv span{color:var(--text-3)}.kv b{font-family:var(--mono);font-weight:500;text-align:right}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.side .ft{padding:10px 16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-3)}
+.empty-side{padding:40px 20px;text-align:center;color:var(--text-3);font-size:12.5px;line-height:1.6}
+
+/* draft panel */
+.draft{position:fixed;left:calc(var(--rail-w) + 18px);bottom:72px;z-index:40;background:var(--surface);border:1px dashed var(--line-strong);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--text-3)}
+.draft .row>span{width:34px;font-weight:600}.draft b{color:var(--text);font-size:11px}
+</style>
+</head>
+<body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-dash" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="2"/><rect x="13" y="11" width="8" height="10" rx="2"/><rect x="3" y="14" width="8" height="7" rx="2"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5"/></symbol>
+  <symbol id="i-dev" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6M9 13h6M9 17h3"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 20h18M4 16l4-6 4 3 4-7 4 4"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></symbol>
+  <symbol id="i-set" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-mon" viewBox="0 0 24 24"><path d="M4 12h3l2-6 4 12 2-6h5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v5M12 18h.01"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M8 6l4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4M18 8l4 4-4 4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></symbol>
+  <symbol id="i-fan" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><path d="M12 9.8C12 6 9 3.5 6.5 4.5c-1.5.6-1.3 3 .5 4.3 1.8 1.2 5 1 5 1zM14.2 12c3.8 0 6.3 3 5.3 5.5-.6 1.5-3 1.3-4.3-.5-1.2-1.8-1-5-1-5zM12 14.2c0 3.8-3 6.3-5.5 5.3-1.5-.6-1.3-3 .5-4.3 1.8-1.2 5-1 5-1zM9.8 12C6 12 3.5 9 4.5 6.5c.6-1.5 3-1.3 4.3.5 1.2 1.8 1 5 1 5z"/></symbol>
+  <symbol id="i-grid3" viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l9 9-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="rail">
+    <div class="rail-logo"><img src="../../LS_logo.svg" alt="LS"></div>
+    <button class="rail-item"><svg class="ic"><use href="#i-dash"/></svg>Dashboard</button>
+    <button class="rail-item active"><svg class="ic"><use href="#i-map"/></svg>Layout</button>
+    <button class="rail-item"><svg class="ic"><use href="#i-dev"/></svg>Device</button>
+    <button class="rail-item"><svg class="ic"><use href="#i-chart"/></svg>Chart</button>
+    <button class="rail-item"><svg class="ic"><use href="#i-term"/></svg>Terminal</button>
+    <span class="grow"></span>
+    <button class="rail-item" id="themeBtn"><svg class="ic"><use href="#i-sun"/></svg>Theme</button>
+    <button class="rail-item"><svg class="ic"><use href="#i-set"/></svg>Settings</button>
+  </aside>
+
+  <header class="topbar">
+    <h1>Layout</h1><span class="sub">배치도 · 6 placed · 1 unplaced</span>
+    <span class="grow"></span>
+    <button class="chip ok"><span class="dot"></span><span class="mono">COM3</span>19200 · 8N1<svg class="ic sm"><use href="#i-down"/></svg></button>
+    <button class="switch on"><span class="dot" style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Live Watch<span class="mono" style="font-weight:500;opacity:.8">320 ms</span><span class="track"></span></button>
+    <span class="sep"></span>
+    <button class="chip ghost"><svg class="ic sm" style="color:var(--ok)"><use href="#i-check"/></svg>99.7%<span style="color:var(--text-3)">· ERR</span><span class="mono">37</span></button>
+    <button class="btn ghost sm"><svg class="ic"><use href="#i-mon"/></svg>Monitor</button>
+  </header>
+
+  <main class="stage" id="stage">
+    <svg id="map" xmlns="http://www.w3.org/2000/svg"></svg>
+
+    <!-- HUD: 상단 좌측 — 요약 + 모드 -->
+    <div class="hud tl">
+      <div class="panel">
+        <span class="chip ok sm"><span class="dot"></span>운전 3</span>
+        <span class="chip sm"><svg class="ic sm"><use href="#i-stop"/></svg>정지 1</span>
+        <span class="chip err sm"><svg class="ic sm"><use href="#i-warn"/></svg>알람 1</span>
+        <span class="chip off sm"><span class="dot"></span>오프라인 1</span>
+      </div>
+      <div class="panel" style="gap:6px">
+        <button class="btn sm" id="editBtn"><svg class="ic sm"><use href="#i-move"/></svg>배치 편집</button>
+        <button class="btn sm ghost" title="Slave ID 순으로 자동 배치"><svg class="ic sm"><use href="#i-grid3"/></svg>자동 배치</button>
+      </div>
+    </div>
+
+    <!-- HUD: 하단 좌측 — 범례 -->
+    <div class="hud bl"><div class="panel legend">
+      <span><i style="background:var(--ok)"></i>RUN</span><span><i style="background:var(--text-3)"></i>STOP</span><span><i style="background:var(--err)"></i>ALARM</span><span><i style="background:var(--off);outline:1px dashed var(--off);outline-offset:1px"></i>OFFLINE</span>
+      <span class="hint" style="margin-left:6px">날개 회전 속도 = 실제 RPM</span>
+    </div></div>
+
+    <!-- HUD: 하단 우측 — 줌 -->
+    <div class="hud br"><div class="zoom">
+      <button class="btn" id="zIn"><svg class="ic"><use href="#i-plus"/></svg></button>
+      <button class="btn" id="zOut"><svg class="ic"><use href="#i-minus"/></svg></button>
+      <button class="btn" id="zFit" title="전체 보기"><svg class="ic"><use href="#i-fit"/></svg></button>
+    </div></div>
+
+    <!-- 미배치 트레이 -->
+    <div class="tray" id="tray">
+      <span class="t">미배치 1</span>
+      <span class="dev"><svg class="ic sm"><use href="#i-fan"/></svg>New device <span class="badge id" style="border-style:dashed;color:var(--warn);border-color:var(--warn)">ID 미할당</span></span>
+      <span class="hint">편집 모드에서 빈 칸으로 끌어다 놓으세요</span>
+    </div>
+
+    <!-- 우측 상세 패널 -->
+    <aside class="side" id="side"></aside>
+  </main>
+</div>
+
+<div class="draft">
+  <b>초안 검토용 (앱에 포함되지 않음)</b>
+  <div class="row"><span>테마</span><div class="seg sm" id="dTheme"><button data-v="light">Light</button><button class="on" data-v="dark">Dark</button></div></div>
+  <div class="hint">드래그 = 이동 · 휠 = 줌 · 팬 클릭 = 상세 · 편집 모드에서 빈 칸 클릭 = 선택한 팬 이동</div>
+</div>
+
+<script>
+/* ---------- data ---------- */
+const fans=[
+  {id:7, name:'Fan-01',i:1,j:1,st:'run',  rpm:1240,sp:1250,unit:'RPM',max:1600,write:'ok',     sn:'25C0012',coil:1.2,temp:41,fresh:'0.3 s'},
+  {id:8, name:'Fan-02',i:3,j:1,st:'run',  rpm:1238,sp:800, unit:'RPM',max:1600,write:'writing',sn:'25C0013',coil:1.1,temp:39,fresh:'0.1 s'},
+  {id:9, name:'Fan-03',i:5,j:1,st:'alarm',rpm:0,   sp:1000,unit:'RPM',max:1600,write:'fail',   sn:'25C0021',coil:4.8,temp:63,fresh:'0.2 s',alarm:'과전류 (Over-current)',code:'0x0004'},
+  {id:10,name:'Fan-04',i:2,j:3,st:'stop', rpm:0,   sp:50,  unit:'%',  max:100, write:'queued', sn:'25C0022',coil:0,  temp:28,fresh:'0.3 s'},
+  {id:11,name:'Fan-05',i:4,j:3,st:'off',  rpm:null,sp:600, unit:'RPM',max:1600,write:null,     sn:'25C0030',coil:null,temp:null,fresh:'42 s 전'},
+  {id:12,name:'Fan-06',i:6,j:3,st:'run',  rpm:960, sp:960, unit:'RPM',max:1600,write:null,     sn:'25C0031',coil:0.9,temp:36,fresh:'0.2 s'},
+];
+const W=136, H=W/Math.sqrt(3), COLS=8, ROWS=6, BH=22;   // 타일 폭/높이(1:√3 → 60°/120° 마름모), 박스 높이
+const toXY=(i,j)=>({x:(i-j)*W/2, y:(i+j)*H/2});
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const svg=$('#map'); let sel=null, edit=false;
+
+/* ---------- render ---------- */
+const diamond=(x,y,k=1)=>`${x},${y-H/2*k} ${x+W/2*k},${y} ${x},${y+H/2*k} ${x-W/2*k},${y}`;
+function unitSVG(f){
+  const {x,y}=toXY(f.i,f.j);
+  const hw=W/2*.66, hh=H/2*.66, rx=hw*.78, ry=hh*.78, R=hw*.62;
+  const dur=f.rpm?(2400/f.rpm).toFixed(2):0;
+  const blades=[0,1,2,3,4].map(k=>`<path class="blade" transform="rotate(${k*72})" d="M0,0 C${R*.25},${-R*.22} ${R*.7},${-R*.42} ${R},${-R*.12} C${R*.8},${R*.25} ${R*.35},${R*.18} 0,0Z"/>`).join('');
+  const val=f.rpm==null?'—':f.st==='stop'?'0 RPM':`${f.rpm.toLocaleString()} RPM`;
+  const badge=f.st==='alarm'?`<g class="badge-a" transform="translate(${hw-6},${-BH-hh-4})"><circle r="9"/><text y="4">!</text></g>`
+            :f.write==='writing'?`<g class="badge-w" transform="translate(${hw-6},${-BH-hh-4})"><circle r="9"/><text y="3">TX</text></g>`:'';
+  return `<g class="unit st-${f.st}${sel===f.id?' sel':''}" data-id="${f.id}" transform="translate(${x},${y})" style="--dur:${dur}s">
+    <polygon class="shadow" points="${diamond(4,6,.72)}"/>
+    <polygon class="fl" points="${-hw},${-BH} 0,${hh-BH} 0,${hh} ${-hw},0"/>
+    <polygon class="fr" points="0,${hh-BH} ${hw},${-BH} ${hw},0 0,${hh}"/>
+    <polygon class="ft" points="0,${-hh-BH} ${hw},${-BH} 0,${hh-BH} ${-hw},${-BH}"/>
+    <polyline class="edge" points="${-hw},${-BH} 0,${hh-BH} ${hw},${-BH}"/>
+    <g transform="translate(0,${-BH})">
+      <ellipse class="glow" rx="${rx}" ry="${ry}"/>
+      <ellipse class="guard" rx="${rx}" ry="${ry}"/>
+      <ellipse class="mesh" rx="${rx*.62}" ry="${ry*.62}"/><ellipse class="mesh" rx="${rx*.32}" ry="${ry*.32}"/>
+      <g transform="scale(1,${(H/W).toFixed(4)})"><g class="blades">${blades}</g><circle class="hub" r="6"/></g>
+      <ellipse class="ring" rx="${rx}" ry="${ry}"/>
+    </g>
+    ${badge}
+    <g class="lbl" transform="translate(0,${-BH-hh-30})"><rect x="-58" y="-11" width="116" height="22"/><text class="nm" x="-50" y="4">${f.name}</text><text class="val" x="50" y="4" text-anchor="end">${val}</text></g>
+  </g>`;
+}
+function render(){
+  let tiles='';
+  for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){
+    const {x,y}=toXY(i,j); const occ=fans.find(f=>f.i===i&&f.j===j);
+    const s=sel!=null&&occ&&occ.id===sel;
+    tiles+=`<g><polygon class="tile${(i+j)%2?' alt':''}${occ?'':' empty'}${s?' sel':''}" data-i="${i}" data-j="${j}" points="${diamond(x,y)}"/>${occ?'':`<path class="plus" d="M${x-7},${y}h14M${x},${y-7}v14"/>`}</g>`;
+  }
+  const units=[...fans].sort((a,b)=>(a.i+a.j)-(b.i+b.j)).map(unitSVG).join('');
+  const selF=fans.find(f=>f.id===sel); const ring=selF?`<polygon class="selring" points="${diamond(toXY(selF.i,selF.j).x,toXY(selF.i,selF.j).y,1.02)}"/>`:'';
+  svg.innerHTML=`<g id="world"><g id="floor">${tiles}</g>${ring}<g id="units">${units}</g></g>`;
+  renderSide();
+}
+
+/* ---------- side panel ---------- */
+const stChip={run:'<span class="chip ok sm"><span class="dot"></span>RUN</span>',stop:'<span class="chip sm"><svg class="ic sm"><use href="#i-stop"/></svg>STOP</span>',alarm:'<span class="chip err sm"><svg class="ic sm"><use href="#i-warn"/></svg>ALARM</span>',off:'<span class="chip off sm"><span class="dot"></span>OFFLINE</span>'};
+const wr={ok:'<span class="write ok"><svg class="ic sm"><use href="#i-check"/></svg>확인됨</span>',writing:'<span class="write writing"><span class="spin"></span>쓰는 중…</span>',queued:'<span class="write queued"><svg class="ic sm"><use href="#i-clock"/></svg>대기 2번째</span>',fail:'<span class="write fail"><svg class="ic sm"><use href="#i-x"/></svg>실패 · 타임아웃 <u>재시도</u></span>'};
+function renderSide(){
+  const side=$('#side'); const f=fans.find(x=>x.id===sel);
+  side.classList.toggle('open',!!f); if(!f){return}
+  const pct=f.rpm?Math.min(100,f.rpm/f.max*100):0, spPct=f.unit==='%'?f.sp:f.sp/f.max*100;
+  const off=f.st==='off';
+  side.innerHTML=`
+  <div class="hd">${stChip[f.st]}<span class="nm">${f.name}</span><span class="badge model">EC-FAN 3G</span><span class="grow"></span><span class="badge id">ID ${f.id}</span><button class="btn ghost sm" id="closeSide" style="width:28px;padding:0;justify-content:center"><svg class="ic"><use href="#i-x"/></svg></button></div>
+  <div class="bd">
+    ${f.alarm?`<div class="alarm"><svg class="ic sm"><use href="#i-bell"/></svg>${f.alarm}<span class="code">${f.code}</span><button class="btn sm">알람 리셋</button></div>`:''}
+    ${off?`<div class="alarm" style="background:var(--off-soft);color:var(--text-2)"><svg class="ic sm"><use href="#i-clock"/></svg>응답 없음 ×3 · 폴링에서 일시 제외됨<button class="btn sm" style="color:var(--text)">재시도</button></div>`:''}
+    <div class="sec">
+      <div class="big"><b${f.rpm?'':' style="color:var(--text-3)"'}>${f.rpm==null?'—':f.rpm.toLocaleString()}</b><span class="u">RPM actual</span><span class="sp">Setpoint<b>${f.sp.toLocaleString()} ${f.unit}</b></span></div>
+      <div class="bar"><i style="width:${pct}%"></i><i class="sp" style="left:${spPct}%"></i></div>
+      <div class="bar-cap"><span>0</span><span style="color:var(--text-2)">${f.fresh} 갱신</span><span>max ${f.max.toLocaleString()}${f.unit==='%'?' %':''}</span></div>
+    </div>
+    <div class="sec">
+      <h5>Setpoint</h5>
+      <input type="range" min="0" max="${f.max}" value="${f.sp}" ${off?'disabled':''}>
+      <div class="presets">${[0,25,50,75,100].map(p=>`<button ${off?'disabled':''}>${p}</button>`).join('')}</div>
+      <div class="row"><input class="input num" style="width:100px" value="${f.sp}" ${off||f.write==='writing'?'disabled':''}><div class="seg"><button class="${f.unit==='RPM'?'on':''}">RPM</button><button class="${f.unit==='%'?'on':''}">%</button></div><button class="btn primary" ${off||f.write==='writing'?'disabled':''}>적용</button><button class="btn danger" style="width:32px;padding:0;justify-content:center" title="정지" ${off?'disabled':''}><svg class="ic sm"><use href="#i-stop"/></svg></button></div>
+      ${f.write?`<div>${wr[f.write]}</div>`:''}
+    </div>
+    <div class="sec">
+      <h5>감시 파라미터</h5>
+      <div class="kv"><span>Coil current</span><b${f.coil>4?' style="color:var(--err)"':''}>${f.coil==null?'—':f.coil.toFixed(1)+' A'}</b><span>Motor temp</span><b>${f.temp==null?'—':f.temp+' °C'}</b><span>S/N</span><b>${f.sn}</b><span>위치</span><b>col ${f.i} · row ${f.j}</b></div>
+    </div>
+    <div class="sec">
+      <h5>Actions</h5>
+      <div class="acts"><button class="btn sm"><svg class="ic sm"><use href="#i-sliders"/></svg>설정으로 이동</button><button class="btn sm"><svg class="ic sm"><use href="#i-tag"/></svg>이름 · 주소 변경</button><button class="btn sm"><svg class="ic sm"><use href="#i-refresh"/></svg>소프트웨어 리셋</button><button class="btn sm" style="color:var(--text-2)"><svg class="ic sm"><use href="#i-trash"/></svg>배치 해제</button></div>
+    </div>
+  </div>
+  <div class="ft"><svg class="ic sm"><use href="#i-mon"/></svg>이 디바이스 Live Watch<span class="grow"></span><span class="switch on" style="height:24px;padding:0 6px 0 4px"><span class="track" style="width:26px;height:15px"></span></span></div>`;
+  $('#closeSide').onclick=()=>{sel=null;render()};
+}
+
+/* ---------- viewBox camera ---------- */
+let vb={x:0,y:0,w:1000,h:600};
+const applyVB=()=>svg.setAttribute('viewBox',`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+function fit(){
+  const b={x:-(ROWS-1)*W/2-W/2-40,y:-H/2-BH-70,w:(COLS+ROWS)*W/2+80,h:(COLS+ROWS-1)*H/2+H+BH+120};
+  const ar=svg.clientWidth/svg.clientHeight; let w=b.w,h=b.h; if(w/h<ar)w=h*ar;else h=w/ar;
+  vb={x:b.x+(b.w-w)/2+(w*0.13),y:b.y+(b.h-h)/2,w,h}; applyVB();   // 우측 패널 공간만큼 왼쪽으로 치우침
+}
+function zoom(k,cx,cy){
+  const p=svg.createSVGPoint();p.x=cx??svg.clientWidth/2;p.y=cy??svg.clientHeight/2;
+  const q=p.matrixTransform(svg.getScreenCTM().inverse());
+  const nw=Math.min(3000,Math.max(300,vb.w*k)), s=nw/vb.w;
+  vb={x:q.x-(q.x-vb.x)*s,y:q.y-(q.y-vb.y)*s,w:nw,h:vb.h*s}; applyVB();
+}
+svg.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY>0?1.12:1/1.12,e.clientX,e.clientY)},{passive:false});
+$('#zIn').onclick=()=>zoom(1/1.25);$('#zOut').onclick=()=>zoom(1.25);$('#zFit').onclick=fit;
+window.addEventListener('resize',fit);
+
+/* ---------- pointer: drag / click / hover ---------- */
+let drag=null;
+svg.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,vx:vb.x,vy:vb.y,moved:false};svg.setPointerCapture(e.pointerId)});
+svg.addEventListener('pointermove',e=>{
+  if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>3)drag.moved=true;
+    if(drag.moved){const s=vb.w/svg.clientWidth;vb.x=drag.vx-dx*s;vb.y=drag.vy-dy*s;applyVB();svg.classList.add('dragging')}return}
+  const t=e.target.closest('.tile');$$('.tile.hover').forEach(x=>x.classList.remove('hover'));if(t&&(edit||!t.classList.contains('empty')))t.classList.add('hover');
+});
+svg.addEventListener('pointerup',e=>{
+  const moved=drag&&drag.moved;drag=null;svg.classList.remove('dragging');if(moved)return;
+  const u=e.target.closest('.unit');
+  if(u){sel=+u.dataset.id;render();return}
+  const t=e.target.closest('.tile');
+  if(t&&edit&&sel!=null&&t.classList.contains('empty')){const f=fans.find(x=>x.id===sel);f.i=+t.dataset.i;f.j=+t.dataset.j;render();return}
+  if(t&&!edit&&t.classList.contains('empty')){sel=null;render()}
+});
+
+/* ---------- edit mode / theme ---------- */
+$('#editBtn').onclick=()=>{edit=!edit;$('#editBtn').classList.toggle('on',edit);$('#stage').classList.toggle('edit',edit);$('#tray').hidden=false};
+function setTheme(t){document.documentElement.dataset.theme=t;$$('#dTheme button').forEach(b=>b.classList.toggle('on',b.dataset.v===t));$('#themeBtn use').setAttribute('href',t==='dark'?'#i-sun':'#i-moon')}
+$('#dTheme').onclick=e=>{const b=e.target.closest('button');if(b)setTheme(b.dataset.v)};
+$('#themeBtn').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
+
+/* ---------- init (URL: ?theme=light&sel=9&edit=1) ---------- */
+const q=new URLSearchParams(location.search);
+if(q.get('theme'))setTheme(q.get('theme'));
+if(q.get('sel'))sel=+q.get('sel');
+if(q.get('edit'))$('#editBtn').click();
+render();fit();
+</script>
+</body>
+</html>

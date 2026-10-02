@@ -1,0 +1,202 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+body{margin:0;background:#0b111d;color:#e6edf7;font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.4;-webkit-font-smoothing:antialiased}
+a{color:#4f8df7}a:hover{color:#7fb0ff}
+*{box-sizing:border-box}
+.mono{font-family:'IBM Plex Mono',Consolas,'Courier New',monospace;font-variant-numeric:tabular-nums}
+.app{width:1440px;height:900px;display:grid;grid-template-columns:66px minmax(0,1fr);grid-template-rows:52px minmax(0,1fr);overflow:hidden;background:#0b111d}
+.rail{grid-row:1/3;background:#0e1626;border-right:1px solid #1c2740;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:4px}
+.rail-logo{width:46px;height:34px;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.rail-logo img{height:18px;width:auto}
+.rail-item{width:50px;height:50px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#8a9bb5;font-size:9.5px;letter-spacing:.02em}
+.rail-item.active{background:#182742;color:#e6edf7}
+.rail-item.active svg{stroke:#4f8df7}
+.rail-item svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.rail-sep{width:30px;height:1px;background:#1c2740;margin:6px 0}
+.rail-spacer{flex:1}
+.topbar{grid-column:2;display:flex;align-items:center;gap:12px;padding:0 20px;background:#0e1626;border-bottom:1px solid #1c2740}
+.topbar .title{font-weight:600;font-size:14px;letter-spacing:.01em}
+.topbar .sub{color:#8a9bb5;font-size:12px}
+.topbar .grow{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:6px;border:1px solid #22304a;background:#111a2b;font-size:12px;color:#c9d4e5;white-space:nowrap}
+.chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.chip.ok{border-color:#1f5a3c;color:#7fe2a8;background:#0f2a1c}
+.chip.warn{border-color:#5a4416;color:#f5c862;background:#2a2110}
+.chip.err{border-color:#6b1f33;color:#ff8aa3;background:#2d1119}
+.chip.off{border-style:dashed;border-color:#3a4a68;color:#8a9bb5;background:transparent}
+.chip.info{border-color:#1f3d6b;color:#8fb8ff;background:#0f1f3a}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.btn{height:30px;padding:0 12px;border-radius:6px;border:1px solid #2a3a58;background:#172236;color:#e6edf7;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.btn.primary{background:#2f6fe0;border-color:#2f6fe0;color:#fff}
+.btn.danger{background:#3a1522;border-color:#7a2340;color:#ff8aa3}
+.btn.ghost{background:transparent;border-color:transparent;color:#8a9bb5}
+.btn.sm{height:24px;padding:0 8px;font-size:11px}
+.seg{display:inline-flex;border:1px solid #2a3a58;border-radius:6px;overflow:hidden;height:26px}
+.seg span{padding:0 10px;display:flex;align-items:center;font-size:11.5px;color:#8a9bb5}
+.seg span.on{background:#2f6fe0;color:#fff}
+.card{background:#111a2b;border:1px solid #1e2b45;border-radius:10px}
+.input{height:28px;border:1px solid #2a3a58;background:#0b111d;border-radius:6px;color:#e6edf7;padding:0 8px;display:flex;align-items:center;font-size:12px}
+.label{font-size:11px;color:#8a9bb5;text-transform:uppercase;letter-spacing:.06em}
+.content{grid-column:2;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.ic{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.badge{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10.5px;font-weight:600;letter-spacing:.03em}
+.badge.m{background:#1b3358;color:#8fb8ff}
+.badge.s{background:#173a3a;color:#6fe0d6}
+.badge.u{background:#2a2a33;color:#a3a9b8;border:1px dashed #4a5166}
+.badge.id{background:#1a2438;color:#c9d4e5;font-family:'IBM Plex Mono',Consolas,monospace;font-weight:500}
+.badge.role{background:#3a2a10;color:#f5c862}
+.badge.cap{background:#2a2a33;color:#8a92a6}
+.tabs{display:flex;gap:2px;border-bottom:1px solid #1e2b45}
+.tab{padding:10px 14px;font-size:12.5px;color:#8a9bb5;border-bottom:2px solid transparent;display:flex;align-items:center;gap:6px}
+.tab.on{color:#e6edf7;border-bottom-color:#4f8df7}
+.kv{display:flex;justify-content:space-between;font-size:11.5px;color:#8a9bb5}
+.kv b{color:#c9d4e5;font-weight:500}
+.toggle{width:34px;height:18px;border-radius:9px;background:#2a3a58;position:relative;display:inline-block}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a9bb5}
+.toggle.on{background:#2fd27a}
+.toggle.on::after{left:18px;background:#0b111d}
+
+  </style>
+</helmet>
+<div class="app">
+<div class="rail">
+<div class="rail-logo"><img src="LS_logo.svg" alt="LS"></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+<div class="rail-item"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect></svg><span>Dashboard</span></div>
+<div class="rail-item"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"></rect><rect x="9" y="9" width="6" height="6" rx="1"></rect><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"></path></svg><span>Devices</span></div>
+<div class="rail-item active"><svg viewBox="0 0 24 24"><path d="M3 12h3l2-6 4 12 3-9 2 3h4"></path></svg><span>Chart</span></div>
+<div class="rail-item"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 9l3 3-3 3M12 15h5"></path></svg><span>Terminal</span></div>
+</div>
+<div class="rail-spacer"></div>
+<div class="rail-item"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"></path><path d="M18 11l3 3-3 3"></path></svg><span>Monitor</span></div>
+<div class="rail-item"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0"></path><circle cx="16" cy="7" r="2"></circle><circle cx="9" cy="12" r="2"></circle><circle cx="18" cy="17" r="2"></circle></svg><span>Settings</span></div>
+</div>
+<div class="topbar">
+<span class="title">Chart</span><span class="sub">Supply Fan 1 · continuous · 1 ms</span><span class="grow"></span>
+<span class="chip ok"><svg viewBox="0 0 24 24"><path d="M8 3v5M16 3v5M6 8h12v4a6 6 0 0 1-12 0zM12 18v3"></path></svg> COM3 · 115200 8N1 · Connected</span>
+<span class="chip mono" style="gap:10px"><span>REQ <b style="color:#e6edf7">12 480</b></span><span>OK <b style="color:#7fe2a8">12 462</b></span><span>ERR <b style="color:#ff8aa3">18</b></span><span style="color:#8a9bb5">99.86%</span></span>
+<span class="seg"><span>User</span><span class="on">Engineer</span><span>Manufacture</span></span>
+<span class="btn ghost" style="padding:0 6px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></span>
+</div>
+<div class="content">
+<div style="padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1c2740">
+  <span class="btn danger"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"></rect></svg> Stop</span>
+  <span class="btn">Clear</span>
+  <span style="width:1px;height:20px;background:#22304a"></span>
+  <span class="seg" style="height:30px"><span class="on">Overlay</span><span>Split</span></span>
+  <span class="input" style="gap:6px">Y: Independent <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+  <span class="btn">Cursors</span>
+  <span style="width:1px;height:20px;background:#22304a"></span>
+  <span class="mono" style="color:#8a9bb5;font-size:12px;display:inline-flex;gap:14px"><span>12 500 pts</span><span>1.00 kS/s</span><span>12.5 s</span></span>
+  <span class="chip ok" style="height:22px;padding:0 8px"><svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"></path></svg> Live</span>
+  <span style="flex:1"></span>
+  <span class="btn">CSV</span><span class="btn">.lsm</span><span class="btn">PNG</span>
+  <span class="btn ghost"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+</div>
+<div style="flex:1;display:grid;grid-template-columns:minmax(0,1fr) 300px;min-height:0">
+  <div style="display:flex;flex-direction:column;min-height:0">
+    <div style="flex:1;position:relative;background:#070c16;margin:12px 0 0 16px;border:1px solid #1c2740;border-radius:8px;overflow:hidden">
+      <svg viewBox="0 0 1000 440" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+        <g stroke="#152036" stroke-width="1">
+          <path d="M0 55H1000M0 110H1000M0 165H1000M0 220H1000M0 275H1000M0 330H1000M0 385H1000"></path>
+          <path d="M100 0V440M200 0V440M300 0V440M400 0V440M500 0V440M600 0V440M700 0V440M800 0V440M900 0V440"></path>
+        </g>
+        <path d="M0 300 C60 300 80 300 120 290 S180 160 240 140 S320 130 400 128 S560 126 700 126 S900 125 1000 125" fill="none" stroke="#ffd166" stroke-width="1.8"></path>
+        <path d="M0 300 L130 300 L130 130 L1000 130" fill="none" stroke="#4fd1ff" stroke-width="1.5" stroke-dasharray="4 3"></path>
+        <path d="M0 360 C80 360 100 330 130 320 S170 200 200 220 S230 260 260 250 S330 235 400 240 S600 238 800 240 S950 239 1000 240" fill="none" stroke="#ff6bd6" stroke-width="1.5"></path>
+        <path d="M0 395 L1000 393" fill="none" stroke="#7bff9a" stroke-width="1.5"></path>
+        <path d="M640 0V440" stroke="#8fb8ff" stroke-width="1" stroke-dasharray="3 3"></path>
+      </svg>
+      <div class="mono" style="position:absolute;left:12px;top:10px;display:flex;flex-direction:column;gap:2px;font-size:11px;color:#8a9bb5"><span style="color:#ffd166">CH1 1 245 RPM</span><span style="color:#4fd1ff">CH2 1 250 RPM</span><span style="color:#ff6bd6">CH3 2.41 A</span><span style="color:#7bff9a">CH4 41.0 °C</span></div>
+      <div class="mono" style="position:absolute;left:66%;top:10px;padding:6px 8px;background:#111a2b;border:1px solid #2a3a58;border-radius:6px;font-size:11px;display:flex;flex-direction:column;gap:2px"><span style="color:#8fb8ff">t = 8.00 s</span><span style="color:#ffd166">1 247</span><span style="color:#4fd1ff">1 250</span><span style="color:#ff6bd6">2.38</span><span style="color:#7bff9a">41.0</span></div>
+      <div class="mono" style="position:absolute;left:12px;bottom:8px;right:12px;display:flex;justify-content:space-between;font-size:10.5px;color:#5b6b85"><span>0 s</span><span>2.5</span><span>5.0</span><span>7.5</span><span>10.0</span><span>12.5 s</span></div>
+    </div>
+    <div style="margin:10px 0 0 16px;display:flex;flex-direction:column;min-height:0">
+      <div class="tabs">
+        <span class="tab on">Channels</span><span class="tab">Time base</span><span class="tab">Trigger</span><span class="tab">Cursor measurement</span><span class="tab" style="color:#5b6b85">FRF <span class="badge cap">planned</span></span>
+      </div>
+      <div style="display:grid;grid-template-columns:44px 200px 90px 70px 70px 70px 70px 70px;gap:10px;padding:8px 0 2px">
+        <span class="label">Ch</span><span class="label">Parameter</span><span class="label" style="text-align:right">Value</span><span class="label">Range</span><span class="label" style="text-align:right">Min</span><span class="label" style="text-align:right">Max</span><span class="label" style="text-align:right">Scale</span><span class="label" style="text-align:right">Offset</span>
+      </div>
+      <div style="display:grid;grid-template-columns:44px 200px 90px 70px 70px 70px 70px 70px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1a2438;font-size:12px">
+  <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#ffd166"></span><b class="mono">CH1</b></span>
+  <span class="input" style="height:26px;justify-content:space-between">Actual speed · 0xD02D <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+  <span class="mono" style="color:#ffd166;font-weight:500;text-align:right">1 245 RPM</span>
+  <span class="seg" style="height:24px"><span class="on">Auto</span><span>Man</span></span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">0</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">1 600</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">1</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">0</span>
+</div>
+      <div style="display:grid;grid-template-columns:44px 200px 90px 70px 70px 70px 70px 70px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1a2438;font-size:12px">
+  <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#4fd1ff"></span><b class="mono">CH2</b></span>
+  <span class="input" style="height:26px;justify-content:space-between">Setpoint · 0xD001 <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+  <span class="mono" style="color:#4fd1ff;font-weight:500;text-align:right">1 250 RPM</span>
+  <span class="seg" style="height:24px"><span class="on">Auto</span><span>Man</span></span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">0</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">1 600</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">1</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">0</span>
+</div>
+      <div style="display:grid;grid-template-columns:44px 200px 90px 70px 70px 70px 70px 70px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1a2438;font-size:12px">
+  <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#ff6bd6"></span><b class="mono">CH3</b></span>
+  <span class="input" style="height:26px;justify-content:space-between">Motor current · 0xD052 <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+  <span class="mono" style="color:#ff6bd6;font-weight:500;text-align:right">2.41 A</span>
+  <span class="seg" style="height:24px"><span class="on">Auto</span><span>Man</span></span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">0</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">5.0</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">1</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">0</span>
+</div>
+      <div style="display:grid;grid-template-columns:44px 200px 90px 70px 70px 70px 70px 70px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1a2438;font-size:12px">
+  <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:#7bff9a"></span><b class="mono">CH4</b></span>
+  <span class="input" style="height:26px;justify-content:space-between">Temperature · 0xD027 <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span>
+  <span class="mono" style="color:#7bff9a;font-weight:500;text-align:right">41.0 °C</span>
+  <span class="seg" style="height:24px"><span class="on">Auto</span><span>Man</span></span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">0</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">120</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">1</span>
+  <span class="input mono" style="height:26px;justify-content:flex-end">0</span>
+</div>
+    </div>
+  </div>
+  <div style="margin:12px 16px 12px 12px;display:flex;flex-direction:column;gap:12px;min-height:0">
+    <div class="card" style="padding:14px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:8px"><span class="label">Control</span><span style="flex:1"></span><span class="input" style="height:24px;gap:6px;font-size:11.5px">Supply Fan 1 · ID 07 <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span></div>
+      <div style="display:flex;align-items:baseline;gap:8px"><span class="mono" style="font-size:34px;font-weight:500;line-height:1">1 245</span><span style="color:#8a9bb5">RPM actual</span><span style="flex:1"></span><span class="chip ok" style="height:22px;padding:0 8px"><svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"></path></svg> Running</span></div>
+      <div style="display:flex;gap:6px"><span class="btn primary" style="flex:1;justify-content:center"><svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"></path></svg> Run</span><span class="btn danger" style="flex:1;justify-content:center"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"></rect></svg> Stop</span></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:6px"><span class="label" style="flex:1">Setpoint</span><span class="seg" style="height:24px"><span class="on">RPM</span><span>%</span></span></div>
+        <div style="display:flex;gap:6px"><span class="input mono" style="flex:1;justify-content:flex-end;font-size:14px;height:32px">1 250</span><span class="btn primary" style="height:32px">Apply</span></div>
+        <div style="display:flex;gap:4px"><span class="btn sm" style="flex:1;justify-content:center">0</span><span class="btn sm" style="flex:1;justify-content:center">25</span><span class="btn sm" style="flex:1;justify-content:center">50</span><span class="btn sm" style="flex:1;justify-content:center">75</span><span class="btn sm" style="flex:1;justify-content:center">100</span></div>
+        <span class="chip ok" style="height:22px;align-self:flex-start"><svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"></path></svg> Confirmed 12:03:41 · marker added</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;border-top:1px solid #1e2b45;padding-top:10px">
+        <div class="kv"><span>Mode</span><b>Speed control</b></div>
+        <div class="kv"><span>Direction</span><b>CW</b></div>
+        <div class="kv"><span>Alarm</span><b style="color:#7fe2a8">None</b></div>
+        <div class="kv"><span>Updated</span><b class="mono">0.3 s ago</b></div>
+      </div>
+    </div>
+    <div class="card" style="padding:14px;display:flex;flex-direction:column;gap:8px">
+      <span class="label">Markers</span>
+      <div class="kv mono"><span style="color:#8fb8ff">M1 · 1.30 s</span><b>SP 0 → 1 250</b></div>
+      <div class="kv mono"><span style="color:#8fb8ff">M2 · 8.00 s</span><b>cursor</b></div>
+      <div class="kv"><span>Δt M1→M2</span><b class="mono">6.70 s</b></div>
+    </div>
+  </div>
+</div>
+</div></div>
+</x-dc>
+</body>
+</html>

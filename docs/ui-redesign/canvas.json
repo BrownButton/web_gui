@@ -1,0 +1,25 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Screens" },
+    { "id": "page-2", "name": "Alternatives" }
+  ],
+  "artboards": [
+    { "file": "Connect.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "1 · Connect (onboarding)", "page": "page-1" },
+    { "file": "Main.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "2 · Dashboard", "page": "page-1" },
+    { "file": "Device.dc.html", "x": 0, "y": 1060, "w": 1440, "h": 900, "title": "3 · Devices · Configuration", "page": "page-1" },
+    { "file": "Chart.dc.html", "x": 1560, "y": 1060, "w": 1440, "h": 900, "title": "4 · Chart + docked control", "page": "page-1" },
+    { "file": "Manufacture.dc.html", "x": 0, "y": 2120, "w": 1440, "h": 900, "title": "5 · Manufacture · HW overview", "page": "page-1" },
+    { "file": "Tokens.dc.html", "x": 1560, "y": 2120, "w": 1440, "h": 1400, "title": "6 · Design system · IA · status rules", "page": "page-1" },
+    { "file": "OptionLight.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "Option A · Light, text sidebar (low-fi)", "page": "page-2" },
+    { "file": "OptionWorkbench.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "Option B · Single workbench (low-fi)", "page": "page-2" }
+  ],
+  "annotations": [
+    { "id": "note-brief", "x": 0, "y": -200, "w": 520, "page": "page-1", "text": "FanCM UI 재설계 초안 v1\n근거: docs/claude-design-redesign-prompt.md §3~§9\n방향: 66px 아이콘 레일 + 다크 계측장비 스타일(§9), LS 브랜드 팔레트, IBM Plex Sans/Mono(tabular-nums).\n페인포인트 대응: ①차트+도킹 조작 패널(4번) ②연결 온보딩→상단 컴팩트 칩(1번) ③제품군 그룹/배지/식별 카드(2번) ④선택 시 나타나는 액션 바가 All Device Control 대체(2번 하단)." },
+    { "id": "note-states", "x": 1560, "y": -200, "w": 460, "page": "page-1", "text": "대시보드 카드는 상태별 예시로 채움:\nConfirmed / Writing / Queued / Failed+Alarm / Limit active / Offline / Unidentified.\n각 카드마다 갱신 신선도(↻ 0.3 s)를 표시하고, 상단바에 poll cycle을 노출." },
+    { "id": "note-alt", "x": 0, "y": -160, "w": 520, "page": "page-2", "text": "방향 선택용 저밀도 대안 2종. 메인 초안(Screens 페이지)이 추천안이며, 이 둘은 다른 축을 탐색합니다." },
+    { "id": "note-alt-a", "x": 0, "y": 980, "w": 520, "page": "page-2", "text": "Option A · Light, text sidebar\n같은 IA와 카드 그리드를 유지하되 지금의 라이트 룩과 텍스트 사이드바를 남깁니다. 이주 비용이 가장 낮습니다.\n트레이드오프: 콘텐츠 폭이 줄고, 계측장비 느낌이 약해집니다." },
+    { "id": "note-alt-b", "x": 1560, "y": 980, "w": 520, "page": "page-2", "text": "Option B · Single workbench\n튜닝 워크플로우를 위해 페이지 전환을 없앱니다. 디바이스 목록·차트·인스펙터(조작+설정)가 항상 한 화면에 있습니다.\n트레이드오프: 필드 사용자와 다수 디바이스 환경에는 무겁고, 대시보드가 보조 레이아웃이 됩니다." },
+    { "id": "note-missing", "x": 1560, "y": -120, "w": 460, "page": "page-1", "text": "이 초안에서 아직 안 그린 화면 (다음 라운드 후보):\n· Devices › Parameters 테이블 / Information / Update(펌웨어 4단계)\n· Terminal · Communication Monitor 드로어 · Settings 모달\n· Manufacture › Offset / OS verification / Serial number\n· Connect 3단계 'Identify models'\n· 토스트 · 확인 모달 · 빈 상태" }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

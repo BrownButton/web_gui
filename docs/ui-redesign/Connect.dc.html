@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+body{margin:0;background:#0b111d;color:#e6edf7;font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.4;-webkit-font-smoothing:antialiased}
+a{color:#4f8df7}a:hover{color:#7fb0ff}
+*{box-sizing:border-box}
+.mono{font-family:'IBM Plex Mono',Consolas,'Courier New',monospace;font-variant-numeric:tabular-nums}
+.app{width:1440px;height:900px;display:grid;grid-template-columns:66px minmax(0,1fr);grid-template-rows:52px minmax(0,1fr);overflow:hidden;background:#0b111d}
+.rail{grid-row:1/3;background:#0e1626;border-right:1px solid #1c2740;display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:4px}
+.rail-logo{width:46px;height:34px;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.rail-logo img{height:18px;width:auto}
+.rail-item{width:50px;height:50px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#8a9bb5;font-size:9.5px;letter-spacing:.02em}
+.rail-item.active{background:#182742;color:#e6edf7}
+.rail-item.active svg{stroke:#4f8df7}
+.rail-item svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.rail-sep{width:30px;height:1px;background:#1c2740;margin:6px 0}
+.rail-spacer{flex:1}
+.topbar{grid-column:2;display:flex;align-items:center;gap:12px;padding:0 20px;background:#0e1626;border-bottom:1px solid #1c2740}
+.topbar .title{font-weight:600;font-size:14px;letter-spacing:.01em}
+.topbar .sub{color:#8a9bb5;font-size:12px}
+.topbar .grow{flex:1}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:6px;border:1px solid #22304a;background:#111a2b;font-size:12px;color:#c9d4e5;white-space:nowrap}
+.chip svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.chip.ok{border-color:#1f5a3c;color:#7fe2a8;background:#0f2a1c}
+.chip.warn{border-color:#5a4416;color:#f5c862;background:#2a2110}
+.chip.err{border-color:#6b1f33;color:#ff8aa3;background:#2d1119}
+.chip.off{border-style:dashed;border-color:#3a4a68;color:#8a9bb5;background:transparent}
+.chip.info{border-color:#1f3d6b;color:#8fb8ff;background:#0f1f3a}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.btn{height:30px;padding:0 12px;border-radius:6px;border:1px solid #2a3a58;background:#172236;color:#e6edf7;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.btn.primary{background:#2f6fe0;border-color:#2f6fe0;color:#fff}
+.btn.danger{background:#3a1522;border-color:#7a2340;color:#ff8aa3}
+.btn.ghost{background:transparent;border-color:transparent;color:#8a9bb5}
+.btn.sm{height:24px;padding:0 8px;font-size:11px}
+.seg{display:inline-flex;border:1px solid #2a3a58;border-radius:6px;overflow:hidden;height:26px}
+.seg span{padding:0 10px;display:flex;align-items:center;font-size:11.5px;color:#8a9bb5}
+.seg span.on{background:#2f6fe0;color:#fff}
+.card{background:#111a2b;border:1px solid #1e2b45;border-radius:10px}
+.input{height:28px;border:1px solid #2a3a58;background:#0b111d;border-radius:6px;color:#e6edf7;padding:0 8px;display:flex;align-items:center;font-size:12px}
+.label{font-size:11px;color:#8a9bb5;text-transform:uppercase;letter-spacing:.06em}
+.content{grid-column:2;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.ic{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.badge{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:4px;font-size:10.5px;font-weight:600;letter-spacing:.03em}
+.badge.m{background:#1b3358;color:#8fb8ff}
+.badge.s{background:#173a3a;color:#6fe0d6}
+.badge.u{background:#2a2a33;color:#a3a9b8;border:1px dashed #4a5166}
+.badge.id{background:#1a2438;color:#c9d4e5;font-family:'IBM Plex Mono',Consolas,monospace;font-weight:500}
+.badge.role{background:#3a2a10;color:#f5c862}
+.badge.cap{background:#2a2a33;color:#8a92a6}
+.tabs{display:flex;gap:2px;border-bottom:1px solid #1e2b45}
+.tab{padding:10px 14px;font-size:12.5px;color:#8a9bb5;border-bottom:2px solid transparent;display:flex;align-items:center;gap:6px}
+.tab.on{color:#e6edf7;border-bottom-color:#4f8df7}
+.kv{display:flex;justify-content:space-between;font-size:11.5px;color:#8a9bb5}
+.kv b{color:#c9d4e5;font-weight:500}
+.toggle{width:34px;height:18px;border-radius:9px;background:#2a3a58;position:relative;display:inline-block}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#8a9bb5}
+.toggle.on{background:#2fd27a}
+.toggle.on::after{left:18px;background:#0b111d}
+
+  </style>
+</helmet>
+<div class="app">
+<div class="rail">
+<div class="rail-logo"><img src="LS_logo.svg" alt="LS"></div>
+<div style="opacity:.45;display:flex;flex-direction:column;align-items:center;gap:4px">
+<div class="rail-item active"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"></rect><rect x="13" y="3" width="8" height="8" rx="1.5"></rect><rect x="3" y="13" width="8" height="8" rx="1.5"></rect><rect x="13" y="13" width="8" height="8" rx="1.5"></rect></svg><span>Dashboard</span></div>
+<div class="rail-item"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"></rect><rect x="9" y="9" width="6" height="6" rx="1"></rect><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"></path></svg><span>Devices</span></div>
+<div class="rail-item"><svg viewBox="0 0 24 24"><path d="M3 12h3l2-6 4 12 3-9 2 3h4"></path></svg><span>Chart</span></div>
+</div>
+<div class="rail-spacer"></div>
+<div class="rail-item"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"></path><path d="M18 11l3 3-3 3"></path></svg><span>Monitor</span></div>
+<div class="rail-item"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0"></path><circle cx="16" cy="7" r="2"></circle><circle cx="9" cy="12" r="2"></circle><circle cx="18" cy="17" r="2"></circle></svg><span>Settings</span></div>
+</div>
+<div class="topbar">
+<span class="title">Connect</span><span class="sub"></span><span class="grow"></span>
+<span class="chip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"></circle><path d="M8 12h8"></path></svg> Not connected</span>
+<span class="seg"><span class="on">User</span><span>Engineer</span><span>Manufacture</span></span>
+<span class="btn ghost" style="padding:0 6px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg></span>
+</div>
+<div class="content">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:40px">
+  <div style="display:flex;align-items:center;gap:0">
+    <div style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border-radius:50%;background:#2f6fe0;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">1</span><span style="font-weight:600">Connect port</span></div>
+    <span style="width:80px;height:1px;background:#2a3a58;margin:0 12px"></span>
+    <div style="display:flex;align-items:center;gap:8px;color:#8a9bb5"><span style="width:24px;height:24px;border-radius:50%;border:1px solid #2a3a58;display:inline-flex;align-items:center;justify-content:center;font-size:12px">2</span><span>Discover devices</span></div>
+    <span style="width:80px;height:1px;background:#2a3a58;margin:0 12px"></span>
+    <div style="display:flex;align-items:center;gap:8px;color:#8a9bb5"><span style="width:24px;height:24px;border-radius:50%;border:1px solid #2a3a58;display:inline-flex;align-items:center;justify-content:center;font-size:12px">3</span><span>Identify models</span></div>
+  </div>
+
+  <div class="card" style="width:640px;padding:24px 28px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span style="font-size:18px;font-weight:600">Connect to the RS-485 bus</span>
+      <span style="color:#8a9bb5">Chrome or Edge will ask for permission to use the serial port. Settings are remembered per port.</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <span class="label">Serial port</span>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #2f6fe0;background:#0f1f3a;border-radius:8px">
+        <svg viewBox="0 0 24 24"><path d="M8 3v5M16 3v5M6 8h12v4a6 6 0 0 1-12 0zM12 18v3"></path></svg><span style="font-weight:600">COM3</span><span style="color:#8a9bb5">USB-SERIAL CH340</span><span style="flex:1"></span><span class="chip info" style="height:22px">Last used · 8 devices</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #22304a;border-radius:8px;color:#8a9bb5">
+        <svg viewBox="0 0 24 24"><path d="M8 3v5M16 3v5M6 8h12v4a6 6 0 0 1-12 0zM12 18v3"></path></svg><span style="font-weight:500;color:#c9d4e5">COM5</span><span>FTDI FT232R</span><span style="flex:1"></span>
+      </div>
+      <span style="color:#5b6b85;font-size:11.5px">Port not listed? <a href="#">Request port access</a></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:10px">
+      <div style="display:flex;flex-direction:column;gap:6px"><span class="label">Baud</span><span class="input mono" style="justify-content:space-between">115200 <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><span class="label">Parity</span><span class="input" style="justify-content:space-between">None <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><span class="label">Data bits</span><span class="input mono" style="justify-content:space-between">8 <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span></div>
+      <div style="display:flex;flex-direction:column;gap:6px"><span class="label">Stop bits</span><span class="input mono" style="justify-content:space-between">1 <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></span></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0e1626;border-radius:8px">
+      <span class="toggle on"></span><span>Scan IDs <b class="mono">1–32</b> after connecting</span>
+      <span style="flex:1"></span>
+      <span style="color:#8a9bb5;font-size:12px">Timeout <b class="mono" style="color:#c9d4e5">200 ms</b> · register <b class="mono" style="color:#c9d4e5">0xD011</b></span>
+      <span style="color:#4f8df7;font-size:12px">Change</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="btn primary" style="height:38px;padding:0 20px;font-size:13px"><svg viewBox="0 0 24 24"><path d="M8 3v5M16 3v5M6 8h12v4a6 6 0 0 1-12 0zM12 18v3"></path></svg> Connect and scan</span>
+      <span class="btn" style="height:38px">Connect only</span>
+      <span style="flex:1"></span>
+      <span style="color:#8a9bb5;font-size:12px">No hardware? <a href="#">Start the simulator</a></span>
+    </div>
+  </div>
+
+  <div style="width:640px;display:flex;flex-direction:column;gap:8px">
+    <span class="label">After connecting, the bar collapses to this</span>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px dashed #2a3a58;border-radius:8px">
+      <span class="chip ok"><svg viewBox="0 0 24 24"><path d="M8 3v5M16 3v5M6 8h12v4a6 6 0 0 1-12 0zM12 18v3"></path></svg> COM3 · 115200 8N1 · Connected</span>
+      <span style="color:#5b6b85;font-size:12px">click → reconnect · change settings · disconnect</span>
+    </div>
+  </div>
+</div>
+</div></div>
+</x-dc>
+</body>
+</html>
