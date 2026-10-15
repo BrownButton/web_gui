@@ -179,6 +179,9 @@ lsm,0x261A,Commanded Phase Angle,Y,현재 지령 중인 모터 전기각 위상 
 # [Control] 프로시저 실행
 lsm,0x2700,Procedure Code,Y,"특수 동작 명령 코드 (예: 원점 복귀, 초기화 등). Procedure Argument(0x2701)와 함께 사용"
 lsm,0x2701,Procedure Argument,Y,Procedure Code(0x2700) 실행 시 전달하는 인수값
+# [Product Setting] 제품 설정 - Inverter FW 하드웨어 설정 테이블 행 선택 (전원 재투입 후 적용)
+lsm,0x2709,Hardware Revision,Y,제품 하드웨어 리비전 (0:Rev.A 1:Rev.B 2:Rev.C). 변경값은 전원 재투입 후 적용
+lsm,0x270A,Product Voltage Class,Y,제품 전압 클래스 (0:200V 1:400V 2:200V 단상 PFC EC FAN-600W). 변경값은 전원 재투입 후 적용
 # ============================================================
 # LSM 고급 파라미터 (0x4000~) - 에이징 / 공장 설정 / 보안
 # 이 영역도 동일하게 FC 0x2B 로 접근

@@ -7853,6 +7853,26 @@ class ModbusDashboard {
         implemented: 'Y',
         description: 'Procedure Code(0x2700) 실행 시 전달하는 인수값'
       },
+      // [Product Setting] 제품 설정 — Inverter FW 하드웨어 설정 테이블 행 선택
+      // (전원 재투입 후 적용). Configuration 탭 제품설정과 같은 오브젝트
+      {
+        type: 'lsm',
+        group: 'Product Setting',
+        address: '0x2709',
+        name: 'Hardware Revision',
+        implemented: 'Y',
+        description:
+            '제품 하드웨어 리비전 (0:Rev.A 1:Rev.B 2:Rev.C). 변경값은 전원 재투입 후 적용'
+      },
+      {
+        type: 'lsm',
+        group: 'Product Setting',
+        address: '0x270A',
+        name: 'Product Voltage Class',
+        implemented: 'Y',
+        description:
+            '제품 전압 클래스 (0:200V 1:400V 2:200V 단상 PFC EC FAN-600W). 변경값은 전원 재투입 후 적용'
+      },
       // ============================================================
       // LSM 고급 파라미터 (0x4000~) - 에이징 / 공장 설정 / 보안
       // 이 영역도 동일하게 FC 0x2B 로 접근
@@ -18099,14 +18119,47 @@ class ModbusDashboard {
   }
 
   /**
-   * 전압 클래스(0:200V, 1:400V)에 따라 선택 가능한 하드웨어 리비전 목록.
-   * - 200V → Rev.A 만 (value=0)
-   * - 400V → Rev.B (1) / Rev.C (2)
+   * 제품 전압 클래스(0x270A) 선택 목록. 값은 Inverter FW 의 VoltageClass_e 와
+   * 동일해야 함 (0:200V, 1:400V, 2:200V 단상 PFC — EC FAN-600W).
+   * 새 제품 추가 시 이 목록과 _hardwareRevisionOptions() 만 갱신하면 설정
+   * select 와 Device 정보 표시가 함께 반영됨.
+   */
+  _voltageClassOptions() {
+    return [
+      {v: 0, l: '200V'},
+      {v: 1, l: '400V'},
+      {v: 2, l: '200V 단상 PFC (EC FAN-600W)'},
+    ];
+  }
+
+  /**
+   * 전압 클래스 select 의 <option> HTML 생성.
+   */
+  _voltageClassOptionsHTML(current) {
+    return this._voltageClassOptions()
+        .map(
+            o => `<option value="${o.v}"${current === o.v ? ' selected' : ''}>${
+                o.l}</option>`)
+        .join('');
+  }
+
+  /**
+   * 전압 클래스(0:200V, 1:400V, 2:200V 단상 PFC)에 따라 선택 가능한 하드웨어
+   * 리비전 목록.
+   * - 200V          → Rev.A 만 (value=0)
+   * - 400V          → Rev.B (1) / Rev.C (2)
+   * - 200V 단상 PFC → Rev.B (1)  (EC FAN-600W 신규 입고 보드)
    * 현재 미사용인 Rev.D 는 제외. 향후 추가될 경우 이 함수만 갱신하면 됨.
    */
   _hardwareRevisionOptions(voltageClass) {
-    return voltageClass === 1 ? [{v: 1, l: 'Rev.B'}, {v: 2, l: 'Rev.C'}] :
-                                [{v: 0, l: 'Rev.A'}];
+    switch (voltageClass) {
+      case 1:
+        return [{v: 1, l: 'Rev.B'}, {v: 2, l: 'Rev.C'}];
+      case 2:
+        return [{v: 1, l: 'Rev.B'}];
+      default:
+        return [{v: 0, l: 'Rev.A'}];
+    }
   }
 
   /**
@@ -19552,7 +19605,8 @@ class ModbusDashboard {
       setInfo(hwEls.motor, `⚠ 잘못된 값 (${hex4(motorId)})`, 'bad');
     }
 
-    const V_CLASS_MAP = {0: '200V', 1: '400V'};
+    const V_CLASS_MAP =
+        Object.fromEntries(this._voltageClassOptions().map(o => [o.v, o.l]));
     const vClass = await readObj(0x270A);
     if (vClass === null) {
       setInfo(hwEls.vclass, '실패', 'bad');
@@ -19572,7 +19626,7 @@ class ModbusDashboard {
         V_CLASS_MAP[vClass] !== undefined &&
         !this._hardwareRevisionOptions(vClass).some(o => o.v === hwRev)) {
       // 개별 값은 유효하지만 전압 클래스 조합 규칙(200V→Rev.A,
-      // 400V→Rev.B/C)에 어긋남
+      // 400V→Rev.B/C, 200V 단상 PFC→Rev.B)에 어긋남
       setInfo(
           hwEls.rev, `⚠ ${REV_MAP[hwRev]} — ${V_CLASS_MAP[vClass]} 불일치`,
           'warn');
@@ -20242,11 +20296,12 @@ class ModbusDashboard {
       case 'productSetting':
         // 제품설정 — 개발자 모드 전용 (FC 0x2B SDO)
         // 하드웨어 리비전은 전압 클래스에 따라 선택 가능 항목이 달라짐:
-        //   200V → Rev.A 만, 400V → Rev.B / Rev.C
+        //   200V → Rev.A 만, 400V → Rev.B / Rev.C,
+        //   200V 단상 PFC (EC FAN-600W) → Rev.B
         return `<div style="margin-top: 0;">
                     ${
             row('productVoltageClass', '제품 전압 클래스',
-                '제품 정격 전압 클래스 (FC 0x2B, 0x270A)',
+                '제품 정격 전압 클래스 (FC 0x2B, 0x270A). 변경값은 전원 재투입 후 적용',
                 `
                         <select id="productVoltageClass_${id}" style="${
                     iStyle}"
@@ -20254,16 +20309,12 @@ class ModbusDashboard {
                     id}, true); window.dashboard.debouncedApply('productVoltageClass', ${
                     id})"
                             onclick="event.stopPropagation()">
-                            <option value="0" ${
-                    device.productVoltageClass === 0 ? 'selected' :
-                                                       ''}>200V</option>
-                            <option value="1" ${
-                    device.productVoltageClass === 1 ? 'selected' :
-                                                       ''}>400V</option>
+                            ${
+                    this._voltageClassOptionsHTML(device.productVoltageClass)}
                         </select>`)}
                     ${
             row('hardwareRevision', '하드웨어 리비전',
-                '제품 하드웨어 리비전 (FC 0x2B, 0x2709)',
+                '제품 하드웨어 리비전 (FC 0x2B, 0x2709). 변경값은 전원 재투입 후 적용',
                 `
                         <select id="hardwareRevision_${id}" style="${iStyle}"
                             onchange="window.dashboard.debouncedApply('hardwareRevision', ${

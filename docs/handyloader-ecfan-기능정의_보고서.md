@@ -67,7 +67,7 @@ FanCM은 Dashboard, Configuration, Information, Parameters, Update, Chart, Termi
 | 기능 | 드라이브 레지스터 | 분리 사유 |
 |---|---|---|
 | Motor ID 변경 | 0x2000 (FC 0x2B) | 모터 교체 시에만 필요. 잘못 설정하면 구동 불가 |
-| 제품 전압 클래스 변경 | 0x270A (FC 0x2B) | 200V / 400V 전환. Motor ID와 같은 메뉴에 배치 |
+| 제품 전압 클래스 변경 | 0x270A (FC 0x2B) | 200V / 400V / 200V 단상 PFC(EC FAN-600W) 전환. Motor ID와 같은 메뉴에 배치 |
 | 서보 튜닝 (관성비, P 게인, 적분 시상수, 토크 지령 필터, CW/CCW 토크 제한, 제어 입력 할당) | 0x2100 ~ 0x2104, 0x2111 / 0x2112, 0x211F / 0x2120 (FC 0x2B) | 개발·서비스 전용. 일반 사용자 조정 시 진동·과전류 위험 |
 | 공장 초기화 | 0x1011 (FC 0x2B) | 전체 설정 유실. 비밀번호 진입 후 2단 확인 |
 
