@@ -7518,8 +7518,9 @@ class ModbusDashboard {
         group: 'Electrical',
         address: '0xD03D',
         name: 'Line Voltage',
-        implemented: 'N',
-        description: '라인 전압'
+        implemented: 'Y',
+        description:
+            'AC 입력 전압 RMS 환산 [V] (정류 피크 ÷ √2). PFC 제품 전용, 그 외 제품은 0'
       },
       {
         type: 'input',
@@ -7528,6 +7529,15 @@ class ModbusDashboard {
         name: 'Motor current',
         implemented: 'Y',
         description: '모터 소비 전류 √(Id²+Iq²) RMS. 0.1A/LSB'
+      },
+      {
+        type: 'input',
+        group: 'Electrical',
+        address: '0xD053',
+        name: 'AC input voltage (peak)',
+        implemented: 'Y',
+        description:
+            'PFC 앞단 정류 입력 전압의 피크 [V]. 저전압/고전압 알람 기준값. PFC 제품 전용, 그 외 제품은 0'
       },
       {
         type: 'input',
@@ -12043,6 +12053,8 @@ class ModbusDashboard {
       {name: 'Inertia Ratio', chNum: 0x0A, group: 'Overload'},
       // Electrical
       {name: 'DC Link Voltage', chNum: 0x07, group: 'Electrical'},
+      {name: 'AC Input Voltage', chNum: 0x2D, group: 'Electrical'},
+      {name: 'AC Input Voltage Peak', chNum: 0x2E, group: 'Electrical'},
       {name: 'U Phase Current', chNum: 0x10, group: 'Electrical'},
       {name: 'V Phase Current', chNum: 0x11, group: 'Electrical'},
       {name: 'W Phase Current', chNum: 0x12, group: 'Electrical'},
@@ -13002,6 +13014,7 @@ class ModbusDashboard {
     if (address === 0xD025) return ((raw / 65536) * 100).toFixed(2) + ' %';
     if (address === 0xD026) return raw + ' Hz';
     if (address === 0xD052) return (raw / 10).toFixed(1) + ' A';
+    if (address === 0xD03D || address === 0xD053) return raw + ' V';
     return null;
   }
 
@@ -20503,6 +20516,12 @@ class ModbusDashboard {
         address: 0xD052,
         writable: false,
         description: '모터 소비 전류 (0.1A/LSB)'
+      },
+      {
+        name: 'AC Input Voltage (peak)',
+        address: 0xD053,
+        writable: false,
+        description: 'PFC 정류 입력 피크 전압 [V] (PFC 제품 전용)'
       }
     ];
 

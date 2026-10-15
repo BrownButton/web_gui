@@ -124,10 +124,11 @@ input,0xD025,Sensor actual value 3,Y,PWMIN3의 현재 측정 Duty값
 input,0xD026,Sensor actual value 4,Y,PWMIN3의 현재 측정 주파수값
 input,0xD028,Current set value source,Y,현재 사용 중인 소스 (0=AIN1 1=RS485 2=AIN2 3=PWMIn3 255=Fail-safe)
 input,0xD02D,Actual speed [RPM] (Absolute),Y,절대 속도 [RPM]
-input,0xD03D,Line Voltage,N,라인 전압
+input,0xD03D,Line Voltage,Y,AC 입력 전압 RMS 환산 [V] (정류 피크 ÷ √2). PFC 제품 전용. 그 외 제품은 0
 input,0xD050,Command speed,Y,지령 속도
 input,0xD051,Command torque,Y,지령 토크
 input,0xD052,DC link current,Y,"DC 링크 전류 (절대치)"
+input,0xD053,AC input voltage (peak),Y,PFC 앞단 정류 입력 전압의 피크 [V]. 저전압/고전압 알람 기준값. PFC 제품 전용. 그 외 제품은 0
 # ============================================================
 # LSM 타입 파라미터 (Function Code 0x2B - LSM 제조사 전용 프로토콜)
 # FC 0x2B = 43 (decimal). 일반 Modbus FC03(holding) / FC04(input)과 다른 접근 방식.
