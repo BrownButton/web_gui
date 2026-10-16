@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FanCM — Dashboard</title>
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></symbol>
+    <symbol id="i-chip" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 12h3l2-6 4 12 3-9 2 3h4"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><path d="M4 17l6-5-6-5M12 19h8"/></symbol>
+    <symbol id="i-factory" viewBox="0 0 24 24"><path d="M3 21V9l6 4V9l6 4V7l6 3v11z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/><path d="M18 11l3 3-3 3"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="18" cy="17" r="2"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M8 3v5M16 3v5M6 8h12v4a6 6 0 0 1-12 0zM12 18v3"/></symbol>
+    <symbol id="i-off" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/><path d="M8 12h8"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h0"/></symbol>
+    <symbol id="i-fan" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 2-7 5-7 2 0 3 2 2 4-1 1-4 2-7 3zM14 12c4 0 7 2 7 5 0 2-2 3-4 2-1-1-2-4-3-7zM12 14c0 4-2 7-5 7-2 0-3-2-2-4 1-1 4-2 7-3zM10 12c-4 0-7-2-7-5 0-2 2-3 4-2 1 1 2 4 3 7z"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></symbol>
+    <symbol id="i-spinner" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-4-7.5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4M4 12h16"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4zM10 21h4"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16zM13 7l4 4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v9M6.3 7.3a8 8 0 1 0 11.4 0"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l9 9-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <nav class="rail" aria-label="Primary">
+    <a class="rail-logo" href="index.html" aria-label="FanCM"><img src="../LS_logo.svg" alt=""></a>
+    <div class="rail-group">
+      <button class="rail-item active" aria-current="page"><svg class="ic"><use href="#i-grid"/></svg><span>Dashboard</span></button>
+      <button class="rail-item"><svg class="ic"><use href="#i-chip"/></svg><span>Devices</span></button>
+      <button class="rail-item"><svg class="ic"><use href="#i-chart"/></svg><span>Chart</span></button>
+      <button class="rail-item" data-role="engineer" hidden><svg class="ic"><use href="#i-terminal"/></svg><span>Terminal</span></button>
+      <button class="rail-item" data-role="manufacture" hidden><svg class="ic"><use href="#i-factory"/></svg><span>Mfg</span></button>
+    </div>
+    <div class="grow"></div>
+    <button class="rail-item" title="Communication monitor"><svg class="ic"><use href="#i-monitor"/></svg><span>Monitor</span></button>
+    <button class="rail-item" title="Settings"><svg class="ic"><use href="#i-settings"/></svg><span>Settings</span></button>
+  </nav>
+
+  <header class="topbar">
+    <span class="topbar-title">FanCM</span>
+    <span class="topbar-sub">Dashboard</span>
+    <span class="topbar-sub2 mono" id="topSub"></span>
+    <span class="grow"></span>
+
+    <!-- Connection: compact chip, click for the port popover -->
+    <div class="pop-anchor">
+      <button class="chip ok" id="portChip" aria-haspopup="dialog" aria-expanded="false"><svg class="ic sm"><use href="#i-plug"/></svg><span id="portChipText">COM3 · 115200 8N1</span><svg class="ic sm" style="opacity:.6"><use href="#i-down"/></svg></button>
+      <div class="pop" id="portPop" role="dialog" aria-label="Serial port" hidden>
+        <div class="pop-head">Serial port</div>
+        <div class="kv-list" id="portInfo"></div>
+        <div class="pop-foot">
+          <button class="btn sm" id="disconnectBtn"><svg class="ic sm"><use href="#i-power"/></svg>Disconnect</button>
+          <span class="grow"></span>
+          <button class="btn sm" id="reconnectBtn"><svg class="ic sm"><use href="#i-refresh"/></svg>Reconnect</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="live" id="liveBtn" role="switch" aria-checked="true" title="Live watch — poll all devices">
+      <span class="switch on" aria-hidden="true"><span></span></span>
+      <span>Live</span>
+      <span class="mono muted" id="liveCycle">— ms</span>
+    </button>
+
+    <div class="tip-anchor">
+      <button class="chip ghost mono" id="statsChip" aria-describedby="statsTip">
+        <span>OK <b id="stOk">0</b></span><span>ERR <b id="stErr" class="err-text">0</b></span><span class="muted" id="stRate">—</span>
+      </button>
+      <div class="tip" id="statsTip" role="tooltip">
+        <div class="tip-row"><span>Requests</span><b class="mono" id="tReq">0</b></div>
+        <div class="tip-row"><span>Successful</span><b class="mono" id="tOk">0</b></div>
+        <div class="tip-row"><span>Errors</span><b class="mono" id="tErr">0</b></div>
+        <div class="tip-row"><span>Success rate</span><b class="mono" id="tRate">—</b></div>
+        <div class="tip-sep"></div>
+        <div class="tip-row"><span>Errors per 1 000 frames</span><b class="mono" id="tErrN">0</b></div>
+        <div class="tip-foot"><button class="link" id="statsClear">Reset</button></div>
+      </div>
+    </div>
+
+    <div class="seg" role="radiogroup" aria-label="Role" id="roleSeg">
+      <button role="radio" aria-checked="true" data-value="user">User</button>
+      <button role="radio" aria-checked="false" data-value="engineer">Engineer</button>
+      <button role="radio" aria-checked="false" data-value="manufacture">Manufacture</button>
+    </div>
+    <button class="btn ghost icon" id="themeBtn" aria-label="Toggle theme" title="Toggle theme">
+      <svg class="ic theme-sun"><use href="#i-sun"/></svg>
+      <svg class="ic theme-moon"><use href="#i-moon"/></svg>
+    </button>
+  </header>
+
+  <main class="content" id="content">
+    <div class="page">
+
+      <div class="toolbar">
+        <h2>Devices</h2>
+        <span class="muted" id="devSub"></span>
+        <span class="grow"></span>
+        <label class="search"><svg class="ic sm"><use href="#i-search"/></svg><input type="search" id="search" placeholder="Search name, ID, serial" autocomplete="off"></label>
+        <label class="chip ghost check-chip"><input type="checkbox" id="selectAll" class="check"><span></span>Select all</label>
+        <div class="seg" id="viewSeg" role="radiogroup" aria-label="View">
+          <button role="radio" aria-checked="true" data-value="grid" title="Cards"><svg class="ic sm"><use href="#i-grid"/></svg></button>
+          <button role="radio" aria-checked="false" data-value="list" title="List"><svg class="ic sm"><use href="#i-list"/></svg></button>
+        </div>
+        <button class="btn" id="scanBtn"><span class="btn-label"><svg class="ic sm"><use href="#i-scan"/></svg><span>Scan</span></span></button>
+        <button class="btn primary" id="addBtn"><svg class="ic sm"><use href="#i-plus"/></svg>Add device</button>
+      </div>
+
+      <div class="filters" id="filters" role="radiogroup" aria-label="Filter"></div>
+
+      <div id="groups" class="groups"></div>
+
+      <div class="list-wrap" id="listWrap" hidden>
+        <table class="table" id="listTable">
+          <thead><tr>
+            <th class="w-check"></th><th>Status</th><th>Name</th><th>ID</th><th class="num">Actual</th><th class="num">Setpoint</th><th>Write</th><th>Fresh</th><th></th>
+          </tr></thead>
+          <tbody id="listBody"></tbody>
+        </table>
+      </div>
+
+      <div class="hero" id="emptyState" hidden>
+        <div class="hero-ico"><svg class="ic"><use href="#i-fan"/></svg></div>
+        <h2>No devices on this bus yet</h2>
+        <p>Scan slave IDs on the connected port, or add a device by ID if you already know it.</p>
+        <div class="actions">
+          <button class="btn primary lg" id="emptyScanBtn"><svg class="ic sm"><use href="#i-scan"/></svg>Scan the bus</button>
+          <button class="btn lg" id="emptyAddBtn"><svg class="ic sm"><use href="#i-plus"/></svg>Add device</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Selection action bar: appears when at least one device is selected -->
+    <div class="bulk" id="bulk" aria-live="polite">
+      <b id="bulkN">0 selected</b>
+      <button class="btn ghost icon sm" id="bulkClear" aria-label="Clear selection"><svg class="ic sm"><use href="#i-x"/></svg></button>
+      <span class="vsep"></span>
+      <div class="seg sm" id="bulkUnit" role="radiogroup" aria-label="Unit">
+        <button role="radio" aria-checked="true" data-value="rpm">RPM</button>
+        <button role="radio" aria-checked="false" data-value="pct">%</button>
+      </div>
+      <div class="presets" id="bulkPresets">
+        <button data-preset="0">0</button><button data-preset="25">25</button><button data-preset="50">50</button><button data-preset="75">75</button><button data-preset="100">100 %</button>
+      </div>
+      <input class="input num mono" id="bulkValue" value="1250" inputmode="decimal" aria-label="Setpoint for selected">
+      <button class="btn primary" id="bulkApply">Apply to <span id="bulkApplyN">0</span></button>
+      <button class="btn danger" id="bulkStop"><svg class="ic sm"><use href="#i-stop"/></svg>Stop</button>
+      <span class="grow"></span>
+      <button class="btn ghost" id="bulkReset">Reset alarms</button>
+      <span class="muted bulk-hint"><svg class="ic sm"><use href="#i-clock"/></svg>Writes queue between poll cycles · ~1 cycle per device</span>
+    </div>
+  </main>
+</div>
+
+<div class="menu" id="menu" role="menu" hidden></div>
+
+<script src="shared.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
