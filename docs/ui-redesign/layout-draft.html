@@ -40,7 +40,8 @@ button,input,select{font:inherit;color:inherit}button{cursor:pointer;background:
 .app{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);grid-template-rows:var(--top-h) minmax(0,1fr);height:100vh}
 .rail{grid-row:1/3;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:12px 0 10px;gap:2px}
 .rail-logo{width:44px;height:36px;border-radius:9px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;margin-bottom:10px}.rail-logo img{height:16px}
-.rail-item{width:58px;height:54px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--text-3);font-size:10.5px;font-weight:500;position:relative}
+.rail-item{width:58px;height:54px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--text-3);font-size:10.5px;font-weight:500;position:relative;transition:background .15s,color .15s,transform .08s}
+.rail-item:active{transform:scale(.95)}
 .rail-item .ic{width:20px;height:20px;stroke-width:1.7}.rail-item:hover{background:var(--surface-2);color:var(--text-2)}
 .rail-item.active{background:var(--brand-soft);color:var(--brand-text)}.rail-item.active::before{content:"";position:absolute;left:-7px;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--brand)}
 .rail-sep{width:34px;height:1px;background:var(--line);margin:8px 0}
@@ -53,8 +54,8 @@ button,input,select{font:inherit;color:inherit}button{cursor:pointer;background:
 .chip.ok{color:var(--ok);background:var(--ok-soft);border-color:transparent}.chip.warn{color:var(--warn);background:var(--warn-soft);border-color:transparent}.chip.err{color:var(--err);background:var(--err-soft);border-color:transparent}.chip.off{color:var(--off);background:var(--off-soft);border-color:transparent}.chip.ghost{background:transparent}.chip.sm{height:22px;padding:0 8px;font-size:11.5px}
 .badge{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:5px;font-size:11px;font-weight:600;white-space:nowrap}
 .badge.id{background:var(--surface-2);border:1px solid var(--line);color:var(--text-2);font-family:var(--mono);font-weight:500}.badge.model{background:var(--brand-soft);color:var(--brand-text)}
-.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);font-size:12.5px;font-weight:550;color:var(--text);white-space:nowrap}
-.btn:hover{background:var(--surface-2)}.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn.danger{background:var(--err-soft);border-color:transparent;color:var(--err)}.btn.ghost{border-color:transparent;background:transparent;color:var(--text-2)}.btn.ghost:hover{background:var(--surface-2);color:var(--text)}.btn.sm{height:28px;padding:0 10px;font-size:12px}.btn.icon{width:32px;padding:0;justify-content:center}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);font-size:12.5px;font-weight:550;color:var(--text);white-space:nowrap;transition:background .12s,transform .08s}
+.btn:hover{background:var(--surface-2)}.btn:active:not(:disabled){transform:scale(.96)}.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.btn.danger{background:var(--err-soft);border-color:transparent;color:var(--err)}.btn.ghost{border-color:transparent;background:transparent;color:var(--text-2)}.btn.ghost:hover{background:var(--surface-2);color:var(--text)}.btn.sm{height:28px;padding:0 10px;font-size:12px}.btn.icon{width:32px;padding:0;justify-content:center}.btn:disabled{opacity:.45;cursor:not-allowed}
 .btn.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-text)}
 .input{height:32px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--text);outline:none;min-width:0}.input.num{text-align:right;font-family:var(--mono)}
 .seg{display:inline-flex;height:32px;border:1px solid var(--line-strong);border-radius:var(--r-sm);overflow:hidden;background:var(--surface)}.seg button{padding:0 11px;font-size:12px;font-weight:550;color:var(--text-3)}.seg button+button{border-left:1px solid var(--line)}.seg button.on{background:var(--brand-soft);color:var(--brand-text)}.seg.sm{height:26px}.seg.sm button{padding:0 8px;font-size:11px}
@@ -89,7 +90,12 @@ button,input,select{font:inherit;color:inherit}button{cursor:pointer;background:
 .unit .hub{fill:#cfd6e3;stroke:#5c6678;stroke-width:1}
 .unit .ring{fill:none;stroke-width:2.5;stroke:var(--off)}
 .unit .glow{fill:none;stroke-width:9;opacity:0;stroke:var(--off)}
-.unit .blades{transform-box:fill-box;transform-origin:center;animation:rot var(--dur,0s) linear infinite}
+.unit .blades{transform-box:fill-box;transform-origin:center;animation:rot var(--dur,0s) linear infinite;animation-delay:var(--ph,0s)}
+.edit .unit{cursor:grab}
+.unit.lift{pointer-events:none;cursor:grabbing}
+.unit .shadow{transform-box:fill-box;transform-origin:center;transition:transform .18s cubic-bezier(.2,.8,.2,1),opacity .18s}
+.unit.lift .shadow{transform:translate(8px,14px) scale(1.2);opacity:.6}
+.unit.lift .ft{filter:brightness(1.1)}
 .unit.st-run .ring,.unit.st-run .glow{stroke:var(--ok)}.unit.st-run .glow{opacity:.18}
 .unit.st-alarm .ring,.unit.st-alarm .glow{stroke:var(--err)}.unit.st-alarm .glow{opacity:.3;animation:pulse 1.2s ease-in-out infinite}
 .unit.st-stop .ring{stroke:var(--text-3)}
@@ -122,7 +128,7 @@ button,input,select{font:inherit;color:inherit}button{cursor:pointer;background:
 .hint{font-size:11.5px;color:var(--text-3)}
 
 /* ===== side panel ===== */
-.side{position:absolute;top:16px;right:16px;bottom:16px;width:360px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;transform:translateX(calc(100% + 24px));transition:transform .22s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+.side{position:absolute;top:16px;right:16px;bottom:16px;width:360px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;transform:translateX(calc(100% + 24px));transition:transform .3s cubic-bezier(.2,.8,.2,1);overflow:hidden}
 .side.open{transform:none}
 .side .hd{padding:14px 16px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
 .side .hd .nm{font-size:16px;font-weight:700;letter-spacing:-.01em}
@@ -137,13 +143,24 @@ button,input,select{font:inherit;color:inherit}button{cursor:pointer;background:
 .bar-cap{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-3);font-family:var(--mono)}
 input[type=range]{width:100%;accent-color:var(--brand);margin:2px 0}
 .presets{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-.presets button{height:28px;border-radius:6px;border:1px solid var(--line-strong);font-family:var(--mono);font-size:12px;color:var(--text-2)}.presets button:hover{background:var(--surface-2)}
+.presets button{height:28px;border-radius:6px;border:1px solid var(--line-strong);font-family:var(--mono);font-size:12px;color:var(--text-2);transition:background .12s,transform .08s}.presets button:hover{background:var(--surface-2)}.presets button:active:not(:disabled){transform:scale(.95)}
+button.chip{transition:transform .08s}button.chip:active{transform:scale(.96)}
 .row{display:flex;align-items:center;gap:6px}
 .alarm{padding:10px 12px;border-radius:9px;background:var(--err-soft);color:var(--err);display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600}.alarm .code{font-family:var(--mono);font-weight:500;opacity:.8}.alarm .btn{margin-left:auto;background:var(--surface);border-color:transparent;color:var(--err)}
 .kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:12.5px}.kv span{color:var(--text-3)}.kv b{font-family:var(--mono);font-weight:500;text-align:right}
 .acts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .side .ft{padding:10px 16px;border-top:1px solid var(--line);display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-3)}
 .empty-side{padding:40px 20px;text-align:center;color:var(--text-3);font-size:12.5px;line-height:1.6}
+
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.input:focus-visible{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+@media (prefers-reduced-motion:reduce){
+  .unit.st-alarm .glow{animation:none;opacity:.3}.selring{animation:none}
+  .side{transition:opacity .2s;transform:none;opacity:0;pointer-events:none}.side.open{opacity:1;pointer-events:auto}
+  .btn,.rail-item,.presets button,button.chip{transition:none}
+}
+/* 테마 전환: 밝기 급변 대신 300ms 로 건너감 (setTheme 이 잠시 .theming 을 붙임) */
+html.theming *{transition:background-color .3s ease,color .3s ease,border-color .3s ease,fill .3s ease,stroke .3s ease}
 
 /* draft panel */
 .draft{position:fixed;left:calc(var(--rail-w) + 18px);bottom:72px;z-index:40;background:var(--surface);border:1px dashed var(--line-strong);border-radius:12px;padding:10px 12px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--text-3)}
@@ -267,17 +284,22 @@ const toXY=(i,j)=>({x:(i-j)*W/2, y:(i+j)*H/2});
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const svg=$('#map'); let sel=null, edit=false;
 
-/* ---------- render ---------- */
+/* ---------- render ----------
+   바닥(renderFloor) · 팬(renderUnits) · 선택(updateSel) 을 분리.
+   선택/해제는 클래스만 바꾸므로 SVG 를 다시 만들지 않고, 재렌더가 필요한 이동 때도
+   음수 animation-delay(--ph) 로 날개 회전 위상이 이어진다. */
 const diamond=(x,y,k=1)=>`${x},${y-H/2*k} ${x+W/2*k},${y} ${x},${y+H/2*k} ${x-W/2*k},${y}`;
+const phase=dur=>dur>0?`${(-((performance.now()/1000)%dur)).toFixed(3)}s`:'0s';
+const tileAt=(i,j)=>svg.querySelector(`.tile[data-i="${i}"][data-j="${j}"]`);
 function unitSVG(f){
   const {x,y}=toXY(f.i,f.j);
   const hw=W/2*.66, hh=H/2*.66, rx=hw*.78, ry=hh*.78, R=hw*.62;
-  const dur=f.rpm?(2400/f.rpm).toFixed(2):0;
+  const dur=f.rpm?+(2400/f.rpm).toFixed(2):0;
   const blades=[0,1,2,3,4].map(k=>`<path class="blade" transform="rotate(${k*72})" d="M0,0 C${R*.25},${-R*.22} ${R*.7},${-R*.42} ${R},${-R*.12} C${R*.8},${R*.25} ${R*.35},${R*.18} 0,0Z"/>`).join('');
   const val=f.rpm==null?'—':f.st==='stop'?'0 RPM':`${f.rpm.toLocaleString()} RPM`;
   const badge=f.st==='alarm'?`<g class="badge-a" transform="translate(${hw-6},${-BH-hh-4})"><circle r="9"/><text y="4">!</text></g>`
             :f.write==='writing'?`<g class="badge-w" transform="translate(${hw-6},${-BH-hh-4})"><circle r="9"/><text y="3">TX</text></g>`:'';
-  return `<g class="unit st-${f.st}${sel===f.id?' sel':''}" data-id="${f.id}" transform="translate(${x},${y})" style="--dur:${dur}s">
+  return `<g class="unit st-${f.st}${sel===f.id?' sel':''}" data-id="${f.id}" transform="translate(${x},${y})" style="--dur:${dur}s;--ph:${phase(dur)}">
     <polygon class="shadow" points="${diamond(4,6,.72)}"/>
     <polygon class="fl" points="${-hw},${-BH} 0,${hh-BH} 0,${hh} ${-hw},0"/>
     <polygon class="fr" points="0,${hh-BH} ${hw},${-BH} ${hw},0 0,${hh}"/>
@@ -294,17 +316,26 @@ function unitSVG(f){
     <g class="lbl" transform="translate(0,${-BH-hh-30})"><rect x="-58" y="-11" width="116" height="22"/><text class="nm" x="-50" y="4">${f.name}</text><text class="val" x="50" y="4" text-anchor="end">${val}</text></g>
   </g>`;
 }
-function render(){
+function renderFloor(){
   let tiles='';
   for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){
-    const {x,y}=toXY(i,j); const occ=fans.find(f=>f.i===i&&f.j===j);
-    const s=sel!=null&&occ&&occ.id===sel;
-    tiles+=`<g><polygon class="tile${(i+j)%2?' alt':''}${occ?'':' empty'}${s?' sel':''}" data-i="${i}" data-j="${j}" points="${diamond(x,y)}"/>${occ?'':`<path class="plus" d="M${x-7},${y}h14M${x},${y-7}v14"/>`}</g>`;
+    const {x,y}=toXY(i,j); const occ=fans.some(f=>f.i===i&&f.j===j);
+    tiles+=`<g><polygon class="tile${(i+j)%2?' alt':''}${occ?'':' empty'}" data-i="${i}" data-j="${j}" points="${diamond(x,y)}"/>${occ?'':`<path class="plus" d="M${x-7},${y}h14M${x},${y-7}v14"/>`}</g>`;
   }
-  const units=[...fans].sort((a,b)=>(a.i+a.j)-(b.i+b.j)).map(unitSVG).join('');
-  const selF=fans.find(f=>f.id===sel); const ring=selF?`<polygon class="selring" points="${diamond(toXY(selF.i,selF.j).x,toXY(selF.i,selF.j).y,1.02)}"/>`:'';
-  svg.innerHTML=`<g id="world"><g id="floor">${tiles}</g>${ring}<g id="units">${units}</g></g>`;
+  $('#floor').innerHTML=tiles;
+}
+function renderUnits(){$('#units').innerHTML=[...fans].sort((a,b)=>(a.i+a.j)-(b.i+b.j)).map(unitSVG).join('')}
+function updateSel(){
+  $$('.unit').forEach(u=>u.classList.toggle('sel',+u.dataset.id===sel));
+  $$('.tile.sel').forEach(t=>t.classList.remove('sel'));
+  const f=fans.find(x=>x.id===sel), ring=$('#selring');
+  if(f){const {x,y}=toXY(f.i,f.j);tileAt(f.i,f.j)?.classList.add('sel');ring.setAttribute('points',diamond(x,y,1.02));ring.style.display=''}
+  else ring.style.display='none';
   renderSide();
+}
+function render(){
+  svg.innerHTML=`<g id="world"><g id="floor"></g><polygon id="selring" class="selring" style="display:none"/><g id="units"></g></g>`;
+  renderFloor();renderUnits();updateSel();
 }
 
 /* ---------- side panel ---------- */
@@ -342,47 +373,122 @@ function renderSide(){
     </div>
   </div>
   <div class="ft"><svg class="ic sm"><use href="#i-mon"/></svg>이 디바이스 Live Watch<span class="grow"></span><span class="switch on" style="height:24px;padding:0 6px 0 4px"><span class="track" style="width:26px;height:15px"></span></span></div>`;
-  $('#closeSide').onclick=()=>{sel=null;render()};
+  $('#closeSide').onclick=()=>{sel=null;updateSel()};
 }
 
-/* ---------- viewBox camera ---------- */
-let vb={x:0,y:0,w:1000,h:600};
-const applyVB=()=>svg.setAttribute('viewBox',`${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
-function fit(){
+/* ---------- camera: viewBox 스프링 ----------
+   휠·버튼 줌과 전체 보기는 스프링(response .38s, 임계 감쇠)으로 이어지고,
+   드래그는 1:1, 손을 떼면 그 속도로 관성 투영 지점까지 미끄러진다. */
+const REDUCED=matchMedia('(prefers-reduced-motion:reduce)');
+const KEYS=['x','y','w','h'];
+const cam={cur:{x:0,y:0,w:1000,h:600},to:{x:0,y:0,w:1000,h:600},vel:{x:0,y:0,w:0,h:0},raf:0,last:0};
+const applyVB=()=>svg.setAttribute('viewBox',`${cam.cur.x} ${cam.cur.y} ${cam.cur.w} ${cam.cur.h}`);
+function camStep(now){
+  const dt=cam.last?Math.min(.064,(now-cam.last)/1000):.016;cam.last=now;
+  const w=2*Math.PI/.38,k=w*w,c=2*w;let done=true;
+  for(const q of KEYS){cam.vel[q]+=(-k*(cam.cur[q]-cam.to[q])-c*cam.vel[q])*dt;cam.cur[q]+=cam.vel[q]*dt;
+    if(Math.abs(cam.cur[q]-cam.to[q])>.05||Math.abs(cam.vel[q])>1)done=false}
+  if(done){Object.assign(cam.cur,cam.to);KEYS.forEach(q=>cam.vel[q]=0);cam.raf=0}
+  applyVB();if(!done)cam.raf=requestAnimationFrame(camStep);
+}
+function camGo(to,v){                       // 목표만 바꾼다 — 진행 중이면 현재 위치·속도에서 이어감
+  Object.assign(cam.to,to);if(v)Object.assign(cam.vel,v);
+  if(REDUCED.matches){camSet(cam.to);return}
+  if(!cam.raf){cam.last=0;cam.raf=requestAnimationFrame(camStep)}
+}
+function camSet(cur){                       // 즉시 (드래그 1:1, 잡는 순간)
+  Object.assign(cam.cur,cur);Object.assign(cam.to,cam.cur);KEYS.forEach(q=>cam.vel[q]=0);
+  cancelAnimationFrame(cam.raf);cam.raf=0;applyVB();
+}
+function fitBox(){
   const b={x:-(ROWS-1)*W/2-W/2-40,y:-H/2-BH-70,w:(COLS+ROWS)*W/2+80,h:(COLS+ROWS-1)*H/2+H+BH+120};
   const ar=svg.clientWidth/svg.clientHeight; let w=b.w,h=b.h; if(w/h<ar)w=h*ar;else h=w/ar;
-  vb={x:b.x+(b.w-w)/2+(w*0.13),y:b.y+(b.h-h)/2,w,h}; applyVB();   // 우측 패널 공간만큼 왼쪽으로 치우침
+  return {x:b.x+(b.w-w)/2+(w*0.13),y:b.y+(b.h-h)/2,w,h};   // 우측 패널 공간만큼 왼쪽으로 치우침
 }
+function fit(instant){instant?camSet(fitBox()):camGo(fitBox())}
 function zoom(k,cx,cy){
-  const p=svg.createSVGPoint();p.x=cx??svg.clientWidth/2;p.y=cy??svg.clientHeight/2;
-  const q=p.matrixTransform(svg.getScreenCTM().inverse());
-  const nw=Math.min(3000,Math.max(300,vb.w*k)), s=nw/vb.w;
-  vb={x:q.x-(q.x-vb.x)*s,y:q.y-(q.y-vb.y)*s,w:nw,h:vb.h*s}; applyVB();
+  const r=svg.getBoundingClientRect(), px=cx==null?.5:(cx-r.left)/r.width, py=cy==null?.5:(cy-r.top)/r.height;
+  const t=cam.to, qx=t.x+px*t.w, qy=t.y+py*t.h;             // 커서 아래 지점은 고정
+  const nw=Math.min(3000,Math.max(300,t.w*k)), s=nw/t.w;
+  camGo({x:qx-px*nw,y:qy-py*t.h*s,w:nw,h:t.h*s});
 }
-svg.addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY>0?1.12:1/1.12,e.clientX,e.clientY)},{passive:false});
-$('#zIn').onclick=()=>zoom(1/1.25);$('#zOut').onclick=()=>zoom(1.25);$('#zFit').onclick=fit;
-window.addEventListener('resize',fit);
+svg.addEventListener('wheel',e=>{e.preventDefault();const k=Math.exp(Math.max(-120,Math.min(120,e.deltaY))*.0013);zoom(k,e.clientX,e.clientY)},{passive:false});
+$('#zIn').onclick=()=>zoom(1/1.25);$('#zOut').onclick=()=>zoom(1.25);$('#zFit').onclick=()=>fit();
+window.addEventListener('resize',()=>fit(true));
 
-/* ---------- pointer: drag / click / hover ---------- */
-let drag=null;
-svg.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,vx:vb.x,vy:vb.y,moved:false};svg.setPointerCapture(e.pointerId)});
+/* ---------- pointer: 카메라 드래그 / 클릭 / 호버 / 편집 모드에서 팬 끌어 놓기 ---------- */
+const project=(v,d=.997)=>(v/1000)*d/(1-d);                  // 관성 투영 (지수 감속)
+const toWorld=(cx,cy)=>{const p=svg.createSVGPoint();p.x=cx;p.y=cy;return p.matrixTransform(svg.getScreenCTM().inverse())};
+let drag=null;                                               // {kind:'pan'|'unit', …}
+svg.addEventListener('pointerdown',e=>{if(e.button>0)return;
+  const u=e.target.closest('.unit');
+  if(edit&&u){                                               // 편집 모드: 팬을 잡은 지점 그대로 들고 간다
+    const f=fans.find(x=>x.id===+u.dataset.id), w=toWorld(e.clientX,e.clientY), o=toXY(f.i,f.j);
+    drag={kind:'unit',f,el:u,gx:w.x-o.x,gy:w.y-o.y,sx:e.clientX,sy:e.clientY,moved:false,over:null};
+  }else{
+    camSet(cam.cur);                                         // 미끄러지는 중이면 그 자리에서 잡는다
+    drag={kind:'pan',x:e.clientX,y:e.clientY,vx:cam.cur.x,vy:cam.cur.y,moved:false,hist:[[performance.now(),e.clientX,e.clientY]]};
+  }
+  try{svg.setPointerCapture(e.pointerId)}catch(_){}
+});
 svg.addEventListener('pointermove',e=>{
-  if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)>3)drag.moved=true;
-    if(drag.moved){const s=vb.w/svg.clientWidth;vb.x=drag.vx-dx*s;vb.y=drag.vy-dy*s;applyVB();svg.classList.add('dragging')}return}
+  if(drag?.kind==='pan'){
+    const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+    if(!drag.moved&&Math.hypot(dx,dy)>3){drag.moved=true;svg.classList.add('dragging')}
+    if(drag.moved){const s=cam.cur.w/svg.clientWidth;camSet({x:drag.vx-dx*s,y:drag.vy-dy*s});
+      const now=performance.now();drag.hist.push([now,e.clientX,e.clientY]);while(drag.hist.length>2&&now-drag.hist[0][0]>100)drag.hist.shift()}
+    return;
+  }
+  if(drag?.kind==='unit'){
+    if(!drag.moved){if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<4)return;drag.moved=true;drag.el.classList.add('lift');$('#units').appendChild(drag.el)}
+    const w=toWorld(e.clientX,e.clientY);drag.el.setAttribute('transform',`translate(${w.x-drag.gx},${w.y-drag.gy})`);
+    const t=document.elementFromPoint(e.clientX,e.clientY)?.closest('.tile');   // lift 는 pointer-events:none → 아래 칸이 잡힌다
+    const ok=t&&(t.classList.contains('empty')||t===tileAt(drag.f.i,drag.f.j))?t:null;
+    if(ok!==drag.over){drag.over?.classList.remove('drop');drag.over=ok;ok?.classList.add('drop')}
+    return;
+  }
   const t=e.target.closest('.tile');$$('.tile.hover').forEach(x=>x.classList.remove('hover'));if(t&&(edit||!t.classList.contains('empty')))t.classList.add('hover');
 });
+function springUnit(el,from,to,done){                         // 팬 박스 from→to (response .32s, 임계 감쇠)
+  if(REDUCED.matches){el.setAttribute('transform',`translate(${to.x},${to.y})`);done();return}
+  let x=from.x,y=from.y,vx=0,vy=0,last=0;const w=2*Math.PI/.32,k=w*w,c=2*w;
+  requestAnimationFrame(function st(now){const dt=last?Math.min(.064,(now-last)/1000):.016;last=now;
+    vx+=(-k*(x-to.x)-c*vx)*dt;vy+=(-k*(y-to.y)-c*vy)*dt;x+=vx*dt;y+=vy*dt;
+    if(Math.hypot(x-to.x,y-to.y)<.1&&Math.hypot(vx,vy)<1){el.setAttribute('transform',`translate(${to.x},${to.y})`);done();return}
+    el.setAttribute('transform',`translate(${x},${y})`);requestAnimationFrame(st)});
+}
+function dropUnit(dr,commit){
+  const f=dr.f; dr.over?.classList.remove('drop'); dr.el.classList.remove('lift');
+  if(commit&&dr.over&&dr.over.classList.contains('empty')){f.i=+dr.over.dataset.i;f.j=+dr.over.dataset.j}
+  const m=/translate\(([-\d.]+),([-\d.]+)\)/.exec(dr.el.getAttribute('transform')||'');
+  const from=m?{x:+m[1],y:+m[2]}:toXY(f.i,f.j);
+  springUnit(dr.el,from,toXY(f.i,f.j),()=>{renderFloor();renderUnits();sel=f.id;updateSel()});   // 자리에 앉으면 z-order 정리
+}
 svg.addEventListener('pointerup',e=>{
-  const moved=drag&&drag.moved;drag=null;svg.classList.remove('dragging');if(moved)return;
+  const dr=drag;drag=null;svg.classList.remove('dragging');if(!dr)return;
+  if(dr.kind==='unit'){if(!dr.moved){sel=dr.f.id;updateSel()}else dropUnit(dr,true);return}
+  if(dr.moved){                                              // 카메라: 놓은 속도로 투영 지점까지
+    const h=dr.hist,[t0,x0,y0]=h[0],[t1,x1,y1]=h[h.length-1],dt=(t1-t0)/1000;
+    if(dt>0){const s=cam.cur.w/svg.clientWidth,vx=-(x1-x0)/dt*s,vy=-(y1-y0)/dt*s;
+      if(Math.hypot(vx,vy)>20)camGo({x:cam.cur.x+project(vx),y:cam.cur.y+project(vy)},{x:vx,y:vy})}
+    return;
+  }
   const u=e.target.closest('.unit');
-  if(u){sel=+u.dataset.id;render();return}
+  if(u){sel=+u.dataset.id;updateSel();return}
   const t=e.target.closest('.tile');
-  if(t&&edit&&sel!=null&&t.classList.contains('empty')){const f=fans.find(x=>x.id===sel);f.i=+t.dataset.i;f.j=+t.dataset.j;render();return}
-  if(t&&!edit&&t.classList.contains('empty')){sel=null;render()}
+  if(t&&edit&&sel!=null&&t.classList.contains('empty')){const f=fans.find(x=>x.id===sel);f.i=+t.dataset.i;f.j=+t.dataset.j;renderFloor();renderUnits();updateSel();return}
+  if(t&&!edit&&t.classList.contains('empty')){sel=null;updateSel()}
+});
+svg.addEventListener('pointercancel',()=>{const dr=drag;drag=null;svg.classList.remove('dragging');if(dr?.kind==='unit'&&dr.moved)dropUnit(dr,false)});
+addEventListener('keydown',e=>{if(e.key!=='Escape')return;
+  if(drag?.kind==='unit'&&drag.moved){const dr=drag;drag=null;dropUnit(dr,false);return}  // 드래그 취소 → 제자리로
+  if(sel!=null){sel=null;updateSel();return}
+  if(edit)$('#editBtn').click();
 });
 
 /* ---------- edit mode / theme ---------- */
 $('#editBtn').onclick=()=>{edit=!edit;$('#editBtn').classList.toggle('on',edit);$('#stage').classList.toggle('edit',edit);$('#tray').hidden=false};
-function setTheme(t){document.documentElement.dataset.theme=t;$$('#dTheme button').forEach(b=>b.classList.toggle('on',b.dataset.v===t));$('#themeBtn use').setAttribute('href',t==='dark'?'#i-sun':'#i-moon')}
+function setTheme(t){const h=document.documentElement;h.classList.add('theming');h.dataset.theme=t;$$('#dTheme button').forEach(b=>b.classList.toggle('on',b.dataset.v===t));$('#themeBtn use').setAttribute('href',t==='dark'?'#i-sun':'#i-moon');clearTimeout(setTheme.t);setTheme.t=setTimeout(()=>h.classList.remove('theming'),350)}
 $('#dTheme').onclick=e=>{const b=e.target.closest('button');if(b)setTheme(b.dataset.v)};
 $('#themeBtn').onclick=()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');
 
@@ -391,7 +497,7 @@ const q=new URLSearchParams(location.search);
 if(q.get('theme'))setTheme(q.get('theme'));
 if(q.get('sel'))sel=+q.get('sel');
 if(q.get('edit'))$('#editBtn').click();
-render();fit();
+render();fit(true);
 </script>
 </body>
 </html>

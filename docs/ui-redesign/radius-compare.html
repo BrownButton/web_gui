@@ -1,0 +1,26 @@
+<!doctype html><meta charset="utf-8">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400&display=swap">
+<style>
+body{margin:0;background:#dcd6cf;font:400 14px 'Outfit','Pretendard Variable',sans-serif;color:#121212;padding:28px}
+.row{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:56px}
+.t{position:relative;height:210px;padding:26px 28px 24px;display:flex;flex-direction:column;filter:drop-shadow(0 18px 22px rgba(0,0,0,.12))}
+.t::before{content:"";position:absolute;inset:0;background:#fff;clip-path:var(--shape)}
+.t>*{position:relative}
+.lbl{position:absolute;left:0;right:0;top:-28px;text-align:center;font-size:12.5px;color:#555}
+.ring{width:44px;height:44px;border-radius:50%;border:1px solid rgba(0,0,0,.14);display:inline-block}
+.go{position:absolute;right:22px;top:22px;width:42px;height:42px;border-radius:50%;background:#121212}
+.n{margin-top:auto;font-size:46px;font-weight:300;letter-spacing:-.04em;line-height:1}.n small{font-size:14px;color:#8c8c91;margin-left:5px}
+h3{font-weight:400;font-size:15px;margin:0 0 40px;color:#444}
+</style>
+<p style="color:#555;font-size:12.5px;margin:0 0 18px">dashboard-v4 타일 윤곽 비교용 임시 페이지 — 고른 뒤 지워도 됩니다. 숫자가 작을수록 통통합니다.</p>
+<h3>초타원 지수 n — 3.5 / 4 (iOS 아이콘) / 5 (현재 기본) / 6</h3>
+<div class="row" id="row"></div>
+<h3>참고: 보통 둥근 모서리 44px (이전)</h3>
+<div class="row"><div class="t" style="--shape:none"><span class="lbl">round 44px</span><span class="ring"></span><span class="go"></span><div class="n">1,248<small>RPM</small></div></div></div>
+<style>.row:last-of-type .t::before{border-radius:44px}</style>
+<script>
+function superPath(W,H,n,steps=96){const a=W/2,b=H/2,e=2/n;let d='';for(let i=0;i<steps;i++){const t=i/steps*Math.PI*2,c=Math.cos(t),s=Math.sin(t);d+=(i?'L':'M')+(a+a*Math.sign(c)*Math.abs(c)**e).toFixed(1)+' '+(b+b*Math.sign(s)*Math.abs(s)**e).toFixed(1)}return `path("${d}Z")`}
+const row=document.getElementById('row');[3.5,4,5,6].forEach(n=>{const d=document.createElement('div');d.className='t';d.innerHTML=`<span class="lbl">n = ${n}${n===5?' (현재)':''}</span><span class="ring"></span><span class="go"></span><div class="n">1,248<small>RPM</small></div>`;row.appendChild(d);d.style.setProperty('--shape',superPath(d.offsetWidth,d.offsetHeight,n))});
+addEventListener('resize',()=>[...row.children].forEach((d,i)=>d.style.setProperty('--shape',superPath(d.offsetWidth,d.offsetHeight,[3.5,4,5,6][i]))));
+</script>

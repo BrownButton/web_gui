@@ -24,101 +24,46 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .ic{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .wrap{max-width:1180px;margin:0 auto;padding:0 32px}
 
-/* ===== header (minimal) ===== */
-.hdr{position:fixed;left:0;right:0;top:0;z-index:10;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);border-bottom:1px solid transparent;transition:border-color .2s}
-.hdr.scrolled{border-bottom-color:var(--line)}
-.hdr .wrap{height:64px;display:flex;align-items:center;gap:14px}
-.hdr .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em}
-.hdr .logo img{height:18px}
-.hdr .logo small{font-weight:500;color:var(--text-3);font-size:12px;padding:2px 7px;border:1px solid var(--line);border-radius:999px;margin-left:2px}
-.hdr nav{margin-left:auto;display:flex;align-items:center;gap:22px;font-size:14px;color:var(--text-2)}
-.hdr nav a:hover{color:var(--text)}
-.lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;font-size:12.5px}
-.lang span{padding:4px 10px;color:var(--text-3)}.lang span.on{background:var(--text);color:#fff}
+/* ===== header ===== */
+.hdr{position:fixed;left:0;right:0;top:0;z-index:10;background:#fff}
+.hdr .bar{height:46px;display:flex;align-items:center;gap:6px;padding:0 16px 0 20px}
+.hdr .logo{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800;letter-spacing:-.02em;margin-right:22px}
+.hdr .logo img{height:15px}
+.hdr nav{display:flex;align-items:center;gap:36px;font-size:15px;font-weight:700;color:#2b2b2b}
+.hdr nav a{transition:color .12s}.hdr nav a:hover{color:#000}
+.hdr .grow{flex:1}
+.hbtn{width:36px;height:34px;display:grid;place-items:center;color:#2b2b2b;border-radius:8px;transition:background .12s,transform .08s}
+.hbtn:hover{background:#f2f2f3}.hbtn .ic{width:19px;height:19px}
+.hbtn.txt{width:auto;padding:0 10px;font-size:14px;font-weight:600}
+.store{height:34px;padding:0 16px;margin-left:6px;border-radius:8px;background:#ececee;display:inline-flex;align-items:center;font-size:14px;font-weight:700;color:#2b2b2b;transition:background .12s,transform .08s}
+.store:hover{background:#e3e3e6}
 
-/* ===== hero ===== */
-.hero{padding:calc(64px + clamp(16px,4vh,44px)) 0 clamp(44px,6vh,60px);text-align:center}
-.hero>.wrap{height:100%;display:flex;flex-direction:column;align-items:center;width:100%}
-.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--brand-text);background:var(--brand-soft);padding:6px 12px;border-radius:999px;margin-bottom:22px}
-.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--brand)}
-.hero h1{font-size:clamp(34px,6.2vh,56px);line-height:1.12;letter-spacing:-.035em;font-weight:800;margin:0 0 18px}
-.hero h1 em{font-style:normal;color:var(--brand-text)}
-.hero p{font-size:clamp(15px,2.1vh,19px);color:var(--text-2);margin:0 auto clamp(18px,3.4vh,34px);max-width:620px}
-.ctas{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;gap:8px;height:50px;padding:0 26px;border-radius:999px;font-size:15px;font-weight:650;border:1px solid var(--line-strong);background:#fff;transition:transform .12s,box-shadow .12s,background .12s}
-.btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(16,24,40,.08)}
-.btn.primary{background:var(--text);border-color:var(--text);color:#fff}
-.btn.primary:hover{background:#000}
-.btn .ic{width:18px;height:18px}
-.req{margin-top:18px;font-size:13px;color:var(--text-3);display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.req span{display:inline-flex;align-items:center;gap:5px}
-.resume{margin:clamp(14px,3vh,34px) auto 0;display:inline-flex;align-items:center;gap:12px;padding:8px 8px 8px 14px;border:1px solid var(--line);border-radius:999px;font-size:13px;color:var(--text-2);background:var(--bg-2)}
-.resume b{color:var(--text);font-weight:600}
-.resume .go{height:30px;padding:0 12px;border-radius:999px;background:#fff;border:1px solid var(--line-strong);font-weight:600;font-size:12.5px;display:inline-flex;align-items:center;gap:5px}
-
-/* hero visual (product shot) */
-.shot{position:relative;margin:clamp(18px,3.6vh,40px) auto 0;width:min(100%,980px);flex:1;min-height:0;border-radius:28px;background:
-  radial-gradient(60% 80% at 50% 110%,#e8ecf3,transparent 70%),linear-gradient(180deg,#fafbfc,#f1f3f7);
-  border:1px solid var(--line);overflow:hidden;display:flex;align-items:center;justify-content:center}
-.shot svg.fan{height:84%;width:auto;aspect-ratio:1;max-height:380px;filter:drop-shadow(0 30px 40px rgba(16,24,40,.18))}
-.shot .rotor{transform-box:fill-box;transform-origin:center;animation:spin 9s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.shot .tag{position:absolute;display:flex;flex-direction:column;gap:2px;padding:10px 14px;background:rgba(255,255,255,.9);backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:12px;font-size:12.5px;color:var(--text-2);box-shadow:0 8px 24px rgba(16,24,40,.08)}
-.shot .tag b{font-size:16px;color:var(--text);letter-spacing:-.01em}
-.shot .tag.a{left:64px;top:11%}.shot .tag.b{right:64px;top:11%}.shot .tag.c{left:120px;bottom:11%}.shot .tag.d{right:120px;bottom:11%}
-@media (max-height:780px){.shot .tag.c,.shot .tag.d{display:none}.shot .tag.a,.shot .tag.b{top:50%;transform:translateY(-50%)}}
-.shot .tag .ok{color:var(--ok)}
-.shot .line{position:absolute;height:1px;background:var(--line-strong);opacity:.8}
-
-/* ===== feature strip ===== */
-.feats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:0}
-.feat{padding:22px 22px 20px;border:1px solid var(--line);border-radius:var(--r-lg);background:#fff}
-.feat .i{width:38px;height:38px;border-radius:11px;background:var(--bg-2);display:grid;place-items:center;margin-bottom:14px}
-.feat .i .ic{width:19px;height:19px}
-.feat h4{margin:0 0 6px;font-size:15px;font-weight:700;letter-spacing:-.01em}
-.feat p{margin:0;font-size:13.5px;color:var(--text-2)}
-
-/* ===== 2-page scroll snap (자석 스크롤) ===== */
-.snap{height:100vh;overflow:hidden;position:relative;--i:0;--drag:0px;--dur:1.25s;--ease:cubic-bezier(.76,0,.2,1);touch-action:none}
-.page{height:100vh;min-height:640px;display:flex;flex-direction:column;position:relative;overflow:hidden;
-  transform:translate3d(0,calc(var(--i) * -100vh + var(--drag)),0);transition:transform var(--dur) var(--ease);will-change:transform}
-.snap.dragging .page{transition:none}
+/* ===== 2-page snap (자석 스크롤) =====
+   페이지 transform 은 JS 스프링이 매 프레임 직접 씁니다(CSS transition 없음).
+   → 전환 도중에도 잡아서 되돌릴 수 있고, 손을 뗀 속도를 그대로 이어받습니다. */
+.snap{height:100vh;overflow:hidden;position:relative;touch-action:none;--rem:200px}
+.page{height:100vh;min-height:640px;display:flex;flex-direction:column;position:relative;overflow:hidden;will-change:transform}
 .snap.dragging{cursor:grabbing;user-select:none}
-.snap.instant .page,.snap.instant .page *{transition:none!important}
-/* 위 페이지: 떠날 때 살짝 뒤로 물러나며 흐려짐 (시차 효과) */
-.p1 .hero2,.p1 .mock{transition:transform var(--dur) var(--ease),opacity calc(var(--dur) * .8) ease}
-.snap[data-i="1"] .p1 .hero2{transform:translate3d(0,18vh,0) scale(.96);opacity:0}
-/* 아래 페이지: 도착하면서 블록이 순서대로 떠오름 */
-.p2 .low>*,.p2 .cols>*,.p2 .ftr{opacity:0;transform:translate3d(0,36px,0);transition:opacity .9s ease,transform 1.1s cubic-bezier(.2,.7,.2,1)}
+/* 위 페이지 히어로: 진행도에 1:1로 뒤로 물러나며 흐려짐 (JS가 transform/opacity 지정) */
+.p1 .hero2{will-change:transform,opacity}
+/* 아래 페이지: 절반을 넘어오면 블록이 순서대로 떠오름 */
+.p2 .low>*,.p2 .cols>*,.p2 .ftr{opacity:0;transform:translate3d(0,24px,0);transition:opacity .5s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
 .snap[data-i="1"] .p2 .low>*,.snap[data-i="1"] .p2 .cols>*,.snap[data-i="1"] .p2 .ftr{opacity:1;transform:none}
-.snap[data-i="1"] .p2 .low>*:nth-child(1){transition-delay:.38s}
-.snap[data-i="1"] .p2 .low>*:nth-child(2){transition-delay:.5s}
-.snap[data-i="1"] .p2 .cols>*:nth-child(1){transition-delay:.56s}
-.snap[data-i="1"] .p2 .cols>*:nth-child(2){transition-delay:.66s}
-.snap[data-i="1"] .p2 .cols>*:nth-child(3){transition-delay:.76s}
-.snap[data-i="1"] .p2 .ftr{transition-delay:.9s}
-@media (prefers-reduced-motion:reduce){.snap{--dur:.01s}.p2 .low>*,.p2 .cols>*,.p2 .ftr{transition:none}}
+.snap[data-i="1"] .p2 .low>*:nth-child(1){transition-delay:.1s}
+.snap[data-i="1"] .p2 .low>*:nth-child(2){transition-delay:.18s}
+.snap[data-i="1"] .p2 .cols>*:nth-child(1){transition-delay:.24s}
+.snap[data-i="1"] .p2 .cols>*:nth-child(2){transition-delay:.3s}
+.snap[data-i="1"] .p2 .cols>*:nth-child(3){transition-delay:.36s}
+.snap[data-i="1"] .p2 .ftr{transition-delay:.44s}
 .p2{padding-top:64px}
 .down{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-3);padding:4px 10px;border-radius:999px}
 .down:hover{color:var(--text)}
 .down .ic{animation:bob 1.6s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
 .dots{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;gap:10px}
-.dots button{width:8px;height:8px;border-radius:999px;background:var(--line-strong);transition:height .7s cubic-bezier(.76,0,.2,1),background .7s ease}
+.dots button{width:8px;height:8px;border-radius:999px;background:var(--line-strong);transition:height .45s cubic-bezier(.2,.8,.2,1),background .3s ease}
 .dots button.on{height:26px;background:var(--text)}
-@media (max-height:820px){.resume{margin-top:18px}}
-/* ===== NuPhyIO 톤: header / hero / laptop mock ===== */
-.hdr{background:#fff!important;backdrop-filter:none}
-.hdr .bar{height:46px;display:flex;align-items:center;gap:6px;padding:0 16px 0 20px}
-.hdr .logo{font-size:16px;font-weight:800;letter-spacing:-.02em;margin-right:22px}
-.hdr .logo img{height:15px}
-.hdr nav{margin-left:0;gap:36px;font-size:15px;font-weight:700;color:#2b2b2b}
-.hdr .grow{flex:1}
-.hbtn{width:36px;height:34px;display:grid;place-items:center;color:#2b2b2b;border-radius:8px}
-.hbtn:hover{background:#f2f2f3}.hbtn .ic{width:19px;height:19px}
-.hbtn.txt{width:auto;padding:0 10px;font-size:14px;font-weight:600}
-.store{height:34px;padding:0 16px;margin-left:6px;border-radius:8px;background:#ececee;display:inline-flex;align-items:center;font-size:14px;font-weight:700;color:#2b2b2b}
-.store:hover{background:#e3e3e6}
+/* ===== NuPhyIO 톤: hero / laptop mock ===== */
 .p1{background:#f7f7f7;padding-top:46px;align-items:center}
 .p2{padding-top:46px}
 .hero2{text-align:center;padding:clamp(28px,8.5vh,84px) 24px 0;flex:none}
@@ -127,6 +72,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .ctas2{display:flex;gap:30px;justify-content:center;margin-top:clamp(16px,3vh,26px)}
 .b2{height:42px;min-width:132px;padding:0 26px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;transition:transform .12s,background .12s}
 .b2:hover{transform:translateY(-1px)}
+.b2:active,.store:active,.hbtn:active{transform:scale(.96);transition-duration:.06s}
 .b2.light{background:#e9e9eb;color:#2b2b2b;border:1px solid #dedee1}.b2.light:hover{background:#e1e1e4}
 .b2.dark{background:#2b2b2b;color:#fff;border:1px solid #2b2b2b}.b2.dark:hover{background:#111}
 .legacy{display:inline-block;margin-top:clamp(12px,2.2vh,20px);font-size:14px;font-weight:700;color:#2b2b2b;text-decoration:underline;text-underline-offset:3px}
@@ -150,15 +96,13 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .dots button.on{background:#2b2b2b}
 @media (max-width:900px){.hero2 h1{white-space:normal}.hdr nav{display:none}}
 /* ===== 노트북이 페이지 경계를 넘어 아래 페이지까지 이어짐 ===== */
-.snap{--rem:200px}
-.float{position:absolute;left:0;top:0;width:100%;height:0;z-index:3;pointer-events:none;
-  transform:translate3d(0,calc(var(--i) * -100vh + var(--drag)),0);transition:transform var(--dur) var(--ease);will-change:transform}
-.snap.dragging .float,.snap.instant .float{transition:none!important}
+.float{position:absolute;left:0;top:0;width:100%;height:0;z-index:3;pointer-events:none;will-change:transform}
 .float .laptop{position:absolute;left:50%;top:0;transform:translateX(-50%);border-radius:28px 28px 20px 20px;padding:16px;height:auto;box-shadow:0 0 0 2px #2a2a2c inset,0 40px 80px rgba(0,0,0,.14)}
 .float .scr{border-radius:12px}
 .deck{position:absolute;left:-6.5%;right:-6.5%;bottom:-16px;height:16px;border-radius:2px 2px 18px 18px;background:linear-gradient(#e3e4e8,#c4c6cd 70%,#aeb0b8)}
 .deck i{position:absolute;left:50%;top:0;transform:translateX(-50%);width:13%;height:6px;border-radius:0 0 8px 8px;background:#b4b6bd}
-.float .down{position:absolute;left:50%;top:calc(100vh - 54px);bottom:auto;transform:translateX(-50%);pointer-events:auto;width:38px;height:38px;padding:0;justify-content:center;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.14);color:#2b2b2b;border-radius:50%;transition:opacity .4s ease}
+.float .down{position:absolute;left:50%;top:calc(100vh - 54px);bottom:auto;transform:translateX(-50%);pointer-events:auto;width:38px;height:38px;padding:0;justify-content:center;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.14);color:#2b2b2b;border-radius:50%;transition:opacity .25s ease,transform .08s}
+.float .down:active{transform:translateX(-50%) scale(.92)}
 .snap[data-i="1"] .float .down{opacity:0;pointer-events:none}
 .mock{overflow:visible}
 /* 아래 페이지: 노트북 하단이 차지하는 만큼 내려서 시작, 배경은 위 페이지와 같은 회색으로 연속 */
@@ -190,24 +134,34 @@ body{background:#f7f7f7}
 .strip .img{width:100%;height:clamp(96px,14vh,124px);border-radius:10px;background:#f0f0f1;display:grid;place-items:center;transition:background .15s}
 .strip .prod:hover .img{background:#e9e9eb}
 .strip .img svg{height:72%;width:auto;aspect-ratio:1;transition:transform .2s}
-.strip .prod:hover .img svg{transform:scale(1.05)}
+.strip .prod:hover .img svg{transform:scale(1.05)}.strip .prod:active .img svg{transform:scale(.97);transition-duration:.06s}
 .strip .nm{font-size:13px;font-weight:650;color:#2a2d33;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;align-items:start}
 .list{display:flex;flex-direction:column;padding:10px 8px}
 .list a{display:flex;align-items:center;gap:12px;padding:clamp(11px,1.9vh,17px) 16px;border-radius:10px;font-size:14px;font-weight:650;color:#2a2d33;white-space:nowrap;transition:background .12s}
-.list a:hover{background:#f1f1f2}
+.list a:hover{background:#f1f1f2}.list a:active{background:#e6e6e9;transition-duration:.05s}
 .list a span{overflow:hidden;text-overflow:ellipsis}
 .list a .ic{margin-left:auto;width:15px;height:15px;color:#2a2d33;stroke-width:2;flex:none}
 .social{display:flex;align-items:center;justify-content:space-between;padding:20px 34px}
 .social a{color:#222;display:grid;place-items:center;width:28px;height:28px;border-radius:8px;transition:background .12s}
-.social a:hover{background:#eeeef0}
+.social a:hover{background:#eeeef0}.social a:active{background:#e4e4e7;transform:scale(.94)}
 .social a .ic{width:21px;height:21px;stroke-width:1.9}
 .stack{display:flex;flex-direction:column;gap:clamp(14px,2.6vh,24px)}
 /* ===== footer ===== */
 .ftr{padding:0 0 16px;color:#b9bcc3;font-size:12.5px}
 .ftr .wrap{display:flex;align-items:center;gap:14px}
 .ftr .cn{margin-left:auto;font-weight:500;letter-spacing:.02em}
-@media (max-width:980px){.cols{grid-template-columns:1fr}.feats{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:40px}.shot .tag{display:none}}
+@media (max-width:980px){.cols{grid-template-columns:1fr}}
+/* 키보드 포커스: 마우스 클릭에는 안 보이고 Tab 이동에만 표시 */
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.b2:focus-visible,.store:focus-visible{outline-offset:3px}
+/* 동작 줄이기: 전환은 즉시, 떠오름은 페이드만, 반복 애니메이션 정지 */
+@media (prefers-reduced-motion:reduce){
+  .p2 .low>*,.p2 .cols>*,.p2 .ftr{transform:none;transition:opacity .2s ease}
+  .snap[data-i="1"] .p2 .low>*,.snap[data-i="1"] .p2 .cols>*,.snap[data-i="1"] .p2 .ftr{transition-delay:0s}
+  .down .ic{animation:none}
+  .dots button,.b2,.hbtn,.store{transition:none}
+}
 </style>
 </head>
 <body>
@@ -370,48 +324,97 @@ const products=[
 ];
 document.getElementById('strip').innerHTML=products.filter(p=>!p.soon).slice(0,5).map(p=>`<a class="prod" href="#">
   <div class="img"><svg><use href="#fan"/></svg></div><div class="nm">${p.n}</div></a>`).join('');
-/* 2-page 전환: transform 기반 (속도·가속 곡선을 직접 제어) */
+/* ===== 2-page 전환: 스프링 기반 =====
+   원칙 — 애니메이션은 언제든 잡아서 되돌릴 수 있어야 한다.
+   · 드래그는 손가락과 1:1, 끝에서는 고무줄 저항
+   · 손을 뗀 속도를 스프링 초기 속도로 넘겨 이음새가 없게
+   · 어디에 멈출지는 '놓은 위치'가 아니라 '관성 투영 지점'과 속도 부호로 결정
+   · 전환 중 입력을 잠그지 않음: 휠·키·드래그 모두 현재 위치에서 새 목표로 이어감 */
 const snap=document.getElementById('snap'), pages=[...document.querySelectorAll('.page')], dots=[...document.querySelectorAll('#dots button')];
-const DUR=1250;                 // 전환 시간(ms) — CSS --dur 과 동일
-let idx=0, locked=false, lockT=0;
-function go(i,instant){
-  i=Math.max(0,Math.min(pages.length-1,i));
-  if(instant){snap.classList.add('instant')}
-  if(i!==idx||instant){idx=i;snap.style.setProperty('--i',i);snap.dataset.i=i;dots.forEach((d,k)=>d.classList.toggle('on',k===i));
-    locked=true;clearTimeout(lockT);lockT=setTimeout(()=>locked=false,instant?0:DUR+150)}
-  snap.style.setProperty('--drag','0px');
-  if(instant)requestAnimationFrame(()=>requestAnimationFrame(()=>snap.classList.remove('instant')));
+const floatEl=document.getElementById('float'), hero=document.querySelector('.hero2');
+const N=pages.length;
+const REDUCED=matchMedia('(prefers-reduced-motion:reduce)');
+const SPRING={response:.6,damping:1};          // Apple 식: response(s) + damping ratio(1 = 오버슈트 없음)
+let pos=0, vel=0, target=0, idx=0, raf=0, last=0;   // pos/vel 단위 = 페이지, 페이지/초
+
+function paint(){
+  const H=innerHeight, t=`translate3d(0,${(-pos*H).toFixed(2)}px,0)`;
+  for(const p of pages)p.style.transform=t; floatEl.style.transform=t;
+  const k=Math.min(1,Math.max(0,pos));                        // 히어로 시차: 진행도에 비례해 물러나며 흐려짐
+  hero.style.transform=`translate3d(0,${(k*H*.18).toFixed(1)}px,0) scale(${(1-k*.04).toFixed(4)})`;
+  hero.style.opacity=Math.max(0,1-k*1.6).toFixed(3);
+  const i=Math.round(k);                                      // 절반을 넘는 순간 아래 페이지 블록 떠오름 + 점 표시
+  if(i!==idx){idx=i;snap.dataset.i=i;dots.forEach((d,n)=>d.classList.toggle('on',n===i))}
 }
-/* 휠 · 트랙패드: 전환 중에는 입력을 무시해 관성 스크롤로 연속 넘김이 생기지 않게 함 */
-let acc=0, accT=0;
-addEventListener('wheel',e=>{e.preventDefault();if(locked)return;
+function step(now){
+  const dt=last?Math.min(.064,(now-last)/1000):.016; last=now;
+  const w=2*Math.PI/SPRING.response, k=w*w, c=2*SPRING.damping*w;
+  vel+=(-k*(pos-target)-c*vel)*dt; pos+=vel*dt;
+  if(Math.abs(pos-target)<.0005&&Math.abs(vel)<.002){pos=target;vel=0;paint();raf=0;return}
+  paint(); raf=requestAnimationFrame(step);
+}
+function animateTo(t,v0){                                     // v0: 이어받을 속도(페이지/초)
+  target=Math.max(0,Math.min(N-1,Math.round(t)));
+  if(v0!=null)vel=v0;
+  if(REDUCED.matches){cancelAnimationFrame(raf);raf=0;pos=target;vel=0;paint();return}
+  if(!raf){last=0;raf=requestAnimationFrame(step)}
+}
+function go(i,instant){
+  if(instant){cancelAnimationFrame(raf);raf=0;target=pos=Math.max(0,Math.min(N-1,i));vel=0;paint();return}
+  animateTo(i);
+}
+/* 관성 투영 (UIScrollView 감속과 같은 식): 놓은 속도로 어디까지 미끄러질지 */
+const project=(v,d=.998)=>(v/1000)*d/(1-d);
+/* 고무줄: 경계를 넘을수록 덜 따라옴 */
+const rubber=(o,dim,c=.55)=>(o*dim*c)/(dim+c*Math.abs(o));
+
+/* 휠·트랙패드: 같은 방향의 관성 꼬리(연속 이벤트)는 한 번의 넘김으로만 취급, 반대 방향은 즉시 받아 되돌림 */
+let acc=0, accT=0, wheelDir=0, wheelHold=0;
+addEventListener('wheel',e=>{e.preventDefault();
+  const dir=Math.sign(e.deltaY)||0, now=performance.now();
+  if(dir===wheelDir&&now<wheelHold){wheelHold=now+150;return}
   acc+=e.deltaY;clearTimeout(accT);accT=setTimeout(()=>acc=0,160);
-  if(Math.abs(acc)>40){go(idx+(acc>0?1:-1));acc=0}},{passive:false});
-/* 드래그(마우스 · 터치): 손을 따라 움직이다가 놓으면 가까운 페이지로 붙음 */
+  if(Math.abs(acc)>40){animateTo(target+dir);acc=0;wheelDir=dir;wheelHold=now+150}
+},{passive:false});
+
+/* 드래그(마우스·터치): 움직이는 중에도 잡을 수 있고, 잡은 순간의 화면 위치에서 시작 */
 let d=null;
-snap.addEventListener('pointerdown',e=>{if(locked||e.button>0)return;d={y:e.clientY,dy:0,moved:false,id:e.pointerId}});
-addEventListener('pointermove',e=>{if(!d)return;let dy=e.clientY-d.y;
-  if(!d.moved&&Math.abs(dy)<6)return;
-  if(!d.moved){d.moved=true;snap.classList.add('dragging');try{snap.setPointerCapture(d.id)}catch(_){}}
-  const atEdge=(idx===0&&dy>0)||(idx===pages.length-1&&dy<0);
-  d.dy=dy; snap.style.setProperty('--drag',(atEdge?dy*.18:dy*.85)+'px');   // 끝에서는 고무줄 저항
+snap.addEventListener('pointerdown',e=>{if(e.button>0)return;
+  cancelAnimationFrame(raf);raf=0;vel=0;                      // 진행 중인 스프링을 멈추고 현재 위치를 그대로 쥔다
+  d={y:e.clientY,start:pos,moved:false,id:e.pointerId,hist:[[performance.now(),e.clientY]]};
 });
-addEventListener('pointerup',e=>{if(!d)return;const {dy,moved}=d;d=null;if(!moved)return;
+addEventListener('pointermove',e=>{if(!d)return;const dy=e.clientY-d.y;
+  if(!d.moved&&Math.abs(dy)<6)return;                         // 6px 히스테리시스: 그 전까지는 탭으로 본다
+  if(!d.moved){d.moved=true;snap.classList.add('dragging');try{snap.setPointerCapture(d.id)}catch(_){}}
+  const H=innerHeight; let raw=d.start-dy/H;                   // 1:1 추적
+  if(raw<0)raw=-rubber(-raw*H,H)/H; else if(raw>N-1)raw=N-1+rubber((raw-(N-1))*H,H)/H;
+  pos=raw; paint();
+  const now=performance.now(); d.hist.push([now,e.clientY]); while(d.hist.length>2&&now-d.hist[0][0]>100)d.hist.shift();
+});
+function release(e){if(!d)return;const {moved,hist}=d;d=null;if(!moved){return}
   snap.classList.remove('dragging');
-  const th=Math.min(140,innerHeight*.14);
-  if(dy<-th)go(idx+1);else if(dy>th)go(idx-1);else snap.style.setProperty('--drag','0px');
+  const H=innerHeight, [t0,y0]=hist[0], [t1,y1]=hist[hist.length-1];
+  const vpx=t1>t0?(y1-y0)/((t1-t0)/1000):0;                   // px/s (아래로 양수)
+  const v=-vpx/H;                                             // 페이지/초 (다음 페이지 방향이 양수)
+  let t;
+  if(Math.abs(vpx)>300)t=v>0?Math.ceil(pos):Math.floor(pos);  // 뚜렷한 플릭: 속도 부호가 결정
+  else t=Math.round(pos+project(-vpx)/H);                      // 느리면: 투영 지점에서 가까운 페이지
+  animateTo(t,v);
   const eat=ev=>{ev.preventDefault();ev.stopPropagation()};   // 드래그 직후 발생하는 클릭 한 번만 막음
   addEventListener('click',eat,{capture:true,once:true});setTimeout(()=>removeEventListener('click',eat,{capture:true}),60);
-});
-addEventListener('pointercancel',()=>{if(d){d=null;snap.classList.remove('dragging');snap.style.setProperty('--drag','0px')}});
-/* 버튼 · 점 · 키보드 */
-document.getElementById('downBtn').onclick=()=>go(1);
-dots.forEach((b,i)=>b.onclick=()=>go(i));
-document.querySelectorAll('.hdr [data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();go(1)});
-document.querySelector('.hdr .logo').onclick=e=>{e.preventDefault();go(0)};
-addEventListener('keydown',e=>{if(['ArrowDown','PageDown',' '].includes(e.key)){e.preventDefault();if(!locked)go(idx+1)}
-  if(['ArrowUp','PageUp'].includes(e.key)){e.preventDefault();if(!locked)go(idx-1)}
-  if(e.key==='Home')go(0);if(e.key==='End')go(pages.length-1)});
+}
+addEventListener('pointerup',release);
+addEventListener('pointercancel',release);
+
+/* 버튼 · 점 · 키보드 — 잠금 없음, 현재 위치에서 이어서 이동 */
+document.getElementById('downBtn').onclick=()=>animateTo(1);
+dots.forEach((b,i)=>b.onclick=()=>animateTo(i));
+document.querySelectorAll('.hdr [data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();animateTo(1)});
+document.querySelector('.hdr .logo').onclick=e=>{e.preventDefault();animateTo(0)};
+addEventListener('keydown',e=>{if(e.target.closest?.('input,textarea,[contenteditable]'))return;
+  if(['ArrowDown','PageDown',' '].includes(e.key)){e.preventDefault();animateTo(target+1)}
+  if(['ArrowUp','PageUp'].includes(e.key)){e.preventDefault();animateTo(target-1)}
+  if(e.key==='Home')animateTo(0);if(e.key==='End')animateTo(N-1)});
 /* 노트북 목업: 위 페이지의 빈 자리(mockSlot)에서 시작해 아래 페이지 상단까지 이어지도록 위치·높이 계산 */
 const view=document.getElementById('view'),fr=view.querySelector('iframe'),lap=document.querySelector('.float .laptop'),slot=document.getElementById('mockSlot');
 function fitView(){
@@ -428,8 +431,8 @@ function fitView(){
   const k=(w-PAD*2)/1440;
   fr.style.transform=`scale(${k})`;fr.style.height='900px';view.style.height=viewH+'px';
 }
-fitView();addEventListener('resize',fitView);
-snap.dataset.i=0;
+fitView();addEventListener('resize',()=>{fitView();paint()});
+snap.dataset.i=0;paint();
 if(new URLSearchParams(location.search).get('page')==='2')go(1,true);
 </script>
 </body>
