@@ -7929,8 +7929,9 @@ class ModbusDashboard {
         implemented: 'Y',
         description: 'Procedure Code(0x2700) 실행 시 전달하는 인수값'
       },
-      // [Product Setting] 제품 설정 — Inverter FW 하드웨어 설정 테이블 행 선택
-      // (전원 재투입 후 적용). Configuration 탭 제품설정과 같은 오브젝트
+      // [Product Setting] 제품 설정 — Inverter FW 하드웨어 설정 테이블 행과
+      // 구동 방식 선택 (전원 재투입 후 적용). Configuration 탭 제품설정과 같은
+      // 오브젝트
       {
         type: 'lsm',
         group: 'Product Setting',
@@ -7948,6 +7949,15 @@ class ModbusDashboard {
         implemented: 'Y',
         description:
             '제품 전압 클래스 (0:200V 1:400V 2:200V 단상 PFC EC FAN-600W). 변경값은 전원 재투입 후 적용'
+      },
+      {
+        type: 'lsm',
+        group: 'Product Setting',
+        address: '0x270C',
+        name: 'Drive Method',
+        implemented: 'Y',
+        description:
+            '구동 방식 (0:펌웨어 기본값 1:홀 센서 2:센서리스 I/F + 확장 역기전력). 변경값은 전원 재투입 후 적용'
       },
       // ============================================================
       // LSM 고급 파라미터 (0x4000~) - 에이징 / 공장 설정 / 보안
@@ -12166,6 +12176,26 @@ class ModbusDashboard {
       {name: 'Id Current', chNum: 0x38, group: 'Electrical'},
       {name: 'Iq Current', chNum: 0x39, group: 'Electrical'},
       {name: 'Imag Current', chNum: 0x3A, group: 'Electrical'},
+      // Sensorless — 구동 방식 센서리스(0x270C = 2) 용. chNum 은 Inverter FW
+      // trace.c 의 C59 ~ C76 과 동일해야 함
+      {name: 'Observer Speed', chNum: 0x3B, group: 'Sensorless'},
+      {name: 'Observer Electric Angle', chNum: 0x3C, group: 'Sensorless'},
+      {name: 'Sensorless Frame Angle', chNum: 0x3D, group: 'Sensorless'},
+      {name: 'Observer EMF Gamma', chNum: 0x3E, group: 'Sensorless'},
+      {name: 'Observer EMF Delta', chNum: 0x3F, group: 'Sensorless'},
+      {name: 'Observer Current Gamma', chNum: 0x40, group: 'Sensorless'},
+      {name: 'Sensorless Sequence State', chNum: 0x41, group: 'Sensorless'},
+      {name: 'Handover Torque Current', chNum: 0x42, group: 'Sensorless'},
+      {name: 'Velocity Loop Ki Term', chNum: 0x43, group: 'Sensorless'},
+      {name: 'Velocity Loop Ka Term', chNum: 0x44, group: 'Sensorless'},
+      {name: 'Velocity Loop Integral', chNum: 0x45, group: 'Sensorless'},
+      {name: 'Voltage Ref. Magnitude', chNum: 0x46, group: 'Sensorless'},
+      {name: 'Voltage Ref. Limit', chNum: 0x47, group: 'Sensorless'},
+      {name: 'PWM Enable', chNum: 0x48, group: 'Sensorless'},
+      {name: 'Id Current (A)', chNum: 0x49, group: 'Sensorless'},
+      {name: 'Iq Current (A)', chNum: 0x4A, group: 'Sensorless'},
+      {name: 'I/F Frame Angle', chNum: 0x4B, group: 'Sensorless'},
+      {name: 'Sensorless Angle Offset', chNum: 0x4C, group: 'Sensorless'},
       // Digital Input
       {name: 'POT', chNum: 0x64, group: 'Digital Input'},
       {name: 'NOT', chNum: 0x65, group: 'Digital Input'},
@@ -17036,7 +17066,7 @@ class ModbusDashboard {
           fullResponse.slice(0, frameLen), {skipCRC: true});
       this.addMonitorEntry('received', fullResponse.slice(0, frameLen));
 
-      const MOTOR_ID_MAP = {0x1000: 'Sirocco Motor', 0x2000: 'Axial Motor'};
+      const MOTOR_ID_MAP = this._motorIdNameMap('name');
       const hexVal =
           `0x${parsed.value.toString(16).toUpperCase().padStart(4, '0')}`;
       const name = MOTOR_ID_MAP[parsed.value] ?? '알 수 없음';
@@ -17060,10 +17090,7 @@ class ModbusDashboard {
     const slaveId = device.slaveId;
     this._setOvBadge('mcu-motor-id-set', 'running');
 
-    const MOTOR_ID_MAP = {
-      0x1000: 'Sirocco FAN (550W)',
-      0x2000: 'Axial FAN (750W)',
-    };
+    const MOTOR_ID_MAP = this._motorIdNameMap('fullName');
     const result = await this.readCANopenObject(slaveId, 0x2000, 0x00);
     const el = document.getElementById('ov-motor-id');
 
@@ -17327,7 +17354,7 @@ class ModbusDashboard {
       const motorR = await ovCanopen(slaveId, 0x2000, 0x00);
       const motorEl = document.getElementById('ov-motor-id');
       if (motorR && !motorR.error && motorR.value != null && motorEl) {
-        const MOTOR_ID_MAP = {0x1000: 'Sirocco Motor', 0x2000: 'Axial Motor'};
+        const MOTOR_ID_MAP = this._motorIdNameMap('name');
         const hexVal =
             `0x${motorR.value.toString(16).toUpperCase().padStart(4, '0')}`;
         const name = MOTOR_ID_MAP[motorR.value] ?? '알 수 없음';
@@ -18284,6 +18311,75 @@ class ModbusDashboard {
   }
 
   /**
+   * 구동 방식(0x270C) 선택 목록. 값은 FW 의 DRIVE_METHOD_SETTING_xxx
+   * (Common/ecfan_memory_map.h) 와 동일해야 함.
+   * - 0 은 Inverter FW 에 빌드된 기본 방식(DRIVE_METHOD_DEFAULT)을 따름
+   * - sensorless : 회전자 센서 없이 구동하는 방식. FW 에 센서리스 상수가 있는
+   *   모터(_motorIdOptions() 의 sensorless)에서만 동작
+   * 새 방식 추가 시 이 목록만 갱신하면 설정 select 와 Device 정보 표시가 함께
+   * 반영됨.
+   */
+  _driveMethodOptions() {
+    return [
+      {v: 0, l: '펌웨어 기본값'},
+      {v: 1, l: '홀 센서'},
+      {v: 2, l: '센서리스 (I/F + 확장 역기전력)', sensorless: true},
+    ];
+  }
+
+  /**
+   * 구동 방식 select 의 <option> HTML 생성.
+   */
+  _driveMethodOptionsHTML(current) {
+    return this._driveMethodOptions()
+        .map(
+            o => `<option value="${o.v}"${current === o.v ? ' selected' : ''}>${
+                o.l}</option>`)
+        .join('');
+  }
+
+  /**
+   * 모터 ID(0x2000) 목록. 값은 FW 의 motor_table (Common/Motor.h) ID 와 동일해야
+   * 함. 새 모터 추가 시 이 목록만 갱신하면 모터 타입 select, Device 정보, 제조
+   * 검증 표시가 함께 반영됨.
+   * - name       : 모터 타입 select / 제조 Overview 표시 이름
+   * - fullName   : Device 정보 / 제조 검증 표시 이름
+   * - sensorless : FW 에 센서리스 상수가 있는 모터 (Inverter FW drive_method.c
+   *   의 s_SensorlessMotorTable). 구동 방식 센서리스는 이 모터에서만 동작
+   */
+  _motorIdOptions() {
+    return [
+      {v: 0x1000, name: 'Sirocco Motor', fullName: 'Sirocco FAN (550W)'},
+      {v: 0x2000, name: 'Axial Motor', fullName: 'Axial FAN (750W)'},
+      {
+        v: 0x2001,
+        name: 'Axial Motor 센서리스용',
+        fullName: 'Axial FAN (750W) 센서리스용',
+        sensorless: true
+      },
+    ];
+  }
+
+  /**
+   * 모터 ID → 표시 이름 맵. key 는 'name' 또는 'fullName'.
+   */
+  _motorIdNameMap(key = 'name') {
+    return Object.fromEntries(this._motorIdOptions().map(o => [o.v, o[key]]));
+  }
+
+  /**
+   * 모터 타입 select 의 <option> HTML 생성.
+   */
+  _motorIdOptionsHTML(current) {
+    return this._motorIdOptions()
+        .map(
+            o => `<option value="${o.v}"${current === o.v ? ' selected' : ''}>${
+                o.name} (0x${
+                o.v.toString(16).toUpperCase().padStart(4, '0')})</option>`)
+        .join('');
+  }
+
+  /**
    * Configuration 파라미터 정의 — category·address·reader·apply를 하나의 맵으로
    * 관리. 새 파라미터 추가 시 이 맵에만 항목을 추가하면 읽기·Refresh 모두
    * 자동으로 포함됨.
@@ -18665,6 +18761,19 @@ class ModbusDashboard {
         apply: (raw) => {
           device.hardwareRevision = raw;
           const el = document.getElementById(`hardwareRevision_${deviceId}`);
+          if (el) el.value = String(raw);
+          this.saveDevices();
+        }
+      },
+      driveMethod: {
+        category: 'productSetting',
+        reader: async () => {
+          const r = await this.readCANopenObject(device.slaveId, 0x270C, 0x00);
+          return (r && !r.error && r.value != null) ? r.value : null;
+        },
+        apply: (raw) => {
+          device.driveMethod = raw;
+          const el = document.getElementById(`driveMethod_${deviceId}`);
           if (el) el.value = String(raw);
           this.saveDevices();
         }
@@ -19527,6 +19636,7 @@ class ModbusDashboard {
             ${verRow('Motor ID', '0x2000', 'info-motor-id')}
             ${verRow('전압 클래스', '0x270A', 'info-voltage-class')}
             ${verRow('HW 리비전', '0x2709', 'info-hw-rev')}
+            ${verRow('구동 방식', '0x270C', 'info-drive-method')}
             <div style="height:1px; background:#F2F4F6; margin:4px 0;"></div>
             <div style="font-size:11px; font-weight:700; color:#C9CDD4; letter-spacing:0.8px; text-transform:uppercase; padding:12px 0 4px 0;">Firmware</div>
             ${verRow('MCU Boot', '0x27F0', 'info-main-boot')}
@@ -19639,12 +19749,14 @@ class ModbusDashboard {
       }
     }
 
-    // Hardware 정보 — Motor ID(0x2000), 전압 클래스(0x270A), HW 리비전(0x2709)
+    // Hardware 정보 — Motor ID(0x2000), 전압 클래스(0x270A), HW 리비전(0x2709),
+    // 구동 방식(0x270C)
     // 설정 가능 값 이외의 값이 읽히면 '잘못된 값'으로 표시 (필드 오설정 감지용)
     const hwEls = {
       motor: document.getElementById('info-motor-id'),
       vclass: document.getElementById('info-voltage-class'),
       rev: document.getElementById('info-hw-rev'),
+      method: document.getElementById('info-drive-method'),
     };
     const setInfo = (el, text, tone) => {
       if (!el) return;
@@ -19671,10 +19783,7 @@ class ModbusDashboard {
     };
     const hex4 = v => '0x' + v.toString(16).toUpperCase().padStart(4, '0');
 
-    const MOTOR_ID_MAP = {
-      0x1000: 'Sirocco FAN (550W)',
-      0x2000: 'Axial FAN (750W)',
-    };
+    const MOTOR_ID_MAP = this._motorIdNameMap('fullName');
     const motorId = await readObj(0x2000);
     if (motorId === null) {
       setInfo(hwEls.motor, '실패', 'bad');
@@ -19711,6 +19820,27 @@ class ModbusDashboard {
           'warn');
     } else {
       setInfo(hwEls.rev, REV_MAP[hwRev], 'ok');
+    }
+
+    // 구동 방식 — 센서리스는 FW 에 센서리스 상수가 있는 모터에서만 동작하므로
+    // 모터 ID 와의 조합도 확인. 0x270C 가 없는 이전 펌웨어는 읽기 실패로 나타남
+    const methodOpt =
+        value => this._driveMethodOptions().find(m => m.v === value) || null;
+    const driveMethod = await readObj(0x270C);
+    if (driveMethod === null) {
+      setInfo(hwEls.method, '읽기 실패 (FW 미지원 가능)', 'warn');
+    } else if (methodOpt(driveMethod) === null) {
+      setInfo(hwEls.method, `⚠ 잘못된 값 (${driveMethod})`, 'bad');
+    } else if (
+        methodOpt(driveMethod).sensorless && motorId !== null &&
+        !this._motorIdOptions().some(m => m.v === motorId && m.sensorless)) {
+      // 센서리스인데 모터 ID 가 센서리스용이 아님 → FW 가 모터 설정 알람을 내고
+      // 홀 센서 방식으로 동작
+      setInfo(
+          hwEls.method, `⚠ ${methodOpt(driveMethod).l} — 모터 ID 불일치`,
+          'warn');
+    } else {
+      setInfo(hwEls.method, methodOpt(driveMethod).l, 'ok');
     }
 
     if (btn) btn.disabled = false;
@@ -19916,14 +20046,7 @@ class ModbusDashboard {
                     device.motorType == null ?
                         'selected' :
                         ''} disabled>-- 선택 --</option>
-                            <option value="4096" ${
-                    device.motorType === 4096 ?
-                        'selected' :
-                        ''}>Sirocco Motor (0x1000)</option>
-                            <option value="8192" ${
-                    device.motorType === 8192 ?
-                        'selected' :
-                        ''}>Axial Motor (0x2000)</option>
+                            ${this._motorIdOptionsHTML(device.motorType)}
                         </select>`)}
                 </div>`;
 
@@ -20402,6 +20525,16 @@ class ModbusDashboard {
                             ${
                     this._hardwareRevisionOptionsHTML(
                         device.productVoltageClass, device.hardwareRevision)}
+                        </select>`)}
+                    ${
+            row('driveMethod', '구동 방식',
+                '회전자 각도를 얻는 방식 (FC 0x2B, 0x270C). 센서리스는 모터 타입 0x2001 에서만 동작. 변경값은 전원 재투입 후 적용',
+                `
+                        <select id="driveMethod_${id}" style="${iStyle}"
+                            onchange="window.dashboard.debouncedApply('driveMethod', ${
+                    id})"
+                            onclick="event.stopPropagation()">
+                            ${this._driveMethodOptionsHTML(device.driveMethod)}
                         </select>`)}
                 </div>`;
 
@@ -20920,6 +21053,11 @@ class ModbusDashboard {
           case 'productVoltageClass':
             await this.applyGenericLSM(
                 deviceId, 'productVoltageClass', 0x270A, 'productVoltageClass');
+            success = true;
+            break;
+          case 'driveMethod':
+            await this.applyGenericLSM(
+                deviceId, 'driveMethod', 0x270C, 'driveMethod');
             success = true;
             break;
         }
@@ -22436,10 +22574,7 @@ class ModbusDashboard {
           break;
         }
         case 'hw-canopen-motor-id': {
-          const MOTOR_ID_MAP = {
-            0x1000: 'Sirocco FAN (550W)',
-            0x2000: 'Axial FAN (750W)',
-          };
+          const MOTOR_ID_MAP = this._motorIdNameMap('fullName');
           const result = await this.readCANopenObject(slaveId, 0x2000, 0x00);
           const elVal = document.getElementById('hwCanopenMotorIdValue');
           const elName = document.getElementById('hwCanopenMotorIdName');
