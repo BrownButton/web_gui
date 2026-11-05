@@ -13,6 +13,13 @@
 const CHART_TICK_MS = 0.0625;
 
 /**
+ * 채널별 화면 구간 통계(Max/Min/Avg) 표시 갱신 주기(ms).
+ * 수집 중에는 매 프레임 갱신하면 숫자를 읽을 수 없어 이 주기로 제한한다.
+ * 정지 상태에서는 pan/zoom 즉시 갱신한다.
+ */
+const CHART_VIEW_STATS_INTERVAL_MS = 200;
+
+/**
  * ChartManager - Real-time 4-channel data visualization
  * Pure Canvas API implementation with zoom, pan, and cursor support
  */
@@ -148,6 +155,9 @@ class ChartManager {
 
     // Animation frame
     this.animationId = null;
+
+    // 화면 구간 통계 표시를 마지막으로 갱신한 시각 (performance.now 기준)
+    this.viewStatsLastUpdate = 0;
 
     // Bind methods
     this.render = this.render.bind(this);
@@ -664,6 +674,57 @@ class ChartManager {
     }
   }
 
+  /**
+   * 시간 구간 [tMin, tMax] 안에 있는 샘플의 최대/최소/평균을 구한다.
+   * 값은 scale/offset 적용 전 원시값이다 (현재값 배지, 커서 값과 같은 기준).
+   * @returns {{min:number, max:number, avg:number}|null} 구간에 샘플이 없으면
+   *     null
+   */
+  computeViewStats(ch, tMin, tMax) {
+    const data = ch.data;
+    const first = this._bisectLeft(data, tMin);
+    const last = this._bisectRight(data, tMax);
+    if (first > last) return null;
+
+    let min = Infinity, max = -Infinity, sum = 0;
+    for (let k = first; k <= last; k++) {
+      const v = data[k].v;
+      if (v < min) min = v;
+      if (v > max) max = v;
+      sum += v;
+    }
+    return {min, max, avg: sum / (last - first + 1)};
+  }
+
+  /**
+   * 채널 행의 Max/Min/Avg 표시를 현재 화면(가시 시간 구간) 기준으로 갱신한다.
+   * 구간은 drawData()가 그리는 범위와 같다.
+   */
+  updateViewStats() {
+    const now = performance.now();
+    if (this.isRunning &&
+        now - this.viewStatsLastUpdate < CHART_VIEW_STATS_INTERVAL_MS) {
+      return;
+    }
+    this.viewStatsLastUpdate = now;
+
+    const tMin = this.viewMinTime;
+    const tMax = tMin + this.timeScale;
+    this.channels.forEach((ch, i) => {
+      const stats = ch.enabled ? this.computeViewStats(ch, tMin, tMax) : null;
+      this.setViewStatText(`chartCh${i + 1}ViewMax`, stats?.max);
+      this.setViewStatText(`chartCh${i + 1}ViewMin`, stats?.min);
+      this.setViewStatText(`chartCh${i + 1}ViewAvg`, stats?.avg);
+    });
+  }
+
+  setViewStatText(elementId, value) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const text = value == null ? '--' : value.toFixed(3);
+    if (el.textContent !== text) el.textContent = text;
+  }
+
   setChannelYRange(index, min, max) {
     if (index >= 0 && index < this.channels.length) {
       this.channels[index].fixedYMin = min;
@@ -758,6 +819,8 @@ class ChartManager {
     this.trigger.armed = false;
     this.updateStatus('Stopped');
     this.cancelAnimation();
+    // 수집 중 갱신 주기 제한으로 빠졌을 수 있는 마지막 구간을 반영
+    this.updateViewStats();
   }
 
   pauseCapture() {
@@ -940,6 +1003,7 @@ class ChartManager {
   render() {
     if (this.splitView) {
       this.renderSplit();
+      this.updateViewStats();
       return;
     }
 
@@ -980,6 +1044,8 @@ class ChartManager {
     if (this.showCursor && this.cursorPos) {
       this.drawCursor();
     }
+
+    this.updateViewStats();
   }
 
   renderSplit() {

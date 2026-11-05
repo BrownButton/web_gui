@@ -8535,6 +8535,7 @@ body.chart-active .chart-page-container {
 
 .chart-ch-row {
     display: flex;
+    flex-wrap: wrap;    /* 폭이 모자라면 화면 구간 통계가 다음 줄로 내려감 */
     align-items: center;
     gap: 6px;
     padding: 3px 8px;
@@ -8609,7 +8610,7 @@ body.chart-active .chart-page-container {
 /* param-picker 버튼 내 채널 행 */
 .chart-ch-row .param-picker-trigger {
     flex: 1;
-    min-width: 0;
+    min-width: 64px;    /* 이보다 좁아지기 전에 행이 줄바꿈됨 */
     background: var(--tc-bg);
     border: none;
     border-radius: var(--tc-radius);
@@ -8634,6 +8635,38 @@ body.chart-active .chart-page-container {
     white-space: nowrap;
     font-family: 'Consolas', monospace;
     min-width: 40px;
+    text-align: right;
+}
+
+/* 현재 화면 구간 통계 (Max / Min / Avg) */
+.chart-ch-row .ch-view-stats {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: auto;  /* 줄바꿈됐을 때 오른쪽 정렬 유지 */
+}
+.chart-ch-row .ch-view-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    background: var(--tc-bg);
+    border-radius: var(--tc-radius-pill);
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+.chart-ch-row .ch-view-stat-lbl {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--tc-sub);
+    font-family: var(--tc-font);
+}
+.chart-ch-row .ch-view-stat-val {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--tc-text);
+    font-family: 'Consolas', monospace;
+    min-width: 48px;
     text-align: right;
 }
 
