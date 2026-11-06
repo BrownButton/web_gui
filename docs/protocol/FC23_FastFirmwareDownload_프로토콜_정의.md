@@ -230,8 +230,11 @@
 
 > **패킷 크기:**
 > - 장치 UART 수신 버퍼 최대 256 bytes → 헤더(10 B) + CRC(2 B) 제외 시 **최대 DataLen = 244 bytes**
+> - DataLen은 **8의 배수**로 전송 (마지막 패킷 포함). 장치는 Flash를 8 bytes 단위로 기록하며, 수정 전 펌웨어(1.0.x)는 8 bytes에 못 미친 나머지를 기록하지 않음
+> - 호스트는 이미지를 8 bytes 경계까지 `0xFF`로 패딩한 뒤 전송. FileSize, TotalSize, FirmwareCRC32는 패딩 후 이미지 기준
+> - 8의 배수 조건을 적용한 최대 DataLen = **240 bytes**
 > - 권장 시작값: 120 bytes (안정성 우선)
-> - ErrorCode=`BUFFER_OVERFLOW`(0x05) NACK 수신 시 DataLen을 절반으로 줄여 재시도
+> - ErrorCode=`BUFFER_OVERFLOW`(0x05) NACK 수신 시 DataLen을 절반으로 줄여 재시도 (8의 배수 유지)
 
 ---
 
@@ -423,12 +426,12 @@ Master                                   Slave
 
 | 단계 | 권장 DataLen | 비고 |
 |------|-------------|------|
-| 초기 테스트 | 60 bytes | FC 0x66과 동일 (안전) |
+| 초기 테스트 | 56 bytes | FC 0x66(60 bytes 고정)과 비슷한 크기 (안전) |
 | 표준 운용 | 120 bytes | 2배 향상, 대부분 장치에서 안전 |
-| 고성능 | 240 bytes | 장치 버퍼 확인 필요 |
-| 최대 이론치 | 244 bytes | 버퍼 256B - 헤더(10B) - CRC(2B) |
+| 고성능 | 240 bytes | 장치 버퍼 확인 필요. 8의 배수 중 최댓값 |
+| 최대 이론치 | 244 bytes | 버퍼 256B - 헤더(10B) - CRC(2B). 8의 배수가 아니므로 사용하지 않음 |
 
-> ErrorCode=`BUFFER_OVERFLOW` NACK 발생 시 현재 DataLen의 절반으로 줄이고,
+> ErrorCode=`BUFFER_OVERFLOW` NACK 발생 시 현재 DataLen의 절반(8의 배수 유지)으로 줄이고,
 > 이후 패킷부터 줄어든 크기 유지.
 
 ---

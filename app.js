@@ -14496,11 +14496,15 @@ class ModbusDashboard {
     }
 
     const slaveId = selectedDevice.slaveId;
-    // 펌웨어 데이터는 4-byte 정렬되어야 함 (Flash 32-bit word 쓰기 호환)
-    let packetSize =
+    // 장치는 Flash를 8-byte(doubleword) 단위로 기록함. 1.0.x 펌웨어의 FC 0x23
+    // 핸들러는 8-byte에 못 미친 나머지를 기록하지 않으므로, 패킷 크기와
+    // 전체 크기를 8의 배수로 맞춤.
+    const FW_WRITE_UNIT = 8;
+    const requestedPacketSize =
         parseInt(document.getElementById('fwPacketSize')?.value) || 240;
-    packetSize =
-        Math.max(4, Math.floor(packetSize / 4) * 4);  // 4의 배수로 라운드
+    let packetSize = Math.max(
+        FW_WRITE_UNIT,
+        Math.floor(requestedPacketSize / FW_WRITE_UNIT) * FW_WRITE_UNIT);
     const responseTimeout =
         parseInt(document.getElementById('fwResponseTimeout')?.value) || 1000;
     // 프로토콜 선택: 'auto'(0x23 우선, 실패 시 0x66) | '0x23'(고정) |
@@ -14534,18 +14538,25 @@ class ModbusDashboard {
     this.firmwareUpdateInProgress = true;
     this.firmwareUpdateCancelled = false;
 
-    // 펌웨어 데이터를 4-byte 경계로 패딩 (Flash 32-bit word 쓰기 정렬).
+    // 펌웨어 데이터를 8-byte 경계로 패딩 (Flash doubleword 쓰기 단위).
     // 0xFF 패딩 — Flash erase 값과 동일하므로 추가 쓰기 부담 없음.
-    if (this.firmwareData.length % 4 !== 0) {
+    if (this.firmwareData.length % FW_WRITE_UNIT !== 0) {
       const origLen = this.firmwareData.length;
-      const paddedLen = Math.ceil(origLen / 4) * 4;
+      const paddedLen = Math.ceil(origLen / FW_WRITE_UNIT) * FW_WRITE_UNIT;
       const padded = new Uint8Array(paddedLen);
       padded.set(this.firmwareData);
       padded.fill(0xFF, origLen);
       this.firmwareData = padded;
       this.addFirmwareLog(
-          `파일 크기 ${origLen} bytes → 4-byte 정렬을 위해 ${
+          `파일 크기 ${origLen} bytes → 8-byte 정렬을 위해 ${
               paddedLen} bytes로 0xFF 패딩`,
+          'warning');
+    }
+
+    if (fwProtocol !== '0x66' && packetSize !== requestedPacketSize) {
+      this.addFirmwareLog(
+          `패킷 크기 ${requestedPacketSize} bytes → 8-byte 단위에 맞춰 ${
+              packetSize} bytes로 조정 (FC 0x23)`,
           'warning');
     }
 
@@ -15087,9 +15098,9 @@ class ModbusDashboard {
             'warning');
 
         if (errCode === 0x05) {
-          // BUFFER_OVERFLOW → DataLen 절반(4의 배수 유지)으로 축소 후 재포장
+          // BUFFER_OVERFLOW → DataLen 절반(8의 배수 유지)으로 축소 후 재포장
           const halved = Math.floor(currentDataLen / 2);
-          currentDataLen = Math.max(16, halved - (halved % 4));
+          currentDataLen = Math.max(16, halved - (halved % 8));
           this.addFirmwareLog(
               `[0x23/0x03] DataLen을 ${currentDataLen}로 축소`, 'warning');
           bufferOverflow = true;
