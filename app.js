@@ -18367,6 +18367,12 @@ class ModbusDashboard {
         fullName: 'Sirocco FAN (550W) 센서리스용',
         sensorless: true
       },
+      // 0x1000 과 같은 모터. 600W 제품에서 쓰도록 전류 용량을 낮춘 홀 센서용
+      {
+        v: 0x1002,
+        name: 'Sirocco Motor 600W용',
+        fullName: 'Sirocco FAN (550W) 600W용'
+      },
       {v: 0x2000, name: 'Axial Motor', fullName: 'Axial FAN (750W)'},
       {
         v: 0x2001,
