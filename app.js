@@ -18350,6 +18350,12 @@ class ModbusDashboard {
   _motorIdOptions() {
     return [
       {v: 0x1000, name: 'Sirocco Motor', fullName: 'Sirocco FAN (550W)'},
+      {
+        v: 0x1001,
+        name: 'Sirocco Motor 센서리스용',
+        fullName: 'Sirocco FAN (550W) 센서리스용',
+        sensorless: true
+      },
       {v: 0x2000, name: 'Axial Motor', fullName: 'Axial FAN (750W)'},
       {
         v: 0x2001,
@@ -20528,7 +20534,7 @@ class ModbusDashboard {
                         </select>`)}
                     ${
             row('driveMethod', '구동 방식',
-                '회전자 각도를 얻는 방식 (FC 0x2B, 0x270C). 센서리스는 모터 타입 0x2001 에서만 동작. 변경값은 전원 재투입 후 적용',
+                '회전자 각도를 얻는 방식 (FC 0x2B, 0x270C). 센서리스는 센서리스용 모터 타입에서만 동작. 변경값은 전원 재투입 후 적용',
                 `
                         <select id="driveMethod_${id}" style="${iStyle}"
                             onchange="window.dashboard.debouncedApply('driveMethod', ${
